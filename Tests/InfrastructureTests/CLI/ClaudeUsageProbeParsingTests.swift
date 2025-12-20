@@ -192,6 +192,40 @@ struct ClaudeUsageProbeParsingTests {
         }
     }
 
+    // MARK: - Reset Time Parsing
+
+    @Test
+    func `parses session reset time from output`() throws {
+        // Given
+        let output = Self.sampleClaudeOutput
+
+        // When
+        let snapshot = try ClaudeUsageProbe.parse(output)
+
+        // Then
+        let sessionQuota = snapshot.sessionQuota
+        #expect(sessionQuota?.resetsAt != nil)
+        #expect(sessionQuota?.resetDescription != nil)
+    }
+
+    @Test
+    func `parses short reset time like 30m`() throws {
+        // Given
+        let output = Self.exhaustedQuotaOutput
+
+        // When
+        let snapshot = try ClaudeUsageProbe.parse(output)
+
+        // Then
+        let sessionQuota = snapshot.sessionQuota
+        #expect(sessionQuota?.resetsAt != nil)
+        // Should be about 30 minutes from now
+        if let timeUntil = sessionQuota?.timeUntilReset {
+            #expect(timeUntil > 25 * 60) // > 25 minutes
+            #expect(timeUntil < 35 * 60) // < 35 minutes
+        }
+    }
+
     // MARK: - ANSI Code Handling
 
     static let ansiColoredOutput = """

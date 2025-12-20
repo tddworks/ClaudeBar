@@ -43,6 +43,11 @@ public struct ClaudeUsageProbe: UsageProbePort {
 
     // MARK: - Parsing
 
+    /// Parses Claude CLI output into a UsageSnapshot
+    public static func parse(_ text: String) throws -> UsageSnapshot {
+        try ClaudeUsageProbe().parseClaudeOutput(text)
+    }
+
     private func parseClaudeOutput(_ text: String) throws -> UsageSnapshot {
         let clean = stripANSICodes(text)
 
@@ -166,7 +171,10 @@ public struct ClaudeUsageProbe: UsageProbePort {
         for (idx, line) in lines.enumerated() where line.lowercased().contains(label) {
             let window = lines.dropFirst(idx).prefix(14)
             for candidate in window {
-                if candidate.lowercased().contains("resets") {
+                let lower = candidate.lowercased()
+                // Look for "resets" or time indicators like "2h" or "30m"
+                if lower.contains("reset") ||
+                   (lower.contains("in") && (lower.contains("h") || lower.contains("m"))) {
                     return candidate.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             }
@@ -205,36 +213,34 @@ public struct ClaudeUsageProbe: UsageProbePort {
     private func parseResetDate(_ text: String?) -> Date? {
         guard let text else { return nil }
 
-        // Parse "Resets in Xh Ym" format
-        let timePattern = #"(?i)resets?\s+in\s+(?:(\d+)\s*d)?\s*(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?"#
-        if let regex = try? NSRegularExpression(pattern: timePattern, options: []),
-           let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)) {
-            var totalSeconds: TimeInterval = 0
+        var totalSeconds: TimeInterval = 0
 
-            // Days
-            if match.range(at: 1).location != NSNotFound,
-               let r = Range(match.range(at: 1), in: text),
-               let days = Int(text[r]) {
+        // Extract days: "2d" or "2 d" or "2 days"
+        if let dayMatch = text.range(of: #"(\d+)\s*d(?:ays?)?"#, options: .regularExpression) {
+            let dayStr = String(text[dayMatch])
+            if let days = Int(dayStr.filter { $0.isNumber }) {
                 totalSeconds += Double(days) * 24 * 3600
             }
+        }
 
-            // Hours
-            if match.range(at: 2).location != NSNotFound,
-               let r = Range(match.range(at: 2), in: text),
-               let hours = Int(text[r]) {
+        // Extract hours: "2h" or "2 h" or "2 hours"
+        if let hourMatch = text.range(of: #"(\d+)\s*h(?:ours?|r)?"#, options: .regularExpression) {
+            let hourStr = String(text[hourMatch])
+            if let hours = Int(hourStr.filter { $0.isNumber }) {
                 totalSeconds += Double(hours) * 3600
             }
+        }
 
-            // Minutes
-            if match.range(at: 3).location != NSNotFound,
-               let r = Range(match.range(at: 3), in: text),
-               let minutes = Int(text[r]) {
+        // Extract minutes: "15m" or "15 m" or "15 min" or "15 minutes"
+        if let minMatch = text.range(of: #"(\d+)\s*m(?:in(?:utes?)?)?"#, options: .regularExpression) {
+            let minStr = String(text[minMatch])
+            if let minutes = Int(minStr.filter { $0.isNumber }) {
                 totalSeconds += Double(minutes) * 60
             }
+        }
 
-            if totalSeconds > 0 {
-                return Date().addingTimeInterval(totalSeconds)
-            }
+        if totalSeconds > 0 {
+            return Date().addingTimeInterval(totalSeconds)
         }
 
         return nil
