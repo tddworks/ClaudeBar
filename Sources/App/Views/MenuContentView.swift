@@ -23,6 +23,7 @@ struct MenuContentView: View {
             metricsContent
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
+                .geometryGroup()
 
             Divider()
                 .padding(.horizontal, 16)
@@ -131,7 +132,9 @@ struct MenuContentView: View {
                     isSelected: provider == selectedProvider,
                     hasData: appState.snapshots[provider] != nil
                 ) {
-                    selectedProvider = provider
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedProvider = provider
+                    }
                 }
             }
         }
