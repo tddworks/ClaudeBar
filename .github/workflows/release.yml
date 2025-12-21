@@ -148,42 +148,86 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Import certificate
+          # Download Apple certificate chain (required for GitHub-hosted runners)
+          echo "Downloading Apple certificate chain..."
+          curl -sL -o "$RUNNER_TEMP/AppleRootCA-G2.cer" \
+            "https://www.apple.com/certificateauthority/AppleRootCA-G2.cer"
+          curl -sL -o "$RUNNER_TEMP/DeveloperIDG2CA.cer" \
+            "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
+          curl -sL -o "$RUNNER_TEMP/AppleWWDRCAG3.cer" \
+            "https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
+
+          # Import Apple root and intermediate certificates
+          echo "Importing Apple certificate chain..."
+          security import "$RUNNER_TEMP/AppleRootCA-G2.cer" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign || true
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign || true
+          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH" -T /usr/bin/codesign || true
+
+          # Import user's Developer ID certificate
+          echo "Importing Developer ID certificate..."
           security import "$RUNNER_TEMP/certificate.p12" \
             -k "$KEYCHAIN_PATH" \
             -P "$P12_PASSWORD" \
             -T /usr/bin/codesign \
             -T /usr/bin/security
 
-          # Add to search list
+          # Add keychain to search list (BEFORE login keychain)
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | xargs)
 
-          # Set partition list (allow codesign access)
+          # Set partition list (allow codesign access without prompt)
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" || {
-            echo "Warning: set-key-partition-list failed, trying alternative method..."
-            security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" || true
+            echo "Note: set-key-partition-list returned error (may still work)"
           }
 
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "Certificate import complete"
 
       - name: Set Signing Identity
         run: |
-          echo "Available codesigning identities:"
-          security find-identity -v -p codesigning
+          echo "=== All identities in keychain ==="
+          security find-identity -v "$KEYCHAIN_PATH" || true
+
+          echo ""
+          echo "=== Codesigning identities ==="
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+
+          echo ""
+          echo "=== System codesigning identities ==="
+          security find-identity -v -p codesigning || true
+
+          echo ""
+          echo "=== Certificate details ==="
+          security find-certificate -a -p "$KEYCHAIN_PATH" | openssl x509 -noout -subject -dates 2>/dev/null || true
 
           # Use secret if set, otherwise auto-detect
           if [ -n "${{ secrets.APP_IDENTITY }}" ]; then
             IDENTITY="${{ secrets.APP_IDENTITY }}"
+            echo "Using identity from secret: $IDENTITY"
           else
-            # Try "Developer ID Application" first, then any valid identity
-            IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID" | head -1 | awk -F '"' '{print $2}')
+            # Try from our keychain first
+            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID" | head -1 | awk -F '"' '{print $2}')
+            # Then try system-wide
+            if [ -z "$IDENTITY" ]; then
+              IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID" | head -1 | awk -F '"' '{print $2}')
+            fi
+            # Then try any valid identity
             if [ -z "$IDENTITY" ]; then
               IDENTITY=$(security find-identity -v -p codesigning | grep -E "^\s+[0-9]+\)" | head -1 | awk -F '"' '{print $2}')
             fi
           fi
 
           if [ -z "$IDENTITY" ]; then
-            echo "Error: No valid codesigning identity found"
+            echo ""
+            echo "=========================================="
+            echo "ERROR: No valid codesigning identity found"
+            echo "=========================================="
+            echo ""
+            echo "Possible causes:"
+            echo "1. Certificate is expired"
+            echo "2. Certificate type is not 'Developer ID Application'"
+            echo "3. Private key was not included in .p12"
+            echo ""
+            echo "Check locally with: security find-identity -v -p codesigning"
             exit 1
           fi
 
