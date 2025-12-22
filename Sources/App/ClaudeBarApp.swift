@@ -22,6 +22,10 @@ final class AppState {
 
     /// Last error message, if any
     var lastError: String?
+
+    init(providers: [any AIProvider] = []) {
+        self.providers = providers
+    }
 }
 
 @main
@@ -47,9 +51,7 @@ struct ClaudeBarApp: App {
         AIProviderRegistry.shared.register(providers)
 
         // Store providers in app state
-        let state = AppState()
-        state.providers = providers
-        appState = state
+        appState = AppState(providers: providers)
 
         // Initialize the domain service with notification observer
         monitor = QuotaMonitor(
