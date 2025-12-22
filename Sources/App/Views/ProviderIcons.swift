@@ -44,17 +44,66 @@ struct ProviderIconView: View {
                         radius: 3,
                         y: 1
                     )
+            } else {
+                // Fallback: Use system symbol with gradient background
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.providerGradient(for: providerId, scheme: colorScheme))
+                        .frame(width: size, height: size)
+
+                    Image(systemName: providerSymbol(for: providerId))
+                        .font(.system(size: size * 0.45, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .overlay(
+                    Circle()
+                        .stroke(
+                            colorScheme == .dark
+                                ? Color.white.opacity(0.6)
+                                : AppTheme.providerColor(for: providerId, scheme: colorScheme).opacity(0.3),
+                            lineWidth: 2
+                        )
+                )
+                .shadow(
+                    color: colorScheme == .dark
+                        ? .black.opacity(0.15)
+                        : AppTheme.providerColor(for: providerId, scheme: colorScheme).opacity(0.15),
+                    radius: 3,
+                    y: 1
+                )
             }
         }
     }
 
     private func loadProviderIcon(for providerId: String) -> NSImage? {
         let assetName = AppTheme.providerIconAssetName(for: providerId)
-        // Load SVG from resource bundle (supports both dev and packaged app)
+
+        // Try Asset Catalog first (works with Xcode builds)
+        if let image = NSImage(named: assetName) {
+            return image
+        }
+
+        // Try PNG from resource bundle (for SPM builds)
+        if let url = ResourceBundle.bundle.url(forResource: assetName, withExtension: "png") {
+            return NSImage(contentsOf: url)
+        }
+
+        // Try SVG from resource bundle (for SPM builds)
         if let url = ResourceBundle.bundle.url(forResource: assetName, withExtension: "svg") {
             return NSImage(contentsOf: url)
         }
+
         return nil
+    }
+
+    private func providerSymbol(for providerId: String) -> String {
+        switch providerId {
+        case "claude": return "brain.head.profile"
+        case "codex": return "chevron.left.forwardslash.chevron.right"
+        case "gemini": return "sparkles"
+        case "copilot": return "chevron.left.forwardslash.chevron.right"
+        default: return "questionmark"
+        }
     }
 }
 
