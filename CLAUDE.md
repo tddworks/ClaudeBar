@@ -27,7 +27,7 @@ swift run ClaudeBar
 
 ## Architecture
 
-The project follows a clean architecture with hexagonal/ports-and-adapters patterns:
+The project follows a layered architecture with protocol-based dependency injection:
 
 ### Layers
 
@@ -59,11 +59,11 @@ The project follows a clean architecture with hexagonal/ports-and-adapters patte
 
 ### Key Patterns
 
-- **Ports and Adapters**: Domain defines ports (`UsageProbe`, `StatusChangeObserver`), infrastructure provides adapters
+- **Protocol-Based DI**: Domain defines protocols (`UsageProbe`, `StatusChangeObserver`), infrastructure provides implementations
 - **Actor-based concurrency**: `QuotaMonitor` is an actor for thread-safe state management
 - **Mockable protocol mocks**: Uses `@Mockable` macro from Mockable package for test doubles
 - **Swift Testing framework**: Tests use `@Test` and `@Suite` attributes, not XCTest
-- **Dependency Injection for Testability**: Probes accept injected dependencies (e.g., `CLIExecutor`, `RPCTransport`) to enable unit testing without real CLI/network calls
+- **Adapters folder**: Pure 3rd-party wrappers excluded from code coverage
 
 ### Testability Design
 

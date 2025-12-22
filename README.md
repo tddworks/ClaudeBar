@@ -91,7 +91,7 @@ swift test --filter "QuotaMonitorTests"
 
 ## Architecture
 
-ClaudeBar follows Clean Architecture with hexagonal/ports-and-adapters patterns:
+ClaudeBar uses a layered architecture with protocol-based dependency injection:
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -103,15 +103,15 @@ ClaudeBar follows Clean Architecture with hexagonal/ports-and-adapters patterns:
 ┌─────────────────────────────────────────────────┐
 │                 Domain Layer                    │
 │  Models: UsageQuota, UsageSnapshot, QuotaStatus │
-│  Ports: UsageProbe, StatusChangeObserver        │
+│  Protocols: UsageProbe, StatusChangeObserver    │
 │  Services: QuotaMonitor (Actor)                 │
 └─────────────────────────────────────────────────┘
                         │
                         ▼
 ┌─────────────────────────────────────────────────┐
 │              Infrastructure Layer               │
-│  CLI Probes: Claude, Codex, Gemini              │
-│  Adapters: PTY, Process, Notifications          │
+│  Probes: ClaudeUsageProbe, CodexUsageProbe, etc │
+│  Adapters: Pure 3rd-party wrappers (no coverage)│
 └─────────────────────────────────────────────────┘
 ```
 
@@ -119,7 +119,8 @@ ClaudeBar follows Clean Architecture with hexagonal/ports-and-adapters patterns:
 
 - **Rich Domain Models** - Business logic lives in domain models, not ViewModels
 - **Actor-Based Concurrency** - Thread-safe state management with Swift actors
-- **Protocol-Driven Testing** - `@Mockable` protocols enable easy test doubles
+- **Protocol-Based DI** - `@Mockable` protocols enable testability without real CLI/network
+- **Adapters Folder** - Pure 3rd-party wrappers excluded from code coverage
 - **No ViewModel Layer** - SwiftUI views directly consume domain models
 
 ## Dependencies
