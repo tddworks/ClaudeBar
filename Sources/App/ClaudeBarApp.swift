@@ -47,17 +47,15 @@ struct ClaudeBarApp: App {
         AIProviderRegistry.shared.register(providers)
 
         // Store providers in app state
-        _appState = State(initialValue: {
-            let state = AppState()
-            state.providers = providers
-            return state
-        }())
+        let state = AppState()
+        state.providers = providers
+        appState = state
 
         // Initialize the domain service with notification observer
-        _monitor = State(initialValue: QuotaMonitor(
+        monitor = QuotaMonitor(
             providers: providers,
             statusObserver: notificationObserver
-        ))
+        )
 
         // Request notification permission
         let observer = notificationObserver
