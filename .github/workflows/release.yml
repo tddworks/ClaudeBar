@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 1.0.0)'
+        description: 'Version to release (e.g., 1.0.0 or 1.0.0-beta.1)'
         required: true
         type: string
       debug:
@@ -55,9 +55,17 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/v}"
           fi
 
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: Invalid version format: $VERSION (expected X.Y.Z)"
+          # SemVer regex: X.Y.Z with optional pre-release (-alpha.1, -beta.2, -rc.1, etc.)
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$ ]]; then
+            echo "Error: Invalid version format: $VERSION (expected X.Y.Z or X.Y.Z-prerelease)"
             exit 1
+          fi
+
+          # Determine if this is a pre-release
+          if [[ "$VERSION" =~ - ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -342,7 +350,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           name: ClaudeBar v${{ steps.version.outputs.version }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
           generate_release_notes: true
           files: |
             ${{ env.NOTARIZED_ZIP }}
