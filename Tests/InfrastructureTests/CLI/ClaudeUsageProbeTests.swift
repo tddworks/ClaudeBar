@@ -94,8 +94,10 @@ struct ClaudeUsageProbeTests {
         #expect(probe.extractOrganization(text: "Org: Acme Corp") == "Acme Corp")
         // Header format with email
         #expect(probe.extractOrganization(text: "Opus 4.5 · Claude Max · user@example.com's Organization") == "user@example.com's Organization")
-        // Header format without email
+        // Header format without email - just company name
         #expect(probe.extractOrganization(text: "Opus 4.5 · Claude Pro · My Company") == "My Company")
+        // Header format with just a person's name
+        #expect(probe.extractOrganization(text: "Opus 4.5 · Claude Pro · Vincent Young") == "Vincent Young")
     }
 
     @Test

@@ -218,9 +218,9 @@ struct MenuContentView: View {
     private var metricsContent: some View {
         if let provider = selectedProvider, let snapshot = provider.snapshot {
             VStack(spacing: 12) {
-                // Account info card
-                if let email = snapshot.accountEmail {
-                    accountCard(email: email, snapshot: snapshot)
+                // Account info card - show if email OR organization is available
+                if let displayName = snapshot.accountEmail ?? snapshot.accountOrganization {
+                    accountCard(displayName: displayName, snapshot: snapshot)
                 }
 
                 // Stats Grid - Wrapped style with large numbers
@@ -235,7 +235,7 @@ struct MenuContentView: View {
         }
     }
 
-    private func accountCard(email: String, snapshot: UsageSnapshot) -> some View {
+    private func accountCard(displayName: String, snapshot: UsageSnapshot) -> some View {
         HStack(spacing: 10) {
             // Avatar circle
             ZStack {
@@ -243,14 +243,14 @@ struct MenuContentView: View {
                     .fill(AppTheme.providerGradient(for: selectedProviderId, scheme: colorScheme))
                     .frame(width: 32, height: 32)
 
-                Text(String(email.prefix(1)).uppercased())
+                Text(String(displayName.prefix(1)).uppercased())
                     .font(AppTheme.titleFont(size: 14))
                     .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(email)
+                    Text(displayName)
                         .font(AppTheme.bodyFont(size: 12))
                         .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
                         .lineLimit(1)
