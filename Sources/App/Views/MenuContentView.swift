@@ -46,14 +46,12 @@ struct MenuContentView: View {
                         .padding(.bottom, 16)
 
                     // Main Content Area
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 12) {
-                            metricsContent
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
+                    VStack(spacing: 12) {
+                        metricsContent
                     }
-                    .frame(maxHeight: 280)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+
 
                     // Bottom Action Bar
                     actionBar
