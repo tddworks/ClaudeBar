@@ -925,38 +925,60 @@ extension View {
 
 struct SnowflakeView: View {
     let size: CGFloat
-    @State private var yOffset: CGFloat = -50
+    let startX: CGFloat
+    let startY: CGFloat
+    let duration: Double
+    let delay: Double
+
+    @State private var yOffset: CGFloat = 0
     @State private var xOffset: CGFloat = 0
     @State private var rotation: Double = 0
-    @State private var opacity: Double = 0.8
+    @State private var glowOpacity: Double = 0.6
 
     var body: some View {
-        Image(systemName: "snowflake")
-            .font(.system(size: size))
-            .foregroundStyle(AppTheme.christmasSnow.opacity(opacity))
-            .rotationEffect(.degrees(rotation))
-            .offset(x: xOffset, y: yOffset)
-            .onAppear {
-                let duration = Double.random(in: 4...8)
-                let delay = Double.random(in: 0...3)
+        ZStack {
+            // Glow effect behind snowflake
+            Image(systemName: "snowflake")
+                .font(.system(size: size * 1.5))
+                .foregroundStyle(AppTheme.christmasSnow.opacity(glowOpacity * 0.3))
+                .blur(radius: 3)
 
-                withAnimation(
-                    .linear(duration: duration)
-                    .delay(delay)
-                    .repeatForever(autoreverses: false)
-                ) {
-                    yOffset = 600
-                    xOffset = CGFloat.random(in: -30...30)
-                }
-
-                withAnimation(
-                    .linear(duration: duration * 0.5)
-                    .delay(delay)
-                    .repeatForever(autoreverses: true)
-                ) {
-                    rotation = Double.random(in: -180...180)
-                }
+            // Main snowflake
+            Image(systemName: "snowflake")
+                .font(.system(size: size, weight: .light))
+                .foregroundStyle(AppTheme.christmasSnow.opacity(glowOpacity))
+        }
+        .rotationEffect(.degrees(rotation))
+        .position(x: startX + xOffset, y: startY + yOffset)
+        .onAppear {
+            // Falling animation
+            withAnimation(
+                .linear(duration: duration)
+                .delay(delay)
+                .repeatForever(autoreverses: false)
+            ) {
+                yOffset = 700
+                xOffset = CGFloat.random(in: -40...40)
             }
+
+            // Rotation animation
+            withAnimation(
+                .linear(duration: duration * 0.4)
+                .delay(delay)
+                .repeatForever(autoreverses: true)
+            ) {
+                rotation = Double.random(in: -360...360)
+            }
+
+            // Twinkle effect
+            withAnimation(
+                .easeInOut(duration: 1.5)
+                .delay(delay)
+                .repeatForever(autoreverses: true)
+            ) {
+                glowOpacity = Double.random(in: 0.4...1.0)
+            }
+        }
     }
 }
 
@@ -965,12 +987,40 @@ struct SnowfallOverlay: View {
 
     var body: some View {
         GeometryReader { geo in
-            ForEach(0..<snowflakeCount, id: \.self) { _ in
-                SnowflakeView(size: CGFloat.random(in: 4...10))
-                    .position(
-                        x: CGFloat.random(in: 0...geo.size.width),
-                        y: CGFloat.random(in: -50...0)
+            ZStack {
+                // Layer 1: Background snowflakes (smaller, slower)
+                ForEach(0..<snowflakeCount, id: \.self) { i in
+                    SnowflakeView(
+                        size: CGFloat.random(in: 6...12),
+                        startX: CGFloat.random(in: 0...geo.size.width),
+                        startY: CGFloat.random(in: -100...0),
+                        duration: Double.random(in: 6...10),
+                        delay: Double(i) * 0.15
                     )
+                }
+
+                // Layer 2: Foreground snowflakes (larger, faster)
+                ForEach(0..<(snowflakeCount / 2), id: \.self) { i in
+                    SnowflakeView(
+                        size: CGFloat.random(in: 10...16),
+                        startX: CGFloat.random(in: 0...geo.size.width),
+                        startY: CGFloat.random(in: -80...0),
+                        duration: Double.random(in: 4...7),
+                        delay: Double(i) * 0.2 + 0.5
+                    )
+                }
+
+                // Layer 3: Sparkle dots (tiny, scattered)
+                ForEach(0..<(snowflakeCount / 3), id: \.self) { i in
+                    Circle()
+                        .fill(AppTheme.christmasSnow.opacity(Double.random(in: 0.3...0.7)))
+                        .frame(width: CGFloat.random(in: 2...4), height: CGFloat.random(in: 2...4))
+                        .position(
+                            x: CGFloat.random(in: 0...geo.size.width),
+                            y: CGFloat.random(in: 0...geo.size.height)
+                        )
+                        .blur(radius: 0.5)
+                }
             }
         }
         .allowsHitTesting(false)

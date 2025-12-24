@@ -34,9 +34,9 @@ struct MenuContentView: View {
                 backgroundOrbs
             }
 
-            // Snowfall overlay for Christmas theme
+            // Snowfall overlay for Christmas theme - lots of snow!
             if isChristmas {
-                SnowfallOverlay(snowflakeCount: 15)
+                SnowfallOverlay(snowflakeCount: 25)
             }
 
             if showSettings {
