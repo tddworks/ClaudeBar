@@ -7,6 +7,12 @@
 [![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2015-blue.svg)](https://developer.apple.com)
 
+<p align="center">
+  <img src="https://img.shields.io/badge/🎄-Merry_Christmas-red?style=for-the-badge" alt="Merry Christmas"/>
+  <img src="https://img.shields.io/badge/❄️-Happy_Holidays-blue?style=for-the-badge" alt="Happy Holidays"/>
+  <img src="https://img.shields.io/badge/🎁-2025-green?style=for-the-badge" alt="2025"/>
+</p>
+
 > 🎄✨ **Merry Christmas Eve, everyone!** ✨🎄
 >
 > Wishing warmth, joy, and peace to all who celebrate. May your holidays be filled with love and laughter.
