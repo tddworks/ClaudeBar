@@ -84,12 +84,13 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           INFO_PLIST="Sources/App/Info.plist"
-          BUILD_NUMBER=$(git rev-list --count HEAD)
+          BUILD_NUMBER="${{ github.run_number }}"
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$INFO_PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST"
 
           echo "Updated version to $VERSION (build $BUILD_NUMBER)"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
 
       - name: Resolve Dependencies
         run: swift package resolve
@@ -430,7 +431,8 @@ jobs:
           echo "EdDSA signature generated successfully"
 
           # Generate/update appcast.xml (append new version, preserve history)
-          BUILD_NUMBER=$(git rev-list --count HEAD)
+          # Use the same build number from Info.plist (GitHub release count)
+          echo "Build number: $BUILD_NUMBER"
           ./scripts/update-appcast.sh "$VERSION" "$BUILD_NUMBER" "$DOWNLOAD_URL" "$ED_SIGNATURE" "$FILE_SIZE"
 
       - name: Setup Pages
