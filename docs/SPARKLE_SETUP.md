@@ -25,7 +25,7 @@ ClaudeBar uses [Sparkle](https://sparkle-project.org/) for automatic updates. Wh
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `SUFeedURL` | `https://tddworks.github.io/claudebar/appcast.xml` | Update feed location |
+| `SUFeedURL` | `https://tddworks.github.io/ClaudeBar/appcast.xml` | Update feed location |
 | `SUPublicEDKey` | `2Kn6vvvrrNqgAWrzOiq5Ae+abMjEqlu2MOOM/YBlsw0=` | Public key for signature verification |
 
 ### GitHub Secrets
@@ -128,7 +128,7 @@ This is normal when running via `swift run` or Xcode. Use `make run` instead.
 
 ### "No update found" when there should be one
 
-1. Check that `appcast.xml` is deployed: https://tddworks.github.io/claudebar/appcast.xml
+1. Check that `appcast.xml` is deployed: https://tddworks.github.io/ClaudeBar/appcast.xml
 2. Verify the version in appcast is higher than the running version
 3. Check the EdDSA signature is valid
 

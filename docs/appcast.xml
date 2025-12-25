@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>ClaudeBar Updates</title>
-    <link>https://tddworks.github.io/claudebar/appcast.xml</link>
+    <link>https://tddworks.github.io/ClaudeBar/appcast.xml</link>
     <description>Most recent updates for ClaudeBar</description>
     <language>en</language>
     <!-- Release entries will be added automatically by the release workflow -->
