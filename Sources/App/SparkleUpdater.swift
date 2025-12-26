@@ -6,6 +6,9 @@ import SwiftUI
 private class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate, @unchecked Sendable {
     weak var wrapper: SparkleUpdater?
 
+    /// Whether to include beta channel updates
+    var includeBetaUpdates: Bool = false
+
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
         let version = item.displayVersionString
         let wrapper = self.wrapper
@@ -18,6 +21,15 @@ private class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate, @unchecked S
         let wrapper = self.wrapper
         Task { @MainActor in
             wrapper?.clearUpdateAvailable()
+        }
+    }
+
+    /// Return the set of allowed channels for updates
+    func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        if includeBetaUpdates {
+            return Set(["beta"])
+        } else {
+            return Set()
         }
     }
 }
@@ -42,6 +54,9 @@ final class SparkleUpdater {
 
     /// User driver delegate to handle gentle reminders
     private var userDriverDelegate: SparkleUserDriverDelegate?
+
+    /// Observer for beta updates setting changes
+    nonisolated(unsafe) private var betaSettingObserver: NSObjectProtocol?
 
     /// Whether an update check is currently in progress
     private(set) var isCheckingForUpdates = false
@@ -93,10 +108,38 @@ final class SparkleUpdater {
 
             // Set back reference for delegate callbacks
             delegate.wrapper = self
+
+            // Configure allowed channels based on settings
+            updateAllowedChannels()
+
+            // Listen for beta updates setting changes
+            betaSettingObserver = NotificationCenter.default.addObserver(
+                forName: .betaUpdatesSettingChanged,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.updateAllowedChannels()
+                }
+            }
         } else {
             // Debug/development build - Sparkle won't work without proper bundle
             print("SparkleUpdater: Not running from app bundle, updater disabled")
         }
+    }
+
+    deinit {
+        if let observer = betaSettingObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    /// Updates the allowed channels based on user settings
+    private func updateAllowedChannels() {
+        guard let delegate = updaterDelegate else { return }
+
+        let receiveBeta = AppSettings.shared.receiveBetaUpdates
+        delegate.includeBetaUpdates = receiveBeta
     }
 
     /// Manually check for updates

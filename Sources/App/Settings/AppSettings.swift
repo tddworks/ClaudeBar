@@ -66,6 +66,16 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Update Settings
+
+    /// Whether to receive beta updates (default: false)
+    public var receiveBetaUpdates: Bool {
+        didSet {
+            UserDefaults.standard.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates)
+            NotificationCenter.default.post(name: .betaUpdatesSettingChanged, object: nil)
+        }
+    }
+
     // MARK: - Token Management
 
     /// Whether a GitHub Copilot token is configured
@@ -98,6 +108,7 @@ public final class AppSettings {
         self.githubUsername = credentialStore.get(forKey: CredentialKey.githubUsername) ?? ""
         self.claudeApiBudgetEnabled = UserDefaults.standard.bool(forKey: Keys.claudeApiBudgetEnabled)
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
+        self.receiveBetaUpdates = UserDefaults.standard.bool(forKey: Keys.receiveBetaUpdates)
 
         // Auto-enable Christmas theme during Dec 24-26 if user hasn't explicitly chosen
         applySeasonalTheme()
@@ -142,5 +153,12 @@ private extension AppSettings {
         static let copilotEnabled = "copilotEnabled"
         static let claudeApiBudgetEnabled = "claudeApiBudgetEnabled"
         static let claudeApiBudget = "claudeApiBudget"
+        static let receiveBetaUpdates = "receiveBetaUpdates"
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let betaUpdatesSettingChanged = Notification.Name("betaUpdatesSettingChanged")
 }

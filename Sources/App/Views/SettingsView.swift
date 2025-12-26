@@ -656,6 +656,27 @@ struct SettingsContentView: View {
                     .scaleEffect(0.8)
                     .labelsHidden()
                 }
+
+                // Beta updates toggle
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Include beta versions")
+                            .font(AppTheme.bodyFont(size: 11))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
+
+                        Text("Get early access to new features")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $settings.receiveBetaUpdates)
+                        .toggleStyle(.switch)
+                        .tint(AppTheme.purpleVibrant(for: colorScheme))
+                        .scaleEffect(0.8)
+                        .labelsHidden()
+                }
             } else {
                 // Debug mode message
                 HStack(spacing: 6) {

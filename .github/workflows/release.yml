@@ -387,7 +387,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Sparkle Appcast
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || (github.event_name == 'push' && steps.version.outputs.is_prerelease == 'false') }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || github.event_name == 'push' }}
         env:
           SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
         run: |
@@ -425,22 +425,29 @@ jobs:
 
           echo "EdDSA signature generated successfully"
 
+          # Determine channel for appcast (beta for pre-releases)
+          CHANNEL=""
+          if [[ "${{ steps.version.outputs.is_prerelease }}" == "true" ]]; then
+            CHANNEL="beta"
+            echo "This is a beta release, adding channel: $CHANNEL"
+          fi
+
           # Generate/update appcast.xml using RELEASE_NOTES from CHANGELOG.md
           echo "Build number: $BUILD_NUMBER"
-          ./scripts/update-appcast.sh "$VERSION" "$BUILD_NUMBER" "$DOWNLOAD_URL" "$ED_SIGNATURE" "$FILE_SIZE" "$RELEASE_NOTES"
+          ./scripts/update-appcast.sh "$VERSION" "$BUILD_NUMBER" "$DOWNLOAD_URL" "$ED_SIGNATURE" "$FILE_SIZE" "$RELEASE_NOTES" "$CHANNEL"
 
       - name: Setup Pages
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || (github.event_name == 'push' && steps.version.outputs.is_prerelease == 'false') }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || github.event_name == 'push' }}
         uses: actions/configure-pages@v4
 
       - name: Upload appcast to Pages
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || (github.event_name == 'push' && steps.version.outputs.is_prerelease == 'false') }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || github.event_name == 'push' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
 
       - name: Deploy to GitHub Pages
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || (github.event_name == 'push' && steps.version.outputs.is_prerelease == 'false') }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_appcast) || github.event_name == 'push' }}
         id: deployment
         uses: actions/deploy-pages@v4
 

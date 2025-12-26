@@ -1,6 +1,7 @@
 #!/bin/bash
 # Update appcast.xml with a new release entry
-# Usage: ./scripts/update-appcast.sh <version> <build_number> <download_url> <signature> <file_size> [release_notes]
+# Usage: ./scripts/update-appcast.sh <version> <build_number> <download_url> <signature> <file_size> [release_notes] [channel]
+# channel: Optional. Set to "beta" for pre-release versions to enable beta channel filtering.
 
 set -e
 
@@ -10,6 +11,7 @@ DOWNLOAD_URL="$3"
 ED_SIGNATURE="$4"
 FILE_SIZE="$5"
 RELEASE_NOTES="${6:-Bug fixes and improvements.}"
+CHANNEL="${7:-}"  # Optional: "beta" for pre-release versions
 PUB_DATE=$(date -R)
 
 mkdir -p docs
@@ -68,6 +70,13 @@ HTML_NOTES=$(echo "$RELEASE_NOTES" | convert_to_html)
 # Human-readable date for display
 DISPLAY_DATE=$(date "+%B %d, %Y")
 
+# Build channel tag if specified
+CHANNEL_TAG=""
+if [[ -n "$CHANNEL" ]]; then
+    CHANNEL_TAG="            <sparkle:channel>${CHANNEL}</sparkle:channel>"
+    echo "Adding channel: $CHANNEL"
+fi
+
 # Create fresh appcast with only the new version
 cat > docs/appcast.xml << EOF
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
@@ -80,6 +89,7 @@ cat > docs/appcast.xml << EOF
             <sparkle:version>${BUILD_NUMBER}</sparkle:version>
             <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+${CHANNEL_TAG}
             <description><![CDATA[<h2>ClaudeBar ${VERSION}</h2>
 <p><em>Released ${DISPLAY_DATE}</em></p>
 ${HTML_NOTES}
