@@ -6,19 +6,28 @@ import Domain
 public struct AntigravityUsageProbe: UsageProbe {
 
     private let cliExecutor: any CLIExecutor
-    private let networkClient: any NetworkClient
+    private let insecureSession: URLSession
     private let timeout: TimeInterval
 
-    private static let processName = "language_server_macos"
+    // Match both Intel and ARM binaries
+    private static let processNames = ["language_server_macos", "language_server_macos_arm"]
 
     public init(
         cliExecutor: (any CLIExecutor)? = nil,
-        networkClient: (any NetworkClient)? = nil,
         timeout: TimeInterval = 8.0
     ) {
         self.cliExecutor = cliExecutor ?? DefaultCLIExecutor()
-        self.networkClient = networkClient ?? URLSession.shared
         self.timeout = timeout
+
+        // Create a session that accepts self-signed certificates for localhost
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = timeout
+        config.timeoutIntervalForResource = timeout
+        self.insecureSession = URLSession(
+            configuration: config,
+            delegate: InsecureLocalhostDelegate(),
+            delegateQueue: nil
+        )
     }
 
     // MARK: - UsageProbe
@@ -92,30 +101,42 @@ public struct AntigravityUsageProbe: UsageProbe {
     }
 
     private func detectProcess() async throws -> ProcessInfo {
+        // Use -ww for wide output to avoid command line truncation
         let result = try cliExecutor.execute(
             binary: "/bin/ps",
-            args: ["-ax", "-o", "pid=,command="],
+            args: ["-ax", "-ww", "-o", "pid=,command="],
             input: nil,
             timeout: timeout,
             workingDirectory: nil,
             autoResponses: [:]
         )
 
-        let lines = result.output.split(separator: "\n")
+        // Handle different line endings from PTY output (\n, \r\n, \r)
+        let normalizedOutput = result.output
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalizedOutput.split(separator: "\n", omittingEmptySubsequences: true)
+
+        AppLog.probes.debug("Antigravity: ps returned \(lines.count) process lines")
 
         for line in lines {
-            let lineStr = String(line)
+            let lineStr = String(line).trimmingCharacters(in: .whitespaces)
             guard Self.isAntigravityProcess(lineStr) else { continue }
 
             guard let pid = Self.extractPID(from: lineStr) else { continue }
+
+            // Debug: log the command line we're parsing
+            AppLog.probes.debug("Antigravity: Checking process line (length=\(lineStr.count)): \(lineStr.prefix(200))...")
 
             if let csrfToken = Self.extractCSRFToken(from: lineStr) {
                 let extensionPort = Self.extractExtensionPort(from: lineStr)
                 AppLog.probes.debug("Antigravity process detected: PID=\(pid), hasCSRF=true, extPort=\(extensionPort ?? 0)")
                 return ProcessInfo(pid: pid, csrfToken: csrfToken, extensionPort: extensionPort)
             } else {
-                // Process found but no CSRF token
-                AppLog.probes.error("Antigravity process found but missing CSRF token - restart Antigravity")
+                // Process found but no CSRF token - log more details
+                AppLog.probes.error("Antigravity process found (PID=\(pid)) but missing CSRF token")
+                AppLog.probes.debug("Antigravity: Full command line: \(lineStr)")
+                AppLog.probes.debug("Antigravity: Contains --csrf_token? \(lineStr.contains("--csrf_token"))")
                 throw ProbeError.authenticationRequired
             }
         }
@@ -208,7 +229,8 @@ public struct AntigravityUsageProbe: UsageProbe {
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await networkClient.request(request)
+        // Use insecure session for self-signed localhost certificates
+        let (data, response) = try await insecureSession.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             throw ProbeError.executionFailed("API request failed")
@@ -221,7 +243,8 @@ public struct AntigravityUsageProbe: UsageProbe {
 
     static func isAntigravityProcess(_ commandLine: String) -> Bool {
         let lower = commandLine.lowercased()
-        guard lower.contains(processName) else { return false }
+        // Check if any of the known process names are present
+        guard processNames.contains(where: { lower.contains($0) }) else { return false }
         // Check for app_data_dir flag with antigravity value
         if lower.contains("--app_data_dir") && lower.contains("antigravity") {
             return true
@@ -410,4 +433,32 @@ private struct ModelAlias: Decodable {
 private struct QuotaInfo: Decodable {
     let remainingFraction: Double?
     let resetTime: String?
+}
+
+// MARK: - Insecure Session Delegate
+
+/// URLSession delegate that accepts self-signed certificates for localhost connections.
+/// This is required because Antigravity's local language server uses self-signed certs.
+private final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        // Only trust localhost connections
+        guard let host = challenge.protectionSpace.host.lowercased() as String?,
+              host == "127.0.0.1" || host == "localhost" else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        // Accept any certificate for localhost
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+           let serverTrust = challenge.protectionSpace.serverTrust {
+            let credential = URLCredential(trust: serverTrust)
+            completionHandler(.useCredential, credential)
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
+    }
 }

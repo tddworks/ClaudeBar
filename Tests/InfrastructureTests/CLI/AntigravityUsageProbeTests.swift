@@ -14,6 +14,10 @@ struct AntigravityUsageProbeTests {
     67890 /other/process --some-flag value
     """
 
+    static let samplePsOutputWithAntigravityARM = """
+    26416 /Applications/Antigravity.app/Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm --csrf_token 9f808dbe-cb96-4829 --extension_server_port 58445 --app_data_dir antigravity
+    """
+
     static let samplePsOutputNoAntigravity = """
     12345 /path/to/some_other_binary --flag value
     67890 /another/process
@@ -77,6 +81,20 @@ struct AntigravityUsageProbeTests {
     }
 
     @Test
+    func `isAvailable returns true when ARM binary detected with CSRF token`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willReturn(CLIResult(output: Self.samplePsOutputWithAntigravityARM, exitCode: 0))
+
+        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+
+        // When & Then
+        #expect(await probe.isAvailable() == true)
+    }
+
+    @Test
     func `isAvailable returns false when process running but CSRF token missing`() async {
         // Given
         let mockExecutor = MockCLIExecutor()
@@ -130,13 +148,16 @@ struct AntigravityUsageProbeTests {
 
     @Test
     func `identifies antigravity process by markers`() {
-        // Given
+        // Given - Intel binary
         let antigravityLine = "/path/to/language_server_macos --app_data_dir antigravity"
+        // ARM binary
+        let antigravityARMLine = "/Applications/Antigravity.app/Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm --csrf_token abc --app_data_dir antigravity"
         let otherLine = "/path/to/some_other_binary"
         let antigravityPathLine = "/Users/test/.antigravity/language_server_macos"
 
         // When & Then
         #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityLine) == true)
+        #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityARMLine) == true)
         #expect(AntigravityUsageProbe.isAntigravityProcess(otherLine) == false)
         #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityPathLine) == true)
     }
