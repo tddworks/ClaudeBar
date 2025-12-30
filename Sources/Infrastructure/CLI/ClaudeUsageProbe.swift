@@ -59,7 +59,7 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             throw ProbeError.executionFailed(error.localizedDescription)
         }
 
-        AppLog.probes.debug("Claude /usage output:\n\(usageResult.output)")
+        AppLog.probes.info("Claude /usage output:\n\(usageResult.output)")
 
         let snapshot: UsageSnapshot
         do {
