@@ -76,14 +76,18 @@ struct ClaudeBarApp: App {
         AppLog.ui.info("ClaudeBar initializing...")
         
         // Create providers with their probes (rich domain models)
+        let zaiProbe: any UsageProbe = AppSettings.shared.zaiDemoMode
+            ? ZaiDemoUsageProbe()
+            : ZaiUsageProbe()
+
         var providers: [any AIProvider] = [
             ClaudeProvider(probe: ClaudeUsageProbe()),
             CodexProvider(probe: CodexUsageProbe()),
             GeminiProvider(probe: GeminiUsageProbe()),
             AntigravityProvider(probe: AntigravityUsageProbe()),
-            ZaiProvider(probe: ZaiUsageProbe()),
+            ZaiProvider(probe: zaiProbe),
         ]
-        AppLog.providers.info("Created base providers: Claude, Codex, Gemini, Antigravity, Z.ai")
+        AppLog.providers.info("Created base providers: Claude, Codex, Gemini, Antigravity, Z.ai\(AppSettings.shared.zaiDemoMode ? " (demo mode)" : "")")
 
         // Add Copilot provider if configured
         if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {

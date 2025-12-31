@@ -43,6 +43,13 @@ public final class AppSettings {
         }
     }
 
+    /// Whether Z.ai demo mode is enabled (uses mock data for UI testing)
+    public var zaiDemoMode: Bool {
+        didSet {
+            UserDefaults.standard.set(zaiDemoMode, forKey: Keys.zaiDemoMode)
+        }
+    }
+
     /// The GitHub username for Copilot API calls
     public var githubUsername: String {
         didSet {
@@ -109,6 +116,7 @@ public final class AppSettings {
         self.userHasChosenTheme = UserDefaults.standard.bool(forKey: Keys.userHasChosenTheme)
         self.themeMode = UserDefaults.standard.string(forKey: Keys.themeMode) ?? "system"
         self.copilotEnabled = UserDefaults.standard.bool(forKey: Keys.copilotEnabled)
+        self.zaiDemoMode = UserDefaults.standard.bool(forKey: Keys.zaiDemoMode)
         self.githubUsername = credentialStore.get(forKey: CredentialKey.githubUsername) ?? ""
         self.claudeApiBudgetEnabled = UserDefaults.standard.bool(forKey: Keys.claudeApiBudgetEnabled)
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
@@ -155,6 +163,7 @@ private extension AppSettings {
         static let themeMode = "themeMode"
         static let userHasChosenTheme = "userHasChosenTheme"
         static let copilotEnabled = "copilotEnabled"
+        static let zaiDemoMode = "zaiDemoMode"
         static let claudeApiBudgetEnabled = "claudeApiBudgetEnabled"
         static let claudeApiBudget = "claudeApiBudget"
         static let receiveBetaUpdates = "receiveBetaUpdates"
