@@ -37,9 +37,9 @@ struct SettingsContentView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
                     themeCard
+                    providersCard
                     claudeBudgetCard
                     copilotCard
-                    zaiDemoCard
                     #if ENABLE_SPARKLE
                     updatesCard
                     #endif
@@ -184,6 +184,115 @@ struct SettingsContentView: View {
             // Invisible placeholder to balance the header
             Color.clear
                 .frame(width: 60, height: 1)
+        }
+    }
+
+    // MARK: - Providers Card
+
+    private var providersCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack(spacing: 10) {
+                Image(systemName: "cpu")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+
+                Text("AI Providers")
+                    .font(AppTheme.titleFont(size: 14))
+                    .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+            }
+
+            // Provider toggles
+            VStack(spacing: 12) {
+                providerToggleRow(
+                    icon: "text.bubble.fill",
+                    color: .blue,
+                    name: "Claude",
+                    isEnabled: $settings.claudeEnabled
+                )
+
+                providerToggleRow(
+                    icon: "terminal",
+                    color: .green,
+                    name: "Codex",
+                    isEnabled: $settings.codexEnabled
+                )
+
+                providerToggleRow(
+                    icon: "sparkles",
+                    color: .indigo,
+                    name: "Gemini",
+                    isEnabled: $settings.geminiEnabled
+                )
+
+                providerToggleRow(
+                    icon: "point.3.connected.trianglepath.dotted",
+                    color: .orange,
+                    name: "Antigravity",
+                    isEnabled: $settings.antigravityEnabled
+                )
+
+                providerToggleRow(
+                    icon: "hexagon.fill",
+                    color: .purple,
+                    name: "Z.ai",
+                    isEnabled: $settings.zaiEnabled
+                )
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(AppTheme.cardGradient(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    colorScheme == .dark
+                                        ? Color.white.opacity(0.15)
+                                        : Color.gray.opacity(0.08),
+                                    colorScheme == .dark
+                                        ? Color.white.opacity(0.05)
+                                        : Color.gray.opacity(0.03)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    // Helper function to create a provider toggle row
+    @ViewBuilder
+    private func providerToggleRow(icon: String, color: Color, name: String, isEnabled: Binding<Bool>) -> some View {
+        HStack(spacing: 12) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(color)
+            }
+
+            // Provider name
+            Text(name)
+                .font(AppTheme.bodyFont(size: 13))
+                .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+
+            Spacer()
+
+            // Toggle
+            Toggle("", isOn: isEnabled)
+                .toggleStyle(.switch)
+                .tint(color)
+                .scaleEffect(0.8)
+                .labelsHidden()
         }
     }
 
@@ -547,77 +656,6 @@ struct SettingsContentView: View {
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    // MARK: - Z.ai Demo Card
-
-    private var zaiDemoCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header row with icon, title, toggle
-            HStack(spacing: 10) {
-                // Provider icon
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.2, green: 0.6, blue: 0.9),
-                                    Color(red: 0.1, green: 0.4, blue: 0.7)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Z.ai Demo Mode")
-                        .font(AppTheme.titleFont(size: 14))
-                        .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
-
-                    Text("Preview UI with mock data")
-                        .font(AppTheme.captionFont(size: 10))
-                        .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
-                }
-
-                Spacer()
-
-                Toggle("", isOn: $settings.zaiDemoMode)
-                    .toggleStyle(.switch)
-                    .tint(AppTheme.purpleVibrant(for: colorScheme))
-                    .scaleEffect(0.8)
-                    .labelsHidden()
-            }
-
-            // Help text
-            Text("Enable to test Z.ai provider without credentials. Restart app to apply.")
-                .font(AppTheme.captionFont(size: 9))
-                .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(AppTheme.cardGradient(for: colorScheme))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    colorScheme == .dark ? Color.white.opacity(0.25) : AppTheme.purpleVibrant(for: colorScheme).opacity(0.18),
-                                    colorScheme == .dark ? Color.white.opacity(0.08) : AppTheme.pinkHot(for: colorScheme).opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
     }
 
     // MARK: - Updates Card

@@ -123,22 +123,6 @@ import Domain
     .background(AppTheme.backgroundGradient(for: .dark))
 }
 
-#Preview("Stat Cards - Z.ai Demo") {
-    // Z.ai demo mode quotas (matching ZaiDemoUsageProbe data)
-    let quotas = [
-        UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "zai"),
-        UsageQuota(percentRemaining: 70, quotaType: .timeLimit("MCP"), providerId: "zai"),
-    ]
-
-    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-        ForEach(Array(quotas.enumerated()), id: \.offset) { index, quota in
-            WrappedStatCard(quota: quota, delay: Double(index) * 0.1)
-        }
-    }
-    .padding(20)
-    .frame(width: 360)
-    .background(AppTheme.backgroundGradient(for: .dark))
-}
 
 // MARK: - Status Badges Preview
 

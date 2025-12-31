@@ -1,4 +1,4 @@
-import SwiftUI
+@preconcurrency import SwiftUI
 import Domain
 import Infrastructure
 #if ENABLE_SPARKLE
@@ -7,6 +7,7 @@ import Sparkle
 
 /// Shared app state observable by all views
 @Observable
+@MainActor
 final class AppState {
     /// The registered providers (rich domain models)
     var providers: [any AIProvider] = []
@@ -34,10 +35,22 @@ final class AppState {
     /// Last error message, if any
     var lastError: String?
 
+    private var settingsObserver: NSObjectProtocol?
+
     init(providers: [any AIProvider] = []) {
         self.providers = providers
+
+        // Listen for provider settings changes
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .providerSettingsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.rebuildProviders()
+        }
     }
 
+    
     /// Adds a provider if not already present
     func addProvider(_ provider: any AIProvider) {
         guard !providers.contains(where: { $0.id == provider.id }) else {
@@ -54,15 +67,130 @@ final class AppState {
         providers.removeAll { $0.id == id }
         AppLog.providers.info("Removed provider: \(id)")
     }
+
+    /// Rebuilds providers list based on current settings
+    func rebuildProviders() {
+        AppLog.providers.info("Rebuilding providers based on settings changes")
+
+        var newProviders: [any AIProvider] = []
+
+        // Add providers based on enable/disable settings
+        if AppSettings.shared.claudeEnabled {
+            newProviders.append(ClaudeProvider(probe: ClaudeUsageProbe()))
+        }
+        if AppSettings.shared.codexEnabled {
+            newProviders.append(CodexProvider(probe: CodexUsageProbe()))
+        }
+        if AppSettings.shared.geminiEnabled {
+            newProviders.append(GeminiProvider(probe: GeminiUsageProbe()))
+        }
+        if AppSettings.shared.antigravityEnabled {
+            newProviders.append(AntigravityProvider(probe: AntigravityUsageProbe()))
+        }
+        if AppSettings.shared.zaiEnabled {
+            newProviders.append(ZaiProvider(probe: ZaiUsageProbe()))
+        }
+
+        // Add Copilot provider if configured
+        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
+            newProviders.append(CopilotProvider(probe: CopilotUsageProbe()))
+        }
+
+        // Clear existing providers
+        providers.removeAll()
+
+        // Register new providers
+        AIProviderRegistry.shared.register(newProviders)
+
+        // Set new providers
+        providers = newProviders
+
+        AppLog.providers.info("Rebuilt \(providers.count) providers based on settings")
+    }
+
+    /// Rebuilds providers and reinitializes monitor
+    func rebuildProvidersAndMonitor() {
+        rebuildProviders()
+        // Monitor will be reinitialized in the view through the @State variable
+    }
+}
+
+/// View model to handle provider settings changes
+@MainActor
+class ProviderSettingsManager: ObservableObject {
+    @Published var providers: [any AIProvider] = []
+    private let quotaAlerter = QuotaAlerter()
+    private var monitor: QuotaMonitor?
+    private var settingsObserver: NSObjectProtocol?
+
+    // Public getter for monitor
+    var monitorForView: QuotaMonitor? { monitor }
+
+    init(initialProviders: [any AIProvider]) {
+        self.providers = initialProviders
+
+        // Initialize monitor
+        self.monitor = QuotaMonitor(
+            providers: providers,
+            statusListener: quotaAlerter
+        )
+
+        // Listen for provider settings changes
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .providerSettingsChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.handleProviderSettingsChanged()
+        }
+    }
+
+    nonisolated deinit {
+        if let observer = settingsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    private func handleProviderSettingsChanged() {
+        // Rebuild providers based on settings
+        var newProviders: [any AIProvider] = []
+
+        if AppSettings.shared.claudeEnabled {
+            newProviders.append(ClaudeProvider(probe: ClaudeUsageProbe()))
+        }
+        if AppSettings.shared.codexEnabled {
+            newProviders.append(CodexProvider(probe: CodexUsageProbe()))
+        }
+        if AppSettings.shared.geminiEnabled {
+            newProviders.append(GeminiProvider(probe: GeminiUsageProbe()))
+        }
+        if AppSettings.shared.antigravityEnabled {
+            newProviders.append(AntigravityProvider(probe: AntigravityUsageProbe()))
+        }
+        if AppSettings.shared.zaiEnabled {
+            newProviders.append(ZaiProvider(probe: ZaiUsageProbe()))
+        }
+
+        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
+            newProviders.append(CopilotProvider(probe: CopilotUsageProbe()))
+        }
+
+        // Update providers
+        providers.removeAll()
+        providers = newProviders
+
+        // Reinitialize monitor
+        monitor = QuotaMonitor(
+            providers: providers,
+            statusListener: quotaAlerter
+        )
+    }
 }
 
 @main
 struct ClaudeBarApp: App {
-    /// The main domain service - monitors all AI providers
-    @State private var monitor: QuotaMonitor
-
-    /// Shared app state
-    @State private var appState = AppState()
+    /// The provider settings manager
+    @StateObject private var providerManager = ProviderSettingsManager(initialProviders: [])
 
     /// Alerts users when quota status degrades
     private let quotaAlerter = QuotaAlerter()
@@ -74,20 +202,46 @@ struct ClaudeBarApp: App {
 
     init() {
         AppLog.ui.info("ClaudeBar initializing...")
-        
-        // Create providers with their probes (rich domain models)
-        let zaiProbe: any UsageProbe = AppSettings.shared.zaiDemoMode
-            ? ZaiDemoUsageProbe()
-            : ZaiUsageProbe()
 
-        var providers: [any AIProvider] = [
-            ClaudeProvider(probe: ClaudeUsageProbe()),
-            CodexProvider(probe: CodexUsageProbe()),
-            GeminiProvider(probe: GeminiUsageProbe()),
-            AntigravityProvider(probe: AntigravityUsageProbe()),
-            ZaiProvider(probe: zaiProbe),
-        ]
-        AppLog.providers.info("Created base providers: Claude, Codex, Gemini, Antigravity, Z.ai\(AppSettings.shared.zaiDemoMode ? " (demo mode)" : "")")
+        var providers: [any AIProvider] = []
+
+        // Add providers based on enable/disable settings
+        if AppSettings.shared.claudeEnabled {
+            providers.append(ClaudeProvider(probe: ClaudeUsageProbe()))
+            AppLog.providers.info("Added Claude provider")
+        } else {
+            AppLog.providers.debug("Claude provider disabled")
+        }
+
+        if AppSettings.shared.codexEnabled {
+            providers.append(CodexProvider(probe: CodexUsageProbe()))
+            AppLog.providers.info("Added Codex provider")
+        } else {
+            AppLog.providers.debug("Codex provider disabled")
+        }
+
+        if AppSettings.shared.geminiEnabled {
+            providers.append(GeminiProvider(probe: GeminiUsageProbe()))
+            AppLog.providers.info("Added Gemini provider")
+        } else {
+            AppLog.providers.debug("Gemini provider disabled")
+        }
+
+        if AppSettings.shared.antigravityEnabled {
+            providers.append(AntigravityProvider(probe: AntigravityUsageProbe()))
+            AppLog.providers.info("Added Antigravity provider")
+        } else {
+            AppLog.providers.debug("Antigravity provider disabled")
+        }
+
+        if AppSettings.shared.zaiEnabled {
+            providers.append(ZaiProvider(probe: ZaiUsageProbe()))
+            AppLog.providers.info("Added Z.ai provider")
+        } else {
+            AppLog.providers.debug("Z.ai provider disabled")
+        }
+
+        AppLog.providers.info("Created \(providers.count) providers based on settings")
 
         // Add Copilot provider if configured
         if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
@@ -101,18 +255,8 @@ struct ClaudeBarApp: App {
         AIProviderRegistry.shared.register(providers)
         AppLog.providers.info("Registered \(providers.count) providers")
 
-        // Store providers in app state
-        appState = AppState(providers: providers)
-
-        // Initialize the domain service with quota alerter
-        monitor = QuotaMonitor(
-            providers: providers,
-            statusListener: quotaAlerter
-        )
-        AppLog.monitor.info("QuotaMonitor initialized")
-
-        // Note: Notification permission is requested in onAppear, not here
-        // Menu bar apps need the run loop to be active before requesting permissions
+        // Initialize provider manager with providers
+        _providerManager = StateObject(wrappedValue: ProviderSettingsManager(initialProviders: providers))
 
         AppLog.ui.info("ClaudeBar initialization complete")
     }
@@ -128,14 +272,15 @@ struct ClaudeBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             #if ENABLE_SPARKLE
-            MenuContentView(monitor: monitor, appState: appState, quotaAlerter: quotaAlerter)
+            MenuContentView(monitor: providerManager.monitorForView!, appState: AppState(providers: providerManager.providers), quotaAlerter: quotaAlerter)
                 .themeProvider(currentThemeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
             #else
-            MenuContentView(monitor: monitor, appState: appState, quotaAlerter: quotaAlerter)
+            MenuContentView(monitor: providerManager.monitorForView!, appState: AppState(providers: providerManager.providers), quotaAlerter: quotaAlerter)
                 .themeProvider(currentThemeMode)
             #endif
         } label: {
+            let appState = AppState(providers: providerManager.providers)
             StatusBarIcon(status: appState.selectedProviderStatus, isChristmas: currentThemeMode == .christmas)
         }
         .menuBarExtraStyle(.window)

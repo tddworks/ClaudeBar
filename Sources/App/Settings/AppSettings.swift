@@ -36,17 +36,50 @@ public final class AppSettings {
 
     // MARK: - Provider Settings
 
+    /// Whether Claude provider is enabled
+    public var claudeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(claudeEnabled, forKey: Keys.claudeEnabled)
+            NotificationCenter.default.post(name: .providerSettingsChanged, object: nil)
+        }
+    }
+
+    /// Whether Codex provider is enabled
+    public var codexEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(codexEnabled, forKey: Keys.codexEnabled)
+            NotificationCenter.default.post(name: .providerSettingsChanged, object: nil)
+        }
+    }
+
+    /// Whether Gemini provider is enabled
+    public var geminiEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(geminiEnabled, forKey: Keys.geminiEnabled)
+            NotificationCenter.default.post(name: .providerSettingsChanged, object: nil)
+        }
+    }
+
+    /// Whether Antigravity provider is enabled
+    public var antigravityEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(antigravityEnabled, forKey: Keys.antigravityEnabled)
+            NotificationCenter.default.post(name: .providerSettingsChanged, object: nil)
+        }
+    }
+
+    /// Whether Z.ai provider is enabled
+    public var zaiEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(zaiEnabled, forKey: Keys.zaiEnabled)
+            NotificationCenter.default.post(name: .providerSettingsChanged, object: nil)
+        }
+    }
+
     /// Whether GitHub Copilot provider is enabled
     public var copilotEnabled: Bool {
         didSet {
             UserDefaults.standard.set(copilotEnabled, forKey: Keys.copilotEnabled)
-        }
-    }
-
-    /// Whether Z.ai demo mode is enabled (uses mock data for UI testing)
-    public var zaiDemoMode: Bool {
-        didSet {
-            UserDefaults.standard.set(zaiDemoMode, forKey: Keys.zaiDemoMode)
         }
     }
 
@@ -115,8 +148,15 @@ public final class AppSettings {
         self.credentialStore = credentialStore
         self.userHasChosenTheme = UserDefaults.standard.bool(forKey: Keys.userHasChosenTheme)
         self.themeMode = UserDefaults.standard.string(forKey: Keys.themeMode) ?? "system"
+
+        // Initialize provider enable/disable settings with defaults
+        self.claudeEnabled = UserDefaults.standard.bool(forKey: Keys.claudeEnabled) || true
+        self.codexEnabled = UserDefaults.standard.bool(forKey: Keys.codexEnabled) || true
+        self.geminiEnabled = UserDefaults.standard.bool(forKey: Keys.geminiEnabled) || true
+        self.antigravityEnabled = UserDefaults.standard.bool(forKey: Keys.antigravityEnabled) || true
+        self.zaiEnabled = UserDefaults.standard.bool(forKey: Keys.zaiEnabled) || true
+
         self.copilotEnabled = UserDefaults.standard.bool(forKey: Keys.copilotEnabled)
-        self.zaiDemoMode = UserDefaults.standard.bool(forKey: Keys.zaiDemoMode)
         self.githubUsername = credentialStore.get(forKey: CredentialKey.githubUsername) ?? ""
         self.claudeApiBudgetEnabled = UserDefaults.standard.bool(forKey: Keys.claudeApiBudgetEnabled)
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
@@ -162,8 +202,12 @@ private extension AppSettings {
     enum Keys {
         static let themeMode = "themeMode"
         static let userHasChosenTheme = "userHasChosenTheme"
+        static let claudeEnabled = "claudeEnabled"
+        static let codexEnabled = "codexEnabled"
+        static let geminiEnabled = "geminiEnabled"
+        static let antigravityEnabled = "antigravityEnabled"
+        static let zaiEnabled = "zaiEnabled"
         static let copilotEnabled = "copilotEnabled"
-        static let zaiDemoMode = "zaiDemoMode"
         static let claudeApiBudgetEnabled = "claudeApiBudgetEnabled"
         static let claudeApiBudget = "claudeApiBudget"
         static let receiveBetaUpdates = "receiveBetaUpdates"
@@ -174,4 +218,5 @@ private extension AppSettings {
 
 extension Notification.Name {
     static let betaUpdatesSettingChanged = Notification.Name("betaUpdatesSettingChanged")
+    static let providerSettingsChanged = Notification.Name("providerSettingsChanged")
 }
