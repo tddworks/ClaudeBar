@@ -291,10 +291,13 @@ public struct ZaiUsageProbe: UsageProbe {
             let clampedUsed = max(0, min(100, percentageUsed))
             let percentRemaining = 100.0 - Double(clampedUsed)
 
+            let resetsAt = Self.parseResetDate(limit.nextResetTime)
+
             quotas.append(UsageQuota(
                 percentRemaining: percentRemaining,
                 quotaType: quotaType,
-                providerId: providerId
+                providerId: providerId,
+                resetsAt: resetsAt
             ))
         }
 
@@ -308,6 +311,36 @@ public struct ZaiUsageProbe: UsageProbe {
             quotas: quotas,
             capturedAt: Date()
         )
+    }
+
+    /// Parses the reset date from API value (can be Int64 ms or ISO-8601 string)
+    internal static func parseResetDate(_ value: FlexibleDate?) -> Date? {
+        guard let value else { return nil }
+
+        switch value {
+        case .timestamp(let ms):
+            return Date(timeIntervalSince1970: TimeInterval(ms) / 1000.0)
+        case .string(let text):
+            // Try ISO-8601 first
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = isoFormatter.date(from: text) {
+                return date
+            }
+
+            // Fallback to standard ISO without fractional seconds
+            isoFormatter.formatOptions = [.withInternetDateTime]
+            if let date = isoFormatter.date(from: text) {
+                return date
+            }
+
+            // Check if string contains a number (epoch)
+            if let seconds = Double(text) {
+                return Date(timeIntervalSince1970: seconds)
+            }
+
+            return nil
+        }
     }
 }
 
@@ -324,4 +357,25 @@ private struct QuotaLimitData: Decodable {
 private struct QuotaLimit: Decodable {
     let type: String
     let percentage: Double
+    let nextResetTime: FlexibleDate?
+}
+
+/// A type that can be decoded from either a number (timestamp) or a string (ISO date)
+internal enum FlexibleDate: Decodable {
+    case timestamp(Int64)
+    case string(String)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let ms = try? container.decode(Int64.self) {
+            self = .timestamp(ms)
+        } else if let str = try? container.decode(String.self) {
+            self = .string(str)
+        } else {
+            throw DecodingError.typeMismatch(
+                FlexibleDate.self,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Expected Int64 or String")
+            )
+        }
+    }
 }

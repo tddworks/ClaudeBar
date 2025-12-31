@@ -15,7 +15,8 @@ struct ZaiUsageProbeTests {
         "limits": [
           {
             "type": "TOKENS_LIMIT",
-            "percentage": 65
+            "percentage": 65,
+            "nextResetTime": "2025-12-31T20:00:00Z"
           }
         ]
       }
@@ -303,6 +304,7 @@ struct ZaiUsageProbeTests {
         #expect(snapshot.providerId == "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.percentRemaining == 35.0) // 100 - 65 = 35
+        #expect(snapshot.quotas.first?.resetsAt != nil)
     }
 
     // MARK: - API Error Tests
@@ -417,5 +419,36 @@ struct ZaiUsageProbeTests {
         await #expect(throws: ProbeError.self) {
             try await probe.probe()
         }
+    }
+
+    // MARK: - Reset Date Parsing Tests
+
+    @Test
+    func `parseResetDate handles ISO-8601 with fractional seconds`() {
+        let text = "2025-12-31T20:00:00.123Z"
+        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        #expect(date != nil)
+    }
+
+    @Test
+    func `parseResetDate handles ISO-8601 without fractional seconds`() {
+        let text = "2025-12-31T20:00:00Z"
+        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        #expect(date != nil)
+    }
+
+    @Test
+    func `parseResetDate handles numeric timestamp`() {
+        let timestamp: Int64 = 1767195236777
+        let date = ZaiUsageProbe.parseResetDate(.timestamp(timestamp))
+        #expect(date != nil)
+        #expect(Calendar.current.component(.year, from: date!) == 2025 || Calendar.current.component(.year, from: date!) == 2026)
+    }
+
+    @Test
+    func `parseResetDate returns nil for invalid format`() {
+        let text = "invalid-date"
+        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        #expect(date == nil)
     }
 }
