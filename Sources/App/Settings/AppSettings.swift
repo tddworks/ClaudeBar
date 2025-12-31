@@ -214,6 +214,37 @@ private extension AppSettings {
     }
 }
 
+// MARK: - Provider Factory
+
+extension AppSettings {
+    /// Builds providers based on current enable/disable settings
+    public static func buildEnabledProviders() -> [any AIProvider] {
+        let shared = AppSettings.shared
+        var providers: [any AIProvider] = []
+
+        if shared.claudeEnabled {
+            providers.append(ClaudeProvider(probe: ClaudeUsageProbe()))
+        }
+        if shared.codexEnabled {
+            providers.append(CodexProvider(probe: CodexUsageProbe()))
+        }
+        if shared.geminiEnabled {
+            providers.append(GeminiProvider(probe: GeminiUsageProbe()))
+        }
+        if shared.antigravityEnabled {
+            providers.append(AntigravityProvider(probe: AntigravityUsageProbe()))
+        }
+        if shared.zaiEnabled {
+            providers.append(ZaiProvider(probe: ZaiUsageProbe()))
+        }
+        if shared.copilotEnabled && shared.hasCopilotToken {
+            providers.append(CopilotProvider(probe: CopilotUsageProbe()))
+        }
+
+        return providers
+    }
+}
+
 // MARK: - Notification Names
 
 extension Notification.Name {

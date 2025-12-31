@@ -72,29 +72,7 @@ final class AppState {
     func rebuildProviders() {
         AppLog.providers.info("Rebuilding providers based on settings changes")
 
-        var newProviders: [any AIProvider] = []
-
-        // Add providers based on enable/disable settings
-        if AppSettings.shared.claudeEnabled {
-            newProviders.append(ClaudeProvider(probe: ClaudeUsageProbe()))
-        }
-        if AppSettings.shared.codexEnabled {
-            newProviders.append(CodexProvider(probe: CodexUsageProbe()))
-        }
-        if AppSettings.shared.geminiEnabled {
-            newProviders.append(GeminiProvider(probe: GeminiUsageProbe()))
-        }
-        if AppSettings.shared.antigravityEnabled {
-            newProviders.append(AntigravityProvider(probe: AntigravityUsageProbe()))
-        }
-        if AppSettings.shared.zaiEnabled {
-            newProviders.append(ZaiProvider(probe: ZaiUsageProbe()))
-        }
-
-        // Add Copilot provider if configured
-        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
-            newProviders.append(CopilotProvider(probe: CopilotUsageProbe()))
-        }
+        let newProviders = AppSettings.buildEnabledProviders()
 
         // Clear existing providers
         providers.removeAll()
@@ -106,12 +84,6 @@ final class AppState {
         providers = newProviders
 
         AppLog.providers.info("Rebuilt \(providers.count) providers based on settings")
-    }
-
-    /// Rebuilds providers and reinitializes monitor
-    func rebuildProvidersAndMonitor() {
-        rebuildProviders()
-        // Monitor will be reinitialized in the view through the @State variable
     }
 }
 
@@ -153,27 +125,7 @@ class ProviderSettingsManager: ObservableObject {
 
     private func handleProviderSettingsChanged() {
         // Rebuild providers based on settings
-        var newProviders: [any AIProvider] = []
-
-        if AppSettings.shared.claudeEnabled {
-            newProviders.append(ClaudeProvider(probe: ClaudeUsageProbe()))
-        }
-        if AppSettings.shared.codexEnabled {
-            newProviders.append(CodexProvider(probe: CodexUsageProbe()))
-        }
-        if AppSettings.shared.geminiEnabled {
-            newProviders.append(GeminiProvider(probe: GeminiUsageProbe()))
-        }
-        if AppSettings.shared.antigravityEnabled {
-            newProviders.append(AntigravityProvider(probe: AntigravityUsageProbe()))
-        }
-        if AppSettings.shared.zaiEnabled {
-            newProviders.append(ZaiProvider(probe: ZaiUsageProbe()))
-        }
-
-        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
-            newProviders.append(CopilotProvider(probe: CopilotUsageProbe()))
-        }
+        let newProviders = AppSettings.buildEnabledProviders()
 
         // Update providers
         providers.removeAll()
@@ -203,57 +155,11 @@ struct ClaudeBarApp: App {
     init() {
         AppLog.ui.info("ClaudeBar initializing...")
 
-        var providers: [any AIProvider] = []
-
-        // Add providers based on enable/disable settings
-        if AppSettings.shared.claudeEnabled {
-            providers.append(ClaudeProvider(probe: ClaudeUsageProbe()))
-            AppLog.providers.info("Added Claude provider")
-        } else {
-            AppLog.providers.debug("Claude provider disabled")
-        }
-
-        if AppSettings.shared.codexEnabled {
-            providers.append(CodexProvider(probe: CodexUsageProbe()))
-            AppLog.providers.info("Added Codex provider")
-        } else {
-            AppLog.providers.debug("Codex provider disabled")
-        }
-
-        if AppSettings.shared.geminiEnabled {
-            providers.append(GeminiProvider(probe: GeminiUsageProbe()))
-            AppLog.providers.info("Added Gemini provider")
-        } else {
-            AppLog.providers.debug("Gemini provider disabled")
-        }
-
-        if AppSettings.shared.antigravityEnabled {
-            providers.append(AntigravityProvider(probe: AntigravityUsageProbe()))
-            AppLog.providers.info("Added Antigravity provider")
-        } else {
-            AppLog.providers.debug("Antigravity provider disabled")
-        }
-
-        if AppSettings.shared.zaiEnabled {
-            providers.append(ZaiProvider(probe: ZaiUsageProbe()))
-            AppLog.providers.info("Added Z.ai provider")
-        } else {
-            AppLog.providers.debug("Z.ai provider disabled")
-        }
-
-        AppLog.providers.info("Created \(providers.count) providers based on settings")
-
-        // Add Copilot provider if configured
-        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
-            providers.append(CopilotProvider(probe: CopilotUsageProbe()))
-            AppLog.providers.info("Added Copilot provider (enabled and configured)")
-        } else if AppSettings.shared.copilotEnabled {
-            AppLog.providers.debug("Copilot enabled but no token configured")
-        }
+        let providers = AppSettings.buildEnabledProviders()
 
         // Register providers for global access
         AIProviderRegistry.shared.register(providers)
-        AppLog.providers.info("Registered \(providers.count) providers")
+        AppLog.providers.info("Registered \(providers.count) providers: \(providers.map(\.id).joined(separator: ", "))")
 
         // Initialize provider manager with providers
         _providerManager = StateObject(wrappedValue: ProviderSettingsManager(initialProviders: providers))
