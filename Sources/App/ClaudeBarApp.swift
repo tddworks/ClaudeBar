@@ -36,6 +36,13 @@ final class AppState {
 
     init(providers: [any AIProvider] = []) {
         self.providers = providers
+        // Initialize selectedProviderId to first available provider (respect stored settings)
+        let storedEnabled = UserDefaults.standard.stringArray(forKey: "enabledProviderIds") ?? []
+        if let firstEnabled = providers.first(where: { storedEnabled.contains($0.id) }) {
+            self.selectedProviderId = firstEnabled.id
+        } else if providers.isEmpty == false {
+            self.selectedProviderId = providers.first!.id
+        }
     }
 
     /// Adds a provider if not already present
@@ -64,8 +71,12 @@ struct ClaudeBarApp: App {
     /// Shared app state
     @State private var appState = AppState()
 
-    /// Alerts users when quota status degrades
+    /// App settings for theme
     private let quotaAlerter = QuotaAlerter()
+
+    @State private var settings: AppSettings = AppSettings.shared
+
+    /// Alerts users when quota status degrades
 
     #if ENABLE_SPARKLE
     /// Sparkle updater for auto-updates
@@ -97,7 +108,7 @@ struct ClaudeBarApp: App {
         AIProviderRegistry.shared.register(providers)
         AppLog.providers.info("Registered \(providers.count) providers")
 
-        // Store providers in app state
+        // Store providers in app state (AppState initializer sets a sensible default selectedProviderId)
         appState = AppState(providers: providers)
 
         // Initialize the domain service with quota alerter
@@ -113,10 +124,6 @@ struct ClaudeBarApp: App {
         AppLog.ui.info("ClaudeBar initialization complete")
     }
 
-    /// App settings for theme
-    @State private var settings = AppSettings.shared
-
-    /// Current theme mode from settings
     private var currentThemeMode: ThemeMode {
         ThemeMode(rawValue: settings.themeMode) ?? .system
     }

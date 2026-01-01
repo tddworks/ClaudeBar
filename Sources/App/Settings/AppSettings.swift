@@ -36,6 +36,16 @@ public final class AppSettings {
 
     // MARK: - Provider Settings
 
+    /// Set of enabled provider IDs
+    public var enabledProviderIds: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: Keys.enabledProviderIds) ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: Keys.enabledProviderIds)
+        }
+    }
+
     /// Whether GitHub Copilot provider is enabled
     public var copilotEnabled: Bool {
         didSet {
@@ -76,6 +86,26 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Provider Management
+
+    /// All available provider IDs in the app
+    public static let allProviderIds: Set<String> = ["claude", "codex", "gemini", "antigravity", "zai", "copilot"]
+
+    /// Check if a provider is enabled
+    public func isProviderEnabled(id: String) -> Bool {
+        enabledProviderIds.contains(id)
+    }
+
+    /// Set whether a provider is enabled
+    public func setProviderEnabled(id: String, enabled: Bool) {
+        if enabled {
+            enabledProviderIds.insert(id)
+        } else {
+            enabledProviderIds.remove(id)
+        }
+        AppLog.providers.info("Provider '\(id)' \(enabled ? "enabled" : "disabled")")
+    }
+
     // MARK: - Token Management
 
     /// Whether a GitHub Copilot token is configured
@@ -113,6 +143,8 @@ public final class AppSettings {
         self.claudeApiBudgetEnabled = UserDefaults.standard.bool(forKey: Keys.claudeApiBudgetEnabled)
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
         self.receiveBetaUpdates = UserDefaults.standard.bool(forKey: Keys.receiveBetaUpdates)
+
+        // Load enabled provider IDs (computed property handles this automatically)
 
         // Auto-enable Christmas theme during Dec 24-26 if user hasn't explicitly chosen
         applySeasonalTheme()
@@ -154,6 +186,7 @@ private extension AppSettings {
     enum Keys {
         static let themeMode = "themeMode"
         static let userHasChosenTheme = "userHasChosenTheme"
+        static let enabledProviderIds = "enabledProviderIds"
         static let copilotEnabled = "copilotEnabled"
         static let claudeApiBudgetEnabled = "claudeApiBudgetEnabled"
         static let claudeApiBudget = "claudeApiBudget"

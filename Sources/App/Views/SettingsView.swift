@@ -5,12 +5,12 @@ import Infrastructure
 import Sparkle
 #endif
 
+
 /// Inline settings content view that fits within the menu bar popup.
 struct SettingsContentView: View {
     @Binding var showSettings: Bool
     let appState: AppState
     @Environment(\.colorScheme) private var colorScheme
-    @State private var settings = AppSettings.shared
 
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
@@ -25,6 +25,12 @@ struct SettingsContentView: View {
     // Budget input state
     @State private var budgetInput: String = ""
 
+    // Provider toggles state - local copy for UI reactivity
+    @State private var enabledProviderIds: Set<String> = []
+
+    // Settings reference
+    private let settings = AppSettings.shared
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -37,6 +43,7 @@ struct SettingsContentView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
                     themeCard
+                    providersCard
                     claudeBudgetCard
                     copilotCard
                     #if ENABLE_SPARKLE
@@ -58,7 +65,19 @@ struct SettingsContentView: View {
             if settings.claudeApiBudget > 0 {
                 budgetInput = String(describing: settings.claudeApiBudget)
             }
+            // Initialize provider toggles - load from settings, default to all enabled
+            let storedIds = settings.enabledProviderIds
+            enabledProviderIds = storedIds.isEmpty ? Set(AvailableProvider.allCases.map(\.id)) : storedIds
         }
+        .onChange(of: enabledProviderIds) { _, newIds in
+            // Save to AppSettings when toggles change
+            settings.enabledProviderIds = newIds
+        }
+    }
+
+    // Check if a provider is enabled
+    private func isProviderEnabled(_ id: String) -> Bool {
+        enabledProviderIds.contains(id)
     }
 
     // MARK: - Theme Card
@@ -115,6 +134,107 @@ struct SettingsContentView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             settings.themeMode = mode.rawValue
                         }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(isChristmas ? AppTheme.christmasCardGradient : AppTheme.cardGradient(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: isChristmas
+                                    ? [AppTheme.christmasGold.opacity(0.4), AppTheme.christmasGold.opacity(0.2)]
+                                    : [
+                                        colorScheme == .dark ? Color.white.opacity(0.25) : AppTheme.purpleVibrant(for: colorScheme).opacity(0.18),
+                                        colorScheme == .dark ? Color.white.opacity(0.08) : AppTheme.pinkHot(for: colorScheme).opacity(0.08)
+                                    ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    // MARK: - Providers Card
+
+    private var providersCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            isChristmas
+                                ? AppTheme.christmasAccentGradient
+                                : AppTheme.accentGradient(for: colorScheme)
+                        )
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "square.grid.2x2.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("AI Providers")
+                        .font(AppTheme.titleFont(size: 14))
+                        .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
+
+                    Text("Manage which providers appear")
+                        .font(AppTheme.captionFont(size: 10))
+                        .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
+                }
+
+                Spacer()
+            }
+
+            // Provider toggles
+            VStack(spacing: 8) {
+                ForEach(AvailableProvider.allCases) { provider in
+                    HStack(spacing: 12) {
+                        // Provider icon with gradient
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [provider.gradientColors.0, provider.gradientColors.1],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 28, height: 28)
+
+                            Image(systemName: provider.systemIcon)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+
+                        Text(provider.displayName)
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
+
+                        Spacer()
+
+                        Toggle("", isOn: Binding(
+                            get: { isProviderEnabled(provider.id) },
+                            set: { newValue in
+                                if newValue {
+                                    enabledProviderIds.insert(provider.id)
+                                } else {
+                                    enabledProviderIds.remove(provider.id)
+                                }
+                            }
+                        ))
+                        .toggleStyle(.switch)
+                        .tint(provider.gradientColors.0)
+                        .scaleEffect(0.75)
+                        .labelsHidden()
                     }
                 }
             }
@@ -257,7 +377,10 @@ struct SettingsContentView: View {
 
             Spacer()
 
-            Toggle("", isOn: $settings.claudeApiBudgetEnabled)
+            Toggle("", isOn: Binding(
+    get: { settings.claudeApiBudgetEnabled },
+    set: { settings.claudeApiBudgetEnabled = $0 }
+))
                 .toggleStyle(.switch)
                 .tint(AppTheme.purpleVibrant(for: colorScheme))
                 .scaleEffect(0.8)
@@ -384,7 +507,10 @@ struct SettingsContentView: View {
 
             Spacer()
 
-            Toggle("", isOn: $settings.copilotEnabled)
+            Toggle("", isOn: Binding(
+    get: { settings.copilotEnabled },
+    set: { settings.copilotEnabled = $0 }
+))
                 .toggleStyle(.switch)
                 .tint(AppTheme.purpleVibrant(for: colorScheme))
                 .scaleEffect(0.8)
@@ -401,7 +527,10 @@ struct SettingsContentView: View {
                     .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
                     .tracking(0.5)
 
-                TextField("", text: $settings.githubUsername, prompt: Text("username").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                TextField("", text: Binding(
+    get: { settings.githubUsername },
+    set: { settings.githubUsername = $0 }
+), prompt: Text("username").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
                     .font(AppTheme.bodyFont(size: 12))
                     .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
                     .padding(.horizontal, 10)
@@ -672,7 +801,10 @@ struct SettingsContentView: View {
 
                     Spacer()
 
-                    Toggle("", isOn: $settings.receiveBetaUpdates)
+                    Toggle("", isOn: Binding(
+    get: { settings.receiveBetaUpdates },
+    set: { settings.receiveBetaUpdates = $0 }
+))
                         .toggleStyle(.switch)
                         .tint(AppTheme.purpleVibrant(for: colorScheme))
                         .scaleEffect(0.8)
@@ -996,6 +1128,58 @@ struct ThemeOptionButton: View {
             return AppTheme.purpleVibrant(for: colorScheme)
         }
         return AppTheme.glassBorder(for: colorScheme).opacity(0.5)
+    }
+}
+
+// MARK: - Available Provider
+
+enum AvailableProvider: String, CaseIterable, Identifiable {
+    case claude = "claude"
+    case codex = "codex"
+    case gemini = "gemini"
+    case antigravity = "antigravity"
+    case zai = "zai"
+    case copilot = "copilot"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .gemini: return "Gemini"
+        case .antigravity: return "Antigravity"
+        case .zai: return "Z.ai"
+        case .copilot: return "GitHub Copilot"
+        }
+    }
+
+    var systemIcon: String {
+        switch self {
+        case .claude: return "brain.head.profile"
+        case .codex: return "cube.fill"
+        case .gemini: return "sparkles"
+        case .antigravity: return "arrow.up.circle.fill"
+        case .zai: return "z.circle"
+        case .copilot: return "chevron.left.forwardslash.chevron.right"
+        }
+    }
+
+    var gradientColors: (Color, Color) {
+        switch self {
+        case .claude:
+            return (Color(red: 0.85, green: 0.55, blue: 0.35), Color(red: 0.75, green: 0.40, blue: 0.30))
+        case .codex:
+            return (Color(red: 0.30, green: 0.60, blue: 0.85), Color(red: 0.20, green: 0.45, blue: 0.70))
+        case .gemini:
+            return (Color(red: 0.40, green: 0.75, blue: 0.45), Color(red: 0.25, green: 0.55, blue: 0.35))
+        case .antigravity:
+            return (Color(red: 0.75, green: 0.35, blue: 0.55), Color(red: 0.60, green: 0.25, blue: 0.45))
+        case .zai:
+            return (Color(red: 0.55, green: 0.45, blue: 0.75), Color(red: 0.40, green: 0.30, blue: 0.60))
+        case .copilot:
+            return (Color(red: 0.38, green: 0.55, blue: 0.93), Color(red: 0.55, green: 0.40, blue: 0.90))
+        }
     }
 }
 

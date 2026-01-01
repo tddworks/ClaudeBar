@@ -18,13 +18,22 @@ struct MenuContentView: View {
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
-    @State private var selectedProviderId: String = "claude"
+    @State private var selectedProviderId: String
     @State private var isHoveringRefresh = false
     @State private var animateIn = false
     @State private var showSettings = false
     @State private var showSharePass = false
-    @State private var settings = AppSettings.shared
     @State private var hasRequestedNotificationPermission = false
+
+    init(monitor: QuotaMonitor, appState: AppState, quotaAlerter: QuotaAlerter) {
+        self.monitor = monitor
+        self.appState = appState
+        self.quotaAlerter = quotaAlerter
+        _selectedProviderId = State(initialValue: appState.selectedProviderId)
+    }
+
+    // Settings reference
+    private let settings = AppSettings.shared
 
     /// The currently selected provider
     private var selectedProvider: (any AIProvider)? {
@@ -50,8 +59,9 @@ struct MenuContentView: View {
             }
 
             if showSettings {
-                // Settings View
+                // Settings View - fixed height for scrolling
                 SettingsContentView(showSettings: $showSettings, appState: appState)
+                    .frame(width: 380, height: 520)
             } else {
                 // Main Content
                 VStack(spacing: 0) {
@@ -117,6 +127,18 @@ struct MenuContentView: View {
             // Refresh when user switches provider
             Task {
                 await refresh(providerId: newProviderId)
+            }
+        }
+        .onChange(of: settings.enabledProviderIds) { _, _ in
+            // Handle selected provider being disabled
+            if !settings.isProviderEnabled(id: selectedProviderId) {
+                // Select first available provider
+                if let firstEnabled = visibleProviders.first {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        selectedProviderId = firstEnabled.id
+                        appState.selectedProviderId = firstEnabled.id
+                    }
+                }
             }
         }
     }
@@ -266,10 +288,15 @@ struct MenuContentView: View {
 
     // MARK: - Provider Pills
 
+    /// Visible providers filtered by user settings
+    private var visibleProviders: [any AIProvider] {
+        appState.providers.filter { settings.isProviderEnabled(id: $0.id) }
+    }
+
     private var providerPills: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(appState.providers, id: \.id) { provider in
+                ForEach(visibleProviders, id: \.id) { provider in
                     ProviderPill(
                         providerId: provider.id,
                         providerName: provider.name,
