@@ -1,5 +1,9 @@
 import ProjectDescription
 
+// Path to KMP shared framework (built by: cd shared && ./gradlew :darwin:linkReleaseFrameworkMacosArm64)
+let kmpFrameworkPath: Path = "shared/darwin/build/bin/macosArm64/releaseFramework"
+let kmpFramework: Path = "shared/darwin/build/bin/macosArm64/releaseFramework/ClaudeBarShared.framework"
+
 let project = Project(
     name: "ClaudeBar",
     options: .options(
@@ -79,6 +83,8 @@ let project = Project(
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
                 .package(product: "Sparkle"),
+                // KMP shared framework - optional for KMP integration
+                .framework(path: kmpFramework),
             ],
             settings: .settings(
                 base: [
@@ -87,6 +93,8 @@ let project = Project(
                     "ENABLE_PREVIEWS": "YES",
                     "CODE_SIGN_IDENTITY": "-",
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+                    // Framework search path for KMP
+                    "FRAMEWORK_SEARCH_PATHS": "$(inherited) $(SRCROOT)/shared/darwin/build/bin/macosArm64/releaseFramework",
                 ],
                 debug: [
                     "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG ENABLE_SPARKLE",
