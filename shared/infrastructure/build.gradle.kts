@@ -8,97 +8,58 @@ kotlin {
     // JVM for Compose Desktop (Linux, Windows, macOS)
     jvm()
 
-    // Native targets for Swift interop via SKIE
+    // Native targets - default hierarchy template handles source set relationships
     macosX64()
     macosArm64()
     linuxX64()
     mingwX64()
 
+    // Use default hierarchy template (Kotlin 1.9.20+)
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(projects.domain)
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.datetime)
-                implementation(libs.kotlinx.serialization.json)
-                implementation(libs.bundles.ktor.client)
-                implementation(libs.multiplatform.settings)
-                implementation(libs.multiplatform.settings.coroutines)
-            }
+        commonMain.dependencies {
+            implementation(projects.domain)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.bundles.ktor.client)
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.coroutines)
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.ktor.client.mock)
-            }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
 
-        val jvmMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.okhttp)
-                implementation(libs.slf4j.api)
-                implementation(libs.logback.classic)
-            }
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.slf4j.api)
+            implementation(libs.logback.classic)
         }
 
-        val jvmTest by getting {
-            dependencies {
-                implementation(libs.bundles.jvm.test)
-            }
+        jvmTest.dependencies {
+            implementation(libs.bundles.jvm.test)
         }
 
-        // Native source set hierarchy
-        val nativeMain by creating {
-            dependsOn(commonMain)
+        // Apple-specific (macOS) - use Darwin HTTP engine
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
 
-        val nativeTest by creating {
-            dependsOn(commonTest)
+        // Linux-specific - use Curl HTTP engine
+        linuxMain.dependencies {
+            implementation(libs.ktor.client.curl)
         }
 
-        val appleMain by creating {
-            dependsOn(nativeMain)
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-            }
-        }
-
-        val appleTest by creating {
-            dependsOn(nativeTest)
-        }
-
-        val macosX64Main by getting {
-            dependsOn(appleMain)
-        }
-
-        val macosArm64Main by getting {
-            dependsOn(appleMain)
-        }
-
-        val linuxX64Main by getting {
-            dependsOn(nativeMain)
-            dependencies {
-                implementation(libs.ktor.client.curl)
-            }
-        }
-
-        val mingwX64Main by getting {
-            dependsOn(nativeMain)
-            dependencies {
-                implementation(libs.ktor.client.winhttp)
-            }
+        // Windows-specific - use WinHttp engine
+        mingwMain.dependencies {
+            implementation(libs.ktor.client.winhttp)
         }
     }
 }
 
 // SKIE configuration for Swift interop
-skie {
-    features {
-        // Enable Flow to AsyncSequence bridging
-        enableFlowInterop.set(true)
-        // Enable suspend function to async/await bridging
-        enableSwiftUIInterop.set(true)
-    }
-}
+// Flow to AsyncSequence and suspend to async/await are enabled by default in SKIE 0.10+

@@ -7,59 +7,25 @@ kotlin {
     // JVM for Compose Desktop (Linux, Windows, macOS)
     jvm()
 
-    // Native targets
+    // Native targets - default hierarchy template handles source set relationships
     macosX64()
     macosArm64()
     linuxX64()
     mingwX64()
 
+    // Use default hierarchy template (Kotlin 1.9.20+)
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.datetime)
-                implementation(libs.kotlinx.serialization.json)
-            }
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-            }
-        }
-
-        // Native source set hierarchy
-        val nativeMain by creating {
-            dependsOn(commonMain)
-        }
-
-        val nativeTest by creating {
-            dependsOn(commonTest)
-        }
-
-        val appleMain by creating {
-            dependsOn(nativeMain)
-        }
-
-        val appleTest by creating {
-            dependsOn(nativeTest)
-        }
-
-        val macosX64Main by getting {
-            dependsOn(appleMain)
-        }
-
-        val macosArm64Main by getting {
-            dependsOn(appleMain)
-        }
-
-        val linuxX64Main by getting {
-            dependsOn(nativeMain)
-        }
-
-        val mingwX64Main by getting {
-            dependsOn(nativeMain)
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
