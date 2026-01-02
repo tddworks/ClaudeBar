@@ -99,8 +99,8 @@ class QuotaMonitor(
     }
 
     /** Refreshes all enabled providers except the specified one */
-    suspend fun refreshOthers(except providerId: String) {
-        val otherProviders = providers.enabled.filter { it.id != providerId }
+    suspend fun refreshOthers(exceptProviderId: String) {
+        val otherProviders = providers.enabled.filter { it.id != exceptProviderId }
 
         coroutineScope {
             otherProviders.forEach { provider ->
