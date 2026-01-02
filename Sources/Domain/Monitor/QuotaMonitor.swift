@@ -15,7 +15,7 @@ public enum MonitoringEvent: Sendable {
 @Observable
 public final class QuotaMonitor: @unchecked Sendable {
     /// The providers repository (internal - access via delegation methods)
-    private let providers: AIProviders
+    private let providers: any AIProviderRepository
 
     /// Optional listener for status changes (e.g., QuotaAlerter)
     private let statusListener: (any QuotaStatusListener)?
@@ -34,21 +34,12 @@ public final class QuotaMonitor: @unchecked Sendable {
 
     // MARK: - Initialization
 
-    /// Creates a QuotaMonitor with an AIProviders repository
+    /// Creates a QuotaMonitor with a provider repository
     public init(
-        providers: AIProviders,
+        providers: any AIProviderRepository,
         statusListener: (any QuotaStatusListener)? = nil
     ) {
         self.providers = providers
-        self.statusListener = statusListener
-    }
-
-    /// Convenience initializer that creates an AIProviders repository from an array
-    public init(
-        providers: [any AIProvider],
-        statusListener: (any QuotaStatusListener)? = nil
-    ) {
-        self.providers = AIProviders(providers: providers)
         self.statusListener = statusListener
     }
 

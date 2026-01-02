@@ -19,10 +19,13 @@ public final class GeminiProvider: AIProvider, @unchecked Sendable {
         URL(string: "https://status.cloud.google.com")
     }
 
-    /// Whether the provider is enabled (persisted to UserDefaults)
-    public var isEnabled: Bool = true {
+    /// UserDefaults key for persisting isEnabled state
+    private static let isEnabledKey = "provider.gemini.isEnabled"
+
+    /// Whether the provider is enabled (persisted to UserDefaults, defaults to true)
+    public var isEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isEnabled, forKey: "provider.gemini.isEnabled")
+            UserDefaults.standard.set(isEnabled, forKey: Self.isEnabledKey)
         }
     }
 
@@ -40,6 +43,8 @@ public final class GeminiProvider: AIProvider, @unchecked Sendable {
 
     public init(probe: any UsageProbe) {
         self.probe = probe
+        // Load persisted enabled state (defaults to true)
+        self.isEnabled = UserDefaults.standard.object(forKey: Self.isEnabledKey) as? Bool ?? true
     }
 
     // MARK: - AIProvider Protocol

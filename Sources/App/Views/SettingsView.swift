@@ -25,6 +25,19 @@ struct SettingsContentView: View {
     // Budget input state
     @State private var budgetInput: String = ""
 
+    /// The Copilot provider from the monitor (always exists)
+    private var copilotProvider: (any AIProvider)? {
+        monitor.provider(for: "copilot")
+    }
+
+    /// Binding to the Copilot provider's isEnabled state
+    private var copilotEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { copilotProvider?.isEnabled ?? false },
+            set: { newValue in copilotProvider?.isEnabled = newValue }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -408,7 +421,7 @@ struct SettingsContentView: View {
             copilotHeader
 
             // Expandable content
-            if settings.copilotEnabled {
+            if copilotProvider?.isEnabled == true {
                 Divider()
                     .background(AppTheme.glassBorder(for: colorScheme))
                     .padding(.vertical, 12)
@@ -471,7 +484,7 @@ struct SettingsContentView: View {
 
             Spacer()
 
-            Toggle("", isOn: $settings.copilotEnabled)
+            Toggle("", isOn: copilotEnabledBinding)
                 .toggleStyle(.switch)
                 .tint(AppTheme.purpleVibrant(for: colorScheme))
                 .scaleEffect(0.8)
@@ -938,14 +951,10 @@ struct SettingsContentView: View {
         copilotTokenInput = ""
         saveSuccess = true
 
-        // Add Copilot provider if enabled and not already present
-        if settings.copilotEnabled {
-            let copilotProvider = CopilotProvider(probe: CopilotUsageProbe())
-            monitor.addProvider(copilotProvider)
-
-            // Trigger refresh for the new provider
+        // Trigger refresh for the Copilot provider if enabled
+        if let provider = copilotProvider, provider.isEnabled {
             Task {
-                try? await copilotProvider.refresh()
+                try? await provider.refresh()
             }
         }
 
@@ -1091,7 +1100,7 @@ struct ThemeOptionButton: View {
 #Preview("Settings - Dark") {
     ZStack {
         AppTheme.backgroundGradient(for: .dark)
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: []))
+        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
     }
     .frame(width: 380, height: 420)
     .preferredColorScheme(.dark)
@@ -1100,7 +1109,7 @@ struct ThemeOptionButton: View {
 #Preview("Settings - Light") {
     ZStack {
         AppTheme.backgroundGradient(for: .light)
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: []))
+        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
     }
     .frame(width: 380, height: 420)
     .preferredColorScheme(.light)

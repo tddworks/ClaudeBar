@@ -20,10 +20,13 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         URL(string: "https://status.anthropic.com")
     }
 
-    /// Whether the provider is enabled (persisted to UserDefaults)
-    public var isEnabled: Bool = true {
+    /// UserDefaults key for persisting isEnabled state
+    private static let isEnabledKey = "provider.claude.isEnabled"
+
+    /// Whether the provider is enabled (persisted to UserDefaults, defaults to true)
+    public var isEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isEnabled, forKey: "provider.claude.isEnabled")
+            UserDefaults.standard.set(isEnabled, forKey: Self.isEnabledKey)
         }
     }
 
@@ -61,6 +64,8 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     public init(probe: any UsageProbe, passProbe: (any ClaudePassProbing)? = nil) {
         self.probe = probe
         self.passProbe = passProbe
+        // Load persisted enabled state (defaults to true)
+        self.isEnabled = UserDefaults.standard.object(forKey: Self.isEnabledKey) as? Bool ?? true
     }
 
     // MARK: - AIProvider Protocol

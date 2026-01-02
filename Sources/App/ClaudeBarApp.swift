@@ -22,30 +22,22 @@ struct ClaudeBarApp: App {
     init() {
         AppLog.ui.info("ClaudeBar initializing...")
 
-        // Create providers with their probes (rich domain models)
-        var providers: [any AIProvider] = [
+        // Create all providers with their probes (rich domain models)
+        // Each provider manages its own isEnabled state (persisted to UserDefaults)
+        // Each probe checks isAvailable() for credentials/prerequisites
+        let repository = AIProviders(providers: [
             ClaudeProvider(probe: ClaudeUsageProbe(), passProbe: ClaudePassProbe()),
             CodexProvider(probe: CodexUsageProbe()),
             GeminiProvider(probe: GeminiUsageProbe()),
             AntigravityProvider(probe: AntigravityUsageProbe()),
             ZaiProvider(probe: ZaiUsageProbe()),
-        ]
-        AppLog.providers.info("Created base providers: Claude, Codex, Gemini, Antigravity, Z.ai")
-
-        // Add Copilot provider if configured
-        if AppSettings.shared.copilotEnabled && AppSettings.shared.hasCopilotToken {
-            providers.append(CopilotProvider(probe: CopilotUsageProbe()))
-            AppLog.providers.info("Added Copilot provider (enabled and configured)")
-        } else if AppSettings.shared.copilotEnabled {
-            AppLog.providers.debug("Copilot enabled but no token configured")
-        }
-
-        AppLog.providers.info("Created \(providers.count) providers")
+            CopilotProvider(probe: CopilotUsageProbe()),
+        ])
+        AppLog.providers.info("Created \(repository.all.count) providers")
 
         // Initialize the domain service with quota alerter
-        // QuotaMonitor owns the AIProviders repository
         monitor = QuotaMonitor(
-            providers: providers,
+            providers: repository,
             statusListener: quotaAlerter
         )
         AppLog.monitor.info("QuotaMonitor initialized")

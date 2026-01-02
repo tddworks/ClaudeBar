@@ -23,6 +23,16 @@ public final class AppSettings {
             }
         }
     }
+    
+    // MARK: - Update Settings
+
+    /// Whether to receive beta updates (default: false)
+    public var receiveBetaUpdates: Bool {
+        didSet {
+            UserDefaults.standard.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates)
+            NotificationCenter.default.post(name: .betaUpdatesSettingChanged, object: nil)
+        }
+    }
 
     /// Whether the user has explicitly chosen a theme (vs auto-enabled Christmas)
     public var userHasChosenTheme: Bool {
@@ -35,13 +45,6 @@ public final class AppSettings {
     private var isInitializing = true
 
     // MARK: - Provider Settings
-
-    /// Whether GitHub Copilot provider is enabled
-    public var copilotEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(copilotEnabled, forKey: Keys.copilotEnabled)
-        }
-    }
 
     /// The GitHub username for Copilot API calls
     public var githubUsername: String {
@@ -63,16 +66,6 @@ public final class AppSettings {
     public var claudeApiBudget: Decimal {
         didSet {
             UserDefaults.standard.set(NSDecimalNumber(decimal: claudeApiBudget).doubleValue, forKey: Keys.claudeApiBudget)
-        }
-    }
-
-    // MARK: - Update Settings
-
-    /// Whether to receive beta updates (default: false)
-    public var receiveBetaUpdates: Bool {
-        didSet {
-            UserDefaults.standard.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates)
-            NotificationCenter.default.post(name: .betaUpdatesSettingChanged, object: nil)
         }
     }
 
@@ -108,7 +101,6 @@ public final class AppSettings {
         self.credentialStore = credentialStore
         self.userHasChosenTheme = UserDefaults.standard.bool(forKey: Keys.userHasChosenTheme)
         self.themeMode = UserDefaults.standard.string(forKey: Keys.themeMode) ?? "system"
-        self.copilotEnabled = UserDefaults.standard.bool(forKey: Keys.copilotEnabled)
         self.githubUsername = credentialStore.get(forKey: CredentialKey.githubUsername) ?? ""
         self.claudeApiBudgetEnabled = UserDefaults.standard.bool(forKey: Keys.claudeApiBudgetEnabled)
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
@@ -154,7 +146,6 @@ private extension AppSettings {
     enum Keys {
         static let themeMode = "themeMode"
         static let userHasChosenTheme = "userHasChosenTheme"
-        static let copilotEnabled = "copilotEnabled"
         static let claudeApiBudgetEnabled = "claudeApiBudgetEnabled"
         static let claudeApiBudget = "claudeApiBudget"
         static let receiveBetaUpdates = "receiveBetaUpdates"
