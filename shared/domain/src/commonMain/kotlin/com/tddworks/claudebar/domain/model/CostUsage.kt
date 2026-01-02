@@ -42,7 +42,7 @@ data class CostUsage(
 ) {
     /** Formatted cost string (e.g., "$0.55") */
     val formattedCost: String
-        get() = "$${String.format("%.2f", totalCost)}"
+        get() = "$${formatDecimal(totalCost, 2)}"
 
     /** Formatted API duration (e.g., "6m 19.7s") */
     val formattedApiDuration: String
@@ -76,7 +76,7 @@ data class CostUsage(
 
     /** Formatted budget string (e.g., "$20.00") */
     val formattedBudget: String?
-        get() = budget?.let { "$${String.format("%.2f", it)}" }
+        get() = budget?.let { "$${formatDecimal(it, 2)}" }
 
     private fun formatDuration(duration: Duration): String {
         val totalSeconds = duration.inWholeSeconds
@@ -85,9 +85,26 @@ data class CostUsage(
         val seconds = duration.inWholeMilliseconds / 1000.0 % 60
 
         return when {
-            hours > 0 -> "${hours}h ${minutes}m ${String.format("%.1f", seconds)}s"
-            minutes > 0 -> "${minutes}m ${String.format("%.1f", seconds)}s"
-            else -> "${String.format("%.1f", seconds)}s"
+            hours > 0 -> "${hours}h ${minutes}m ${formatDecimal(seconds, 1)}s"
+            minutes > 0 -> "${minutes}m ${formatDecimal(seconds, 1)}s"
+            else -> "${formatDecimal(seconds, 1)}s"
+        }
+    }
+
+    companion object {
+        /**
+         * Cross-platform decimal formatting (replaces String.format)
+         */
+        private fun formatDecimal(value: Double, decimals: Int): String {
+            // Manual power calculation for cross-platform support
+            var factor = 1.0
+            repeat(decimals) { factor *= 10.0 }
+            val rounded = kotlin.math.round(value * factor) / factor
+            val parts = rounded.toString().split(".")
+            val intPart = parts[0]
+            val decPart = if (parts.size > 1) parts[1] else ""
+            val paddedDecPart = decPart.padEnd(decimals, '0').take(decimals)
+            return "$intPart.$paddedDecPart"
         }
     }
 }

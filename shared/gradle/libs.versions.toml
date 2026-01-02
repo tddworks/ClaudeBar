@@ -15,6 +15,7 @@ slf4j = "2.0.17"
 
 # Touchlab
 skie = "0.10.8"
+kmmbridge = "1.2.1"
 
 [libraries]
 # Kotlinx
@@ -77,3 +78,5 @@ jvm-test = [
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 touchlab-skie = { id = "co.touchlab.skie", version.ref = "skie" }
+touchlab-kmmbridge = { id = "co.touchlab.kmmbridge.github", version.ref = "kmmbridge" }
+touchlab-kmmbridge-spm = { id = "co.touchlab.kmmbridge.spm", version.ref = "kmmbridge" }

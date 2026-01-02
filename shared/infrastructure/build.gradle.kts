@@ -8,7 +8,7 @@ kotlin {
     // JVM for Compose Desktop (Linux, Windows, macOS)
     jvm()
 
-    // Native targets - default hierarchy template handles source set relationships
+    // Native targets
     macosX64()
     macosArm64()
     linuxX64()
@@ -19,7 +19,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.domain)
+            api(projects.domain)  // Use api to export domain types in framework
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
