@@ -54,20 +54,37 @@ class AppleCLIExecutor : CLIExecutor {
         workingDirectory: String?,
         autoResponses: Map<String, String>
     ): CLIResult = withContext(Dispatchers.Default) {
+        // If binary doesn't contain a path separator, try to locate it first
+        val resolvedBinary = if (!binary.contains("/")) {
+            locate(binary) ?: binary
+        } else {
+            binary
+        }
+
         val command = buildString {
             if (workingDirectory != null) {
                 append("cd \"$workingDirectory\" && ")
             }
-            append(binary)
-            args.forEach { arg ->
+            // Use 'script' to create pseudo-TTY (needed for Claude CLI)
+            append("script -q /dev/null ")
+            append(resolvedBinary)
+            // Filter out empty args
+            args.filter { it.isNotEmpty() }.forEach { arg ->
                 append(" \"$arg\"")
             }
-            if (input != null) {
+            // Only add input redirection if input is non-empty
+            if (!input.isNullOrEmpty()) {
                 append(" <<< \"$input\"")
             }
+            // Redirect stderr to stdout to capture all output
+            append(" 2>&1")
         }
 
-        executeCommand(command)
+        println("[AppleCLIExecutor] Running: $command")
+        val result = executeCommand(command)
+        println("[AppleCLIExecutor] Exit code: ${result.exitCode}")
+        println("[AppleCLIExecutor] Output (${result.output.length} chars): ${result.output.take(500)}")
+        result
     }
 
     private fun executeCommand(command: String): CLIResult {

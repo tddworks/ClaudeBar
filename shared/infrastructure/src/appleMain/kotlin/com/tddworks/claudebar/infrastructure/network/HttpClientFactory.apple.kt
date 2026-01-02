@@ -7,6 +7,9 @@ import kotlinx.serialization.json.Json
 /**
  * Apple platforms implementation using Darwin engine.
  * Works on macOS, iOS, tvOS, watchOS.
+ *
+ * Note: Localhost connections with self-signed certs (Antigravity) may fail.
+ * This is expected - the provider will show as unavailable.
  */
 actual fun createHttpClient(
     json: Json,
