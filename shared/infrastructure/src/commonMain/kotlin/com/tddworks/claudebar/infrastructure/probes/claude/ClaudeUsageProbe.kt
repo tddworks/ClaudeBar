@@ -198,7 +198,7 @@ class ClaudeUsageProbe(
                 return CostUsage(
                     totalCost = costInfo.first,
                     budget = costInfo.second,
-                    apiDuration = 0.0,
+                    apiDuration = Duration.ZERO,
                     providerId = "claude",
                     capturedAt = Clock.System.now(),
                     resetsAt = resetDate,

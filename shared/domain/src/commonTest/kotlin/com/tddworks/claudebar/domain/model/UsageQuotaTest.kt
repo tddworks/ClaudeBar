@@ -18,20 +18,20 @@ class UsageQuotaTest {
     }
 
     @Test
-    fun `quota status is LOW when percent remaining is between 10 and 25`() {
+    fun `quota status is WARNING when percent remaining is between 20 and 50`() {
         val quota = UsageQuota(
-            percentRemaining = 15.0,
+            percentRemaining = 35.0,
             quotaType = QuotaType.Session,
             providerId = "test"
         )
 
-        assertEquals(QuotaStatus.LOW, quota.status)
+        assertEquals(QuotaStatus.WARNING, quota.status)
     }
 
     @Test
-    fun `quota status is CRITICAL when percent remaining is between 5 and 10`() {
+    fun `quota status is CRITICAL when percent remaining is below 20`() {
         val quota = UsageQuota(
-            percentRemaining = 7.0,
+            percentRemaining = 15.0,
             quotaType = QuotaType.Session,
             providerId = "test"
         )
@@ -40,14 +40,14 @@ class UsageQuotaTest {
     }
 
     @Test
-    fun `quota status is EXHAUSTED when percent remaining is below 5`() {
+    fun `quota status is DEPLETED when percent remaining is zero`() {
         val quota = UsageQuota(
-            percentRemaining = 2.0,
+            percentRemaining = 0.0,
             quotaType = QuotaType.Session,
             providerId = "test"
         )
 
-        assertEquals(QuotaStatus.EXHAUSTED, quota.status)
+        assertEquals(QuotaStatus.DEPLETED, quota.status)
     }
 
     @Test

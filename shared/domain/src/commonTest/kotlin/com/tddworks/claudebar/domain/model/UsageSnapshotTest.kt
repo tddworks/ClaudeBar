@@ -13,13 +13,13 @@ class UsageSnapshotTest {
             providerId = "test",
             quotas = listOf(
                 UsageQuota(percentRemaining = 80.0, quotaType = QuotaType.Session, providerId = "test"),
-                UsageQuota(percentRemaining = 3.0, quotaType = QuotaType.Weekly, providerId = "test"),
+                UsageQuota(percentRemaining = 0.0, quotaType = QuotaType.Weekly, providerId = "test"),
                 UsageQuota(percentRemaining = 50.0, quotaType = QuotaType.ModelSpecific("opus"), providerId = "test")
             ),
             capturedAt = Clock.System.now()
         )
 
-        assertEquals(QuotaStatus.EXHAUSTED, snapshot.overallStatus)
+        assertEquals(QuotaStatus.DEPLETED, snapshot.overallStatus)
     }
 
     @Test
