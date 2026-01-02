@@ -7,25 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-01-02
+
 ### Added
 - **Provider Enable/Disable**: Toggle individual AI providers on/off from Settings. Disabled providers are hidden from the menu bar and excluded from quota monitoring.
+- **Copilot Credential Management**: GitHub Copilot now manages its own credentials (token and username) directly within the provider, making setup more intuitive.
 
 ### Changed
-- **Architecture Refactor**: Simplified architecture with `QuotaMonitor` as single source of truth
-  - Removed `AppState` layer - views now consume domain models directly
-  - Added `AIProviders` repository for provider management
-  - `AIProvider.isEnabled` state persisted to UserDefaults
+- **Simplified Architecture**: Streamlined codebase with cleaner separation of concerns
+  - Views now consume domain models directly from `QuotaMonitor`
+  - Provider settings persisted via injectable repositories for better testability
+  - Credential management moved from global settings to individual providers
 
 ### Removed
 - **Z.ai Demo Mode**: Removed demo mode toggle - Z.ai provider now always uses real credentials
 
+### Fixed
+- **Z.ai Icon**: Now displays the correct Z.ai provider icon
+
 ### Technical
-- `QuotaMonitor` now owns `AIProviders` repository with delegation methods (`allProviders`, `enabledProviders`, `addProvider`, `removeProvider`)
-- Views consume `QuotaMonitor` directly via injection (no intermediate AppState)
-- Each `AIProvider` owns its `isEnabled` state with UserDefaults persistence
-- Removed `ZaiDemoUsageProbe` adapter
-- Removed `zaiDemoMode` setting from AppSettings
-- Removed demo mode toggle from settings UI
+- Introduced `ProviderSettingsRepository` protocol for provider enable/disable persistence
+- Introduced `CredentialRepository` protocol for token/credential storage
+- Moved `CopilotProvider` credentials from `AppSettings` to provider-owned state
+- `QuotaMonitor` now owns `AIProviders` repository with delegation methods
+- Removed `AppState` layer - views consume `QuotaMonitor` directly
+- Added comprehensive test coverage for ZaiProvider (22 tests)
+- Refactored tests to follow Chicago School TDD (state-based, no verify calls)
 
 ## [0.2.11] - 2026-01-01
 
@@ -180,7 +187,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.10...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.12...HEAD
+[0.2.12]: https://github.com/tddworks/ClaudeBar/compare/v0.2.11...v0.2.12
+[0.2.11]: https://github.com/tddworks/ClaudeBar/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/tddworks/ClaudeBar/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/tddworks/ClaudeBar/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/tddworks/ClaudeBar/compare/v0.2.7...v0.2.8
