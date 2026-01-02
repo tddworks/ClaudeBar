@@ -170,6 +170,15 @@ extension KmpQuotaStatus {
     }
 }
 
+extension ClaudeBarShared.AccountTier {
+    var badgeText: String {
+        if self is ClaudeBarShared.AccountTier.ClaudeMax { return "MAX" }
+        if self is ClaudeBarShared.AccountTier.ClaudePro { return "PRO" }
+        if self is ClaudeBarShared.AccountTier.ClaudeApi { return "API" }
+        return ""
+    }
+}
+
 // MARK: - KMP UI Components (matching ClaudeBarApp design)
 
 /// Status bar icon using KMP QuotaStatus
@@ -452,6 +461,11 @@ struct KmpMenuContentView: View {
     private var metricsContent: some View {
         if let provider = selectedProvider, let snapshot = provider.snapshot.value {
             VStack(spacing: 12) {
+                // Account info card - show if email OR organization is available
+                if let displayName = snapshot.accountEmail ?? snapshot.accountOrganization {
+                    kmpAccountCard(displayName: displayName, snapshot: snapshot)
+                }
+
                 // Stats Grid
                 kmpStatsGrid(snapshot: snapshot)
             }
@@ -462,6 +476,43 @@ struct KmpMenuContentView: View {
         } else {
             kmpEmptyState
         }
+    }
+
+    private func kmpAccountCard(displayName: String, snapshot: KmpUsageSnapshot) -> some View {
+        HStack(spacing: 10) {
+            // Avatar circle
+            ZStack {
+                Circle()
+                    .fill(AppTheme.providerGradient(for: selectedProviderId, scheme: colorScheme))
+                    .frame(width: 32, height: 32)
+
+                Text(String(displayName.prefix(1)).uppercased())
+                    .font(AppTheme.titleFont(size: 14))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(displayName)
+                        .font(AppTheme.bodyFont(size: 12))
+                        .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                        .lineLimit(1)
+
+                    // Account tier badge
+                    if let accountTier = snapshot.accountTier {
+                        Text(accountTier.badgeText)
+                            .font(AppTheme.captionFont(size: 8))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(AppTheme.purpleVibrant(for: colorScheme).opacity(0.8)))
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .glassCard(cornerRadius: 12, padding: 10)
     }
 
     @ViewBuilder
