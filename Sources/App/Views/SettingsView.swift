@@ -973,13 +973,13 @@ struct SettingsContentView: View {
 
             // Open Logs Button
             Button {
-                AppLog.openLogsDirectory()
+                FileLogger.shared.openCurrentLogFile()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "folder")
+                    Image(systemName: "doc.text")
                         .font(.system(size: 11, weight: .semibold))
 
-                    Text("Open Logs Folder")
+                    Text("Open Log File")
                         .font(AppTheme.bodyFont(size: 11))
                 }
                 .foregroundStyle(.white)
@@ -1003,7 +1003,7 @@ struct SettingsContentView: View {
             .buttonStyle(.plain)
 
             // Help text
-            Text("Logs are stored at ~/Library/Logs/ClaudeBar/")
+            Text("Opens ClaudeBar.log in TextEdit")
                 .font(AppTheme.captionFont(size: 9))
                 .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
         }

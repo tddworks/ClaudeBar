@@ -99,4 +99,9 @@ public final class FileLogger: @unchecked Sendable {
     public func openLogsDirectory() {
         NSWorkspace.shared.open(logsDirectory)
     }
+
+    /// Open the current log file in TextEdit
+    public func openCurrentLogFile() {
+        NSWorkspace.shared.open(fileURL)
+    }
 }
