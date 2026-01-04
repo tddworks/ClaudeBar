@@ -10,6 +10,7 @@ import Domain
 public struct CopilotUsageProbe: UsageProbe {
     private let networkClient: any NetworkClient
     private let credentialRepository: any CredentialRepository
+    private let configRepository: any ProviderConfigRepository
     private let timeout: TimeInterval
 
     private static let apiBaseURL = "https://api.github.com"
@@ -18,17 +19,40 @@ public struct CopilotUsageProbe: UsageProbe {
     public init(
         networkClient: any NetworkClient = URLSession.shared,
         credentialRepository: any CredentialRepository = UserDefaultsCredentialRepository.shared,
+        configRepository: any ProviderConfigRepository = UserDefaultsProviderConfigRepository.shared,
         timeout: TimeInterval = 30
     ) {
         self.networkClient = networkClient
         self.credentialRepository = credentialRepository
+        self.configRepository = configRepository
         self.timeout = timeout
     }
 
+    // MARK: - Token Resolution
+
+    private func getToken() -> String? {
+        // First, check environment variable if configured
+        let envVarName = configRepository.copilotAuthEnvVar()
+        if !envVarName.isEmpty {
+            if let envValue = ProcessInfo.processInfo.environment[envVarName], !envValue.isEmpty {
+                AppLog.probes.debug("Copilot: Using token from env var '\(envVarName)'")
+                return envValue
+            }
+        }
+
+        // Fall back to stored token
+        if let storedToken = credentialRepository.get(forKey: CredentialKey.githubToken), !storedToken.isEmpty {
+            AppLog.probes.debug("Copilot: Using stored token")
+            return storedToken
+        }
+
+        return nil
+    }
+
     public func isAvailable() async -> Bool {
-        guard let token = credentialRepository.get(forKey: CredentialKey.githubToken),
-              let username = credentialRepository.get(forKey: CredentialKey.githubUsername),
-              !token.isEmpty,
+        let token = getToken()
+        guard let username = credentialRepository.get(forKey: CredentialKey.githubUsername),
+              let token = token, !token.isEmpty,
               !username.isEmpty else {
             AppLog.probes.debug("Copilot: Not available - missing token or username")
             return false
@@ -37,8 +61,8 @@ public struct CopilotUsageProbe: UsageProbe {
     }
 
     public func probe() async throws -> UsageSnapshot {
-        guard let token = credentialRepository.get(forKey: CredentialKey.githubToken), !token.isEmpty else {
-            AppLog.probes.error("Copilot: No GitHub token configured")
+        guard let token = getToken(), !token.isEmpty else {
+            AppLog.probes.error("Copilot: No GitHub token configured (check token field or env var)")
             throw ProbeError.authenticationRequired
         }
 

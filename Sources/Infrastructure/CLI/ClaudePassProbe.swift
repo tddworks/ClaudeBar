@@ -38,7 +38,19 @@ public final class ClaudePassProbe: ClaudePassProbing, @unchecked Sendable {
 
     /// Checks if the Claude CLI is available
     public func isAvailable() async -> Bool {
-        cliExecutor.locate(claudeBinary) != nil
+        if cliExecutor.locate(claudeBinary) != nil {
+            return true
+        }
+
+        // Log diagnostic info when binary not found
+        let env = ProcessInfo.processInfo.environment
+        AppLog.probes.error("Claude binary '\(claudeBinary)' not found in PATH")
+        AppLog.probes.info("Current directory: \(FileManager.default.currentDirectoryPath)")
+        AppLog.probes.info("PATH: \(env["PATH"] ?? "<not set>")")
+        if let configDir = env["CLAUDE_CONFIG_DIR"] {
+            AppLog.probes.info("CLAUDE_CONFIG_DIR: \(configDir)")
+        }
+        return false
     }
 
     /// Probes the CLI for guest pass information.

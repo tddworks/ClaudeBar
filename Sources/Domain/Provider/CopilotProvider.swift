@@ -58,22 +58,25 @@ public final class CopilotProvider: AIProvider, @unchecked Sendable {
     private let probe: any UsageProbe
     private let settingsRepository: any ProviderSettingsRepository
     private let credentialRepository: any CredentialRepository
+    private let configRepository: any ProviderConfigRepository
 
     // MARK: - Initialization
 
     /// Creates a Copilot provider with the specified dependencies
-    /// - Parameters:
-    ///   - probe: The probe to use for fetching usage data
-    ///   - settingsRepository: The repository for persisting settings
-    ///   - credentialRepository: The repository for credentials (token, username)
+    /// - Parameter probe: The probe to use for fetching usage data
+    /// - Parameter settingsRepository: The repository for persisting settings
+    /// - Parameter credentialRepository: The repository for credentials (token, username)
+    /// - Parameter configRepository: The repository for provider-specific configuration
     public init(
         probe: any UsageProbe,
         settingsRepository: any ProviderSettingsRepository,
-        credentialRepository: any CredentialRepository
+        credentialRepository: any CredentialRepository,
+        configRepository: any ProviderConfigRepository
     ) {
         self.probe = probe
         self.settingsRepository = settingsRepository
         self.credentialRepository = credentialRepository
+        self.configRepository = configRepository
         // Copilot defaults to false (requires setup)
         self.isEnabled = settingsRepository.isEnabled(forProvider: "copilot", defaultValue: false)
         // Load persisted username

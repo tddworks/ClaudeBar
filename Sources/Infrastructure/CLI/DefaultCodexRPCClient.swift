@@ -32,8 +32,8 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
         // Log diagnostic info when binary not found
         let env = ProcessInfo.processInfo.environment
         AppLog.probes.error("Codex binary '\(binaryName)' not found in PATH")
-        AppLog.probes.debug("Current directory: \(FileManager.default.currentDirectoryPath)")
-        AppLog.probes.debug("PATH: \(env["PATH"] ?? "<not set>")")
+        AppLog.probes.info("Current directory: \(FileManager.default.currentDirectoryPath)")
+        AppLog.probes.info("PATH: \(env["PATH"] ?? "<not set>")")
         return false
     }
 

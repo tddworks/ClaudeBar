@@ -56,6 +56,8 @@ public final class AppSettings {
         }
     }
 
+
+
     // MARK: - Initialization
 
     private init() {
@@ -94,10 +96,10 @@ public final class AppSettings {
             // After Christmas: revert to system if still on Christmas theme and user didn't explicitly choose it
             if themeMode == "christmas" && !userHasChosenTheme {
                 themeMode = "system"
-            }
-        }
-    }
-}
+             }
+         }
+     }
+ }
 
 // MARK: - UserDefaults Keys
 

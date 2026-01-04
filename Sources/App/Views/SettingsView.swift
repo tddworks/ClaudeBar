@@ -20,12 +20,18 @@ struct SettingsContentView: View {
     @State private var copilotTokenInput: String = ""
     @State private var showToken: Bool = false
     @State private var saveError: String?
-    @State private var saveSuccess: Bool = false
+     @State private var saveSuccess: Bool = false
 
-    // Budget input state
-    @State private var budgetInput: String = ""
+     // Budget input state
+     @State private var budgetInput: String = ""
 
-    /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
+     @State private var zaiConfigPathInput: String = ""
+     @State private var glmAuthEnvVarInput: String = ""
+     @State private var copilotAuthEnvVarInput: String = ""
+     @State private var isTestingCopilot = false
+     @State private var copilotTestResult: String?
+
+     /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
     private var copilotProvider: CopilotProvider? {
         monitor.provider(for: "copilot") as? CopilotProvider
     }
@@ -68,6 +74,7 @@ struct SettingsContentView: View {
                     providersCard
                     claudeBudgetCard
                     copilotCard
+                    zaiConfigCard
                     #if ENABLE_SPARKLE
                     updatesCard
                     #endif
@@ -88,6 +95,9 @@ struct SettingsContentView: View {
             if settings.claudeApiBudget > 0 {
                 budgetInput = String(describing: settings.claudeApiBudget)
             }
+            zaiConfigPathInput = UserDefaultsProviderConfigRepository.shared.zaiConfigPath()
+            glmAuthEnvVarInput = UserDefaultsProviderConfigRepository.shared.glmAuthEnvVar()
+            copilotAuthEnvVarInput = UserDefaultsProviderConfigRepository.shared.copilotAuthEnvVar()
         }
     }
 
@@ -589,24 +599,6 @@ struct SettingsContentView: View {
                             )
                     }
                     .buttonStyle(.plain)
-
-                    // Save button
-                    Button {
-                        saveToken()
-                    } label: {
-                        Text("Save")
-                            .font(AppTheme.bodyFont(size: 10))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule()
-                                    .fill(AppTheme.accentGradient(for: colorScheme))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(copilotTokenInput.isEmpty)
-                    .opacity(copilotTokenInput.isEmpty ? 0.5 : 1)
                 }
 
                 // Status messages
@@ -627,6 +619,80 @@ struct SettingsContentView: View {
                     }
                     .foregroundStyle(AppTheme.statusHealthy(for: colorScheme))
                 }
+            }
+
+            // Environment Variable (Alternative)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("AUTH TOKEN ENV VAR (ALTERNATIVE)")
+                    .font(AppTheme.captionFont(size: 9))
+                    .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                    .tracking(0.5)
+
+                TextField("", text: $copilotAuthEnvVarInput, prompt: Text("GITHUB_TOKEN").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                    .font(AppTheme.bodyFont(size: 12))
+                    .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+                            )
+                    )
+                    .onChange(of: copilotAuthEnvVarInput) { _, newValue in
+                        UserDefaultsProviderConfigRepository.shared.setCopilotAuthEnvVar(newValue)
+                    }
+            }
+
+            // Explanatory text
+            VStack(alignment: .leading, spacing: 4) {
+                Text("TOKEN LOOKUP ORDER")
+                    .font(AppTheme.captionFont(size: 9))
+                    .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                    .tracking(0.5)
+
+                Text("1. First checks environment variable if specified")
+                    .font(AppTheme.captionFont(size: 10))
+                    .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                Text("2. Falls back to direct token entry above")
+                    .font(AppTheme.captionFont(size: 10))
+                    .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+            }
+
+            // Save & Test button
+            if isTestingCopilot {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Testing connection...")
+                        .font(AppTheme.bodyFont(size: 11))
+                        .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                }
+            } else {
+                Button {
+                    Task {
+                        await testCopilotConnection()
+                    }
+                } label: {
+                    Text("Save & Test Connection")
+                        .font(AppTheme.bodyFont(size: 11))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(AppTheme.purpleVibrant(for: colorScheme))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let result = copilotTestResult {
+                Text(result)
+                    .font(AppTheme.captionFont(size: 9))
+                    .foregroundStyle(result.contains("Success") ? AppTheme.statusHealthy(for: colorScheme) : AppTheme.statusCritical(for: colorScheme))
             }
 
             // Help text and link
@@ -662,6 +728,159 @@ struct SettingsContentView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    // MARK: - Z.ai Config Card
+
+    @State private var zaiConfigExpanded: Bool = false
+
+    private var zaiConfigCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header (always visible, clickable to expand)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    zaiConfigExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.2, green: 0.6, blue: 0.9),
+                                        Color(red: 0.15, green: 0.45, blue: 0.8)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Z.ai / GLM Configuration")
+                            .font(AppTheme.titleFont(size: 14))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
+
+                        Text("Authentication fallback settings")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
+                    }
+
+                    Spacer()
+
+                    // Expand/collapse indicator
+                    Image(systemName: zaiConfigExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Expanded content
+            if zaiConfigExpanded {
+                Divider()
+                    .background(AppTheme.glassBorder(for: colorScheme))
+                    .padding(.vertical, 12)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    // Explanation text
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("TOKEN LOOKUP ORDER")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        Text("1. First looks for token in the settings.json file")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                        Text("2. Falls back to environment variable if not found in file")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("SETTINGS.JSON PATH")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        TextField("", text: $zaiConfigPathInput, prompt: Text("~/.claude/settings.json").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+                                    )
+                            )
+                            .onChange(of: zaiConfigPathInput) { _, newValue in
+                                UserDefaultsProviderConfigRepository.shared.setZaiConfigPath(newValue)
+                            }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("AUTH TOKEN ENV VAR (FALLBACK)")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        TextField("", text: $glmAuthEnvVarInput, prompt: Text("GLM_AUTH_TOKEN").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+                                    )
+                            )
+                    .onChange(of: glmAuthEnvVarInput) { _, newValue in
+                        UserDefaultsProviderConfigRepository.shared.setGlmAuthEnvVar(newValue)
+                    }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Leave both empty to use default path with no env var fallback")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(isChristmas ? AppTheme.christmasCardGradient : AppTheme.cardGradient(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: isChristmas
+                                    ? [AppTheme.christmasGold.opacity(0.4), AppTheme.christmasGold.opacity(0.2)]
+                                    : [
+                                        colorScheme == .dark ? Color.white.opacity(0.25) : AppTheme.purpleVibrant(for: colorScheme).opacity(0.18),
+                                        colorScheme == .dark ? Color.white.opacity(0.08) : AppTheme.pinkHot(for: colorScheme).opacity(0.08)
+                                    ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
     }
 
     // MARK: - Updates Card
@@ -874,13 +1093,13 @@ struct SettingsContentView: View {
 
             // Open Logs Button
             Button {
-                AppLog.openLogsDirectory()
+                FileLogger.shared.openCurrentLogFile()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "folder")
+                    Image(systemName: "doc.text")
                         .font(.system(size: 11, weight: .semibold))
 
-                    Text("Open Logs Folder")
+                    Text("Open Log File")
                         .font(AppTheme.bodyFont(size: 11))
                 }
                 .foregroundStyle(.white)
@@ -904,7 +1123,7 @@ struct SettingsContentView: View {
             .buttonStyle(.plain)
 
             // Help text
-            Text("Logs are stored at ~/Library/Logs/ClaudeBar/")
+            Text("Opens ClaudeBar.log in TextEdit")
                 .font(AppTheme.captionFont(size: 9))
                 .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
         }
@@ -982,6 +1201,39 @@ struct SettingsContentView: View {
     private func deleteToken() {
         copilotProvider?.deleteCredentials()
         saveError = nil
+    }
+
+    private func testCopilotConnection() async {
+        isTestingCopilot = true
+        copilotTestResult = nil
+
+        // Save current inputs
+        UserDefaultsProviderConfigRepository.shared.setCopilotAuthEnvVar(copilotAuthEnvVarInput)
+        if !copilotTokenInput.isEmpty {
+            AppLog.credentials.info("Saving Copilot token for connection test")
+            copilotProvider?.saveToken(copilotTokenInput)
+            copilotTokenInput = ""
+        }
+
+        do {
+            // Try to refresh the copilot provider
+            AppLog.credentials.info("Testing Copilot connection via provider refresh")
+            await monitor.refresh(providerId: "copilot")
+
+            // Check if there's an error after refresh
+            if let error = monitor.provider(for: "copilot")?.lastError {
+                AppLog.credentials.error("Copilot connection test failed: \(error.localizedDescription)")
+                copilotTestResult = "Failed: \(error.localizedDescription)"
+            } else {
+                AppLog.credentials.info("Copilot connection test succeeded")
+                copilotTestResult = "Success: Connection verified"
+            }
+        } catch {
+            AppLog.credentials.error("Copilot connection test threw error: \(error.localizedDescription)")
+            copilotTestResult = "Failed: \(error.localizedDescription)"
+        }
+
+        isTestingCopilot = false
     }
 }
 
