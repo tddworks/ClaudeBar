@@ -40,7 +40,7 @@ struct CostUsageTests {
         )
 
         // Then
-        #expect(cost.formattedCost == "$0.55")
+        #expect(cost.formattedCost == Self.expectedCurrencyString(for: Decimal(string: "0.55")!))
     }
 
     @Test
@@ -53,7 +53,16 @@ struct CostUsageTests {
         )
 
         // Then
-        #expect(cost.formattedCost == "$1,234.56")
+        #expect(cost.formattedCost == Self.expectedCurrencyString(for: Decimal(string: "1234.56")!))
+    }
+
+    private static func expectedCurrencyString(for value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
     @Test
