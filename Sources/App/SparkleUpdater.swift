@@ -147,6 +147,8 @@ final class SparkleUpdater {
         guard let controller = controller, controller.updater.canCheckForUpdates else {
             return
         }
+        // Bring app to front so update window appears above other windows
+        NSApp.activate(ignoringOtherApps: true)
         controller.checkForUpdates(nil)
     }
 
