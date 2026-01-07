@@ -342,7 +342,7 @@ public struct InteractiveRunner: Sendable {
     /// Ensures CLI tools behave as they would in a normal terminal.
     private static func terminalEnvironment() -> [String: String] {
         var env = ProcessInfo.processInfo.environment
-        env["PATH"] = BinaryLocator.searchPaths()
+        env["PATH"] = BinaryLocator.shellPath()
         env["HOME"] = env["HOME"] ?? NSHomeDirectory()
         env["TERM"] = env["TERM"] ?? "xterm-256color"
         env["COLORTERM"] = env["COLORTERM"] ?? "truecolor"

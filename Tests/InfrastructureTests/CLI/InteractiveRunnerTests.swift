@@ -8,8 +8,9 @@ struct InteractiveRunnerTests {
     @Test
     func `run executes command and returns output`() throws {
         let runner = InteractiveRunner()
+        // Use absolute path since 'echo' is a shell built-in
         let result = try runner.run(
-            binary: "echo",
+            binary: "/bin/echo",
             input: "",
             options: .init(arguments: ["hello"])
         )
