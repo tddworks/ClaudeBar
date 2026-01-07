@@ -53,6 +53,7 @@ public struct BinaryLocator: Sendable {
     static func searchPaths() -> String {
         let home = NSHomeDirectory()
         let commonLocations = [
+            "\(home)/.claude/local",
             "/usr/local/bin",
             "/opt/homebrew/bin",
             "\(home)/.local/bin",
