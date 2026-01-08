@@ -64,6 +64,39 @@ struct ShellTests {
     }
 
     @Test
+    func `which command allows dots and hyphens in tool names`() {
+        let args = Shell.posix.whichArguments(for: "my-tool.sh")
+        #expect(args == ["-l", "-c", "which my-tool.sh"])
+    }
+
+    @Test
+    func `which command rejects shell metacharacters`() {
+        // Semicolon injection attempt
+        let args1 = Shell.posix.whichArguments(for: "claude; rm -rf /")
+        #expect(args1 == ["-l", "-c", "which ''"])
+
+        // Command substitution attempt
+        let args2 = Shell.posix.whichArguments(for: "$(whoami)")
+        #expect(args2 == ["-l", "-c", "which ''"])
+
+        // Backtick injection attempt
+        let args3 = Shell.posix.whichArguments(for: "`id`")
+        #expect(args3 == ["-l", "-c", "which ''"])
+
+        // Quote injection attempt
+        let args4 = Shell.posix.whichArguments(for: "tool'injection")
+        #expect(args4 == ["-l", "-c", "which ''"])
+
+        // Space injection attempt
+        let args5 = Shell.posix.whichArguments(for: "tool with spaces")
+        #expect(args5 == ["-l", "-c", "which ''"])
+
+        // Nushell also rejects metacharacters
+        let args6 = Shell.nushell.whichArguments(for: "claude; rm -rf /")
+        #expect(args6 == ["-l", "-c", "which ''"])
+    }
+
+    @Test
     func `posix path command format`() {
         let args = Shell.posix.pathArguments()
         #expect(args == ["-l", "-c", "echo $PATH"])
@@ -133,9 +166,29 @@ struct ShellTests {
     }
 
     @Test
+    func `nushell rejects all table box-drawing characters`() {
+        #expect(Shell.nushell.parseWhichOutput("╮───") == nil)
+        #expect(Shell.nushell.parseWhichOutput("╯───") == nil)
+        #expect(Shell.nushell.parseWhichOutput("path─with─box") == nil)
+        #expect(Shell.nushell.parseWhichOutput("├──┼──┤") == nil)
+    }
+
+    @Test
     func `path output parsing trims whitespace`() {
         let output = "  /usr/bin:/bin:/usr/local/bin  \n"
         #expect(Shell.posix.parsePathOutput(output) == "/usr/bin:/bin:/usr/local/bin")
         #expect(Shell.nushell.parsePathOutput(output) == "/usr/bin:/bin:/usr/local/bin")
+    }
+
+    // MARK: - Shell.current Tests
+
+    @Test
+    func `current returns shell based on SHELL environment variable`() {
+        // Shell.current reads from ProcessInfo which we can't easily mock,
+        // but we can verify it returns a valid shell type and matches detect()
+        let current = Shell.current
+        let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let expected = Shell.detect(from: shellPath)
+        #expect(current == expected)
     }
 }

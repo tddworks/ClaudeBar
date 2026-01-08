@@ -37,17 +37,38 @@ enum Shell: Sendable, Equatable {
 
     // MARK: - Command Generation
 
+    /// Validates that a tool name is safe for shell execution.
+    ///
+    /// Only allows alphanumeric characters, underscores, hyphens, and dots.
+    /// Returns nil if the tool name contains shell metacharacters.
+    ///
+    /// - Parameter tool: The tool name to validate
+    /// - Returns: The validated tool name, or nil if unsafe
+    private static func sanitizedToolName(_ tool: String) -> String? {
+        let pattern = "^[A-Za-z0-9._-]+$"
+        guard tool.range(of: pattern, options: .regularExpression) != nil else {
+            return nil
+        }
+        return tool
+    }
+
     /// Returns the arguments to run a `which` command for finding a tool's path.
     ///
     /// - Parameter tool: The name of the CLI tool to find (e.g., "claude", "codex")
-    /// - Returns: Arguments to pass to the shell executable
+    /// - Returns: Arguments to pass to the shell executable. Returns arguments that will
+    ///   safely fail if the tool name contains shell metacharacters.
     func whichArguments(for tool: String) -> [String] {
+        guard let safeTool = Self.sanitizedToolName(tool) else {
+            // Return empty which command that will fail safely
+            return ["-l", "-c", "which ''"]
+        }
+
         switch self {
         case .posix, .fish:
-            return ["-l", "-c", "which \(tool)"]
+            return ["-l", "-c", "which \(safeTool)"]
         case .nushell:
             // ^which calls the external binary, avoiding Nushell's table-outputting built-in
-            return ["-l", "-c", "^which \(tool)"]
+            return ["-l", "-c", "^which \(safeTool)"]
         }
     }
 
@@ -77,8 +98,9 @@ enum Shell: Sendable, Equatable {
         case .posix, .fish:
             return trimmed
         case .nushell:
-            // Reject table output that may have leaked through
-            if trimmed.contains("│") || trimmed.contains("╭") || trimmed.contains("╰") {
+            // Reject table output that may have leaked through (check for box-drawing chars)
+            let tableChars = CharacterSet(charactersIn: "│╭╮╯╰─┼┤├")
+            if trimmed.rangeOfCharacter(from: tableChars) != nil {
                 return nil
             }
             return trimmed

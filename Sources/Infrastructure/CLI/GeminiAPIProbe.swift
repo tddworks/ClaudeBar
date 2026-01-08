@@ -34,7 +34,12 @@ internal struct GeminiAPIProbe {
             AppLog.probes.info("Gemini: Token expired, running CLI to refresh...")
             try await refreshTokenViaCLI()
             AppLog.probes.info("Gemini: Retrying API probe after token refresh...")
-            return try await probeAPI()
+            do {
+                return try await probeAPI()
+            } catch ProbeError.authenticationRequired {
+                AppLog.probes.error("Gemini: API probe failed with authentication error even after token refresh")
+                throw ProbeError.authenticationRequired
+            }
         }
     }
 
@@ -127,8 +132,9 @@ internal struct GeminiAPIProbe {
             autoResponses: [:]
         )
 
-        // Give a moment for the credentials file to be written
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        // Wait for the credentials file to be written and flushed to disk
+        // Use a longer timeout to handle slower systems or heavy load
+        try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
 
         AppLog.probes.debug("Gemini: CLI token refresh completed")
     }

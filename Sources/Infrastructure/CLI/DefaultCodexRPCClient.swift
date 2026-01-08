@@ -41,9 +41,6 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
         // Try RPC first, fall back to TTY
         do {
             return try await fetchViaRPC()
-        } catch let error as ProbeError {
-            AppLog.probes.warning("Codex RPC failed: \(error), trying TTY fallback...")
-            return try await fetchViaTTY()
         } catch {
             AppLog.probes.warning("Codex RPC failed: \(error.localizedDescription), trying TTY fallback...")
             return try await fetchViaTTY()
