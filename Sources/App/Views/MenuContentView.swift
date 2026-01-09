@@ -711,15 +711,23 @@ struct WrappedStatCard: View {
                     .badge(statusColor)
             }
 
-            // Large percentage number
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text("\(Int(quota.percentRemaining))")
-                    .font(.system(size: 32, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
+            // Large percentage number with "Remaining" label (end-aligned)
+            HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 1) {
+                    Text("\(Int(quota.percentRemaining))")
+                        .font(.system(size: 32, weight: .bold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+                        .contentTransition(.numericText())
 
-                Text("%")
-                    .font(.system(size: 16, weight: .medium, design: theme.fontDesign))
+                    Text("%")
+                        .font(.system(size: 16, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+
+                Spacer()
+
+                Text("Remaining")
+                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
 
