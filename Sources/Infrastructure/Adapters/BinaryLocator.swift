@@ -31,6 +31,7 @@ public struct BinaryLocator: Sendable {
     /// - Parameter tool: The name of the CLI tool
     /// - Returns: The full path to the tool if found, nil otherwise
     public static func which(_ tool: String) -> String? {
+        let startTime = CFAbsoluteTimeGetCurrent()
         let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let shell = Shell.detect(from: shellPath)
 
@@ -45,6 +46,8 @@ public struct BinaryLocator: Sendable {
         do {
             try proc.run()
             proc.waitUntilExit()
+            let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+            AppLog.probes.debug("BinaryLocator.which('\(tool)') took \(String(format: "%.3f", elapsed))s")
             guard proc.terminationStatus == 0 else { return nil }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -52,6 +55,8 @@ public struct BinaryLocator: Sendable {
 
             return shell.parseWhichOutput(output)
         } catch {
+            let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+            AppLog.probes.debug("BinaryLocator.which('\(tool)') failed after \(String(format: "%.3f", elapsed))s")
             return nil
         }
     }
@@ -60,6 +65,7 @@ public struct BinaryLocator: Sendable {
     ///
     /// - Returns: The full PATH string from the user's shell, or system PATH as fallback
     public static func shellPath() -> String {
+        let startTime = CFAbsoluteTimeGetCurrent()
         let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let shell = Shell.detect(from: shellPath)
 
@@ -76,6 +82,8 @@ public struct BinaryLocator: Sendable {
         do {
             try proc.run()
             proc.waitUntilExit()
+            let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+            AppLog.probes.debug("BinaryLocator.shellPath() took \(String(format: "%.3f", elapsed))s")
             guard proc.terminationStatus == 0 else { return fallback }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -84,6 +92,8 @@ public struct BinaryLocator: Sendable {
             let path = shell.parsePathOutput(output)
             return path.isEmpty ? fallback : path
         } catch {
+            let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+            AppLog.probes.debug("BinaryLocator.shellPath() failed after \(String(format: "%.3f", elapsed))s")
             return fallback
         }
     }

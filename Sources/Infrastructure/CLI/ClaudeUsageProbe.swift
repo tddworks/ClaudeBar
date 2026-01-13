@@ -38,10 +38,12 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     }
 
     public func probe() async throws -> UsageSnapshot {
+        let probeStart = CFAbsoluteTimeGetCurrent()
         let workingDir = probeWorkingDirectory()
         AppLog.probes.info("Starting Claude probe with /usage command...")
 
         let usageResult: CLIResult
+        let cliStart = CFAbsoluteTimeGetCurrent()
         do {
             usageResult = try cliExecutor.execute(
                 binary: claudeBinary,
@@ -61,9 +63,12 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             AppLog.probes.debug("Working directory: \(workingDir.path)")
             throw ProbeError.executionFailed(error.localizedDescription)
         }
+        let cliElapsed = CFAbsoluteTimeGetCurrent() - cliStart
+        AppLog.probes.debug("Claude CLI execution took \(String(format: "%.3f", cliElapsed))s")
 
         AppLog.probes.info("Claude /usage output:\n\(usageResult.output)")
 
+        let parseStart = CFAbsoluteTimeGetCurrent()
         let snapshot: UsageSnapshot
         do {
             snapshot = try parseClaudeOutput(usageResult.output)
@@ -75,8 +80,11 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             AppLog.probes.debug("Working directory: \(workingDir.path)")
             throw error
         }
+        let parseElapsed = CFAbsoluteTimeGetCurrent() - parseStart
+        AppLog.probes.debug("Claude parsing took \(String(format: "%.3f", parseElapsed))s")
 
-        AppLog.probes.info("Claude probe success: accountTier=\(snapshot.accountTier?.badgeText ?? "unknown"), quotas=\(snapshot.quotas.count)")
+        let totalElapsed = CFAbsoluteTimeGetCurrent() - probeStart
+        AppLog.probes.info("Claude probe success: accountTier=\(snapshot.accountTier?.badgeText ?? "unknown"), quotas=\(snapshot.quotas.count) (total: \(String(format: "%.3f", totalElapsed))s)")
         for quota in snapshot.quotas {
             AppLog.probes.info("  - \(quota.quotaType.displayName): \(Int(quota.percentRemaining))% remaining")
         }
