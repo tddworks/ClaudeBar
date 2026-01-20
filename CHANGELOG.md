@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.12] - 2026-01-20
+
+### Changed
+- **Background Sync Disabled by Default**: Background sync is now disabled by default. Each Claude CLI spawn triggers a warmup session (even with zero prompts), and frequent background syncs can cause these sessions to stack up. The Claude Code team has addressed this in recent versions, so if you've updated to the latest Claude CLI, you can safely re-enable background sync in Settings → Background Sync.
+
 ## [0.3.6] - 2026-01-11
 
 ### Added
@@ -296,7 +301,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.3.7...HEAD
+[0.3.12]: https://github.com/tddworks/ClaudeBar/compare/v0.3.6...v0.3.7
+[0.3.6]: https://github.com/tddworks/ClaudeBar/compare/v0.3.4...v0.3.6
 [0.3.4]: https://github.com/tddworks/ClaudeBar/compare/v0.3.0...v0.3.4
 [0.3.0]: https://github.com/tddworks/ClaudeBar/compare/v0.2.15...v0.3.0
 [0.2.15]: https://github.com/tddworks/ClaudeBar/compare/v0.2.14...v0.2.15
