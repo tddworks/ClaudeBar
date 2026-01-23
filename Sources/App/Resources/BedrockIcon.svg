@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 30 30">
+<style type="text/css">
+	.bg{fill:#2D2D2D;stroke:#FFFFFF;stroke-width:0.3;stroke-miterlimit:10;}
+	.layer{fill:#FFFFFF;}
+</style>
+<!-- Rounded rectangle background -->
+<path class="bg" d="M24.51,28.51H5.49c-2.21,0-4-1.79-4-4V5.49c0-2.21,1.79-4,4-4h19.03c2.21,0,4,1.79,4,4v19.03C28.51,26.72,26.72,28.51,24.51,28.51z"/>
+<!-- AWS Bedrock stacked layers icon -->
+<g>
+	<!-- Bottom layer (largest) -->
+	<rect class="layer" x="7" y="19" width="16" height="3" rx="0.5"/>
+	<!-- Middle layer -->
+	<rect class="layer" x="9" y="14" width="12" height="3" rx="0.5"/>
+	<!-- Top layer (smallest) -->
+	<rect class="layer" x="11" y="9" width="8" height="3" rx="0.5"/>
+</g>
+</svg>

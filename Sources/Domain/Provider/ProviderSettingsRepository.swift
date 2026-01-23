@@ -70,6 +70,36 @@ public protocol CopilotSettingsRepository: ProviderSettingsRepository {
     func deleteGithubUsername()
 }
 
+/// Bedrock-specific settings repository, extending base ProviderSettingsRepository.
+/// Stores AWS profile name (not credentials) and region configuration.
+/// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
+/// App uses UserDefaultsProviderSettingsRepository.
+public protocol BedrockSettingsRepository: ProviderSettingsRepository {
+    // MARK: - AWS Profile
+
+    /// Gets the AWS profile name (empty = use default profile)
+    func awsProfileName() -> String
+
+    /// Sets the AWS profile name
+    func setAWSProfileName(_ name: String)
+
+    // MARK: - Regions
+
+    /// Gets the list of AWS regions to monitor for Bedrock usage
+    func bedrockRegions() -> [String]
+
+    /// Sets the list of AWS regions to monitor
+    func setBedrockRegions(_ regions: [String])
+
+    // MARK: - Budget
+
+    /// Gets the daily budget for quota calculations (nil = no budget set)
+    func bedrockDailyBudget() -> Decimal?
+
+    /// Sets the daily budget for quota calculations
+    func setBedrockDailyBudget(_ amount: Decimal?)
+}
+
 // MARK: - Default Implementation
 
 public extension ProviderSettingsRepository {

@@ -624,6 +624,11 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 0.35, green: 0.60, blue: 1.0)
                 : Color(red: 0.23, green: 0.51, blue: 0.96)
+        case "bedrock":
+            // AWS orange color
+            return scheme == .dark
+                ? Color(red: 1.0, green: 0.60, blue: 0.20)
+                : Color(red: 0.92, green: 0.47, blue: 0.07)
         default:
             return purpleVibrant(for: scheme)
         }
@@ -657,6 +662,11 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.30, green: 0.45, blue: 0.85)
                 : Color(red: 0.20, green: 0.35, blue: 0.75)
+        case "bedrock":
+            // AWS orange gradient
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.85, green: 0.40, blue: 0.15)
+                : Color(red: 0.75, green: 0.30, blue: 0.05)
         default:
             return accentGradient(for: scheme)
         }
@@ -677,6 +687,7 @@ extension AppTheme {
         case "copilot": return "CopilotIcon"
         case "antigravity": return "AntigravityIcon"
         case "zai": return "ZaiIcon"
+        case "bedrock": return "BedrockIcon"
         default: return "QuestionIcon"
         }
     }
@@ -690,6 +701,7 @@ extension AppTheme {
         case "copilot": return "GitHub Copilot"
         case "antigravity": return "Antigravity"
         case "zai": return "Z.ai"
+        case "bedrock": return "AWS Bedrock"
         default: return providerId.capitalized
         }
     }
@@ -703,6 +715,7 @@ extension AppTheme {
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "antigravity": return "wand.and.stars"
         case "zai": return "z.square.fill"
+        case "bedrock": return "cloud.fill" // AWS cloud icon
         default: return "questionmark.circle.fill"
         }
     }

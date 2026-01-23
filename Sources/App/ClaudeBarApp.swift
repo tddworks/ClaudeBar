@@ -29,6 +29,7 @@ struct ClaudeBarApp: App {
         // - ProviderSettingsRepository (base)
         // - ZaiSettingsRepository (Z.ai specific config)
         // - CopilotSettingsRepository (Copilot specific config + credentials)
+        // - BedrockSettingsRepository (AWS Bedrock config)
         let settingsRepository = UserDefaultsProviderSettingsRepository.shared
 
         // Create all providers with their probes (rich domain models)
@@ -45,6 +46,10 @@ struct ClaudeBarApp: App {
             ),
             CopilotProvider(
                 probe: CopilotUsageProbe(settingsRepository: settingsRepository),
+                settingsRepository: settingsRepository
+            ),
+            BedrockProvider(
+                probe: BedrockUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
         ])

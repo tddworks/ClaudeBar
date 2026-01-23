@@ -10,6 +10,7 @@ let project = Project(
         .remote(url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.8.1")),
         .remote(url: "https://github.com/Kolos65/Mockable.git", requirement: .upToNextMajor(from: "0.5.0")),
         .remote(url: "https://github.com/migueldeicaza/SwiftTerm.git", requirement: .upToNextMajor(from: "1.2.0")),
+        .remote(url: "https://github.com/awslabs/aws-sdk-swift.git", requirement: .upToNextMajor(from: "1.0.0")),
     ],
     settings: .settings(
         base: [
@@ -56,6 +57,10 @@ let project = Project(
                 .target(name: "Domain"),
                 .package(product: "Mockable"),
                 .package(product: "SwiftTerm"),
+                .package(product: "AWSCloudWatch"),
+                .package(product: "AWSSTS"),
+                .package(product: "AWSPricing"),
+                .package(product: "AWSSDKIdentity"),
             ],
             settings: .settings(
                 base: [
@@ -109,7 +114,12 @@ let project = Project(
             sources: ["Tests/DomainTests/**"],
             dependencies: [
                 .target(name: "Domain"),
+                .target(name: "Infrastructure"),
                 .package(product: "Mockable"),
+                .package(product: "AWSCloudWatch"),
+                .package(product: "AWSSTS"),
+                .package(product: "AWSPricing"),
+                .package(product: "AWSSDKIdentity"),
             ],
             settings: .settings(
                 base: [
@@ -130,6 +140,10 @@ let project = Project(
                 .target(name: "Infrastructure"),
                 .target(name: "Domain"),
                 .package(product: "Mockable"),
+                .package(product: "AWSCloudWatch"),
+                .package(product: "AWSSTS"),
+                .package(product: "AWSPricing"),
+                .package(product: "AWSSDKIdentity"),
             ],
             settings: .settings(
                 base: [

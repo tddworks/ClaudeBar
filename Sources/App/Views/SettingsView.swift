@@ -37,10 +37,17 @@ struct SettingsContentView: View {
     @State private var isTestingCopilot = false
     @State private var copilotTestResult: String?
 
+    // Bedrock settings state
+    @State private var bedrockConfigExpanded: Bool = false
+    @State private var awsProfileNameInput: String = ""
+    @State private var bedrockRegionsInput: String = ""
+    @State private var bedrockDailyBudgetInput: String = ""
+
     private enum ProviderID {
         static let claude = "claude"
         static let copilot = "copilot"
         static let zai = "zai"
+        static let bedrock = "bedrock"
     }
 
     /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
@@ -66,6 +73,10 @@ struct SettingsContentView: View {
 
     private var isClaudeEnabled: Bool {
         monitor.provider(for: ProviderID.claude)?.isEnabled ?? false
+    }
+
+    private var isBedrockEnabled: Bool {
+        monitor.provider(for: ProviderID.bedrock)?.isEnabled ?? false
     }
 
     /// Maximum height for the settings view to ensure it fits on small screens
@@ -100,6 +111,10 @@ struct SettingsContentView: View {
                         zaiConfigCard
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
+                    if isBedrockEnabled {
+                        bedrockConfigCard
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     backgroundSyncCard
                     #if ENABLE_SPARKLE
                     updatesCard
@@ -125,6 +140,13 @@ struct SettingsContentView: View {
             zaiConfigPathInput = UserDefaultsProviderSettingsRepository.shared.zaiConfigPath()
             glmAuthEnvVarInput = UserDefaultsProviderSettingsRepository.shared.glmAuthEnvVar()
             copilotAuthEnvVarInput = UserDefaultsProviderSettingsRepository.shared.copilotAuthEnvVar()
+
+            // Initialize Bedrock settings
+            awsProfileNameInput = UserDefaultsProviderSettingsRepository.shared.awsProfileName()
+            bedrockRegionsInput = UserDefaultsProviderSettingsRepository.shared.bedrockRegions().joined(separator: ", ")
+            if let budget = UserDefaultsProviderSettingsRepository.shared.bedrockDailyBudget() {
+                bedrockDailyBudgetInput = String(describing: budget)
+            }
         }
     }
 
@@ -274,6 +296,8 @@ struct SettingsContentView: View {
                                 zaiConfigExpanded = false
                             case ProviderID.claude:
                                 claudeBudgetExpanded = false
+                            case ProviderID.bedrock:
+                                bedrockConfigExpanded = false
                             default:
                                 break
                             }
@@ -864,6 +888,181 @@ struct SettingsContentView: View {
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     zaiConfigExpanded.toggle()
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(theme.cardGradient)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: [theme.glassBorder, theme.glassBorder.opacity(0.5)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    // MARK: - Bedrock Config Card
+
+    private var bedrockConfigCard: some View {
+        DisclosureGroup(isExpanded: $bedrockConfigExpanded) {
+            Divider()
+                .background(theme.glassBorder)
+                .padding(.vertical, 12)
+
+            VStack(alignment: .leading, spacing: 14) {
+                // AWS Profile Name
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("AWS PROFILE NAME")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .tracking(0.5)
+
+                    TextField("", text: $awsProfileNameInput, prompt: Text("default").foregroundStyle(theme.textTertiary))
+                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(theme.glassBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(theme.glassBorder, lineWidth: 1)
+                                )
+                        )
+                        .onChange(of: awsProfileNameInput) { _, newValue in
+                            UserDefaultsProviderSettingsRepository.shared.setAWSProfileName(newValue)
+                        }
+                }
+
+                // Regions
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("REGIONS (COMMA-SEPARATED)")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .tracking(0.5)
+
+                    TextField("", text: $bedrockRegionsInput, prompt: Text("us-east-1, us-west-2").foregroundStyle(theme.textTertiary))
+                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(theme.glassBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(theme.glassBorder, lineWidth: 1)
+                                )
+                        )
+                        .onChange(of: bedrockRegionsInput) { _, newValue in
+                            let regions = newValue.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                            UserDefaultsProviderSettingsRepository.shared.setBedrockRegions(regions)
+                        }
+                }
+
+                // Daily Budget
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("DAILY BUDGET (USD, OPTIONAL)")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .tracking(0.5)
+
+                    HStack(spacing: 6) {
+                        Text("$")
+                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textSecondary)
+
+                        TextField("", text: $bedrockDailyBudgetInput, prompt: Text("50.00").foregroundStyle(theme.textTertiary))
+                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(theme.glassBackground)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(theme.glassBorder, lineWidth: 1)
+                                    )
+                            )
+                            .onChange(of: bedrockDailyBudgetInput) { _, newValue in
+                                if newValue.isEmpty {
+                                    UserDefaultsProviderSettingsRepository.shared.setBedrockDailyBudget(nil)
+                                } else if let value = Decimal(string: newValue) {
+                                    UserDefaultsProviderSettingsRepository.shared.setBedrockDailyBudget(value)
+                                }
+                            }
+                    }
+                }
+
+                // Help text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AWS credentials are loaded from your configured profile.")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+
+                    Text("Configure with: aws configure --profile <name>")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+
+                // Link to AWS console
+                Link(destination: URL(string: "https://console.aws.amazon.com/bedrock/home")!) {
+                    HStack(spacing: 3) {
+                        Text("Open Bedrock Console")
+                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 7, weight: .bold))
+                    }
+                    .foregroundStyle(theme.accentPrimary)
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 1.0, green: 0.6, blue: 0.0),
+                                    Color(red: 0.9, green: 0.45, blue: 0.0)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "mountain.2.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("AWS Bedrock Configuration")
+                        .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+
+                    Text("CloudWatch usage tracking")
+                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+
+                Spacer()
+            }
+            .contentShape(.rect)
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    bedrockConfigExpanded.toggle()
                 }
             }
         }

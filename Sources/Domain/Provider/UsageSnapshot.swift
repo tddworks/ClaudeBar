@@ -23,6 +23,9 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// Cost-based usage data (for Claude API accounts)
     public let costUsage: CostUsage?
 
+    /// Bedrock usage summary (for AWS Bedrock provider)
+    public let bedrockUsage: BedrockUsageSummary?
+
     // MARK: - Initialization
 
     public init(
@@ -33,7 +36,8 @@ public struct UsageSnapshot: Sendable, Equatable {
         accountOrganization: String? = nil,
         loginMethod: String? = nil,
         accountTier: AccountTier? = nil,
-        costUsage: CostUsage? = nil
+        costUsage: CostUsage? = nil,
+        bedrockUsage: BedrockUsageSummary? = nil
     ) {
         self.providerId = providerId
         self.quotas = quotas
@@ -43,6 +47,7 @@ public struct UsageSnapshot: Sendable, Equatable {
         self.loginMethod = loginMethod
         self.accountTier = accountTier
         self.costUsage = costUsage
+        self.bedrockUsage = bedrockUsage
     }
 
     // MARK: - Domain Queries

@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -89,12 +89,49 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         userDefaults.removeObject(forKey: Keys.githubUsername)
     }
 
+    // MARK: - BedrockSettingsRepository
+
+    public func awsProfileName() -> String {
+        userDefaults.string(forKey: Keys.awsProfileName) ?? ""
+    }
+
+    public func setAWSProfileName(_ name: String) {
+        userDefaults.set(name, forKey: Keys.awsProfileName)
+    }
+
+    public func bedrockRegions() -> [String] {
+        userDefaults.stringArray(forKey: Keys.bedrockRegions) ?? ["us-east-1"]
+    }
+
+    public func setBedrockRegions(_ regions: [String]) {
+        userDefaults.set(regions, forKey: Keys.bedrockRegions)
+    }
+
+    public func bedrockDailyBudget() -> Decimal? {
+        guard let doubleValue = userDefaults.object(forKey: Keys.bedrockDailyBudget) as? Double else {
+            return nil
+        }
+        return Decimal(doubleValue)
+    }
+
+    public func setBedrockDailyBudget(_ amount: Decimal?) {
+        if let amount {
+            userDefaults.set(NSDecimalNumber(decimal: amount).doubleValue, forKey: Keys.bedrockDailyBudget)
+        } else {
+            userDefaults.removeObject(forKey: Keys.bedrockDailyBudget)
+        }
+    }
+
     // MARK: - Keys
 
     private enum Keys {
         static let zaiConfigPath = "providerConfig.zaiConfigPath"
         static let glmAuthEnvVar = "providerConfig.glmAuthEnvVar"
         static let copilotAuthEnvVar = "providerConfig.copilotAuthEnvVar"
+        // Bedrock settings
+        static let awsProfileName = "providerConfig.awsProfileName"
+        static let bedrockRegions = "providerConfig.bedrockRegions"
+        static let bedrockDailyBudget = "providerConfig.bedrockDailyBudget"
         // Credentials (kept compatible with old UserDefaultsCredentialRepository keys)
         static let githubToken = "com.claudebar.credentials.github-copilot-token"
         static let githubUsername = "com.claudebar.credentials.github-username"
