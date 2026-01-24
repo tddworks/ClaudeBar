@@ -9,8 +9,8 @@ let project = Project(
     packages: [
         .remote(url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.8.1")),
         .remote(url: "https://github.com/Kolos65/Mockable.git", requirement: .upToNextMajor(from: "0.5.0")),
-        .remote(url: "https://github.com/migueldeicaza/SwiftTerm.git", requirement: .upToNextMajor(from: "1.2.0")),
-        .remote(url: "https://github.com/awslabs/aws-sdk-swift.git", requirement: .upToNextMajor(from: "1.0.0")),
+        .remote(url: "https://github.com/migueldeicaza/SwiftTerm.git", requirement: .upToNextMajor(from: "1.5.1")),
+        .remote(url: "https://github.com/awslabs/aws-sdk-swift.git", requirement: .upToNextMajor(from: "1.6.40")),
     ],
     settings: .settings(
         base: [

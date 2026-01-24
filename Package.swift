@@ -15,7 +15,7 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
         .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.5.1"),
-        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.0.0"),
+        .package(url: "https://github.com/awslabs/aws-sdk-swift", from: "1.6.40"),
     ],
     targets: [
         // MARK: - Domain Layer (Rich domain models, business logic, ports)

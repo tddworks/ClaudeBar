@@ -309,7 +309,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `extract-changelog.sh` script to parse version-specific notes
 - Sparkle checks for updates when menu opens (instead of automatic background checks)
 - Improved release notes HTML formatting in update dialog
-
+  So these nodes are dynamically allocated, right
 ### Changed
 - Release workflow uses CHANGELOG.md instead of auto-generated notes
 
