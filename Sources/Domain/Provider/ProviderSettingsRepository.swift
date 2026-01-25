@@ -69,10 +69,10 @@ public protocol CopilotSettingsRepository: ProviderSettingsRepository {
     /// Sets whether the manual usage value is a percentage
     func setCopilotManualUsageIsPercent(_ isPercent: Bool)
 
-    /// Gets whether manual override is enabled (auto-enabled when API returns empty)
+    /// Gets whether manual override is enabled (controlled externally, not auto-enabled)
     func copilotManualOverrideEnabled() -> Bool
 
-    /// Sets whether manual override is enabled
+    /// Sets whether manual override is enabled (must be controlled externally)
     func setCopilotManualOverrideEnabled(_ enabled: Bool)
 
     /// Gets whether the API returned empty data (persisted state)
