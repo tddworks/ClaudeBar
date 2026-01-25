@@ -37,6 +37,7 @@ struct SettingsContentView: View {
     @State private var copilotMonthlyLimit: Int = 50
     @State private var copilotManualOverrideEnabled: Bool = false
     @State private var copilotManualUsageInput: String = ""
+    @State private var copilotManualUsageInputError: String?
     @State private var copilotApiReturnedEmpty: Bool = false
     @State private var isTestingCopilot = false
     @State private var copilotTestResult: String?
@@ -803,33 +804,54 @@ struct SettingsContentView: View {
                                 .fill(theme.glassBackground)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
+                                        .stroke(
+                                            copilotManualUsageInputError != nil ? Color.red.opacity(0.6) : theme.glassBorder,
+                                            lineWidth: copilotManualUsageInputError != nil ? 1.5 : 1
+                                        )
                                 )
                         )
                         .onChange(of: copilotManualUsageInput) { _, newValue in
                             // Parse input: if ends with %, treat as percentage; otherwise as request count
                             let trimmed = newValue.trimmingCharacters(in: .whitespaces)
                             
-                            if trimmed.hasSuffix("%") {
+                            if trimmed.isEmpty {
+                                // Clear value and error if input is empty
+                                copilotManualUsageInputError = nil
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
+                            } else if trimmed.hasSuffix("%") {
                                 // Percentage input (e.g., "198%")
                                 let numberPart = trimmed.dropLast()
-                                if let value = Double(numberPart), value >= 0 {
-                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(value)
+                                if let intValue = Int(numberPart), intValue >= 0 {
+                                    // Valid percentage (integer >= 0)
+                                    copilotManualUsageInputError = nil
+                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(Double(intValue))
                                     UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageIsPercent(true)
+                                } else {
+                                    // Invalid percentage
+                                    copilotManualUsageInputError = "Enter a valid number (e.g., 198%)"
+                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
                                 }
-                            } else if let value = Double(trimmed), value >= 0 {
-                                // Request count input (e.g., "99")
-                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(value)
+                            } else if let intValue = Int(trimmed), intValue >= 0 {
+                                // Valid request count (integer >= 0)
+                                copilotManualUsageInputError = nil
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(Double(intValue))
                                 UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageIsPercent(false)
-                            } else if trimmed.isEmpty {
-                                // Clear value if input is empty
+                            } else {
+                                // Invalid request count
+                                copilotManualUsageInputError = "Enter a whole number or percentage"
                                 UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
                             }
                         }
-
-                    Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                    
+                    if let error = copilotManualUsageInputError {
+                        Text(error)
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(.red)
+                    } else {
+                        Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
                 }
             }
 

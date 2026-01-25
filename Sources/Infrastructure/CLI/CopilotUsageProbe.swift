@@ -159,15 +159,17 @@ public struct CopilotUsageProbe: UsageProbe {
         // Update stored period
         settingsRepository.setCopilotLastUsagePeriod(month: currentMonth, year: currentYear)
 
-        // Detect if API returned empty data (common for org-based Copilot Business)
-        // Note: We set the flag but don't auto-enable manual override to avoid
+        // Detect if API returned empty Copilot data (common for org-based Copilot Business)
+        // Note: We check copilotItems specifically to handle cases where API returns
+        // other product usage (e.g., GitHub Actions) but no Copilot usage data.
+        // We set the flag but don't auto-enable manual override to avoid
         // conflating "zero usage" with "API can't report usage"
-        let apiReturnedEmpty = items.isEmpty
+        let apiReturnedEmpty = copilotItems.isEmpty
         if apiReturnedEmpty {
-            AppLog.probes.info("Copilot: API returned no usage items (could be zero usage or org-based subscription)")
+            AppLog.probes.info("Copilot: API returned no Copilot usage items (could be zero usage or org-based subscription)")
             settingsRepository.setCopilotApiReturnedEmpty(true)
         } else {
-            // Clear the flag if we got data
+            // Clear the flag if we got Copilot data
             settingsRepository.setCopilotApiReturnedEmpty(false)
         }
 
@@ -190,7 +192,13 @@ public struct CopilotUsageProbe: UsageProbe {
 
         // Use configured monthly limit or default to 50 (Free/Pro tier premium requests)
         // Note: 2000 is code completions limit, not premium requests limit
-        let monthlyLimit: Double = Double(settingsRepository.copilotMonthlyLimit() ?? 50)
+        var monthlyLimit: Double = Double(settingsRepository.copilotMonthlyLimit() ?? 50)
+        
+        // Guard against division by zero (ensure monthlyLimit is positive)
+        if monthlyLimit <= 0 {
+            AppLog.probes.warning("Copilot: Invalid monthly limit (\(Int(monthlyLimit))), using default 50")
+            monthlyLimit = 50
+        }
         
         // Determine usage: manual override or API data
         let manualOverrideEnabled = settingsRepository.copilotManualOverrideEnabled()

@@ -398,6 +398,49 @@ struct CopilotUsageProbeTests {
     }
 
     @Test
+    func `probe sets apiReturnedEmpty when API has non-Copilot items only`() async throws {
+        let settings = makeSettingsRepository(username: "testuser", hasToken: true)
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "timePeriod": { "year": 2026, "month": 1 },
+          "user": "testuser",
+          "usageItems": [
+            {
+              "product": "Actions",
+              "sku": "Actions Linux",
+              "grossQuantity": 1000.0
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.github.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let probe = CopilotUsageProbe(
+            networkClient: mockNetwork,
+            settingsRepository: settings
+        )
+
+        let snapshot = try await probe.probe()
+
+        // Verify apiReturnedEmpty flag is set even when API returns non-Copilot items
+        #expect(settings.copilotApiReturnedEmpty() == true)
+        
+        // Should return 100% remaining (zero Copilot usage)
+        let quota = snapshot.quotas.first!
+        #expect(quota.percentRemaining == 100.0)
+        #expect(quota.resetText == "0/50 requests")
+    }
+
+    @Test
     func `probe uses manual usage when override is enabled`() async throws {
         let settings = makeSettingsRepository(
             username: "testuser",
