@@ -140,7 +140,7 @@ struct GeminiProjectsTests {
     }
 
     @Test
-    func `bestProjectForQuota returns nil when no suitable project`() {
+    func `bestProjectForQuota falls back to any project when no CLI or labeled project`() {
         // Given
         let regularProject = GeminiProject(projectId: "regular-project", labels: nil)
         let projects = GeminiProjects(projects: [regularProject])
@@ -148,8 +148,8 @@ struct GeminiProjectsTests {
         // When
         let best = projects.bestProjectForQuota
 
-        // Then
-        #expect(best == nil)
+        // Then - should return the regular project as a fallback
+        #expect(best?.projectId == "regular-project")
     }
 
     @Test
