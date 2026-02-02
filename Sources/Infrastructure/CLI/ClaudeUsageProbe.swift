@@ -73,6 +73,13 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
         let snapshot: UsageSnapshot
         do {
             snapshot = try parseClaudeOutput(usageResult.output)
+        } catch ProbeError.folderTrustRequired {
+            // Auto-response failed to dismiss trust prompt — write trust to ~/.claude.json and retry
+            AppLog.probes.info("Writing trust for probe directory and retrying...")
+            if writeClaudeTrust(for: workingDir) {
+                return try await probe()
+            }
+            throw ProbeError.folderTrustRequired
         } catch ProbeError.subscriptionRequired {
             // API Usage Billing accounts don't support /usage, try /cost instead
             AppLog.probes.info("Account requires /cost command, falling back...")
@@ -681,6 +688,61 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     }
 
     // MARK: - Helpers
+
+    /// Writes a trust entry for the given directory to ~/.claude.json so the CLI
+    /// won't show the workspace trust dialog on next invocation.
+    /// Returns true if the write succeeded.
+    internal func writeClaudeTrust(for directory: URL) -> Bool {
+        let configDir = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]
+            .map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath, isDirectory: true) }
+        let claudeJsonURL = (configDir ?? FileManager.default.homeDirectoryForCurrentUser)
+            .appendingPathComponent(".claude.json")
+
+        guard FileManager.default.fileExists(atPath: claudeJsonURL.path) else {
+            AppLog.probes.warning("\(claudeJsonURL.path) not found, cannot write trust")
+            return false
+        }
+
+        var root: [String: Any]
+        if let data = try? Data(contentsOf: claudeJsonURL),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            root = json
+        } else {
+            AppLog.probes.warning("\(claudeJsonURL.path) is not valid JSON, cannot write trust")
+            return false
+        }
+
+        if let existing = root["projects"], !(existing is [String: Any]) {
+            AppLog.probes.warning("\(claudeJsonURL.path) 'projects' has unexpected type, refusing to overwrite")
+            return false
+        }
+        var projects = root["projects"] as? [String: Any] ?? [:]
+        let key = directory.path
+
+        if let existingEntry = projects[key], !(existingEntry is [String: Any]) {
+            AppLog.probes.warning("\(claudeJsonURL.path) project entry has unexpected type, refusing to overwrite")
+            return false
+        }
+        var entry = projects[key] as? [String: Any] ?? [:]
+
+        if entry["hasTrustDialogAccepted"] as? Bool == true {
+            return false
+        }
+
+        entry["hasTrustDialogAccepted"] = true
+        projects[key] = entry
+        root["projects"] = projects
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
+            try data.write(to: claudeJsonURL, options: .atomic)
+            AppLog.probes.info("Wrote trust for \(key) to \(claudeJsonURL.path)")
+            return true
+        } catch {
+            AppLog.probes.error("Failed to write trust to \(claudeJsonURL.path): \(error.localizedDescription)")
+            return false
+        }
+    }
 
     internal func probeWorkingDirectory() -> URL {
         let fm = FileManager.default
