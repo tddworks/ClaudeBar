@@ -467,9 +467,12 @@ struct MenuContentView: View {
                 .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                 .foregroundStyle(theme.textPrimary)
 
-            Text("Install CLI or check configuration")
+            // Show actual error message if available, otherwise generic message
+            Text(selectedProvider?.lastError?.localizedDescription ?? "Install CLI or check configuration")
                 .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
                 .foregroundStyle(theme.textTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
         }
         .frame(height: 140)
         .frame(maxWidth: .infinity)
