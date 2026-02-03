@@ -460,11 +460,17 @@ jobs:
         # Only update Homebrew for stable releases (not pre-releases) and when enabled
         if: |
           steps.version.outputs.is_prerelease == 'false' &&
-          ((github.event_name == 'workflow_dispatch' && inputs.update_homebrew) || github.event_name == 'push') &&
-          secrets.HOMEBREW_GITHUB_API_TOKEN != ''
+          ((github.event_name == 'workflow_dispatch' && inputs.update_homebrew) || github.event_name == 'push')
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
         run: |
+          # Skip if token not configured
+          if [ -z "$HOMEBREW_GITHUB_API_TOKEN" ]; then
+            echo "::notice::HOMEBREW_GITHUB_API_TOKEN not set, skipping Homebrew Cask update"
+            echo "To enable automatic Homebrew updates, add a GitHub PAT with public_repo scope as HOMEBREW_GITHUB_API_TOKEN secret"
+            exit 0
+          fi
+
           VERSION="${{ steps.version.outputs.version }}"
           DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${DMG_FILE}"
 
