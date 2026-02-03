@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-03
+
+### Added
+- **Claude API Mode**: New alternative to CLI mode that fetches quota data directly via Anthropic's OAuth API. Faster than CLI mode (no subprocess spawning), with automatic token refresh. Switch between modes in Settings → Claude Configuration.
+- **Claude Configuration Card**: New settings panel to choose between CLI mode (default, uses `claude /usage` command) and API mode (direct HTTP API calls using OAuth credentials).
+- **Copilot Manual Usage Override**: For users with organization-based Copilot subscriptions where API data isn't available, manually enter your usage from GitHub settings. Supports both request counts (e.g., "99") and percentages (e.g., "198%").
+- **Copilot Monthly Limit Configuration**: Choose your Copilot plan tier (Free/Pro: 50, Business: 300, Enterprise: 1000, Pro+: 1500) for accurate quota calculations.
+- **Over-Quota Display**: Negative percentages now display correctly when you've exceeded your quota limit (e.g., -98% when using 99 of 50 requests).
+
+### Improved
+- **Better Error Messages**: When Claude API session expires, shows user-friendly message: "Session expired. Run `claude` in terminal to log in again."
+- **Gemini Quota Accuracy**: Falls back to any available GCP project when primary project isn't found, ensuring quota data is displayed.
+- **Auto-Trust Probe Directory**: Automatically trusts the probe working directory when Claude CLI shows trust dialog, eliminating manual intervention.
+- **CLAUDE_CONFIG_DIR Support**: Respects custom Claude configuration directory for trust file location.
+
+### Fixed
+- **Copilot Dashboard URL**: Now links directly to GitHub Copilot features page for easier usage viewing.
+- **Copilot Usage Period Reset**: Manual usage entries automatically clear when billing period changes.
+- **Schema Validation**: Guards against unexpected config file schemas to prevent crashes.
+
+### Technical
+- Added `ClaudeAPIUsageProbe` with OAuth token refresh via `https://platform.claude.com/v1/oauth/token`
+- Added `ClaudeCredentialLoader` for loading OAuth credentials from `~/.claude/.credentials.json` or Keychain
+- Added `ClaudeProbeMode` enum and `ClaudeSettingsRepository` protocol for probe mode persistence
+- Extended `ClaudeProvider` with dual probe support (CLI + API) and mode switching
+- Added `ProbeError.sessionExpired` case with user-friendly error description
+- Migrated build system to Tuist for dependency management
+- Updated aws-sdk-swift and SwiftTerm dependencies
+
 ## [0.3.15] - 2026-01-23
 
 ### Added
@@ -325,7 +354,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.3.15...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/tddworks/ClaudeBar/compare/v0.3.15...v0.4.0
 [0.3.15]: https://github.com/tddworks/ClaudeBar/compare/v0.3.12...v0.3.15
 [0.3.12]: https://github.com/tddworks/ClaudeBar/compare/v0.3.6...v0.3.12
 [0.3.6]: https://github.com/tddworks/ClaudeBar/compare/v0.3.4...v0.3.6
