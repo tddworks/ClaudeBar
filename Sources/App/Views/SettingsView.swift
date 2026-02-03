@@ -22,6 +22,7 @@ struct SettingsContentView: View {
     @State private var saveError: String?
     @State private var saveSuccess: Bool = false
     @State private var copilotIsExpanded: Bool = false
+    @State private var claudeConfigExpanded: Bool = false
     @State private var claudeBudgetExpanded: Bool = false
     @State private var providersExpanded: Bool = false
     @State private var zaiConfigExpanded: Bool = false
@@ -48,11 +49,19 @@ struct SettingsContentView: View {
     @State private var bedrockRegionsInput: String = ""
     @State private var bedrockDailyBudgetInput: String = ""
 
+    // Claude settings state
+    @State private var claudeProbeMode: ClaudeProbeMode = .cli
+
     private enum ProviderID {
         static let claude = "claude"
         static let copilot = "copilot"
         static let zai = "zai"
         static let bedrock = "bedrock"
+    }
+
+    /// The Claude provider from the monitor (cast to ClaudeProvider for probe mode access)
+    private var claudeProvider: ClaudeProvider? {
+        monitor.provider(for: ProviderID.claude) as? ClaudeProvider
     }
 
     /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
@@ -105,6 +114,8 @@ struct SettingsContentView: View {
                     themeCard
                     providersCard
                     if isClaudeEnabled {
+                        claudeConfigCard
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         claudeBudgetCard
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
@@ -156,6 +167,9 @@ struct SettingsContentView: View {
                     copilotManualUsageInput = String(Int(value))
                 }
             }
+
+            // Initialize Claude settings
+            claudeProbeMode = UserDefaultsProviderSettingsRepository.shared.claudeProbeMode()
 
             // Initialize Bedrock settings
             awsProfileNameInput = UserDefaultsProviderSettingsRepository.shared.awsProfileName()
@@ -369,6 +383,165 @@ struct SettingsContentView: View {
             // Invisible placeholder to balance the header
             Color.clear
                 .frame(width: 60, height: 1)
+        }
+    }
+
+    // MARK: - Claude Config Card
+
+    private var claudeConfigCard: some View {
+        DisclosureGroup(isExpanded: $claudeConfigExpanded) {
+            Divider()
+                .background(theme.glassBorder)
+                .padding(.vertical, 12)
+
+            claudeConfigForm
+        } label: {
+            claudeConfigHeader
+                .contentShape(.rect)
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        claudeConfigExpanded.toggle()
+                    }
+                }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(theme.cardGradient)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    private var claudeConfigHeader: some View {
+        HStack(spacing: 10) {
+            // Provider icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.85, green: 0.55, blue: 0.35),
+                                Color(red: 0.75, green: 0.40, blue: 0.30)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: "gear")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Claude Configuration")
+                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textPrimary)
+
+                Text("Data fetching method")
+                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private var claudeConfigForm: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Probe Mode
+            VStack(alignment: .leading, spacing: 6) {
+                Text("PROBE MODE")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .tracking(0.5)
+
+                Picker("", selection: $claudeProbeMode) {
+                    ForEach(ClaudeProbeMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: claudeProbeMode) { _, newValue in
+                    UserDefaultsProviderSettingsRepository.shared.setClaudeProbeMode(newValue)
+                    // Optionally trigger a refresh when mode changes
+                    Task {
+                        await monitor.refresh(providerId: ProviderID.claude)
+                    }
+                }
+            }
+
+            // Mode descriptions
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 10))
+                        .foregroundStyle(claudeProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
+                        .frame(width: 16)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("CLI Mode")
+                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(claudeProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
+
+                        Text("Runs `claude /usage` command. Works with any auth method.")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
+
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "network")
+                        .font(.system(size: 10))
+                        .foregroundStyle(claudeProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
+                        .frame(width: 16)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("API Mode")
+                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(claudeProbeMode == .api ? theme.textPrimary : theme.textSecondary)
+
+                        Text("Calls Anthropic API directly. Faster, uses OAuth credentials.")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
+            }
+
+            // Current mode status
+            if claudeProbeMode == .api {
+                let credentialLoader = ClaudeCredentialLoader()
+                let hasCredentials = credentialLoader.loadCredentials() != nil
+
+                HStack(spacing: 6) {
+                    Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
+
+                    Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
+                }
+
+                if !hasCredentials {
+                    Text("Run `claude` in terminal to authenticate, then credentials will be available.")
+                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+            }
         }
     }
 

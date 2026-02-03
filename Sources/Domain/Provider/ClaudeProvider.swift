@@ -3,7 +3,7 @@ import Observation
 
 /// Claude AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
-/// Owns its probe and manages its own data lifecycle.
+/// Supports dual probe modes: CLI (default) and API.
 @Observable
 public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     // MARK: - Identity (Protocol Requirement)
@@ -44,10 +44,31 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     /// Whether the provider is currently fetching passes
     public private(set) var isFetchingPasses: Bool = false
 
+    // MARK: - Probe Mode
+
+    /// The current probe mode (CLI or API)
+    public var probeMode: ClaudeProbeMode {
+        get {
+            // Only use ClaudeSettingsRepository if available
+            if let claudeSettings = settingsRepository as? ClaudeSettingsRepository {
+                return claudeSettings.claudeProbeMode()
+            }
+            return .cli
+        }
+        set {
+            if let claudeSettings = settingsRepository as? ClaudeSettingsRepository {
+                claudeSettings.setClaudeProbeMode(newValue)
+            }
+        }
+    }
+
     // MARK: - Internal
 
-    /// The probe used to fetch usage data
-    private let probe: any UsageProbe
+    /// The CLI probe for fetching usage data via `claude /usage`
+    private let cliProbe: any UsageProbe
+
+    /// The API probe for fetching usage data via HTTP API (optional)
+    private let apiProbe: (any UsageProbe)?
 
     /// The probe used to fetch guest pass data
     private let passProbe: (any ClaudePassProbing)?
@@ -55,11 +76,22 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     /// The settings repository for persisting provider settings
     private let settingsRepository: any ProviderSettingsRepository
 
+    /// Returns the active probe based on current mode
+    private var activeProbe: any UsageProbe {
+        switch probeMode {
+        case .cli:
+            return cliProbe
+        case .api:
+            // Fall back to CLI if API probe not available
+            return apiProbe ?? cliProbe
+        }
+    }
+
     // MARK: - Initialization
 
-    /// Creates a Claude provider with the specified probes
+    /// Creates a Claude provider with CLI probe only (legacy initializer)
     /// - Parameters:
-    ///   - probe: The probe to use for fetching usage data
+    ///   - probe: The CLI probe to use for fetching usage data
     ///   - passProbe: The probe to use for fetching guest pass data (optional)
     ///   - settingsRepository: The repository for persisting settings
     public init(
@@ -67,7 +99,28 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         passProbe: (any ClaudePassProbing)? = nil,
         settingsRepository: any ProviderSettingsRepository
     ) {
-        self.probe = probe
+        self.cliProbe = probe
+        self.apiProbe = nil
+        self.passProbe = passProbe
+        self.settingsRepository = settingsRepository
+        // Load persisted enabled state (defaults to true)
+        self.isEnabled = settingsRepository.isEnabled(forProvider: "claude")
+    }
+
+    /// Creates a Claude provider with both CLI and API probes
+    /// - Parameters:
+    ///   - cliProbe: The CLI probe for fetching usage via `claude /usage`
+    ///   - apiProbe: The API probe for fetching usage via HTTP API
+    ///   - passProbe: The probe to use for fetching guest pass data (optional)
+    ///   - settingsRepository: The repository for persisting settings (must be ClaudeSettingsRepository for mode switching)
+    public init(
+        cliProbe: any UsageProbe,
+        apiProbe: any UsageProbe,
+        passProbe: (any ClaudePassProbing)? = nil,
+        settingsRepository: any ClaudeSettingsRepository
+    ) {
+        self.cliProbe = cliProbe
+        self.apiProbe = apiProbe
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
         // Load persisted enabled state (defaults to true)
@@ -77,10 +130,11 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     // MARK: - AIProvider Protocol
 
     public func isAvailable() async -> Bool {
-        await probe.isAvailable()
+        await activeProbe.isAvailable()
     }
 
     /// Refreshes the usage data and updates the snapshot.
+    /// Uses the active probe based on current probe mode.
     /// Sets isSyncing during refresh and captures any errors.
     @discardableResult
     public func refresh() async throws -> UsageSnapshot {
@@ -88,7 +142,7 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         defer { isSyncing = false }
 
         do {
-            let newSnapshot = try await probe.probe()
+            let newSnapshot = try await activeProbe.probe()
             snapshot = newSnapshot
             lastError = nil
             return newSnapshot
@@ -125,6 +179,11 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     /// Whether guest passes feature is available
     public var supportsGuestPasses: Bool {
         passProbe != nil
+    }
+
+    /// Whether API mode is available (API probe was provided)
+    public var supportsApiMode: Bool {
+        apiProbe != nil
     }
 }
 

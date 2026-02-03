@@ -146,6 +146,18 @@ public protocol BedrockSettingsRepository: ProviderSettingsRepository {
     func setBedrockDailyBudget(_ amount: Decimal?)
 }
 
+/// Claude-specific settings repository, extending base ProviderSettingsRepository.
+/// Includes configuration for probe mode (CLI vs API).
+/// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
+/// App uses UserDefaultsProviderSettingsRepository.
+public protocol ClaudeSettingsRepository: ProviderSettingsRepository {
+    /// Gets the probe mode for Claude (CLI or API)
+    func claudeProbeMode() -> ClaudeProbeMode
+
+    /// Sets the probe mode for Claude
+    func setClaudeProbeMode(_ mode: ClaudeProbeMode)
+}
+
 // MARK: - Default Implementation
 
 public extension ProviderSettingsRepository {

@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -164,6 +164,19 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         userDefaults.removeObject(forKey: Keys.githubUsername)
     }
 
+    // MARK: - ClaudeSettingsRepository
+
+    public func claudeProbeMode() -> ClaudeProbeMode {
+        guard let rawValue = userDefaults.string(forKey: Keys.claudeProbeMode) else {
+            return .cli // Default to CLI mode
+        }
+        return ClaudeProbeMode(rawValue: rawValue) ?? .cli
+    }
+
+    public func setClaudeProbeMode(_ mode: ClaudeProbeMode) {
+        userDefaults.set(mode.rawValue, forKey: Keys.claudeProbeMode)
+    }
+
     // MARK: - BedrockSettingsRepository
 
     public func awsProfileName() -> String {
@@ -200,6 +213,8 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
     // MARK: - Keys
 
     private enum Keys {
+        // Claude settings
+        static let claudeProbeMode = "providerConfig.claudeProbeMode"
         static let zaiConfigPath = "providerConfig.zaiConfigPath"
         static let glmAuthEnvVar = "providerConfig.glmAuthEnvVar"
         static let copilotAuthEnvVar = "providerConfig.copilotAuthEnvVar"

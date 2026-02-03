@@ -36,7 +36,12 @@ struct ClaudeBarApp: App {
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         // Each probe checks isAvailable() for credentials/prerequisites
         let repository = AIProviders(providers: [
-            ClaudeProvider(probe: ClaudeUsageProbe(), passProbe: ClaudePassProbe(), settingsRepository: settingsRepository),
+            ClaudeProvider(
+                cliProbe: ClaudeUsageProbe(),
+                apiProbe: ClaudeAPIUsageProbe(),
+                passProbe: ClaudePassProbe(),
+                settingsRepository: settingsRepository
+            ),
             CodexProvider(probe: CodexUsageProbe(), settingsRepository: settingsRepository),
             GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
             AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
