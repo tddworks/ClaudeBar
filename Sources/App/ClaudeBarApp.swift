@@ -42,7 +42,11 @@ struct ClaudeBarApp: App {
                 passProbe: ClaudePassProbe(),
                 settingsRepository: settingsRepository
             ),
-            CodexProvider(probe: CodexUsageProbe(), settingsRepository: settingsRepository),
+            CodexProvider(
+                rpcProbe: CodexUsageProbe(),
+                apiProbe: CodexAPIUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
             GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
             AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
             ZaiProvider(

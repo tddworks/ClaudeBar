@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -177,6 +177,19 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         userDefaults.set(mode.rawValue, forKey: Keys.claudeProbeMode)
     }
 
+    // MARK: - CodexSettingsRepository
+
+    public func codexProbeMode() -> CodexProbeMode {
+        guard let rawValue = userDefaults.string(forKey: Keys.codexProbeMode) else {
+            return .rpc // Default to RPC mode
+        }
+        return CodexProbeMode(rawValue: rawValue) ?? .rpc
+    }
+
+    public func setCodexProbeMode(_ mode: CodexProbeMode) {
+        userDefaults.set(mode.rawValue, forKey: Keys.codexProbeMode)
+    }
+
     // MARK: - BedrockSettingsRepository
 
     public func awsProfileName() -> String {
@@ -215,6 +228,8 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
     private enum Keys {
         // Claude settings
         static let claudeProbeMode = "providerConfig.claudeProbeMode"
+        // Codex settings
+        static let codexProbeMode = "providerConfig.codexProbeMode"
         static let zaiConfigPath = "providerConfig.zaiConfigPath"
         static let glmAuthEnvVar = "providerConfig.glmAuthEnvVar"
         static let copilotAuthEnvVar = "providerConfig.copilotAuthEnvVar"
