@@ -52,7 +52,7 @@ tuist build -- -configuration Release
 
 ## Architecture
 
-> **Full documentation:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> **Full documentation:** [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)
 
 The project follows a **layered architecture** with `QuotaMonitor` as the single source of truth:
 
@@ -98,7 +98,7 @@ ProviderSettingsRepository (base)
 
 ### Theme System
 
-> **Full documentation:** [docs/THEME_DESIGN.md](docs/THEME_DESIGN.md)
+> **Full documentation:** [docs/architecture/THEME_DESIGN.md](docs/architecture/THEME_DESIGN.md)
 
 The app uses a **protocol-based theme system** (`AppThemeProvider`) for pluggable themes:
 

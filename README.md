@@ -196,7 +196,7 @@ See `.claude/skills/add-provider/SKILL.md` for details and `AntigravityUsageProb
 
 Releases are automated via GitHub Actions. Push a version tag to create a new release.
 
-**For detailed setup instructions, see [docs/RELEASE_SETUP.md](docs/RELEASE_SETUP.md).**
+**For detailed setup instructions, see [docs/release/RELEASE_SETUP.md](docs/release/RELEASE_SETUP.md).**
 
 ### Release Workflow
 
@@ -210,7 +210,7 @@ Version is set in `Sources/App/Info.plist` and flows through to Sparkle auto-upd
 
 ### Quick Start
 
-1. **Configure GitHub Secrets** (see [full guide](docs/RELEASE_SETUP.md)):
+1. **Configure GitHub Secrets** (see [full guide](docs/release/RELEASE_SETUP.md)):
 
    | Secret | Description |
    |--------|-------------|
