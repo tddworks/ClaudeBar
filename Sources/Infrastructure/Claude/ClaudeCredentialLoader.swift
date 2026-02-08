@@ -1,5 +1,4 @@
 import Foundation
-import Security
 import Domain
 
 /// OAuth credentials loaded from Claude credential storage.
@@ -168,68 +167,80 @@ public struct ClaudeCredentialLoader: Sendable {
     // MARK: - Private: Keychain Operations
 
     private func loadFromKeychain() -> ClaudeCredentialResult? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", keychainService, "-w"]
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
 
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let oauthDict = json["claudeAiOauth"] as? [String: Any],
-              let accessToken = oauthDict["accessToken"] as? String,
-              !accessToken.isEmpty else {
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let jsonString = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !jsonString.isEmpty else { return nil }
+
+            guard let jsonData = jsonString.data(using: .utf8),
+                  let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let oauthDict = json["claudeAiOauth"] as? [String: Any],
+                  let accessToken = oauthDict["accessToken"] as? String,
+                  !accessToken.isEmpty else {
+                return nil
+            }
+
+            let oauth = ClaudeOAuthCredentials(
+                accessToken: accessToken,
+                refreshToken: oauthDict["refreshToken"] as? String,
+                expiresAt: oauthDict["expiresAt"] as? Double,
+                subscriptionType: oauthDict["subscriptionType"] as? String
+            )
+
+            return ClaudeCredentialResult(oauth: oauth, source: .keychain, fullData: json)
+        } catch {
+            AppLog.credentials.error("Failed to load Claude credentials from Keychain via security CLI: \(error.localizedDescription)")
             return nil
         }
-
-        let oauth = ClaudeOAuthCredentials(
-            accessToken: accessToken,
-            refreshToken: oauthDict["refreshToken"] as? String,
-            expiresAt: oauthDict["expiresAt"] as? Double,
-            subscriptionType: oauthDict["subscriptionType"] as? String
-        )
-
-        return ClaudeCredentialResult(oauth: oauth, source: .keychain, fullData: json)
     }
 
     private func saveToKeychain(_ data: [String: Any]) {
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]) else {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
             AppLog.credentials.error("Failed to serialize Claude credentials for Keychain")
             return
         }
 
-        // First, try to update existing item
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService
-        ]
+        // Delete existing item first (ignore errors if not found)
+        let deleteProcess = Process()
+        deleteProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        deleteProcess.arguments = ["delete-generic-password", "-s", keychainService]
+        deleteProcess.standardOutput = Pipe()
+        deleteProcess.standardError = Pipe()
+        try? deleteProcess.run()
+        deleteProcess.waitUntilExit()
 
-        let update: [String: Any] = [
-            kSecValueData as String: jsonData
-        ]
+        // Add new item
+        let addProcess = Process()
+        addProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        addProcess.arguments = ["add-generic-password", "-s", keychainService, "-w", jsonString]
+        addProcess.standardOutput = Pipe()
+        addProcess.standardError = Pipe()
 
-        let updateStatus = SecItemUpdate(query as CFDictionary, update as CFDictionary)
+        do {
+            try addProcess.run()
+            addProcess.waitUntilExit()
 
-        if updateStatus == errSecItemNotFound {
-            // Item doesn't exist, add it
-            var addQuery = query
-            addQuery[kSecValueData as String] = jsonData
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-
-            if addStatus != errSecSuccess {
-                AppLog.credentials.error("Failed to add Claude credentials to Keychain: \(addStatus)")
+            if addProcess.terminationStatus == 0 {
+                AppLog.credentials.info("Saved Claude credentials to Keychain")
             } else {
-                AppLog.credentials.info("Added Claude credentials to Keychain")
+                AppLog.credentials.error("Failed to save Claude credentials to Keychain (exit code: \(addProcess.terminationStatus))")
             }
-        } else if updateStatus != errSecSuccess {
-            AppLog.credentials.error("Failed to update Claude credentials in Keychain: \(updateStatus)")
-        } else {
-            AppLog.credentials.info("Updated Claude credentials in Keychain")
+        } catch {
+            AppLog.credentials.error("Failed to save Claude credentials to Keychain: \(error.localizedDescription)")
         }
     }
 }

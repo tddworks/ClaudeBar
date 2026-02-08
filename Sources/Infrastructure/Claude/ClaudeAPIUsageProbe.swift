@@ -1,6 +1,31 @@
 import Foundation
 import Domain
 
+/// Thread-safe in-memory cache for Claude OAuth credentials.
+/// Avoids repeated Keychain/CLI lookups on every probe cycle.
+private final class CredentialCache: @unchecked Sendable {
+    private var cached: ClaudeCredentialResult?
+    private let lock = NSLock()
+
+    func get() -> ClaudeCredentialResult? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cached
+    }
+
+    func set(_ credentials: ClaudeCredentialResult) {
+        lock.lock()
+        defer { lock.unlock() }
+        cached = credentials
+    }
+
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        cached = nil
+    }
+}
+
 /// Claude API-based usage probe that fetches quota data directly from Anthropic's OAuth API.
 ///
 /// This probe uses the user's OAuth credentials (from `~/.claude/.credentials.json` or Keychain)
@@ -12,6 +37,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     private let credentialLoader: ClaudeCredentialLoader
     private let networkClient: any NetworkClient
     private let timeout: TimeInterval
+    private let cache = CredentialCache()
 
     // API endpoints
     private static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
@@ -34,14 +60,17 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     }
 
     public func isAvailable() async -> Bool {
-        credentialLoader.loadCredentials() != nil
+        if cache.get() != nil { return true }
+        return credentialLoader.loadCredentials() != nil
     }
 
     public func probe() async throws -> UsageSnapshot {
-        guard var credentials = credentialLoader.loadCredentials() else {
+        // Check cache first, fall back to loading from file/keychain
+        guard var credentials = cache.get() ?? credentialLoader.loadCredentials() else {
             AppLog.probes.error("Claude API: No credentials found")
             throw ProbeError.authenticationRequired
         }
+        cache.set(credentials)
 
         // Check if token needs refresh
         if credentialLoader.needsRefresh(credentials.oauth) {
@@ -145,8 +174,9 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             updatedCredentials.oauth.expiresAt = Date().timeIntervalSince1970 * 1000 + Double(expiresIn) * 1000
         }
 
-        // Save updated credentials
+        // Save updated credentials and update cache
         credentialLoader.saveCredentials(updatedCredentials)
+        cache.set(updatedCredentials)
 
         AppLog.probes.info("Claude API: Token refreshed successfully")
         return updatedCredentials
