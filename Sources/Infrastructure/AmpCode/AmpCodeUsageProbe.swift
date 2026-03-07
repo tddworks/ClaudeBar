@@ -120,20 +120,12 @@ public struct AmpCodeUsageProbe: UsageProbe {
             throw ProbeError.parseFailed("No valid credit lines found in amp usage output")
         }
 
-        // Determine tier from quotas (mapped labels are already clean)
-        let tier = quotas.compactMap { quota -> String? in
-            if case .modelSpecific(let label) = quota.quotaType, label == "Free" {
-                return label
-            }
-            return nil
-        }.first
-
         return UsageSnapshot(
             providerId: "ampcode",
             quotas: quotas,
             capturedAt: Date(),
             accountEmail: email,
-            accountTier: tier.map { .custom($0) }
+            accountTier: nil
         )
     }
 
