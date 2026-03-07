@@ -27,8 +27,10 @@ public struct AmpCodeUsageProbe: UsageProbe {
         pattern: #"^(.+?):\s*\$([0-9]+(?:\.[0-9]+)?)\s+remaining"#,
         options: .caseInsensitive
     )
-    private static let tierMappings: [String: String] = [
-        "amp free": "Free"
+    
+    private static let labelMappings: [String: String] = [
+        "amp free": "Free",
+        "individual credits": "Individual",
     ]
 
     // MARK: - UsageProbe
@@ -118,10 +120,10 @@ public struct AmpCodeUsageProbe: UsageProbe {
             throw ProbeError.parseFailed("No valid credit lines found in amp usage output")
         }
 
-        // Determine tier from quotas
+        // Determine tier from quotas (mapped labels are already clean)
         let tier = quotas.compactMap { quota -> String? in
-            if case .modelSpecific(let label) = quota.quotaType {
-                return tierMappings[label.lowercased()]
+            if case .modelSpecific(let label) = quota.quotaType, label == "Free" {
+                return label
             }
             return nil
         }.first
@@ -162,7 +164,8 @@ public struct AmpCodeUsageProbe: UsageProbe {
             return nil
         }
 
-        let label = String(line[labelRange]).trimmingCharacters(in: .whitespaces)
+        let rawLabel = String(line[labelRange]).trimmingCharacters(in: .whitespaces)
+        let label = labelMappings[rawLabel.lowercased()] ?? rawLabel
         guard let remaining = Double(line[remainingRange]),
               let total = Double(line[totalRange]),
               total > 0 else {
@@ -199,7 +202,8 @@ public struct AmpCodeUsageProbe: UsageProbe {
             return nil
         }
 
-        let label = String(line[labelRange]).trimmingCharacters(in: .whitespaces)
+        let rawLabel = String(line[labelRange]).trimmingCharacters(in: .whitespaces)
+        let label = labelMappings[rawLabel.lowercased()] ?? rawLabel
         guard let amount = Decimal(string: String(line[amountRange])) else {
             return nil
         }
