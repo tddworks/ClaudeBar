@@ -27,11 +27,18 @@ struct QuotaCardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            // Percentage
-            Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))%")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(effectiveDisplayMode == .pace ? quota.pace.displayColor : quota.status.displayColor)
+            // Value display
+            if let dollarText = quota.formattedDollarRemaining {
+                Text("\(dollarText) remaining")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(quota.status.displayColor)
+            } else {
+                Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))%")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(effectiveDisplayMode == .pace ? quota.pace.displayColor : quota.status.displayColor)
+            }
 
             // Progress bar with pace tick
             VStack(spacing: 1) {
