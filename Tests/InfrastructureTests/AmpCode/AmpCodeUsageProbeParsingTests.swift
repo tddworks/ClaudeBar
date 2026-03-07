@@ -180,8 +180,9 @@ struct AmpCodeUsageProbeParsingTests {
 
         // Then
         #expect(snapshot.quotas.count == 1)
-        #expect(snapshot.quotas[0].quotaType == .modelSpecific("Individual"))
-        #expect(snapshot.quotas[0].dollarRemaining == 50)
+        let individualQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Individual") }
+        #expect(individualQuota != nil)
+        #expect(individualQuota?.dollarRemaining == 50)
     }
 
     @Test
