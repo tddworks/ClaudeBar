@@ -286,4 +286,60 @@ struct UsageQuotaTests {
         // When & Then - pace mode progress bar shows remaining (same as remaining mode)
         #expect(quota.displayProgressPercent(mode: .pace) == 75)
     }
+
+    // MARK: - Dollar-Based Quotas
+
+    @Test
+    func `isDollarBased returns true when dollarRemaining is set`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 50)
+
+        // When & Then
+        #expect(quota.isDollarBased == true)
+    }
+
+    @Test
+    func `isDollarBased returns false when dollarRemaining is nil`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 87.95, quotaType: .modelSpecific("Amp Free"), providerId: "ampcode")
+
+        // When & Then
+        #expect(quota.isDollarBased == false)
+    }
+
+    @Test
+    func `formattedDollarRemaining formats whole dollars`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 50)
+
+        // When & Then
+        #expect(quota.formattedDollarRemaining == "$50.00")
+    }
+
+    @Test
+    func `formattedDollarRemaining formats zero`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 0)
+
+        // When & Then
+        #expect(quota.formattedDollarRemaining == "$0.00")
+    }
+
+    @Test
+    func `formattedDollarRemaining formats decimal amount`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: Decimal(string: "17.59"))
+
+        // When & Then
+        #expect(quota.formattedDollarRemaining == "$17.59")
+    }
+
+    @Test
+    func `formattedDollarRemaining returns nil when not dollar based`() {
+        // Given
+        let quota = UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude")
+
+        // When & Then
+        #expect(quota.formattedDollarRemaining == nil)
+    }
 }
