@@ -12,6 +12,15 @@ struct QuotaCardView: View {
         settings.usageDisplayMode
     }
 
+    /// Display color for dollar-based quotas based on dollar thresholds.
+    private var dollarDisplayColor: Color {
+        guard let amount = quota.dollarRemaining else { return quota.status.displayColor }
+        let value = NSDecimalNumber(decimal: amount).doubleValue
+        if value <= 5 { return .red }
+        if value <= 20 { return .orange }
+        return .green
+    }
+
     /// Effective display mode: falls back to .used when pace is unknown
     private var effectiveDisplayMode: UsageDisplayMode {
         if displayMode == .pace && quota.pace == .unknown {
@@ -32,7 +41,7 @@ struct QuotaCardView: View {
                 Text("\(dollarText) remaining")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(quota.status.displayColor)
+                    .foregroundStyle(dollarDisplayColor)
             } else {
                 Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))%")
                     .font(.title2)
