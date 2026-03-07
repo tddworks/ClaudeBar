@@ -869,7 +869,7 @@ struct WrappedStatCard: View {
             HStack(alignment: .firstTextBaseline) {
                 if let dollarText = quota.formattedDollarRemaining {
                     Text(dollarText)
-                        .font(.system(size: 32, weight: .bold, design: theme.fontDesign))
+                        .font(.system(size: 22, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
                         .contentTransition(.numericText())
                 } else {

@@ -30,7 +30,7 @@ struct QuotaCardView: View {
             // Value display
             if let dollarText = quota.formattedDollarRemaining {
                 Text("\(dollarText) remaining")
-                    .font(.title2)
+                    .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundStyle(quota.status.displayColor)
             } else {
