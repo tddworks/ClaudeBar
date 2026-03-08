@@ -1,15 +1,28 @@
 import Foundation
 import Domain
 
-/// Thread-safe in-memory cache for Claude OAuth credentials.
-/// Avoids repeated Keychain/CLI lookups on every probe cycle.
+/// Thread-safe in-memory cache for Claude OAuth credentials with TTL.
+/// Avoids repeated Keychain/CLI lookups on every probe cycle while ensuring
+/// external credential changes (e.g. CLI re-login) are picked up.
 private final class CredentialCache: @unchecked Sendable {
     private var cached: ClaudeCredentialResult?
+    private var cachedAt: Date?
     private let lock = NSLock()
+
+    /// Cache TTL: 5 minutes. Forces reload from file to detect external changes.
+    /// 缓存生存时间：5分钟，确保能感知 CLI 等外部凭证变更
+    static let ttl: TimeInterval = 5 * 60
 
     func get() -> ClaudeCredentialResult? {
         lock.lock()
         defer { lock.unlock() }
+        // Invalidate if TTL expired
+        // TTL 过期时自动失效，下次从文件重新加载
+        if let cachedAt, Date().timeIntervalSince(cachedAt) > Self.ttl {
+            cached = nil
+            self.cachedAt = nil
+            return nil
+        }
         return cached
     }
 
@@ -17,12 +30,14 @@ private final class CredentialCache: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         cached = credentials
+        cachedAt = Date()
     }
 
     func clear() {
         lock.lock()
         defer { lock.unlock() }
         cached = nil
+        cachedAt = nil
     }
 }
 
@@ -66,11 +81,16 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
     public func probe() async throws -> UsageSnapshot {
         // Check cache first, fall back to loading from file/keychain
-        guard var credentials = cache.get() ?? credentialLoader.loadCredentials() else {
+        // Only update cache when loading from file (not from cache hit) to preserve TTL
+        // 仅在从文件加载时更新缓存，避免滑动续期导致 TTL 永不过期
+        let fromCache = cache.get()
+        guard var credentials = fromCache ?? credentialLoader.loadCredentials() else {
             AppLog.probes.error("Claude API: No credentials found")
             throw ProbeError.authenticationRequired
         }
-        cache.set(credentials)
+        if fromCache == nil {
+            cache.set(credentials)
+        }
 
         // Check if token needs refresh
         if credentialLoader.needsRefresh(credentials.oauth) {
@@ -78,9 +98,33 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 AppLog.probes.info("Claude API: Token expired or expiring soon, refreshing...")
                 do {
                     credentials = try await refreshToken(credentials)
-                } catch {
-                    AppLog.probes.error("Claude API: Token refresh failed: \(error.localizedDescription)")
-                    throw error
+                } catch let refreshError {
+                    // Clear cache so next probe reloads from file (CLI may have re-authenticated)
+                    // 清除缓存，下次 probe 会从文件重新加载（CLI 可能已重新登录）
+                    cache.clear()
+
+                    // Try reloading from file — CLI may have updated credentials externally
+                    // 尝试从文件重新加载——CLI 可能已在外部更新了凭证
+                    if let freshCredentials = credentialLoader.loadCredentials(),
+                       freshCredentials.oauth != credentials.oauth {
+                        AppLog.probes.info("Claude API: Found updated credentials from file, retrying...")
+                        credentials = freshCredentials
+                        cache.set(credentials)
+                        // Re-check if the fresh credentials also need refresh
+                        if credentialLoader.needsRefresh(credentials.oauth) {
+                            do {
+                                credentials = try await refreshToken(credentials)
+                            } catch {
+                                AppLog.probes.error("Claude API: Retry with fresh credentials also failed: \(error.localizedDescription)")
+                                cache.clear()
+                                throw error
+                            }
+                        }
+                        // Fresh credentials are valid, continue to fetch usage
+                    } else {
+                        AppLog.probes.error("Claude API: Token refresh failed: \(refreshError.localizedDescription)")
+                        throw refreshError
+                    }
                 }
             } else {
                 // Long-lived token (e.g. from `claude setup-token`) — no refresh mechanism.
@@ -95,18 +139,23 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             usageData = try await fetchUsage(accessToken: credentials.oauth.accessToken)
         } catch let error as ProbeError where error == .authenticationRequired {
             // Token might have been invalidated, try refreshing once
+            // Token 可能已被外部失效，尝试刷新一次
             if credentials.oauth.refreshToken != nil {
                 AppLog.probes.info("Claude API: Got 401/403, attempting token refresh...")
                 do {
                     credentials = try await refreshToken(credentials)
                     usageData = try await fetchUsage(accessToken: credentials.oauth.accessToken)
                 } catch {
+                    // Clear cache on auth failure so next probe reloads from file
+                    // 认证失败时清除缓存，下次 probe 从文件重新加载
+                    cache.clear()
                     AppLog.probes.error("Claude API: Retry after refresh failed: \(error.localizedDescription)")
                     throw error
                 }
             } else {
                 // No refresh token (setup-token) — can't recover from 401/403
                 AppLog.probes.error("Claude API: Got 401/403 with no refresh token available")
+                cache.clear()
                 throw error
             }
         }
@@ -156,10 +205,12 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
                 if errorResponse.error == "invalid_grant" {
                     AppLog.probes.error("Claude API: Session expired (invalid_grant) - run `claude` to re-authenticate")
+                    cache.clear()
                     throw ProbeError.sessionExpired
                 }
             }
             AppLog.probes.error("Claude API: Token expired or invalid (HTTP \(httpResponse.statusCode))")
+            cache.clear()
             throw ProbeError.sessionExpired
         }
 

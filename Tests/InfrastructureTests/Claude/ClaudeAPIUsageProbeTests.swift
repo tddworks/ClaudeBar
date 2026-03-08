@@ -616,6 +616,131 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
         }
     }
 
+    @Test
+    func `probe recovers after session expiry when file has updated credentials`() async throws {
+        // Scenario: cached refresh token is invalid, but CLI has re-authenticated
+        // and written new credentials to the file
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Start with expired token
+        let pastExpiry = Date().addingTimeInterval(-3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, accessToken: "old-token", expiresAt: pastExpiry)
+
+        let mockNetwork = MockNetworkClient()
+        var callCount = 0
+
+        given(mockNetwork).request(.any).willProduce { request in
+            callCount += 1
+            let url = request.url?.absoluteString ?? ""
+
+            if url.contains("oauth/token") {
+                if callCount == 1 {
+                    // First refresh attempt: old token is invalid
+                    let errorResponse = """
+                    { "error": "invalid_grant", "error_description": "Refresh token has been revoked" }
+                    """.data(using: .utf8)!
+                    return (errorResponse, HTTPURLResponse(
+                        url: URL(string: "https://platform.claude.com")!,
+                        statusCode: 400, httpVersion: nil, headerFields: nil)!)
+                } else {
+                    // Second refresh attempt (with fresh file credentials): success
+                    let refreshResponse = """
+                    { "access_token": "brand-new-token", "refresh_token": "brand-new-refresh", "expires_in": 3600 }
+                    """.data(using: .utf8)!
+                    return (refreshResponse, HTTPURLResponse(
+                        url: URL(string: "https://platform.claude.com")!,
+                        statusCode: 200, httpVersion: nil, headerFields: nil)!)
+                }
+            } else {
+                // Usage request succeeds
+                let usageResponse = """
+                { "five_hour": { "utilization": 15.0 } }
+                """.data(using: .utf8)!
+                return (usageResponse, HTTPURLResponse(
+                    url: URL(string: "https://api.anthropic.com")!,
+                    statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            }
+        }
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        // First probe: old token fails refresh → sessionExpired (file still has old creds)
+        await #expect(throws: ProbeError.sessionExpired) {
+            try await probe.probe()
+        }
+
+        // Simulate CLI re-authentication: write new credentials to file
+        let newExpiry = Date().addingTimeInterval(-60).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, accessToken: "cli-refreshed-token",
+                                  refreshToken: "cli-refreshed-refresh", expiresAt: newExpiry)
+
+        // Second probe: cache was cleared, reloads from file → gets new creds → succeeds
+        let snapshot = try await probe.probe()
+        #expect(snapshot.providerId == "claude")
+        #expect(snapshot.quotas.first?.percentRemaining == 85.0)
+    }
+
+    @Test
+    func `probe falls back to file credentials when refresh fails with invalid_grant and file has new token`() async throws {
+        // Scenario: during a single probe() call, refresh fails but file has been
+        // updated by CLI in the meantime with a different access token
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Expired token in file
+        let pastExpiry = Date().addingTimeInterval(-3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, accessToken: "stale-token", expiresAt: pastExpiry)
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let mockNetwork = MockNetworkClient()
+        var refreshCallCount = 0
+
+        given(mockNetwork).request(.any).willProduce { request in
+            let url = request.url?.absoluteString ?? ""
+
+            if url.contains("oauth/token") {
+                refreshCallCount += 1
+                if refreshCallCount == 1 {
+                    // First refresh attempt with stale token fails
+                    // Simulate CLI updating the file concurrently
+                    let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+                    try! self.createCredentialsFile(at: tempDir, accessToken: "brand-new-token",
+                                                    refreshToken: "brand-new-refresh", expiresAt: futureExpiry)
+
+                    let errorResponse = """
+                    { "error": "invalid_grant", "error_description": "Token revoked" }
+                    """.data(using: .utf8)!
+                    return (errorResponse, HTTPURLResponse(
+                        url: URL(string: "https://platform.claude.com")!,
+                        statusCode: 400, httpVersion: nil, headerFields: nil)!)
+                } else {
+                    // Should not reach here — brand-new token from file is not expired
+                    fatalError("Should not refresh a valid non-expired token")
+                }
+            } else {
+                // Usage request succeeds
+                let usageResponse = """
+                { "five_hour": { "utilization": 20.0 } }
+                """.data(using: .utf8)!
+                return (usageResponse, HTTPURLResponse(
+                    url: URL(string: "https://api.anthropic.com")!,
+                    statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            }
+        }
+
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        // Probe should recover: refresh fails → clears cache → reloads from file
+        // → finds brand-new non-expired token → fetches usage successfully
+        let snapshot = try await probe.probe()
+        #expect(snapshot.providerId == "claude")
+        #expect(snapshot.quotas.first?.percentRemaining == 80.0) // 100 - 20
+        #expect(refreshCallCount == 1) // Only one refresh attempt (stale token)
+    }
+}
+
 // MARK: - Setup-Token (Environment) Tests
 
 @Suite("ClaudeAPIUsageProbe Setup-Token Tests")
@@ -754,5 +879,4 @@ struct ClaudeAPIUsageProbeSetupTokenTests {
 
         #expect(await probe.isAvailable() == true)
     }
-}
 }
