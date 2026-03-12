@@ -16,59 +16,9 @@ struct SettingsContentView: View {
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
 
-    // Token input state
-    @State private var copilotTokenInput: String = ""
-    @State private var showToken: Bool = false
-    @State private var saveError: String?
-    @State private var saveSuccess: Bool = false
-    @State private var copilotIsExpanded: Bool = false
-    @State private var claudeConfigExpanded: Bool = false
-    @State private var claudeBudgetExpanded: Bool = false
     @State private var providersExpanded: Bool = false
-    @State private var zaiConfigExpanded: Bool = false
     @State private var updatesExpanded: Bool = false
     @State private var backgroundSyncExpanded: Bool = false
-
-    // Budget input state
-    @State private var budgetInput: String = ""
-
-    @State private var zaiConfigPathInput: String = ""
-    @State private var glmAuthEnvVarInput: String = ""
-    @State private var copilotAuthEnvVarInput: String = ""
-    @State private var copilotMonthlyLimit: Int = 50
-    @State private var copilotManualOverrideEnabled: Bool = false
-    @State private var copilotManualUsageInput: String = ""
-    @State private var copilotManualUsageInputError: String?
-    @State private var copilotApiReturnedEmpty: Bool = false
-    @State private var copilotProbeMode: CopilotProbeMode = .billing
-    @State private var isTestingCopilot = false
-    @State private var copilotTestResult: String?
-
-    // Bedrock settings state
-    @State private var bedrockConfigExpanded: Bool = false
-    @State private var awsProfileNameInput: String = ""
-    @State private var bedrockRegionsInput: String = ""
-    @State private var bedrockDailyBudgetInput: String = ""
-
-    // Claude settings state
-    @State private var claudeProbeMode: ClaudeProbeMode = .cli
-
-    // Codex settings state
-    @State private var codexConfigExpanded: Bool = false
-    @State private var codexProbeMode: CodexProbeMode = .rpc
-
-    // Kimi settings state
-    @State private var kimiConfigExpanded: Bool = false
-    @State private var kimiProbeMode: KimiProbeMode = .cli
-
-    // MiniMax settings state
-    @State private var miniMaxConfigExpanded: Bool = false
-    @State private var miniMaxApiKeyInput: String = ""
-    @State private var miniMaxAuthEnvVarInput: String = ""
-    @State private var miniMaxRegion: MiniMaxRegion = .china
-    @State private var showMiniMaxApiKey: Bool = false
-    @State private var isTestingMiniMax = false
-    @State private var miniMaxTestResult: String?
 
     // Hook settings state
     @State private var hooksExpanded: Bool = false
@@ -84,24 +34,7 @@ struct SettingsContentView: View {
         static let bedrock = "bedrock"
         static let kimi = "kimi"
         static let minimax = "minimax"
-    }
-
-    /// The Claude provider from the monitor (cast to ClaudeProvider for probe mode access)
-    private var claudeProvider: ClaudeProvider? {
-        monitor.provider(for: ProviderID.claude) as? ClaudeProvider
-    }
-
-    /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
-    private var copilotProvider: CopilotProvider? {
-        monitor.provider(for: ProviderID.copilot) as? CopilotProvider
-    }
-
-    /// Binding to the Copilot provider's username
-    private var copilotUsernameBinding: Binding<String> {
-        Binding(
-            get: { copilotProvider?.username ?? "" },
-            set: { newValue in copilotProvider?.username = newValue }
-        )
+        static let alibaba = "alibaba"
     }
 
     private var isCopilotEnabled: Bool {
@@ -120,18 +53,8 @@ struct SettingsContentView: View {
         monitor.provider(for: ProviderID.codex)?.isEnabled ?? false
     }
 
-    /// The Codex provider from the monitor (cast to CodexProvider for probe mode access)
-    private var codexProvider: CodexProvider? {
-        monitor.provider(for: ProviderID.codex) as? CodexProvider
-    }
-
     private var isKimiEnabled: Bool {
         monitor.provider(for: ProviderID.kimi)?.isEnabled ?? false
-    }
-
-    /// The Kimi provider from the monitor (cast to KimiProvider for probe mode access)
-    private var kimiProvider: KimiProvider? {
-        monitor.provider(for: ProviderID.kimi) as? KimiProvider
     }
 
     private var isMiniMaxEnabled: Bool {
@@ -142,9 +65,12 @@ struct SettingsContentView: View {
         monitor.provider(for: ProviderID.bedrock)?.isEnabled ?? false
     }
 
+    private var isAlibabaEnabled: Bool {
+        monitor.provider(for: ProviderID.alibaba)?.isEnabled ?? false
+    }
+
     /// Maximum height for the settings view to ensure it fits on small screens
     private var maxSettingsHeight: CGFloat {
-        // Use 80% of screen height or 550pt, whichever is smaller
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         return min(screenHeight * 0.8, 550)
     }
@@ -165,33 +91,35 @@ struct SettingsContentView: View {
                     overviewModeCard
                     providersCard
                     if isClaudeEnabled {
-                        claudeConfigCard
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                        claudeBudgetCard
+                        ClaudeConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isCodexEnabled {
-                        codexConfigCard
+                        CodexConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isKimiEnabled {
-                        kimiConfigCard
+                        KimiConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isMiniMaxEnabled {
-                        miniMaxConfigCard
+                        MiniMaxConfigCard(monitor: monitor)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if isAlibabaEnabled {
+                        AlibabaConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isCopilotEnabled {
-                        copilotCard
+                        CopilotConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isZaiEnabled {
-                        zaiConfigCard
+                        ZaiConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isBedrockEnabled {
-                        bedrockConfigCard
+                        BedrockConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     backgroundSyncCard
@@ -214,41 +142,8 @@ struct SettingsContentView: View {
         }
         .frame(maxHeight: maxSettingsHeight)
         .onAppear {
-            // Initialize budget input with current value
-            if settings.claudeApiBudget > 0 {
-                budgetInput = String(describing: settings.claudeApiBudget)
-            }
-            zaiConfigPathInput = settings.zai.zaiConfigPath()
-            glmAuthEnvVarInput = settings.zai.glmAuthEnvVar()
-            copilotProbeMode = settings.copilot.copilotProbeMode()
-            copilotAuthEnvVarInput = settings.copilot.copilotAuthEnvVar()
-            copilotMonthlyLimit = settings.copilot.copilotMonthlyLimit() ?? 50
-            copilotManualOverrideEnabled = settings.copilot.copilotManualOverrideEnabled()
-            copilotApiReturnedEmpty = settings.copilot.copilotApiReturnedEmpty()
-            if let value = settings.copilot.copilotManualUsageValue() {
-                let isPercent = settings.copilot.copilotManualUsageIsPercent()
-                if isPercent {
-                    copilotManualUsageInput = String(Int(value)) + "%"
-                } else {
-                    copilotManualUsageInput = String(Int(value))
-                }
-            }
-
-            claudeProbeMode = settings.claude.claudeProbeMode()
-            codexProbeMode = settings.codex.codexProbeMode()
-            kimiProbeMode = settings.kimi.kimiProbeMode()
-
-            miniMaxRegion = settings.minimax.minimaxRegion()
-            miniMaxAuthEnvVarInput = settings.minimax.minimaxAuthEnvVar()
-
             hooksEnabled = settings.hook.isHookEnabled()
             hooksInstalled = HookInstaller.isInstalled()
-
-            awsProfileNameInput = settings.bedrock.awsProfileName()
-            bedrockRegionsInput = settings.bedrock.bedrockRegions().joined(separator: ", ")
-            if let budget = settings.bedrock.bedrockDailyBudget() {
-                bedrockDailyBudgetInput = String(describing: budget)
-            }
         }
     }
 
@@ -515,22 +410,6 @@ struct SettingsContentView: View {
                 set: { newValue in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         monitor.setProviderEnabled(provider.id, enabled: newValue)
-                        if !newValue {
-                            switch provider.id {
-                            case ProviderID.copilot:
-                                copilotIsExpanded = false
-                            case ProviderID.zai:
-                                zaiConfigExpanded = false
-                            case ProviderID.claude:
-                                claudeBudgetExpanded = false
-                            case ProviderID.bedrock:
-                                bedrockConfigExpanded = false
-                            case ProviderID.minimax:
-                                miniMaxConfigExpanded = false
-                            default:
-                                break
-                            }
-                        }
                     }
                 }
             ))
@@ -548,7 +427,6 @@ struct SettingsContentView: View {
         HStack {
             // Back button
             Button {
-                // Avoid window resize animation glitches in MenuBarExtra.
                 showSettings = false
             } label: {
                 HStack(spacing: 4) {
@@ -585,1686 +463,13 @@ struct SettingsContentView: View {
         }
     }
 
-    // MARK: - Claude Config Card
-
-    private var claudeConfigCard: some View {
-        DisclosureGroup(isExpanded: $claudeConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            claudeConfigForm
-        } label: {
-            claudeConfigHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        claudeConfigExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var claudeConfigHeader: some View {
-        HStack(spacing: 10) {
-            // Provider icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.85, green: 0.55, blue: 0.35),
-                                Color(red: 0.75, green: 0.40, blue: 0.30)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "gear")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Claude Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Data fetching method")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private var claudeConfigForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Probe Mode
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $claudeProbeMode) {
-                    ForEach(ClaudeProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: claudeProbeMode) { _, newValue in
-                    settings.claude.setClaudeProbeMode(newValue)
-                    // Optionally trigger a refresh when mode changes
-                    Task {
-                        await monitor.refresh(providerId: ProviderID.claude)
-                    }
-                }
-            }
-
-            // Mode descriptions
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 10))
-                        .foregroundStyle(claudeProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CLI Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(claudeProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Runs `claude /usage` command. Works with any auth method.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(claudeProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(claudeProbeMode == .api ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Calls Anthropic API directly. Faster, uses OAuth credentials.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-
-            // Current mode status
-            if claudeProbeMode == .api {
-                let credentialLoader = ClaudeCredentialLoader()
-                let hasCredentials = credentialLoader.loadCredentials() != nil
-
-                HStack(spacing: 6) {
-                    Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-
-                    Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-                }
-
-                if !hasCredentials {
-                    Text("Run `claude` in terminal to authenticate, then credentials will be available.")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-            }
-        }
-    }
-
-    // MARK: - Claude Budget Card
-
-    private var claudeBudgetCard: some View {
-        DisclosureGroup(isExpanded: $claudeBudgetExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            claudeBudgetForm
-                .disabled(!settings.claudeApiBudgetEnabled)
-                .opacity(settings.claudeApiBudgetEnabled ? 1 : 0.6)
-        } label: {
-            // Header row with icon, title, toggle
-            claudeBudgetHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        claudeBudgetExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var claudeBudgetHeader: some View {
-        HStack(spacing: 10) {
-            // Provider icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.85, green: 0.55, blue: 0.35),
-                                Color(red: 0.75, green: 0.40, blue: 0.30)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "dollarsign.circle.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Claude API Budget")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Cost threshold warnings")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-
-            Toggle("", isOn: $settings.claudeApiBudgetEnabled)
-                .toggleStyle(.switch)
-                .tint(theme.accentPrimary)
-                .scaleEffect(0.8)
-                .labelsHidden()
-        }
-    }
-
-    private var claudeBudgetForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Budget Amount
-            VStack(alignment: .leading, spacing: 6) {
-                Text("MONTHLY BUDGET (USD)")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                HStack(spacing: 6) {
-                    Text("$")
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-
-                    TextField("", text: $budgetInput, prompt: Text("10.00").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                        .onChange(of: budgetInput) { _, newValue in
-                            if let value = Decimal(string: newValue) {
-                                settings.claudeApiBudget = value
-                            }
-                        }
-                }
-            }
-
-            // Help text
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Get warnings when approaching your budget threshold.")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-
-                Text("Only applies to Claude API accounts, not Claude Max.")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-        }
-    }
-
-    // MARK: - Codex Config Card
-
-    private var codexConfigCard: some View {
-        DisclosureGroup(isExpanded: $codexConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            codexConfigForm
-        } label: {
-            codexConfigHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        codexConfigExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var codexConfigHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [theme.accentPrimary.opacity(0.2), theme.accentSecondary.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 28, height: 28)
-
-                Image(systemName: "terminal")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(theme.accentPrimary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Codex Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Data fetching method")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private var codexConfigForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Probe Mode
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $codexProbeMode) {
-                    ForEach(CodexProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: codexProbeMode) { _, newValue in
-                    settings.codex.setCodexProbeMode(newValue)
-                    Task {
-                        await monitor.refresh(providerId: ProviderID.codex)
-                    }
-                }
-            }
-
-            // Mode descriptions
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 10))
-                        .foregroundStyle(codexProbeMode == .rpc ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("RPC Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(codexProbeMode == .rpc ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Uses codex app-server via JSON-RPC. Default, works with any auth.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(codexProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(codexProbeMode == .api ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Calls ChatGPT API directly. Faster, uses OAuth credentials.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-
-            // Current mode status
-            if codexProbeMode == .api {
-                let credentialLoader = CodexCredentialLoader()
-                let hasCredentials = credentialLoader.loadCredentials() != nil
-
-                HStack(spacing: 6) {
-                    Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-
-                    Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-                }
-
-                if !hasCredentials {
-                    Text("Run `codex` in terminal to authenticate, then credentials will be available.")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-            }
-        }
-    }
-
-    // MARK: - MiniMax Config Card
-
-    private var miniMaxConfigCard: some View {
-        DisclosureGroup(isExpanded: $miniMaxConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            miniMaxConfigForm
-        } label: {
-            miniMaxConfigHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        miniMaxConfigExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var miniMaxConfigHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.91, green: 0.27, blue: 0.42),
-                                Color(red: 0.96, green: 0.53, blue: 0.24)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "waveform")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("MiniMax Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Coding Plan quota tracking")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private var miniMaxConfigForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Region selector (区域选择)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("REGION")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $miniMaxRegion) {
-                    ForEach(MiniMaxRegion.allCases, id: \.self) { region in
-                        Text(region.displayName).tag(region)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: miniMaxRegion) { _, newValue in
-                    settings.minimax.setMinimaxRegion(newValue)
-                    Task {
-                        await monitor.refresh(providerId: ProviderID.minimax)
-                    }
-                }
-            }
-
-            // API Key input
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("API KEY")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    Spacer()
-
-                    if settings.minimax.hasMinimaxApiKey() {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9))
-                            Text("Configured")
-                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        }
-                        .foregroundStyle(theme.statusHealthy)
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    Group {
-                        if showMiniMaxApiKey {
-                            TextField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundStyle(theme.textTertiary))
-                        } else {
-                            SecureField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundStyle(theme.textTertiary))
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.glassBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
-                            )
-                    )
-
-                    // Eye button
-                    Button {
-                        showMiniMaxApiKey.toggle()
-                    } label: {
-                        Image(systemName: showMiniMaxApiKey ? "eye.slash.fill" : "eye.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(theme.textSecondary)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                Circle()
-                                    .fill(theme.glassBackground)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Environment Variable (Alternative)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("API KEY ENV VAR (ALTERNATIVE)")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                TextField("", text: $miniMaxAuthEnvVarInput, prompt: Text("MINIMAX_API_KEY").foregroundStyle(theme.textTertiary))
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.glassBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
-                            )
-                    )
-                    .onChange(of: miniMaxAuthEnvVarInput) { _, newValue in
-                        settings.minimax.setMinimaxAuthEnvVar(newValue)
-                    }
-            }
-
-            // Token lookup order
-            VStack(alignment: .leading, spacing: 4) {
-                Text("API KEY LOOKUP ORDER")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Text("1. First checks environment variable (default: MINIMAX_API_KEY)")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-                Text("2. Falls back to API key entered above")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            // Save & Test button
-            if isTestingMiniMax {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text("Testing connection...")
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                }
-            } else {
-                Button {
-                    Task {
-                        await testMiniMaxConnection()
-                    }
-                } label: {
-                    Text("Save & Test Connection")
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(theme.accentPrimary)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-
-            if let result = miniMaxTestResult {
-                Text(result)
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
-            }
-
-            // Help link
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Get your API key from MiniMax platform")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-
-                Link(destination: miniMaxRegion.apiKeysURL) {
-                    HStack(spacing: 3) {
-                        Text("Open MiniMax API Keys")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 7, weight: .bold))
-                    }
-                    .foregroundStyle(theme.accentPrimary)
-                }
-            }
-
-            // Delete API key
-            if settings.minimax.hasMinimaxApiKey() {
-                Button {
-                    settings.minimax.deleteMinimaxApiKey()
-                    miniMaxApiKeyInput = ""
-                    miniMaxTestResult = nil
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "trash.fill")
-                            .font(.system(size: 9))
-                        Text("Remove API Key")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    }
-                    .foregroundStyle(theme.statusCritical)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: - Kimi Config Card
-
-    private var kimiConfigCard: some View {
-        DisclosureGroup(isExpanded: $kimiConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            kimiConfigForm
-        } label: {
-            kimiConfigHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        kimiConfigExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var kimiConfigHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [theme.accentPrimary.opacity(0.2), theme.accentSecondary.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 28, height: 28)
-
-                Image(systemName: "terminal")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(theme.accentPrimary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Kimi Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Data fetching method")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private var kimiConfigForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Probe Mode
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $kimiProbeMode) {
-                    ForEach(KimiProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: kimiProbeMode) { _, newValue in
-                    settings.kimi.setKimiProbeMode(newValue)
-                    Task {
-                        await monitor.refresh(providerId: ProviderID.kimi)
-                    }
-                }
-            }
-
-            // Mode descriptions
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 10))
-                        .foregroundStyle(kimiProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CLI Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(kimiProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Uses kimi CLI with /usage command. Requires kimi installed.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(kimiProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(kimiProbeMode == .api ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Calls Kimi API directly. Uses browser cookie authentication.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Copilot Card
-
-    private var copilotCard: some View {
-        DisclosureGroup(isExpanded: $copilotIsExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            copilotForm
-        } label: {
-            copilotHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        copilotIsExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    private var copilotHeader: some View {
-        HStack(spacing: 10) {
-            // Provider icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.38, green: 0.55, blue: 0.93),
-                                Color(red: 0.55, green: 0.40, blue: 0.90)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("GitHub Copilot Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Premium usage tracking")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private var copilotForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Probe Mode Picker
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $copilotProbeMode) {
-                    ForEach(CopilotProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: copilotProbeMode) { _, newValue in
-                    settings.copilot.setCopilotProbeMode(newValue)
-                    AppLog.probes.info("Copilot probe mode changed to \(newValue.rawValue)")
-                    // Trigger a refresh when mode changes
-                    Task {
-                        await monitor.refresh(providerId: ProviderID.copilot)
-                    }
-                }
-            }
-
-            // Mode descriptions
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "creditcard")
-                        .font(.system(size: 10))
-                        .foregroundStyle(copilotProbeMode == .billing ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Billing Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(copilotProbeMode == .billing ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Uses GitHub Billing API. Requires fine-grained PAT with 'Plan: read'.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(copilotProbeMode == .copilotAPI ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Copilot API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(copilotProbeMode == .copilotAPI ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Uses Copilot Internal API. Works for all plans (incl. Business/Enterprise). Requires Classic PAT with 'copilot' scope.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-
-            // Billing mode specific fields
-            if copilotProbeMode == .billing {
-                // GitHub Username (only needed for Billing API)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("GITHUB USERNAME")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    TextField("", text: copilotUsernameBinding, prompt: Text("username").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                }
-            }
-
-            // Personal Access Token (shared by both modes)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("PERSONAL ACCESS TOKEN")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    Spacer()
-
-                    if copilotProvider?.hasToken == true {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9))
-                            Text("Configured")
-                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        }
-                        .foregroundStyle(theme.statusHealthy)
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    // Token input field
-                    Group {
-                        if showToken {
-                            TextField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundStyle(theme.textTertiary))
-                        } else {
-                            SecureField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundStyle(theme.textTertiary))
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.glassBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
-                            )
-                    )
-
-                    // Eye button
-                    Button {
-                        showToken.toggle()
-                    } label: {
-                        Image(systemName: showToken ? "eye.slash.fill" : "eye.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(theme.textSecondary)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                Circle()
-                                    .fill(theme.glassBackground)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // Status messages
-                if let error = saveError {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 9))
-                        Text(error)
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    }
-                    .foregroundStyle(theme.statusCritical)
-                } else if saveSuccess {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 9))
-                        Text("Token saved!")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    }
-                    .foregroundStyle(theme.statusHealthy)
-                }
-            }
-
-            // Environment Variable (Alternative) - shared by both modes
-            VStack(alignment: .leading, spacing: 6) {
-                Text("AUTH TOKEN ENV VAR (ALTERNATIVE)")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                TextField("", text: $copilotAuthEnvVarInput, prompt: Text("GITHUB_TOKEN").foregroundStyle(theme.textTertiary))
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.glassBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
-                            )
-                    )
-                    .onChange(of: copilotAuthEnvVarInput) { _, newValue in
-                        settings.copilot.setCopilotAuthEnvVar(newValue)
-                    }
-            }
-
-            // Billing mode specific fields: Monthly Limit, API Warning, Manual Override
-            if copilotProbeMode == .billing {
-                // Monthly Limit (Premium Requests)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("MONTHLY PREMIUM REQUEST LIMIT")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    Picker("", selection: $copilotMonthlyLimit) {
-                        Text("Free/Pro (50)").tag(50)
-                        Text("Business (300)").tag(300)
-                        Text("Enterprise (1000)").tag(1000)
-                        Text("Pro+ (1500)").tag(1500)
-                    }
-                    .pickerStyle(.menu)
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.glassBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
-                            )
-                    )
-                    .onChange(of: copilotMonthlyLimit) { _, newValue in
-                        settings.copilot.setCopilotMonthlyLimit(newValue)
-                    }
-
-                    Text("Note: This is for premium requests (Copilot Chat with advanced models), not code completions")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                // Warning banner for org-based subscriptions
-                if copilotApiReturnedEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(theme.statusWarning)
-                            Text("API returned no usage data")
-                                .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                                .foregroundStyle(theme.textPrimary)
-                        }
-
-                        Text("This is common for Copilot Business subscriptions. Try switching to Copilot API mode.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
-
-                        Link(destination: URL(string: "https://github.com/settings/copilot/features")!) {
-                            HStack(spacing: 4) {
-                                Text("View usage on GitHub")
-                                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 8))
-                            }
-                            .foregroundStyle(theme.accentPrimary)
-                        }
-                    }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(theme.statusWarning.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.statusWarning.opacity(0.3), lineWidth: 1)
-                            )
-                    )
-                }
-
-                // Manual override toggle
-                Toggle("Enable manual usage entry", isOn: $copilotManualOverrideEnabled)
-                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .toggleStyle(.switch)
-                    .onChange(of: copilotManualOverrideEnabled) { _, newValue in
-                        settings.copilot.setCopilotManualOverrideEnabled(newValue)
-                    }
-
-                // Manual usage input (shown when toggle is on)
-                if copilotManualOverrideEnabled {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("CURRENT PREMIUM REQUEST USAGE")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
-                            .tracking(0.5)
-
-                        TextField("", text: $copilotManualUsageInput, prompt: Text("99 or 198%").foregroundStyle(theme.textTertiary))
-                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textPrimary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(theme.glassBackground)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(
-                                                copilotManualUsageInputError != nil ? Color.red.opacity(0.6) : theme.glassBorder,
-                                                lineWidth: copilotManualUsageInputError != nil ? 1.5 : 1
-                                            )
-                                    )
-                            )
-                            .onChange(of: copilotManualUsageInput) { _, newValue in
-                                // Parse input: if ends with %, treat as percentage; otherwise as request count
-                                let trimmed = newValue.trimmingCharacters(in: .whitespaces)
-
-                                if trimmed.isEmpty {
-                                    // Clear value and error if input is empty
-                                    copilotManualUsageInputError = nil
-                                    settings.copilot.setCopilotManualUsageValue(nil)
-                                } else if trimmed.hasSuffix("%") {
-                                    // Percentage input (e.g., "198%")
-                                    let numberPart = trimmed.dropLast()
-                                    if let intValue = Int(numberPart), intValue >= 0 {
-                                        // Valid percentage (integer >= 0)
-                                        copilotManualUsageInputError = nil
-                                        settings.copilot.setCopilotManualUsageValue(Double(intValue))
-                                        settings.copilot.setCopilotManualUsageIsPercent(true)
-                                    } else {
-                                        // Invalid percentage
-                                        copilotManualUsageInputError = "Enter a valid number (e.g., 198%)"
-                                        settings.copilot.setCopilotManualUsageValue(nil)
-                                    }
-                                } else if let intValue = Int(trimmed), intValue >= 0 {
-                                    // Valid request count (integer >= 0)
-                                    copilotManualUsageInputError = nil
-                                    settings.copilot.setCopilotManualUsageValue(Double(intValue))
-                                    settings.copilot.setCopilotManualUsageIsPercent(false)
-                                } else {
-                                    // Invalid request count
-                                    copilotManualUsageInputError = "Enter a whole number or percentage"
-                                    settings.copilot.setCopilotManualUsageValue(nil)
-                                }
-                            }
-
-                        if let error = copilotManualUsageInputError {
-                            Text(error)
-                                .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(.red)
-                        } else {
-                            Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
-                                .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(theme.textTertiary)
-                        }
-                    }
-                }
-            }
-
-            // Explanatory text
-            VStack(alignment: .leading, spacing: 4) {
-                Text("TOKEN LOOKUP ORDER")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Text("1. First checks environment variable if specified")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-                Text("2. Falls back to direct token entry above")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            // Save & Test button
-            if isTestingCopilot {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text("Testing connection...")
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                }
-            } else {
-                Button {
-                    Task {
-                        await testCopilotConnection()
-                    }
-                } label: {
-                    Text("Save & Test Connection")
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(theme.accentPrimary)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-
-            if let result = copilotTestResult {
-                Text(result)
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
-            }
-
-            // Help text and link - different based on mode
-            VStack(alignment: .leading, spacing: 4) {
-                if copilotProbeMode == .billing {
-                    Text("Create a fine-grained PAT with 'Plan: read' permission")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-
-                    Link(destination: URL(string: "https://github.com/settings/tokens?type=beta")!) {
-                        HStack(spacing: 3) {
-                            Text("Create fine-grained token")
-                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 7, weight: .bold))
-                        }
-                        .foregroundStyle(theme.accentPrimary)
-                    }
-                } else {
-                    Text("Create a Classic PAT with 'copilot' scope")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-
-                    Link(destination: URL(string: "https://github.com/settings/tokens/new")!) {
-                        HStack(spacing: 3) {
-                            Text("Create classic token")
-                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 7, weight: .bold))
-                        }
-                        .foregroundStyle(theme.accentPrimary)
-                    }
-                }
-            }
-
-            // Delete token
-            if copilotProvider?.hasToken == true {
-                Button {
-                    deleteToken()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "trash.fill")
-                            .font(.system(size: 9))
-                        Text("Remove Token")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    }
-                    .foregroundStyle(theme.statusCritical)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: - Z.ai Config Card
-
-    private var zaiConfigCard: some View {
-        DisclosureGroup(isExpanded: $zaiConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            VStack(alignment: .leading, spacing: 14) {
-                // Explanation text
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("TOKEN LOOKUP ORDER")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    Text("1. First looks for token in the settings.json file")
-                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                    Text("2. Falls back to environment variable if not found in file")
-                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("SETTINGS.JSON PATH")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    TextField("", text: $zaiConfigPathInput, prompt: Text("~/.claude/settings.json").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                        .onChange(of: zaiConfigPathInput) { _, newValue in
-                            settings.zai.setZaiConfigPath(newValue)
-                        }
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("AUTH TOKEN ENV VAR (FALLBACK)")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    TextField("", text: $glmAuthEnvVarInput, prompt: Text("GLM_AUTH_TOKEN").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                        .onChange(of: glmAuthEnvVarInput) { _, newValue in
-                            settings.zai.setGlmAuthEnvVar(newValue)
-                        }
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Leave both empty to use default path with no env var fallback")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.2, green: 0.6, blue: 0.9),
-                                    Color(red: 0.15, green: 0.45, blue: 0.8)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Z.ai / GLM Configuration")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Authentication fallback settings")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-                Spacer()
-            }
-            .contentShape(.rect)
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    zaiConfigExpanded.toggle()
-                }
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [theme.glassBorder, theme.glassBorder.opacity(0.5)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
-    // MARK: - Bedrock Config Card
-
-    private var bedrockConfigCard: some View {
-        DisclosureGroup(isExpanded: $bedrockConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            VStack(alignment: .leading, spacing: 14) {
-                // AWS Profile Name
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("AWS PROFILE NAME")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    TextField("", text: $awsProfileNameInput, prompt: Text("default").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                        .onChange(of: awsProfileNameInput) { _, newValue in
-                            settings.bedrock.setAWSProfileName(newValue)
-                        }
-                }
-
-                // Regions
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("REGIONS (COMMA-SEPARATED)")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    TextField("", text: $bedrockRegionsInput, prompt: Text("us-east-1, us-west-2").foregroundStyle(theme.textTertiary))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                        .onChange(of: bedrockRegionsInput) { _, newValue in
-                            let regions = newValue.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                            settings.bedrock.setBedrockRegions(regions)
-                        }
-                }
-
-                // Daily Budget
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("DAILY BUDGET (USD, OPTIONAL)")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
-
-                    HStack(spacing: 6) {
-                        Text("$")
-                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
-
-                        TextField("", text: $bedrockDailyBudgetInput, prompt: Text("50.00").foregroundStyle(theme.textTertiary))
-                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textPrimary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(theme.glassBackground)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(theme.glassBorder, lineWidth: 1)
-                                    )
-                            )
-                            .onChange(of: bedrockDailyBudgetInput) { _, newValue in
-                                if newValue.isEmpty {
-                                    settings.bedrock.setBedrockDailyBudget(nil)
-                                } else if let value = Decimal(string: newValue) {
-                                    settings.bedrock.setBedrockDailyBudget(value)
-                                }
-                            }
-                    }
-                }
-
-                // Help text
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("AWS credentials are loaded from your configured profile.")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-
-                    Text("Configure with: aws configure --profile <name>")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                // Link to AWS console
-                Link(destination: URL(string: "https://console.aws.amazon.com/bedrock/home")!) {
-                    HStack(spacing: 3) {
-                        Text("Open Bedrock Console")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 7, weight: .bold))
-                    }
-                    .foregroundStyle(theme.accentPrimary)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.6, blue: 0.0),
-                                    Color(red: 0.9, green: 0.45, blue: 0.0)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: "mountain.2.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("AWS Bedrock Configuration")
-                        .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-
-                    Text("CloudWatch usage tracking")
-                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                Spacer()
-            }
-            .contentShape(.rect)
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    bedrockConfigExpanded.toggle()
-                }
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [theme.glassBorder, theme.glassBorder.opacity(0.5)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-    }
-
     // MARK: - Updates Card
 
 #if ENABLE_SPARKLE
     private var updatesCard: some View {
         DisclosureGroup(isExpanded: $updatesExpanded) {
             VStack(alignment: .leading, spacing: 12) {
-                // Show different content based on updater availability
                 if sparkleUpdater?.isAvailable == true {
-                    // Check for Updates Button
                     Button {
                         sparkleUpdater?.checkForUpdates()
                     } label: {
@@ -2303,7 +508,6 @@ struct SettingsContentView: View {
                     .disabled(sparkleUpdater?.canCheckForUpdates != true || sparkleUpdater?.isCheckingForUpdates == true)
                     .opacity(sparkleUpdater?.canCheckForUpdates == true ? 1 : 0.6)
 
-                    // Last check info
                     if let lastCheck = sparkleUpdater?.lastUpdateCheckDate {
                         HStack(spacing: 4) {
                             Image(systemName: "clock.fill")
@@ -2315,7 +519,6 @@ struct SettingsContentView: View {
                         .foregroundStyle(theme.textTertiary)
                     }
 
-                    // Auto updates toggle
                     HStack {
                         Text("Check automatically")
                             .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
@@ -2333,7 +536,6 @@ struct SettingsContentView: View {
                         .labelsHidden()
                     }
 
-                    // Beta updates toggle
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Include beta versions")
@@ -2354,7 +556,6 @@ struct SettingsContentView: View {
                             .labelsHidden()
                     }
                 } else {
-                    // Debug mode message
                     HStack(spacing: 6) {
                         Image(systemName: "hammer.fill")
                             .font(.system(size: 10))
@@ -2428,14 +629,12 @@ struct SettingsContentView: View {
 
     #endif
 
-    // MARK: - App Info (available for both Updates card and About card)
+    // MARK: - App Info
 
-    /// The app version from the bundle
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     }
 
-    /// The app build number from the bundle
     private var appBuild: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
     }
@@ -2444,7 +643,6 @@ struct SettingsContentView: View {
 
     private var logsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -2478,7 +676,6 @@ struct SettingsContentView: View {
                 Spacer()
             }
 
-            // Open Logs Button
             Button {
                 FileLogger.shared.openCurrentLogFile()
             } label: {
@@ -2509,7 +706,6 @@ struct SettingsContentView: View {
             }
             .buttonStyle(.plain)
 
-            // Help text
             Text("Opens ClaudeBar.log in TextEdit")
                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                 .foregroundStyle(theme.textTertiary)
@@ -2536,7 +732,6 @@ struct SettingsContentView: View {
 
     private var aboutCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -2561,7 +756,6 @@ struct SettingsContentView: View {
                 Spacer()
             }
 
-            // GitHub Link
             Link(destination: URL(string: "https://github.com/tddworks/claudebar")!) {
                 HStack(spacing: 6) {
                     Image(systemName: "link")
@@ -2594,7 +788,6 @@ struct SettingsContentView: View {
             }
             .buttonStyle(.plain)
 
-            // Help text
             Text("Report issues or contribute on GitHub")
                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                 .foregroundStyle(theme.textTertiary)
@@ -2678,7 +871,6 @@ struct SettingsContentView: View {
                 .padding(.vertical, 12)
 
             VStack(alignment: .leading, spacing: 14) {
-                // Interval picker
                 VStack(alignment: .leading, spacing: 6) {
                     Text("SYNC INTERVAL")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
@@ -2695,7 +887,6 @@ struct SettingsContentView: View {
                     .disabled(!settings.backgroundSyncEnabled)
                 }
 
-                // Help text
                 Text("Sync usage data in the background so it's always fresh when you check.")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
@@ -2771,7 +962,6 @@ struct SettingsContentView: View {
                 .padding(.vertical, 12)
 
             VStack(alignment: .leading, spacing: 14) {
-                // Status
                 HStack(spacing: 6) {
                     Circle()
                         .fill(hooksInstalled ? Color.green : Color.gray)
@@ -2781,14 +971,12 @@ struct SettingsContentView: View {
                         .foregroundStyle(theme.textSecondary)
                 }
 
-                // Error message
                 if let hookError {
                     Text(hookError)
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(.red)
                 }
 
-                // Help text
                 Text("Track Claude Code sessions in real-time. Shows active session status, subagent activity, and task completion.")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
@@ -2861,14 +1049,12 @@ struct SettingsContentView: View {
                         }
                         settings.hook.setHookEnabled(newValue)
                         hooksInstalled = HookInstaller.isInstalled()
-                        // Notify app to start/stop hook server
                         NotificationCenter.default.post(
                             name: .hookSettingsChanged,
                             object: nil,
                             userInfo: ["enabled": newValue]
                         )
                     } catch {
-                        // Revert toggle on failure
                         hookError = error.localizedDescription
                         hooksEnabled = !newValue
                         AppLog.hooks.error("Hook \(newValue ? "install" : "uninstall") failed: \(error.localizedDescription)")
@@ -2902,91 +1088,6 @@ struct SettingsContentView: View {
             .buttonStyle(.plain)
         }
     }
-
-    // MARK: - Actions
-
-    private func saveToken() {
-        saveError = nil
-        saveSuccess = false
-
-        copilotProvider?.saveToken(copilotTokenInput)
-        copilotTokenInput = ""
-        saveSuccess = true
-
-        // Trigger refresh for the Copilot provider if enabled
-        if let provider = copilotProvider, provider.isEnabled {
-            Task {
-                try? await provider.refresh()
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            saveSuccess = false
-        }
-    }
-
-    private func deleteToken() {
-        copilotProvider?.deleteCredentials()
-        saveError = nil
-    }
-
-    private func testCopilotConnection() async {
-        isTestingCopilot = true
-        copilotTestResult = nil
-
-        // Save current inputs
-        settings.copilot.setCopilotAuthEnvVar(copilotAuthEnvVarInput)
-        if !copilotTokenInput.isEmpty {
-            AppLog.credentials.info("Saving Copilot token for connection test")
-            copilotProvider?.saveToken(copilotTokenInput)
-            copilotTokenInput = ""
-        }
-
-        // Try to refresh the copilot provider
-        AppLog.credentials.info("Testing Copilot connection via provider refresh")
-        await monitor.refresh(providerId: ProviderID.copilot)
-
-        // Check if there's an error after refresh
-        if let error = monitor.provider(for: ProviderID.copilot)?.lastError {
-            AppLog.credentials.error("Copilot connection test failed: \(error.localizedDescription)")
-            copilotTestResult = "Failed: \(error.localizedDescription)"
-        } else {
-            AppLog.credentials.info("Copilot connection test succeeded")
-            copilotTestResult = "Success: Connection verified"
-        }
-
-        // Refresh state that may have been updated by the probe
-        copilotApiReturnedEmpty = settings.copilot.copilotApiReturnedEmpty()
-        isTestingCopilot = false
-    }
-
-    private func testMiniMaxConnection() async {
-        isTestingMiniMax = true
-        miniMaxTestResult = nil
-
-        // Save current inputs
-        settings.minimax.setMinimaxAuthEnvVar(miniMaxAuthEnvVarInput)
-        if !miniMaxApiKeyInput.isEmpty {
-            AppLog.credentials.info("Saving MiniMax API key for connection test")
-            settings.minimax.saveMinimaxApiKey(miniMaxApiKeyInput)
-            miniMaxApiKeyInput = ""
-        }
-
-        // Try to refresh the MiniMax provider
-        AppLog.credentials.info("Testing MiniMax connection via provider refresh")
-        await monitor.refresh(providerId: ProviderID.minimax)
-
-        // Check if there's an error after refresh
-        if let error = monitor.provider(for: ProviderID.minimax)?.lastError {
-            AppLog.credentials.error("MiniMax connection test failed: \(error.localizedDescription)")
-            miniMaxTestResult = "Failed: \(error.localizedDescription)"
-        } else {
-            AppLog.credentials.info("MiniMax connection test succeeded")
-            miniMaxTestResult = "Success: Connection verified"
-        }
-
-        isTestingMiniMax = false
-    }
 }
 
 // MARK: - Theme Option Button
@@ -3002,7 +1103,6 @@ struct ThemeOptionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                // Icon with themed styling
                 ZStack {
                     Circle()
                         .fill(iconBackgroundGradient)
@@ -3031,7 +1131,6 @@ struct ThemeOptionButton: View {
 
                 Spacer()
 
-                // Selection indicator
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14))
