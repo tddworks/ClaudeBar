@@ -189,7 +189,7 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     private func attachDailyReport(to snapshot: UsageSnapshot) async -> UsageSnapshot {
         guard let analyzer = dailyUsageAnalyzer,
               let report = try? await analyzer.analyzeToday(),
-              !report.today.isEmpty else {
+              !report.today.isEmpty || !report.previous.isEmpty else {
             return snapshot
         }
         return UsageSnapshot(
