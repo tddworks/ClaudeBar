@@ -17,7 +17,7 @@ import Domain
 /// @Environment(\.appTheme) var theme
 ///
 /// Text("Hello")
-///     .foregroundStyle(theme.textPrimary)
+///     .foregroundColor(theme.textPrimary)
 ///     .font(.system(size: 14, design: theme.fontDesign))
 /// ```
 public protocol AppThemeProvider {

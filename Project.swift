@@ -9,7 +9,7 @@ let project = Project(
     settings: .settings(
         base: [
             "SWIFT_VERSION": "6.0",
-            "MACOSX_DEPLOYMENT_TARGET": "15.0",
+            "MACOSX_DEPLOYMENT_TARGET": "12.0",
             "ENABLE_DEBUG_DYLIB": "YES",
         ],
         debug: [
@@ -27,7 +27,7 @@ let project = Project(
             destinations: .macOS,
             product: .staticFramework,
             bundleId: "com.tddworks.claudebar.domain",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             sources: ["Sources/Domain/**"],
             dependencies: [
                 .external(name: "Mockable"),
@@ -45,19 +45,19 @@ let project = Project(
             destinations: .macOS,
             product: .staticFramework,
             bundleId: "com.tddworks.claudebar.infrastructure",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             sources: ["Sources/Infrastructure/**"],
             dependencies: [
                 .target(name: "Domain"),
-                .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
+                .external(name: "SweetCookieKit"),
+                .external(name: "Mockable"),
                 .external(name: "AWSCloudWatch"),
                 .external(name: "AWSSTS"),
                 .external(name: "AWSPricing"),
                 .external(name: "AWSSDKIdentity"),
                 .external(name: "AWSSSO"),
                 .external(name: "AWSSSOOIDC"),
-                .external(name: "SweetCookieKit"),
             ],
             settings: .settings(
                 base: [
@@ -72,7 +72,7 @@ let project = Project(
             destinations: .macOS,
             product: .app,
             bundleId: "com.tddworks.claudebar",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             infoPlist: .file(path: "Sources/App/Info.plist"),
             sources: ["Sources/App/**"],
             resources: [
@@ -107,7 +107,7 @@ let project = Project(
             destinations: .macOS,
             product: .unitTests,
             bundleId: "com.tddworks.claudebar.domain-tests",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             sources: ["Tests/DomainTests/**"],
             dependencies: [
                 .target(name: "Domain"),
@@ -133,7 +133,7 @@ let project = Project(
             destinations: .macOS,
             product: .unitTests,
             bundleId: "com.tddworks.claudebar.infrastructure-tests",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             sources: ["Tests/InfrastructureTests/**"],
             dependencies: [
                 .target(name: "Infrastructure"),
@@ -159,7 +159,7 @@ let project = Project(
             destinations: .macOS,
             product: .unitTests,
             bundleId: "com.tddworks.claudebar.acceptance-tests",
-            deploymentTargets: .macOS("15.0"),
+            deploymentTargets: .macOS("12.0"),
             sources: ["Tests/AcceptanceTests/**"],
             dependencies: [
                 .target(name: "Domain"),

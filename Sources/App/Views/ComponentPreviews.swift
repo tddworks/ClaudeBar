@@ -6,41 +6,44 @@ import Domain
 
 // MARK: - Provider Icons Preview
 
-#Preview("Provider Icons") {
+struct ProviderIcons_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return HStack(spacing: 40) {
         VStack(spacing: 8) {
             ProviderIconView(providerId: "claude", size: 32)
             Text("Claude")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         VStack(spacing: 8) {
             ProviderIconView(providerId: "codex", size: 32)
             Text("Codex")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         VStack(spacing: 8) {
             ProviderIconView(providerId: "gemini", size: 32)
             Text("Gemini")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         VStack(spacing: 8) {
             ProviderIconView(providerId: "zai", size: 32)
             Text("Z.ai")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
     }
     .padding(40)
     .background(theme.backgroundGradient)
+    }
 }
 
 // MARK: - Provider Pills Preview
 
-#Preview("Provider Pills") {
+struct ProviderPills_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return VStack(spacing: 20) {
         // Selected states
@@ -61,11 +64,13 @@ import Domain
     }
     .padding(40)
     .background(theme.backgroundGradient)
+    }
 }
 
 // MARK: - Stat Cards Preview
 
-#Preview("Stat Cards - Healthy") {
+struct StatCardsHealthy_Previews: PreviewProvider {
+    static var previews: some View {
     let healthyQuota = UsageQuota(
         percentRemaining: 85,
         quotaType: .session,
@@ -77,9 +82,11 @@ import Domain
         .frame(width: 160)
         .padding(20)
         .background(DarkTheme().backgroundGradient)
+    }
 }
 
-#Preview("Stat Cards - Warning") {
+struct StatCardsWarning_Previews: PreviewProvider {
+    static var previews: some View {
     let warningQuota = UsageQuota(
         percentRemaining: 35,
         quotaType: .weekly,
@@ -91,9 +98,11 @@ import Domain
         .frame(width: 160)
         .padding(20)
         .background(DarkTheme().backgroundGradient)
+    }
 }
 
-#Preview("Stat Cards - Critical") {
+struct StatCardsCritical_Previews: PreviewProvider {
+    static var previews: some View {
     let criticalQuota = UsageQuota(
         percentRemaining: 12,
         quotaType: .modelSpecific("Opus"),
@@ -105,9 +114,11 @@ import Domain
         .frame(width: 160)
         .padding(20)
         .background(DarkTheme().backgroundGradient)
+    }
 }
 
-#Preview("Stat Cards Grid") {
+struct StatCardsGrid_Previews: PreviewProvider {
+    static var previews: some View {
     let quotas = [
         UsageQuota(percentRemaining: 94, quotaType: .session, providerId: "claude", resetText: "Resets 11am"),
         UsageQuota(percentRemaining: 33, quotaType: .weekly, providerId: "claude", resetText: "Resets Dec 25"),
@@ -123,9 +134,11 @@ import Domain
     .padding(20)
     .frame(width: 360)
     .background(DarkTheme().backgroundGradient)
+    }
 }
 
-#Preview("Stat Cards - Z.ai") {
+struct StatCardsZai_Previews: PreviewProvider {
+    static var previews: some View {
     // Z.ai quotas showing session and time limit (MCP) usage
     let quotas = [
         UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "zai"),
@@ -140,27 +153,31 @@ import Domain
     .padding(20)
     .frame(width: 360)
     .background(DarkTheme().backgroundGradient)
+    }
 }
 
 // MARK: - Status Badges Preview
 
-#Preview("Status Badges") {
+struct StatusBadges_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return VStack(spacing: 16) {
         HStack(spacing: 12) {
-            Text("HEALTHY").badge(theme.statusHealthy)
-            Text("WARNING").badge(theme.statusWarning)
-            Text("LOW").badge(theme.statusCritical)
-            Text("EMPTY").badge(theme.statusDepleted)
+            Text("HEALTHY")
+            Text("WARNING")
+            Text("LOW")
+            Text("EMPTY")
         }
     }
     .padding(40)
     .background(theme.backgroundGradient)
+    }
 }
 
 // MARK: - Action Buttons Preview
 
-#Preview("Action Buttons") {
+struct ActionButtons_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return HStack(spacing: 12) {
         WrappedActionButton(
@@ -184,23 +201,27 @@ import Domain
     }
     .padding(40)
     .background(theme.backgroundGradient)
+    }
 }
 
 // MARK: - Loading Spinner Preview
 
-#Preview("Loading Spinner") {
+struct LoadingSpinner_Previews: PreviewProvider {
+    static var previews: some View {
     LoadingSpinnerView()
         .frame(width: 300)
         .background(DarkTheme().backgroundGradient)
+    }
 }
 
 // MARK: - Glass Card Preview
 
-#Preview("Glass Cards") {
+struct GlassCards_Previews: PreviewProvider {
+    static var previews: some View {
     VStack(spacing: 16) {
         Text("Glass Card Style")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .glassCard()
 
         HStack {
@@ -208,75 +229,79 @@ import Domain
             Text("user@example.com")
             Spacer()
             Text("Just now")
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
         }
         .font(.caption)
-        .foregroundStyle(.white)
+        .foregroundColor(.white)
         .glassCard(cornerRadius: 12, padding: 10)
     }
     .padding(40)
     .frame(width: 300)
     .background(DarkTheme().backgroundGradient)
+    }
 }
 
 // MARK: - Theme Colors Preview
 
-#Preview("Theme Colors") {
+struct ThemeColors_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return VStack(spacing: 20) {
         Text("Provider Colors")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
 
         HStack(spacing: 20) {
             VStack {
                 Circle().fill(ProviderVisualIdentityLookup.color(for: "claude", scheme: .dark)).frame(width: 40, height: 40)
-                Text("Claude").font(.caption).foregroundStyle(.white)
+                Text("Claude").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(ProviderVisualIdentityLookup.color(for: "codex", scheme: .dark)).frame(width: 40, height: 40)
-                Text("Codex").font(.caption).foregroundStyle(.white)
+                Text("Codex").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(ProviderVisualIdentityLookup.color(for: "gemini", scheme: .dark)).frame(width: 40, height: 40)
-                Text("Gemini").font(.caption).foregroundStyle(.white)
+                Text("Gemini").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(ProviderVisualIdentityLookup.color(for: "zai", scheme: .dark)).frame(width: 40, height: 40)
-                Text("Z.ai").font(.caption).foregroundStyle(.white)
+                Text("Z.ai").font(.caption).foregroundColor(.white)
             }
         }
 
         Text("Status Colors")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
 
         HStack(spacing: 20) {
             VStack {
                 Circle().fill(theme.statusHealthy).frame(width: 40, height: 40)
-                Text("Healthy").font(.caption).foregroundStyle(.white)
+                Text("Healthy").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(theme.statusWarning).frame(width: 40, height: 40)
-                Text("Warning").font(.caption).foregroundStyle(.white)
+                Text("Warning").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(theme.statusCritical).frame(width: 40, height: 40)
-                Text("Critical").font(.caption).foregroundStyle(.white)
+                Text("Critical").font(.caption).foregroundColor(.white)
             }
             VStack {
                 Circle().fill(theme.statusDepleted).frame(width: 40, height: 40)
-                Text("Depleted").font(.caption).foregroundStyle(.white)
+                Text("Depleted").font(.caption).foregroundColor(.white)
             }
         }
     }
     .padding(40)
     .background(theme.backgroundGradient)
+    }
 }
 
 // MARK: - Update Badge Preview
 
-#Preview("Update Badge") {
+struct UpdateBadge_Previews: PreviewProvider {
+    static var previews: some View {
     let darkTheme = DarkTheme()
     let lightTheme = LightTheme()
     let christmasTheme = ChristmasTheme()
@@ -290,13 +315,13 @@ import Domain
                     .frame(width: 32, height: 32)
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(darkTheme.textSecondary)
+                    .foregroundColor(darkTheme.textSecondary)
                 UpdateBadge()
                     .offset(x: 14, y: -14)
             }
             Text("Dark")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
 
         // Light mode
@@ -307,14 +332,14 @@ import Domain
                     .frame(width: 32, height: 32)
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(lightTheme.textSecondary)
+                    .foregroundColor(lightTheme.textSecondary)
                 UpdateBadge()
                     .offset(x: 14, y: -14)
             }
             .environment(\.colorScheme, .light)
             Text("Light")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
 
         // Christmas mode
@@ -325,22 +350,24 @@ import Domain
                     .frame(width: 32, height: 32)
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(christmasTheme.textSecondary)
+                    .foregroundColor(christmasTheme.textSecondary)
                 UpdateBadge(accentColor: christmasTheme.accentPrimary)
                     .offset(x: 14, y: -14)
             }
             Text("Christmas")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
     }
     .padding(40)
     .background(darkTheme.backgroundGradient)
+    }
 }
 
 // MARK: - Full Header Preview
 
-#Preview("Header Section") {
+struct HeaderSection_Previews: PreviewProvider {
+    static var previews: some View {
     let theme = DarkTheme()
     return VStack(spacing: 16) {
         // Header mock
@@ -350,11 +377,11 @@ import Domain
             VStack(alignment: .leading, spacing: 2) {
                 Text("ClaudeBar")
                     .font(.system(size: 18, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
 
                 Text("AI Usage Monitor")
                     .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundColor(.white.opacity(0.7))
             }
 
             Spacer()
@@ -366,7 +393,7 @@ import Domain
                     .frame(width: 8, height: 8)
                 Text("HEALTHY")
                     .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -388,4 +415,5 @@ import Domain
     .padding(.vertical, 20)
     .frame(width: 420)
     .background(theme.backgroundGradient)
+    }
 }

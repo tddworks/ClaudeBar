@@ -7,8 +7,7 @@ import Mockable
 @Suite
 struct QuotaMonitorTests {
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     private func makeMonitor(
@@ -329,7 +328,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
         // When
-        let stream = monitor.startMonitoring(interval: .milliseconds(100))
+        let stream = monitor.startMonitoring(interval: 0.1)
         var events: [MonitoringEvent] = []
 
         // Collect first 2 events
@@ -362,7 +361,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
         // When
-        let stream = monitor.startMonitoring(interval: .milliseconds(50))
+        let stream = monitor.startMonitoring(interval: 0.05)
         monitor.stopMonitoring()
 
         var eventCount = 0

@@ -1,10 +1,11 @@
 import Foundation
-import Observation
+import Combine
 
 /// Alibaba Coding Plan AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
-@Observable
-public final class AlibabaProvider: AIProvider, @unchecked Sendable {
+public final class AlibabaProvider: ObservableObject, AIProvider, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
+
     // MARK: - Identity
 
     public let id: String = "alibaba"
@@ -18,7 +19,7 @@ public final class AlibabaProvider: AIProvider, @unchecked Sendable {
     public var statusPageURL: URL? { nil }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
-    public var isEnabled: Bool {
+    @Published public var isEnabled: Bool {
         didSet {
             settingsRepository.setEnabled(isEnabled, forProvider: id)
         }
@@ -26,9 +27,9 @@ public final class AlibabaProvider: AIProvider, @unchecked Sendable {
 
     // MARK: - State (Observable)
 
-    public private(set) var isSyncing: Bool = false
-    public private(set) var snapshot: UsageSnapshot?
-    public private(set) var lastError: Error?
+    @Published public private(set) var isSyncing: Bool = false
+    @Published public private(set) var snapshot: UsageSnapshot?
+    @Published public private(set) var lastError: Error?
 
     // MARK: - Internal
 

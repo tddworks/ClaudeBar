@@ -1,17 +1,17 @@
 import Foundation
-import Observation
+import Combine
 
 /// Monitors Claude Code sessions by processing hook events.
 /// Single source of truth for session state, similar to QuotaMonitor for providers.
 /// Isolated to @MainActor since it's consumed by SwiftUI views.
-@MainActor
-@Observable
-public final class SessionMonitor {
+public final class SessionMonitor: ObservableObject, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
+
     /// The currently active session (nil if no session is running)
-    public private(set) var activeSession: ClaudeSession?
+    @Published public private(set) var activeSession: ClaudeSession?
 
     /// Recently completed sessions (most recent first)
-    public private(set) var recentSessions: [ClaudeSession] = []
+    @Published public private(set) var recentSessions: [ClaudeSession] = []
 
     /// Maximum number of recent sessions to keep
     private let maxRecentSessions: Int

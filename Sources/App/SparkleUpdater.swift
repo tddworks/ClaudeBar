@@ -1,6 +1,7 @@
 #if ENABLE_SPARKLE
 import Sparkle
 import SwiftUI
+import Combine
 
 /// Delegate to receive update notifications from Sparkle
 private class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate, @unchecked Sendable {
@@ -44,8 +45,9 @@ private class SparkleUserDriverDelegate: NSObject, SPUStandardUserDriverDelegate
 /// This class manages the Sparkle update lifecycle and provides
 /// observable properties for UI binding.
 @MainActor
-@Observable
-final class SparkleUpdater {
+final class SparkleUpdater: ObservableObject {
+    nonisolated(unsafe) public let objectWillChange = ObservableObjectPublisher()
+
     /// The underlying Sparkle updater controller (nil if bundle is invalid)
     private var controller: SPUStandardUpdaterController?
 
@@ -59,13 +61,13 @@ final class SparkleUpdater {
     nonisolated(unsafe) private var betaSettingObserver: NSObjectProtocol?
 
     /// Whether an update check is currently in progress
-    private(set) var isCheckingForUpdates = false
+    @Published private(set) var isCheckingForUpdates = false
 
     /// Whether a new update is available
-    private(set) var isUpdateAvailable = false
+    @Published private(set) var isUpdateAvailable = false
 
     /// The version string of the available update
-    private(set) var availableVersion: String?
+    @Published private(set) var availableVersion: String?
 
     /// Whether the updater is available (bundle is properly configured)
     var isAvailable: Bool {

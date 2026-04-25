@@ -17,8 +17,7 @@ import Mockable
 struct ClaudeConfigSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     // MARK: - #28: Switch Claude to API mode
@@ -26,8 +25,7 @@ struct ClaudeConfigSpec {
     @Suite("Scenario: Switch probe mode")
     struct SwitchProbeMode {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -239,8 +237,7 @@ struct ClaudeConfigSpec {
     @Suite("Scenario: Expired session shows user-friendly error")
     struct SessionExpired {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

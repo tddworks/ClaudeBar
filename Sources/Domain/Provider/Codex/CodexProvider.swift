@@ -1,11 +1,11 @@
 import Foundation
-import Observation
+import Combine
 
 /// Codex AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Supports dual probe modes: RPC (default) and API.
-@Observable
-public final class CodexProvider: AIProvider, @unchecked Sendable {
+public final class CodexProvider: ObservableObject, AIProvider, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
     // MARK: - Identity
 
     public let id: String = "codex"
@@ -21,7 +21,7 @@ public final class CodexProvider: AIProvider, @unchecked Sendable {
     }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
-    public var isEnabled: Bool {
+    @Published public var isEnabled: Bool {
         didSet {
             settingsRepository.setEnabled(isEnabled, forProvider: id)
         }
@@ -29,9 +29,9 @@ public final class CodexProvider: AIProvider, @unchecked Sendable {
 
     // MARK: - State (Observable)
 
-    public private(set) var isSyncing: Bool = false
-    public private(set) var snapshot: UsageSnapshot?
-    public private(set) var lastError: Error?
+    @Published public private(set) var isSyncing: Bool = false
+    @Published public private(set) var snapshot: UsageSnapshot?
+    @Published public private(set) var lastError: Error?
 
     // MARK: - Probe Mode
 

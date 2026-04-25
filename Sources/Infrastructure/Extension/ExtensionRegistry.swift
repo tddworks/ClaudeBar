@@ -12,8 +12,8 @@ public final class ExtensionRegistry: Sendable {
     /// Default extensions directory: ~/.claudebar/extensions/
     public static var defaultDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".claudebar")
-            .appending(path: "extensions")
+            .appendingPathComponent(".claudebar")
+            .appendingPathComponent("extensions")
     }
 
     public init(
@@ -57,7 +57,7 @@ public final class ExtensionRegistry: Sendable {
 
     private func ensureDirectoryExists() {
         let fm = FileManager.default
-        if !fm.fileExists(atPath: extensionsDirectory.path()) {
+        if !fm.fileExists(atPath: extensionsDirectory.path) {
             try? fm.createDirectory(at: extensionsDirectory, withIntermediateDirectories: true)
         }
     }

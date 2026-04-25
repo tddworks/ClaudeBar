@@ -369,7 +369,7 @@ struct SnowfallOverlay: View {
             } symbols: {
                 Image(systemName: "snowflake")
                     .font(.system(size: 14, weight: .light))
-                    .foregroundStyle(ChristmasTheme.snow)
+                    .foregroundColor(ChristmasTheme.snow)
                     .tag(0)
             }
         }

@@ -18,8 +18,7 @@ import Mockable
 struct NotificationsSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     private func makeSettings() -> MockProviderSettingsRepository {
@@ -36,8 +35,7 @@ struct NotificationsSpec {
     struct QuotaDegrades {
 
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -84,8 +82,7 @@ struct NotificationsSpec {
     struct QuotaUnchanged {
 
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -133,8 +130,7 @@ struct NotificationsSpec {
     struct ProviderIsolation {
 
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

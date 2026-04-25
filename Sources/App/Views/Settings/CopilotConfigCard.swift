@@ -4,9 +4,9 @@ import Infrastructure
 
 /// GitHub Copilot provider configuration card for SettingsView.
 struct CopilotConfigCard: View {
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     // Token input state
@@ -105,17 +105,17 @@ struct CopilotConfigCard: View {
 
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("GitHub Copilot Configuration")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Premium usage tracking")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -128,8 +128,7 @@ struct CopilotConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("PROBE MODE")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Picker("", selection: $copilotProbeMode) {
                     ForEach(CopilotProbeMode.allCases, id: \.self) { mode in
@@ -137,7 +136,7 @@ struct CopilotConfigCard: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: copilotProbeMode) { _, newValue in
+                .onChange(of: copilotProbeMode) { newValue in
                     settings.copilot.setCopilotProbeMode(newValue)
                     AppLog.probes.info("Copilot probe mode changed to \(newValue.rawValue)")
                     Task {
@@ -151,34 +150,34 @@ struct CopilotConfigCard: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "creditcard")
                         .font(.system(size: 10))
-                        .foregroundStyle(copilotProbeMode == .billing ? theme.accentPrimary : theme.textTertiary)
+                        .foregroundColor(copilotProbeMode == .billing ? theme.accentPrimary : theme.textTertiary)
                         .frame(width: 16)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Billing Mode")
                             .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(copilotProbeMode == .billing ? theme.textPrimary : theme.textSecondary)
+                            .foregroundColor(copilotProbeMode == .billing ? theme.textPrimary : theme.textSecondary)
 
                         Text("Uses GitHub Billing API. Requires fine-grained PAT with 'Plan: read'.")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                 }
 
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "network")
                         .font(.system(size: 10))
-                        .foregroundStyle(copilotProbeMode == .copilotAPI ? theme.accentPrimary : theme.textTertiary)
+                        .foregroundColor(copilotProbeMode == .copilotAPI ? theme.accentPrimary : theme.textTertiary)
                         .frame(width: 16)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Copilot API Mode")
                             .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(copilotProbeMode == .copilotAPI ? theme.textPrimary : theme.textSecondary)
+                            .foregroundColor(copilotProbeMode == .copilotAPI ? theme.textPrimary : theme.textSecondary)
 
                         Text("Uses Copilot Internal API. Works for all plans (incl. Business/Enterprise). Requires Classic PAT with 'copilot' scope.")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                 }
             }
@@ -188,12 +187,11 @@ struct CopilotConfigCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("GITHUB USERNAME")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
-                    TextField("", text: copilotUsernameBinding, prompt: Text("username").foregroundStyle(theme.textTertiary))
+                    TextField("", text: copilotUsernameBinding, prompt: Text("username").foregroundColor(theme.textTertiary))
                         .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background(
@@ -212,8 +210,7 @@ struct CopilotConfigCard: View {
                 HStack {
                     Text("PERSONAL ACCESS TOKEN")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
                     Spacer()
 
@@ -224,20 +221,20 @@ struct CopilotConfigCard: View {
                             Text("Configured")
                                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         }
-                        .foregroundStyle(theme.statusHealthy)
+                        .foregroundColor(theme.statusHealthy)
                     }
                 }
 
                 HStack(spacing: 6) {
                     Group {
                         if showToken {
-                            TextField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundStyle(theme.textTertiary))
+                            TextField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundColor(theme.textTertiary))
                         } else {
-                            SecureField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundStyle(theme.textTertiary))
+                            SecureField("", text: $copilotTokenInput, prompt: Text("ghp_xxxx...").foregroundColor(theme.textTertiary))
                         }
                     }
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
@@ -254,7 +251,7 @@ struct CopilotConfigCard: View {
                     } label: {
                         Image(systemName: showToken ? "eye.slash.fill" : "eye.fill")
                             .font(.system(size: 11))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                             .frame(width: 28, height: 28)
                             .background(
                                 Circle()
@@ -271,7 +268,7 @@ struct CopilotConfigCard: View {
                         Text(error)
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.statusCritical)
+                    .foregroundColor(theme.statusCritical)
                 } else if saveSuccess {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
@@ -279,7 +276,7 @@ struct CopilotConfigCard: View {
                         Text("Token saved!")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.statusHealthy)
+                    .foregroundColor(theme.statusHealthy)
                 }
             }
 
@@ -287,12 +284,11 @@ struct CopilotConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("AUTH TOKEN ENV VAR (ALTERNATIVE)")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
-                TextField("", text: $copilotAuthEnvVarInput, prompt: Text("GITHUB_TOKEN").foregroundStyle(theme.textTertiary))
+                TextField("", text: $copilotAuthEnvVarInput, prompt: Text("GITHUB_TOKEN").foregroundColor(theme.textTertiary))
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
@@ -303,7 +299,7 @@ struct CopilotConfigCard: View {
                                     .stroke(theme.glassBorder, lineWidth: 1)
                             )
                     )
-                    .onChange(of: copilotAuthEnvVarInput) { _, newValue in
+                    .onChange(of: copilotAuthEnvVarInput) { newValue in
                         settings.copilot.setCopilotAuthEnvVar(newValue)
                     }
             }
@@ -314,8 +310,7 @@ struct CopilotConfigCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("MONTHLY PREMIUM REQUEST LIMIT")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
                     Picker("", selection: $copilotMonthlyLimit) {
                         Text("Free/Pro (50)").tag(50)
@@ -325,7 +320,7 @@ struct CopilotConfigCard: View {
                     }
                     .pickerStyle(.menu)
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
@@ -336,13 +331,13 @@ struct CopilotConfigCard: View {
                                     .stroke(theme.glassBorder, lineWidth: 1)
                             )
                     )
-                    .onChange(of: copilotMonthlyLimit) { _, newValue in
+                    .onChange(of: copilotMonthlyLimit) { newValue in
                         settings.copilot.setCopilotMonthlyLimit(newValue)
                     }
 
                     Text("Note: This is for premium requests (Copilot Chat with advanced models), not code completions")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 // Warning banner for org-based subscriptions
@@ -351,15 +346,15 @@ struct CopilotConfigCard: View {
                         HStack(spacing: 6) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 10))
-                                .foregroundStyle(theme.statusWarning)
+                                .foregroundColor(theme.statusWarning)
                             Text("API returned no usage data")
                                 .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                                .foregroundStyle(theme.textPrimary)
+                                .foregroundColor(theme.textPrimary)
                         }
 
                         Text("This is common for Copilot Business subscriptions. Try switching to Copilot API mode.")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
 
                         Link(destination: URL(string: "https://github.com/settings/copilot/features")!) {
                             HStack(spacing: 4) {
@@ -368,7 +363,7 @@ struct CopilotConfigCard: View {
                                 Image(systemName: "arrow.up.right")
                                     .font(.system(size: 8))
                             }
-                            .foregroundStyle(theme.accentPrimary)
+                            .foregroundColor(theme.accentPrimary)
                         }
                     }
                     .padding(10)
@@ -385,9 +380,9 @@ struct CopilotConfigCard: View {
                 // Manual override toggle
                 Toggle("Enable manual usage entry", isOn: $copilotManualOverrideEnabled)
                     .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .toggleStyle(.switch)
-                    .onChange(of: copilotManualOverrideEnabled) { _, newValue in
+                    .onChange(of: copilotManualOverrideEnabled) { newValue in
                         settings.copilot.setCopilotManualOverrideEnabled(newValue)
                     }
 
@@ -396,12 +391,11 @@ struct CopilotConfigCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("CURRENT PREMIUM REQUEST USAGE")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
-                            .tracking(0.5)
+                            .foregroundColor(theme.textSecondary)
 
-                        TextField("", text: $copilotManualUsageInput, prompt: Text("99 or 198%").foregroundStyle(theme.textTertiary))
+                        TextField("", text: $copilotManualUsageInput, prompt: Text("99 or 198%").foregroundColor(theme.textTertiary))
                             .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textPrimary)
+                            .foregroundColor(theme.textPrimary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
                             .background(
@@ -415,7 +409,7 @@ struct CopilotConfigCard: View {
                                             )
                                     )
                             )
-                            .onChange(of: copilotManualUsageInput) { _, newValue in
+                            .onChange(of: copilotManualUsageInput) { newValue in
                                 let trimmed = newValue.trimmingCharacters(in: .whitespaces)
 
                                 if trimmed.isEmpty {
@@ -444,11 +438,11 @@ struct CopilotConfigCard: View {
                         if let error = copilotManualUsageInputError {
                             Text(error)
                                 .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(.red)
+                                .foregroundColor(.red)
                         } else {
                             Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
                                 .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(theme.textTertiary)
+                                .foregroundColor(theme.textTertiary)
                         }
                     }
                 }
@@ -458,15 +452,14 @@ struct CopilotConfigCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("TOKEN LOOKUP ORDER")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Text("1. First checks environment variable if specified")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
                 Text("2. Falls back to direct token entry above")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             // Save & Test button
@@ -476,7 +469,7 @@ struct CopilotConfigCard: View {
                         .scaleEffect(0.7)
                     Text("Testing connection...")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                 }
             } else {
                 Button {
@@ -486,7 +479,7 @@ struct CopilotConfigCard: View {
                 } label: {
                     Text("Save & Test Connection")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -500,7 +493,7 @@ struct CopilotConfigCard: View {
             if let result = copilotTestResult {
                 Text(result)
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
+                    .foregroundColor(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
             }
 
             // Help text and link
@@ -508,7 +501,7 @@ struct CopilotConfigCard: View {
                 if copilotProbeMode == .billing {
                     Text("Create a fine-grained PAT with 'Plan: read' permission")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
 
                     Link(destination: URL(string: "https://github.com/settings/tokens?type=beta")!) {
                         HStack(spacing: 3) {
@@ -517,12 +510,12 @@ struct CopilotConfigCard: View {
                             Image(systemName: "arrow.up.right")
                                 .font(.system(size: 7, weight: .bold))
                         }
-                        .foregroundStyle(theme.accentPrimary)
+                        .foregroundColor(theme.accentPrimary)
                     }
                 } else {
                     Text("Create a Classic PAT with 'copilot' scope")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
 
                     Link(destination: URL(string: "https://github.com/settings/tokens/new")!) {
                         HStack(spacing: 3) {
@@ -531,7 +524,7 @@ struct CopilotConfigCard: View {
                             Image(systemName: "arrow.up.right")
                                 .font(.system(size: 7, weight: .bold))
                         }
-                        .foregroundStyle(theme.accentPrimary)
+                        .foregroundColor(theme.accentPrimary)
                     }
                 }
             }
@@ -547,7 +540,7 @@ struct CopilotConfigCard: View {
                         Text("Remove Token")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.statusCritical)
+                    .foregroundColor(theme.statusCritical)
                 }
                 .buttonStyle(.plain)
             }

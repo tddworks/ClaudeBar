@@ -17,8 +17,7 @@ import Mockable
 struct ProviderEnableDisableSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     private static func makeSettings() -> MockProviderSettingsRepository {
@@ -34,8 +33,7 @@ struct ProviderEnableDisableSpec {
     @Suite("Scenario: Disable a provider")
     struct DisableProvider {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -115,8 +113,7 @@ struct ProviderEnableDisableSpec {
     @Suite("Scenario: Enable a provider")
     struct EnableProvider {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

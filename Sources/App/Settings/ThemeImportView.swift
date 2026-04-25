@@ -24,7 +24,7 @@ struct ThemeImportButton: View {
                     Text("Import Theme")
                         .font(theme.font(size: 11, weight: .medium))
                 }
-                .foregroundStyle(theme.accentPrimary)
+                .foregroundColor(theme.accentPrimary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
@@ -48,13 +48,13 @@ struct ThemeImportButton: View {
             if let error = importError {
                 Text(error)
                     .font(theme.font(size: 9))
-                    .foregroundStyle(theme.statusCritical)
+                    .foregroundColor(theme.statusCritical)
             }
 
             if let name = importedThemeName {
                 Text("Imported: \(name)")
                     .font(theme.font(size: 9))
-                    .foregroundStyle(theme.statusHealthy)
+                    .foregroundColor(theme.statusHealthy)
             }
         }
     }

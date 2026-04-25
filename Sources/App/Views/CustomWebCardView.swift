@@ -16,11 +16,11 @@ struct CustomWebCardView: View {
             HStack(spacing: 5) {
                 Image(systemName: "globe")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(theme.accentPrimary)
+                    .foregroundColor(theme.accentPrimary)
 
                 Text(url.host ?? url.absoluteString)
                     .font(.system(size: 9, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .textCase(.uppercase)
                     .lineLimit(1)
 
@@ -32,7 +32,7 @@ struct CustomWebCardView: View {
                 } label: {
                     Image(systemName: "arrow.up.right.square")
                         .font(.system(size: 10))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
                 .buttonStyle(.plain)
             }

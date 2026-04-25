@@ -112,7 +112,7 @@ public struct KiroUsageProbe: UsageProbe {
             let pattern = #"([\d.]+) of ([\d.]+)"#
             if let numMatch = creditsLine.range(of: pattern, options: .regularExpression) {
                 let numStr = String(creditsLine[numMatch])
-                let parts = numStr.split(separator: " of ")
+                let parts = numStr.components(separatedBy: " of ")
                 if parts.count == 2, let used = Double(parts[0]), let total = Double(parts[1]), total > 0 {
                     let remaining = ((total - used) / total) * 100
                     

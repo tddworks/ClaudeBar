@@ -1,6 +1,5 @@
 import Foundation
 import Domain
-import SwiftTerm
 
 /// Infrastructure adapter that probes the Claude CLI to fetch usage quotas.
 /// Implements the UsageProbe protocol from the domain layer.

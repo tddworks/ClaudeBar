@@ -4,9 +4,9 @@ import Infrastructure
 
 /// Kimi provider configuration card for SettingsView.
 struct KimiConfigCard: View {
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var kimiConfigExpanded: Bool = false
@@ -66,17 +66,17 @@ struct KimiConfigCard: View {
 
                 Image(systemName: "terminal")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(theme.accentPrimary)
+                    .foregroundColor(theme.accentPrimary)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Kimi Configuration")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Data fetching method")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -88,8 +88,7 @@ struct KimiConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("PROBE MODE")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Picker("", selection: $kimiProbeMode) {
                     ForEach(KimiProbeMode.allCases, id: \.self) { mode in
@@ -97,7 +96,7 @@ struct KimiConfigCard: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: kimiProbeMode) { _, newValue in
+                .onChange(of: kimiProbeMode) { newValue in
                     settings.kimi.setKimiProbeMode(newValue)
                     Task {
                         await monitor.refresh(providerId: "kimi")
@@ -109,34 +108,34 @@ struct KimiConfigCard: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "terminal")
                         .font(.system(size: 10))
-                        .foregroundStyle(kimiProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
+                        .foregroundColor(kimiProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
                         .frame(width: 16)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("CLI Mode")
                             .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(kimiProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
+                            .foregroundColor(kimiProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
 
                         Text("Uses kimi CLI with /usage command. Requires kimi installed.")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                 }
 
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "network")
                         .font(.system(size: 10))
-                        .foregroundStyle(kimiProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
+                        .foregroundColor(kimiProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
                         .frame(width: 16)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("API Mode")
                             .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(kimiProbeMode == .api ? theme.textPrimary : theme.textSecondary)
+                            .foregroundColor(kimiProbeMode == .api ? theme.textPrimary : theme.textSecondary)
 
                         Text("Calls Kimi API directly. Uses browser cookie authentication.")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                 }
             }

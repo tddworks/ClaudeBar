@@ -1,15 +1,16 @@
 import Foundation
-import Observation
+import Combine
 import Domain
 
 /// Repository of AI providers.
-/// Observable class that provides access to all providers and filters by enabled state.
-@Observable
-public final class AIProviders: AIProviderRepository, @unchecked Sendable {
+/// ObservableObject class that provides access to all providers and filters by enabled state.
+public final class AIProviders: ObservableObject, AIProviderRepository, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
+
     // MARK: - All Providers
 
     /// All registered providers
-    public private(set) var all: [any AIProvider]
+    @Published public private(set) var all: [any AIProvider]
 
     // MARK: - Filtered Views
 
@@ -44,11 +45,13 @@ public final class AIProviders: AIProviderRepository, @unchecked Sendable {
             return
         }
         all.append(provider)
+        objectWillChange.send()
     }
 
     /// Removes a provider by ID
     /// - Parameter id: The provider identifier to remove
     public func remove(id: String) {
         all.removeAll { $0.id == id }
+        objectWillChange.send()
     }
 }

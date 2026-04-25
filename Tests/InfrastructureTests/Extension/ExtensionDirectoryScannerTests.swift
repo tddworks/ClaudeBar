@@ -9,11 +9,11 @@ struct ExtensionDirectoryScannerTests {
 
     @Test
     func `scans directory and finds valid extensions`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(path: "ext-test-\(UUID().uuidString)")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ext-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create two extension directories with manifests
-        let ext1Dir = tempDir.appending(path: "my-provider")
+        let ext1Dir = tempDir.appendingPathComponent("my-provider")
         try FileManager.default.createDirectory(at: ext1Dir, withIntermediateDirectories: true)
         let manifest1 = """
         {
@@ -29,9 +29,9 @@ struct ExtensionDirectoryScannerTests {
             ]
         }
         """
-        try manifest1.write(to: ext1Dir.appending(path: "manifest.json"), atomically: true, encoding: .utf8)
+        try manifest1.write(to: ext1Dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
 
-        let ext2Dir = tempDir.appending(path: "another")
+        let ext2Dir = tempDir.appendingPathComponent("another")
         try FileManager.default.createDirectory(at: ext2Dir, withIntermediateDirectories: true)
         let manifest2 = """
         {
@@ -47,7 +47,7 @@ struct ExtensionDirectoryScannerTests {
             ]
         }
         """
-        try manifest2.write(to: ext2Dir.appending(path: "manifest.json"), atomically: true, encoding: .utf8)
+        try manifest2.write(to: ext2Dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
 
         let scanner = ExtensionDirectoryScanner()
         let results = scanner.scan(directory: tempDir)
@@ -60,13 +60,13 @@ struct ExtensionDirectoryScannerTests {
 
     @Test
     func `skips directories without manifest json`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(path: "ext-test-\(UUID().uuidString)")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ext-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create directory without manifest
-        let extDir = tempDir.appending(path: "no-manifest")
+        let extDir = tempDir.appendingPathComponent("no-manifest")
         try FileManager.default.createDirectory(at: extDir, withIntermediateDirectories: true)
-        try "just a probe".write(to: extDir.appending(path: "probe.sh"), atomically: true, encoding: .utf8)
+        try "just a probe".write(to: extDir.appendingPathComponent("probe.sh"), atomically: true, encoding: .utf8)
 
         let scanner = ExtensionDirectoryScanner()
         let results = scanner.scan(directory: tempDir)
@@ -76,12 +76,12 @@ struct ExtensionDirectoryScannerTests {
 
     @Test
     func `skips directories with invalid manifest`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(path: "ext-test-\(UUID().uuidString)")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ext-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let extDir = tempDir.appending(path: "bad-ext")
+        let extDir = tempDir.appendingPathComponent("bad-ext")
         try FileManager.default.createDirectory(at: extDir, withIntermediateDirectories: true)
-        try "{ invalid json".write(to: extDir.appending(path: "manifest.json"), atomically: true, encoding: .utf8)
+        try "{ invalid json".write(to: extDir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
 
         let scanner = ExtensionDirectoryScanner()
         let results = scanner.scan(directory: tempDir)
@@ -92,17 +92,17 @@ struct ExtensionDirectoryScannerTests {
     @Test
     func `returns empty array when directory does not exist`() {
         let scanner = ExtensionDirectoryScanner()
-        let results = scanner.scan(directory: URL(filePath: "/nonexistent/path"))
+        let results = scanner.scan(directory: URL(fileURLWithPath: "/nonexistent/path"))
 
         #expect(results.isEmpty)
     }
 
     @Test
     func `scan result includes directory URL`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(path: "ext-test-\(UUID().uuidString)")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ext-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let extDir = tempDir.appending(path: "my-ext")
+        let extDir = tempDir.appendingPathComponent("my-ext")
         try FileManager.default.createDirectory(at: extDir, withIntermediateDirectories: true)
         let manifest = """
         {
@@ -114,7 +114,7 @@ struct ExtensionDirectoryScannerTests {
             ]
         }
         """
-        try manifest.write(to: extDir.appending(path: "manifest.json"), atomically: true, encoding: .utf8)
+        try manifest.write(to: extDir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
 
         let scanner = ExtensionDirectoryScanner()
         let results = scanner.scan(directory: tempDir)

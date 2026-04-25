@@ -16,8 +16,7 @@ import Mockable
 struct CodexConfigSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     // MARK: - #33: Switch Codex to API mode
@@ -25,8 +24,7 @@ struct CodexConfigSpec {
     @Suite("Scenario: Switch probe mode")
     struct SwitchProbeMode {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

@@ -17,7 +17,7 @@ extension EnvironmentValues {
     ///
     ///     var body: some View {
     ///         Text("Hello")
-    ///             .foregroundStyle(theme.textPrimary)
+    ///             .foregroundColor(theme.textPrimary)
     ///     }
     /// }
     /// ```
@@ -116,7 +116,7 @@ private struct ThemeTextModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
 
     func body(content: Content) -> some View {
-        content.foregroundStyle(color)
+        content.foregroundColor(color)
     }
 
     private var color: Color {

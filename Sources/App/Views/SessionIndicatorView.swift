@@ -24,11 +24,11 @@ struct SessionIndicatorView: View {
                 HStack(spacing: 6) {
                     Text("Claude Code")
                         .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text(phaseLabel)
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(phaseLabelColor)
+                        .foregroundColor(phaseLabelColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
@@ -41,25 +41,25 @@ struct SessionIndicatorView: View {
                     if session.completedTaskCount > 0 {
                         Label("\(session.completedTaskCount) tasks", systemImage: "checkmark.circle.fill")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                     }
 
                     if session.activeSubagentCount > 0 {
                         Label("\(session.activeSubagentCount) agents", systemImage: "person.2.fill")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                     }
 
                     Text(session.durationDescription)
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
 
                     Spacer()
 
                     // Working directory (last path component)
                     Text(cwdShort)
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                         .lineLimit(1)
                 }
             }

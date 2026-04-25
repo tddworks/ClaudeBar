@@ -1,12 +1,12 @@
 import Foundation
-import Observation
+import Combine
 
 /// GitHub Copilot AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Supports dual probe modes: Billing API (default) and Copilot Internal API.
 /// Owns its probe, credentials, and manages its own data lifecycle.
-@Observable
-public final class CopilotProvider: AIProvider, @unchecked Sendable {
+public final class CopilotProvider: ObservableObject, AIProvider, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "copilot"
@@ -22,7 +22,7 @@ public final class CopilotProvider: AIProvider, @unchecked Sendable {
     }
 
     /// Whether the provider is enabled (persisted via settingsRepository, defaults to false - requires setup)
-    public var isEnabled: Bool {
+    @Published public var isEnabled: Bool {
         didSet {
             settingsRepository.setEnabled(isEnabled, forProvider: id)
         }
@@ -31,18 +31,18 @@ public final class CopilotProvider: AIProvider, @unchecked Sendable {
     // MARK: - State (Observable)
 
     /// Whether the provider is currently syncing data
-    public private(set) var isSyncing: Bool = false
+    @Published public private(set) var isSyncing: Bool = false
 
     /// The current usage snapshot (nil if never refreshed or unavailable)
-    public private(set) var snapshot: UsageSnapshot?
+    @Published public private(set) var snapshot: UsageSnapshot?
 
     /// The last error that occurred during refresh
-    public private(set) var lastError: Error?
+    @Published public private(set) var lastError: Error?
 
     // MARK: - Credentials (Observable)
 
     /// The GitHub username for API calls
-    public var username: String {
+    @Published public var username: String {
         didSet {
             settingsRepository.saveGithubUsername(username)
         }

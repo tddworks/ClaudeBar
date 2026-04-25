@@ -50,12 +50,12 @@ struct AccountPill: View {
 
                     Text(account.initialLetter)
                         .font(.system(size: 8, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(isActive ? .white : theme.textSecondary)
+                        .foregroundColor(isActive ? .white : theme.textSecondary)
                 }
 
                 Text(account.displayName)
                     .font(.system(size: 10, weight: isActive ? .semibold : .medium, design: theme.fontDesign))
-                    .foregroundStyle(isActive ? theme.textPrimary : theme.textSecondary)
+                    .foregroundColor(isActive ? theme.textPrimary : theme.textSecondary)
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)

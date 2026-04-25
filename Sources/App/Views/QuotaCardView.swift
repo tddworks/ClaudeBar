@@ -6,7 +6,7 @@ import Domain
 struct QuotaCardView: View {
     let quota: UsageQuota
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
 
     private var displayMode: UsageDisplayMode {
         settings.usageDisplayMode
@@ -42,19 +42,19 @@ struct QuotaCardView: View {
             // Label
             Text(quota.quotaType.displayName)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
 
             // Value display
             if let dollarText = quota.formattedDollarRemaining {
                 Text("\(dollarText) remaining")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(dollarDisplayColor)
+                    .foregroundColor(dollarDisplayColor)
             } else {
                 Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))%")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(effectiveDisplayMode == .pace ? quota.pace.displayColor : effectiveStatus.displayColor)
+                    .foregroundColor(effectiveDisplayMode == .pace ? quota.pace.displayColor : effectiveStatus.displayColor)
             }
 
             // Progress bar with pace tick

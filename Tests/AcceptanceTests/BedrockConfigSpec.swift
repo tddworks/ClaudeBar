@@ -17,8 +17,7 @@ import Mockable
 struct BedrockConfigSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     // MARK: - #43: AWS profile configuration

@@ -7,9 +7,9 @@ import Testing
 struct JSONExtensionConfigRepositoryTests {
     private func makeTempStore() -> (JSONExtensionConfigRepository, URL) {
         let tempDir = FileManager.default.temporaryDirectory
-            .appending(path: "claudebar-test-\(UUID().uuidString)")
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let settingsFile = tempDir.appending(path: "settings.json")
+        let settingsFile = tempDir.appendingPathComponent("settings.json")
         let store = JSONExtensionConfigRepository(
             settingsStore: JSONSettingsStore(fileURL: settingsFile),
             userDefaultsSuiteName: "com.claudebar.test.\(UUID().uuidString)"
@@ -73,12 +73,12 @@ struct JSONExtensionConfigRepositoryTests {
     func `stores and retrieves a secret value via UserDefaults`() {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
-            .appending(path: "claudebar-test-\(UUID().uuidString)")
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let store = JSONExtensionConfigRepository(
-            settingsStore: JSONSettingsStore(fileURL: tempDir.appending(path: "settings.json")),
+            settingsStore: JSONSettingsStore(fileURL: tempDir.appendingPathComponent("settings.json")),
             userDefaultsSuiteName: suiteName
         )
 
@@ -105,12 +105,12 @@ struct JSONExtensionConfigRepositoryTests {
     func `removes secret when set to nil`() {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
-            .appending(path: "claudebar-test-\(UUID().uuidString)")
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let store = JSONExtensionConfigRepository(
-            settingsStore: JSONSettingsStore(fileURL: tempDir.appending(path: "settings.json")),
+            settingsStore: JSONSettingsStore(fileURL: tempDir.appendingPathComponent("settings.json")),
             userDefaultsSuiteName: suiteName
         )
 
@@ -128,7 +128,7 @@ struct JSONExtensionConfigRepositoryTests {
     func `allValues returns all stored values for an extension`() {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
-            .appending(path: "claudebar-test-\(UUID().uuidString)")
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -136,7 +136,7 @@ struct JSONExtensionConfigRepositoryTests {
         }
 
         let store = JSONExtensionConfigRepository(
-            settingsStore: JSONSettingsStore(fileURL: tempDir.appending(path: "settings.json")),
+            settingsStore: JSONSettingsStore(fileURL: tempDir.appendingPathComponent("settings.json")),
             userDefaultsSuiteName: suiteName
         )
 

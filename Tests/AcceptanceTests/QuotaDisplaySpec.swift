@@ -19,8 +19,7 @@ import Mockable
 struct QuotaDisplaySpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     // MARK: - #8: Account info card
@@ -28,8 +27,7 @@ struct QuotaDisplaySpec {
     @Suite("Scenario: Account info displays after refresh")
     struct AccountInfo {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -85,8 +83,7 @@ struct QuotaDisplaySpec {
     @Suite("Scenario: Quota cards display correctly after refresh")
     struct QuotaCards {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -209,8 +206,7 @@ struct QuotaDisplaySpec {
     @Suite("Scenario: Unavailable provider shows error message")
     struct ProviderErrors {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

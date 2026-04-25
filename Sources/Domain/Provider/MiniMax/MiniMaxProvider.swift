@@ -1,11 +1,12 @@
 import Foundation
-import Observation
+import Combine
 
 /// MiniMax AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Owns its probe and manages its own data lifecycle.
-@Observable
-public final class MiniMaxProvider: AIProvider, @unchecked Sendable {
+public final class MiniMaxProvider: ObservableObject, AIProvider, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
+
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "minimax"
@@ -21,7 +22,7 @@ public final class MiniMaxProvider: AIProvider, @unchecked Sendable {
     }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
-    public var isEnabled: Bool {
+    @Published public var isEnabled: Bool {
         didSet {
             settingsRepository.setEnabled(isEnabled, forProvider: id)
         }
@@ -30,13 +31,13 @@ public final class MiniMaxProvider: AIProvider, @unchecked Sendable {
     // MARK: - State (Observable)
 
     /// Whether the provider is currently syncing data
-    public private(set) var isSyncing: Bool = false
+    @Published public private(set) var isSyncing: Bool = false
 
     /// The current usage snapshot (nil if never refreshed or unavailable)
-    public private(set) var snapshot: UsageSnapshot?
+    @Published public private(set) var snapshot: UsageSnapshot?
 
     /// The last error that occurred during refresh
-    public private(set) var lastError: Error?
+    @Published public private(set) var lastError: Error?
 
     // MARK: - Internal
 

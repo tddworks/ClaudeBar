@@ -4,9 +4,9 @@ import Infrastructure
 
 /// MiniMax provider configuration card for SettingsView.
 struct MiniMaxConfigCard: View {
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var miniMaxConfigExpanded: Bool = false
@@ -75,17 +75,17 @@ struct MiniMaxConfigCard: View {
 
                 Image(systemName: "waveform")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("MiniMax Configuration")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Coding Plan quota tracking")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -98,8 +98,7 @@ struct MiniMaxConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("REGION")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Picker("", selection: $miniMaxRegion) {
                     ForEach(MiniMaxRegion.allCases, id: \.self) { region in
@@ -107,7 +106,7 @@ struct MiniMaxConfigCard: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: miniMaxRegion) { _, newValue in
+                .onChange(of: miniMaxRegion) { newValue in
                     settings.minimax.setMinimaxRegion(newValue)
                     Task {
                         await monitor.refresh(providerId: "minimax")
@@ -120,8 +119,7 @@ struct MiniMaxConfigCard: View {
                 HStack {
                     Text("API KEY")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
                     Spacer()
 
@@ -132,20 +130,20 @@ struct MiniMaxConfigCard: View {
                             Text("Configured")
                                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         }
-                        .foregroundStyle(theme.statusHealthy)
+                        .foregroundColor(theme.statusHealthy)
                     }
                 }
 
                 HStack(spacing: 6) {
                     Group {
                         if showMiniMaxApiKey {
-                            TextField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundStyle(theme.textTertiary))
+                            TextField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundColor(theme.textTertiary))
                         } else {
-                            SecureField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundStyle(theme.textTertiary))
+                            SecureField("", text: $miniMaxApiKeyInput, prompt: Text("eyJhbGci...").foregroundColor(theme.textTertiary))
                         }
                     }
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
@@ -162,7 +160,7 @@ struct MiniMaxConfigCard: View {
                     } label: {
                         Image(systemName: showMiniMaxApiKey ? "eye.slash.fill" : "eye.fill")
                             .font(.system(size: 11))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                             .frame(width: 28, height: 28)
                             .background(
                                 Circle()
@@ -177,12 +175,11 @@ struct MiniMaxConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("API KEY ENV VAR (ALTERNATIVE)")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
-                TextField("", text: $miniMaxAuthEnvVarInput, prompt: Text("MINIMAX_API_KEY").foregroundStyle(theme.textTertiary))
+                TextField("", text: $miniMaxAuthEnvVarInput, prompt: Text("MINIMAX_API_KEY").foregroundColor(theme.textTertiary))
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
@@ -193,7 +190,7 @@ struct MiniMaxConfigCard: View {
                                     .stroke(theme.glassBorder, lineWidth: 1)
                             )
                     )
-                    .onChange(of: miniMaxAuthEnvVarInput) { _, newValue in
+                    .onChange(of: miniMaxAuthEnvVarInput) { newValue in
                         settings.minimax.setMinimaxAuthEnvVar(newValue)
                     }
             }
@@ -202,15 +199,14 @@ struct MiniMaxConfigCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("API KEY LOOKUP ORDER")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Text("1. First checks environment variable (default: MINIMAX_API_KEY)")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
                 Text("2. Falls back to API key entered above")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             // Save & Test button
@@ -220,7 +216,7 @@ struct MiniMaxConfigCard: View {
                         .scaleEffect(0.7)
                     Text("Testing connection...")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                 }
             } else {
                 Button {
@@ -230,7 +226,7 @@ struct MiniMaxConfigCard: View {
                 } label: {
                     Text("Save & Test Connection")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -244,14 +240,14 @@ struct MiniMaxConfigCard: View {
             if let result = miniMaxTestResult {
                 Text(result)
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
+                    .foregroundColor(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
             }
 
             // Help link
             VStack(alignment: .leading, spacing: 4) {
                 Text("Get your API key from MiniMax platform")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
 
                 Link(destination: miniMaxRegion.apiKeysURL) {
                     HStack(spacing: 3) {
@@ -260,7 +256,7 @@ struct MiniMaxConfigCard: View {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 7, weight: .bold))
                     }
-                    .foregroundStyle(theme.accentPrimary)
+                    .foregroundColor(theme.accentPrimary)
                 }
             }
 
@@ -277,7 +273,7 @@ struct MiniMaxConfigCard: View {
                         Text("Remove API Key")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.statusCritical)
+                    .foregroundColor(theme.statusCritical)
                 }
                 .buttonStyle(.plain)
             }

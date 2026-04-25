@@ -90,7 +90,7 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
         if scriptPath.hasPrefix("/") {
             return scriptPath
         }
-        return extensionDir.appending(path: scriptPath).path()
+        return extensionDir.appendingPathComponent(scriptPath).path
     }
 
     private func sectionDataToSnapshot(_ data: SectionData) -> UsageSnapshot {

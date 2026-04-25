@@ -8,9 +8,9 @@ import Sparkle
 /// Inline settings content view that fits within the menu bar popup.
 struct SettingsContentView: View {
     @Binding var showSettings: Bool
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
     @Environment(\.appTheme) private var theme
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
 
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
@@ -36,6 +36,13 @@ struct SettingsContentView: View {
         static let minimax = "minimax"
         static let alibaba = "alibaba"
     }
+
+    private static let lastCheckFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
 
     private var isCopilotEnabled: Bool {
         monitor.provider(for: ProviderID.copilot)?.isEnabled ?? false
@@ -183,17 +190,17 @@ struct SettingsContentView: View {
 
                     Image(systemName: currentThemeMode.icon)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                        .foregroundColor(theme.id == "cli" ? theme.textPrimary : .white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Appearance")
                         .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text("Choose your theme")
                         .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 Spacer()
@@ -209,7 +216,7 @@ struct SettingsContentView: View {
                         themeProvider: registeredTheme,
                         isSelected: settings.themeMode == registeredTheme.id
                     ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(.spring()) {
                             settings.themeMode = registeredTheme.id
                         }
                     }
@@ -258,17 +265,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "percent")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                    .foregroundColor(theme.id == "cli" ? theme.textPrimary : .white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Quota Display")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Show remaining or used percentage")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -282,7 +289,7 @@ struct SettingsContentView: View {
                     mode: mode,
                     isSelected: settings.usageDisplayMode == mode
                 ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(.spring()) {
                         settings.usageDisplayMode = mode
                     }
                 }
@@ -294,7 +301,7 @@ struct SettingsContentView: View {
         HStack {
             Text("Daily Usage Cards")
                 .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                .foregroundStyle(theme.textSecondary)
+                .foregroundColor(theme.textSecondary)
 
             Spacer()
 
@@ -317,17 +324,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "square.grid.2x2")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                    .foregroundColor(theme.id == "cli" ? theme.textPrimary : .white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Overview")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Show all providers at once")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -398,17 +405,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "cpu")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Providers")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Enable or disable AI providers")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -423,7 +430,7 @@ struct SettingsContentView: View {
 
                 Text(provider.name)
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Spacer()
 
@@ -463,7 +470,7 @@ struct SettingsContentView: View {
                     Text("Back")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                 }
-                .foregroundStyle(theme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(
@@ -481,7 +488,7 @@ struct SettingsContentView: View {
 
             Text("Settings")
                 .font(.system(size: 16, weight: .bold, design: theme.fontDesign))
-                .foregroundStyle(theme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             Spacer()
 
@@ -514,7 +521,7 @@ struct SettingsContentView: View {
                             Text(sparkleUpdater?.isCheckingForUpdates == true ? "Checking..." : "Check for Updates")
                                 .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                         }
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
@@ -541,16 +548,16 @@ struct SettingsContentView: View {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 8))
 
-                            Text("Last checked: \(lastCheck.formatted(date: .abbreviated, time: .shortened))")
+                            Text("Last checked: \(Self.lastCheckFormatter.string(from: lastCheck))")
                                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         }
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                     }
 
                     HStack {
                         Text("Check automatically")
                             .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textPrimary)
+                            .foregroundColor(theme.textPrimary)
 
                         Spacer()
 
@@ -568,11 +575,11 @@ struct SettingsContentView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Include beta versions")
                                 .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(theme.textPrimary)
+                                .foregroundColor(theme.textPrimary)
 
                             Text("Get early access to new features")
                                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                                .foregroundStyle(theme.textTertiary)
+                                .foregroundColor(theme.textTertiary)
                         }
 
                         Spacer()
@@ -590,7 +597,7 @@ struct SettingsContentView: View {
                         Text("Updates unavailable in debug builds")
                             .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
                 }
             }
         } label: {
@@ -638,17 +645,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Updates")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Version \(appVersion)")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -688,17 +695,17 @@ struct SettingsContentView: View {
 
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Logs")
                         .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text("View application logs")
                         .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 Spacer()
@@ -714,7 +721,7 @@ struct SettingsContentView: View {
                     Text("Open Log File")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                 }
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
@@ -736,7 +743,7 @@ struct SettingsContentView: View {
 
             Text("Opens ClaudeBar.log in TextEdit")
                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                .foregroundStyle(theme.textTertiary)
+                .foregroundColor(theme.textTertiary)
         }
         .padding(14)
         .background(
@@ -768,17 +775,17 @@ struct SettingsContentView: View {
 
                     Image(systemName: "info.circle.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("About")
                         .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text("Version \(appVersion) (\(appBuild))")
                         .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 Spacer()
@@ -797,7 +804,7 @@ struct SettingsContentView: View {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 9, weight: .bold))
                 }
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background(
@@ -818,7 +825,7 @@ struct SettingsContentView: View {
 
             Text("Report issues or contribute on GitHub")
                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                .foregroundStyle(theme.textTertiary)
+                .foregroundColor(theme.textTertiary)
         }
         .padding(14)
         .background(
@@ -858,17 +865,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "power")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Launch at Login")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Start ClaudeBar when you log in")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -902,8 +909,7 @@ struct SettingsContentView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("SYNC INTERVAL")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
                     Picker("", selection: $settings.backgroundSyncInterval) {
                         Text("30 seconds").tag(30.0)
@@ -917,7 +923,7 @@ struct SettingsContentView: View {
 
                 Text("Sync usage data in the background so it's always fresh when you check.")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
             .opacity(settings.backgroundSyncEnabled ? 1 : 0.6)
         } label: {
@@ -958,17 +964,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Background Sync")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Keep data fresh automatically")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -993,17 +999,17 @@ struct SettingsContentView: View {
 
                     Image(systemName: "flame")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                        .foregroundColor(theme.id == "cli" ? theme.textPrimary : .white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Burn Rate Warnings")
                         .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text("Warn based on consumption pace, not fixed thresholds")
                         .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 Spacer()
@@ -1019,7 +1025,7 @@ struct SettingsContentView: View {
                 HStack {
                     Text("Threshold")
                         .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
 
                     Spacer()
 
@@ -1060,18 +1066,18 @@ struct SettingsContentView: View {
                         .frame(width: 6, height: 6)
                     Text(hooksInstalled ? "Hooks installed in ~/.claude/settings.json" : "Hooks not installed")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                 }
 
                 if let hookError {
                     Text(hookError)
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                 }
 
                 Text("Track Claude Code sessions in real-time. Shows active session status, subagent activity, and task completion.")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
         } label: {
             hooksHeader
@@ -1111,17 +1117,17 @@ struct SettingsContentView: View {
 
                 Image(systemName: "antenna.radiowaves.left.and.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Claude Code Hooks")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Live session tracking")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -1131,7 +1137,7 @@ struct SettingsContentView: View {
                 .tint(theme.accentPrimary)
                 .scaleEffect(0.8)
                 .labelsHidden()
-                .onChange(of: hooksEnabled) { _, newValue in
+                .onChange(of: hooksEnabled) { newValue in
                     hookError = nil
                     do {
                         if newValue {
@@ -1168,7 +1174,7 @@ struct SettingsContentView: View {
             } label: {
                 Text("Done")
                     .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
                     .background(
@@ -1206,19 +1212,19 @@ struct ThemeOptionButton: View {
 
                     Image(systemName: themeProvider.icon)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(themeProvider.id == "cli" ? Color.black : .white)
+                        .foregroundColor(themeProvider.id == "cli" ? Color.black : .white)
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(themeProvider.displayName)
                         .font(.system(size: 11, weight: .medium, design: themeProvider.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
                         .lineLimit(1)
 
                     if let subtitle = themeProvider.subtitle {
                         Text(subtitle)
                             .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(themeProvider.accentPrimary)
+                            .foregroundColor(themeProvider.accentPrimary)
                     }
                 }
 
@@ -1230,7 +1236,7 @@ struct ThemeOptionButton: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 12))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1238,7 +1244,7 @@ struct ThemeOptionButton: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(theme.statusHealthy)
+                        .foregroundColor(theme.statusHealthy)
                 }
             }
             .padding(.horizontal, 10)
@@ -1288,7 +1294,7 @@ struct DisplayModeButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(buttonBackground)
-            .foregroundStyle(isSelected ? theme.accentPrimary : theme.textSecondary)
+            .foregroundColor(isSelected ? theme.accentPrimary : theme.textSecondary)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
@@ -1306,20 +1312,24 @@ struct DisplayModeButton: View {
 
 // MARK: - Preview
 
-#Preview("Settings - Dark") {
-    ZStack {
-        DarkTheme().backgroundGradient
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+struct SettingsDark_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            DarkTheme().backgroundGradient
+            SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        }
+        .appThemeProvider(themeModeId: "dark")
+        .frame(width: 380, height: 420)
     }
-    .appThemeProvider(themeModeId: "dark")
-    .frame(width: 380, height: 420)
 }
 
-#Preview("Settings - Light") {
-    ZStack {
-        LightTheme().backgroundGradient
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+struct SettingsLight_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            LightTheme().backgroundGradient
+            SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        }
+        .appThemeProvider(themeModeId: "light")
+        .frame(width: 380, height: 420)
     }
-    .appThemeProvider(themeModeId: "light")
-    .frame(width: 380, height: 420)
 }

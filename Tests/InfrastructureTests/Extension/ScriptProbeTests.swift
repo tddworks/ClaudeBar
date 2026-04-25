@@ -34,7 +34,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "/ext/probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .quotaGrid,
             timeout: 10,
@@ -73,7 +73,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .metricsRow,
             timeout: 10,
@@ -106,7 +106,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .costUsage,
             timeout: 10,
@@ -131,7 +131,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .quotaGrid,
             timeout: 10,
@@ -153,7 +153,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .quotaGrid,
             timeout: 10,
@@ -169,11 +169,11 @@ struct ScriptProbeTests {
 
     @Test
     func `isAvailable returns true when script exists`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(path: "probe-test-\(UUID().uuidString)")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("probe-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let scriptFile = tempDir.appending(path: "probe.sh")
+        let scriptFile = tempDir.appendingPathComponent("probe.sh")
         try "#!/bin/sh\necho '{}'".write(to: scriptFile, atomically: true, encoding: .utf8)
 
         let executor = MockCLIExecutor()
@@ -225,7 +225,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "ext-openrouter",
             sectionType: .quotaGrid,
             timeout: 10,
@@ -260,7 +260,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./probe.sh",
-            extensionDir: URL(filePath: "/ext"),
+            extensionDir: URL(fileURLWithPath: "/ext"),
             providerId: "test",
             sectionType: .quotaGrid,
             timeout: 10,
@@ -280,7 +280,7 @@ struct ScriptProbeTests {
 
         let probe = ScriptProbe(
             scriptPath: "./nonexistent.sh",
-            extensionDir: URL(filePath: "/nonexistent"),
+            extensionDir: URL(fileURLWithPath: "/nonexistent"),
             providerId: "test",
             sectionType: .quotaGrid,
             timeout: 10,

@@ -19,12 +19,11 @@ struct DailyUsageCardView: View {
                 HStack(spacing: 5) {
                     Image(systemName: metric.iconName)
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(metric.color)
+                        .foregroundColor(metric.color)
 
                     Text(metric.label.uppercased())
                         .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.3)
+                        .foregroundColor(theme.textSecondary)
                 }
 
                 Spacer(minLength: 4)
@@ -34,14 +33,13 @@ struct DailyUsageCardView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(primaryValue)
                     .font(.system(size: 24, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
+                    .foregroundColor(theme.textPrimary)
 
                 Spacer()
 
                 Text(metric.unitLabel)
                     .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             // Progress bar
@@ -57,7 +55,7 @@ struct DailyUsageCardView: View {
                             endPoint: .trailing
                         ))
                         .frame(width: animateProgress ? geo.size.width * progress : 0)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
+                        .animation(.spring().delay(delay + 0.2), value: animateProgress)
                 }
             }
             .frame(height: 5)
@@ -71,7 +69,7 @@ struct DailyUsageCardView: View {
                     Text(deltaText)
                         .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
                 }
-                .foregroundStyle(deltaColor)
+                .foregroundColor(deltaColor)
                 .lineLimit(1)
             }
         }

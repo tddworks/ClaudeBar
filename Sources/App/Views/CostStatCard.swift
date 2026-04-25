@@ -43,12 +43,11 @@ struct CostStatCard: View {
                 HStack(spacing: 5) {
                     Image(systemName: "dollarsign.circle.fill")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(budgetStatusColor)
+                        .foregroundColor(budgetStatusColor)
 
                     Text("API COST")
                         .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.3)
+                        .foregroundColor(theme.textSecondary)
                 }
 
                 Spacer(minLength: 4)
@@ -56,7 +55,6 @@ struct CostStatCard: View {
                 // Status badge
                 if let status = budgetStatus {
                     Text(status.badgeText)
-                        .badge(theme.statusColor(for: status.toQuotaStatus))
                 }
             }
 
@@ -64,8 +62,7 @@ struct CostStatCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(costUsage.formattedCost)
                     .font(.system(size: 28, weight: .heavy, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
+                    .foregroundColor(theme.textPrimary)
             }
 
             // Budget progress bar (if budget is set)
@@ -82,7 +79,7 @@ struct CostStatCard: View {
                     Text("API Time: \(costUsage.formattedApiDuration)")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                 }
-                .foregroundStyle(theme.textTertiary)
+                .foregroundColor(theme.textTertiary)
                 .lineLimit(1)
             } else if let resetText = costUsage.resetText {
                 HStack(spacing: 3) {
@@ -92,7 +89,7 @@ struct CostStatCard: View {
                     Text(resetText)
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                 }
-                .foregroundStyle(theme.textTertiary)
+                .foregroundColor(theme.textTertiary)
                 .lineLimit(1)
             }
         }
@@ -137,7 +134,7 @@ struct CostStatCard: View {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(budgetProgressGradient)
                         .frame(width: animateProgress ? geo.size.width * budgetPercentUsed / 100 : 0)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
+                        .animation(.spring().delay(delay + 0.2), value: animateProgress)
                 }
             }
             .frame(height: 5)
@@ -146,7 +143,7 @@ struct CostStatCard: View {
             HStack {
                 Text("\(Int(budgetPercentUsed))% of \(formatBudget(budget)) budget")
                     .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
 
                 Spacer()
             }
@@ -196,7 +193,8 @@ struct CostStatCard: View {
 
 // MARK: - Preview
 
-#Preview("Cost Card - Dark") {
+struct CostCardDark_Previews: PreviewProvider {
+    static var previews: some View {
     ZStack {
         DarkTheme().backgroundGradient
 
@@ -215,9 +213,11 @@ struct CostStatCard: View {
     }
     .frame(width: 380, height: 200)
     .preferredColorScheme(.dark)
+    }
 }
 
-#Preview("Cost Card - Light") {
+struct CostCardLight_Previews: PreviewProvider {
+    static var previews: some View {
     ZStack {
         LightTheme().backgroundGradient
 
@@ -236,9 +236,11 @@ struct CostStatCard: View {
     }
     .frame(width: 380, height: 200)
     .preferredColorScheme(.light)
+    }
 }
 
-#Preview("Cost Card - No Budget") {
+struct CostCardNoBudget_Previews: PreviewProvider {
+    static var previews: some View {
     ZStack {
         DarkTheme().backgroundGradient
 
@@ -256,4 +258,5 @@ struct CostStatCard: View {
     }
     .frame(width: 380, height: 180)
     .preferredColorScheme(.dark)
+    }
 }

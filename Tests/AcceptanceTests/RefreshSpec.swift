@@ -17,8 +17,7 @@ import Mockable
 struct RefreshSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     private static func makeSettings() -> MockProviderSettingsRepository {
@@ -34,8 +33,7 @@ struct RefreshSpec {
     @Suite("Scenario: Successful refresh")
     struct SuccessfulRefresh {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -105,8 +103,7 @@ struct RefreshSpec {
     @Suite("Scenario: Background sync")
     struct BackgroundSync {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test
@@ -128,7 +125,7 @@ struct RefreshSpec {
             )
 
             // When — start monitoring
-            let stream = monitor.startMonitoring(interval: .milliseconds(100))
+            let stream = monitor.startMonitoring(interval: 0.1)
             var events: [MonitoringEvent] = []
 
             for await event in stream.prefix(2) {
@@ -161,7 +158,7 @@ struct RefreshSpec {
             )
 
             // When — start then immediately stop
-            let stream = monitor.startMonitoring(interval: .milliseconds(50))
+            let stream = monitor.startMonitoring(interval: 0.05)
             monitor.stopMonitoring()
 
             var eventCount = 0

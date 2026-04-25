@@ -543,7 +543,7 @@ struct BadgeStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(AppTheme.captionFont(size: 8))
-            .foregroundStyle(colorScheme == .dark ? .white : .white)
+            .foregroundColor(colorScheme == .dark ? .white : .white)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
@@ -578,7 +578,7 @@ struct AdaptiveTextStyle: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content.foregroundStyle(color)
+        content.foregroundColor(color)
     }
 
     private var color: Color {
@@ -851,7 +851,7 @@ struct ThemeSwitcherButton: View {
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.spring()) {
                 cycleTheme()
             }
         } label: {
@@ -866,7 +866,7 @@ struct ThemeSwitcherButton: View {
 
                 Image(systemName: themeMode.icon)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                    .foregroundColor(AppTheme.textPrimary(for: colorScheme))
                     .rotationEffect(.degrees(themeMode == .dark ? -15 : 0))
             }
             .scaleEffect(isHovering ? 1.08 : 1.0)

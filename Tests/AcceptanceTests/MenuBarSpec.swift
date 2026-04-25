@@ -17,8 +17,7 @@ import Mockable
 struct MenuBarSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     private static func makeSettings() -> MockProviderSettingsRepository {
@@ -34,8 +33,7 @@ struct MenuBarSpec {
     @Suite("Scenario: Overall status calculation")
     struct OverallStatus {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

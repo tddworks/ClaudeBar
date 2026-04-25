@@ -6,7 +6,6 @@ internal struct GeminiAPIProbe {
     private let timeout: TimeInterval
     private let networkClient: any NetworkClient
     private let cliExecutor: CLIExecutor
-    private let clock: any Clock
 
     private static let quotaEndpoint = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
     private static let credentialsPath = "/.gemini/oauth_creds.json"
@@ -18,15 +17,13 @@ internal struct GeminiAPIProbe {
         timeout: TimeInterval,
         networkClient: any NetworkClient,
         maxRetries: Int = 3,
-        cliExecutor: CLIExecutor = DefaultCLIExecutor(),
-        clock: any Clock = SystemClock()
+        cliExecutor: CLIExecutor = DefaultCLIExecutor()
     ) {
         self.homeDirectory = homeDirectory
         self.timeout = timeout
         self.networkClient = networkClient
         self.maxRetries = maxRetries
         self.cliExecutor = cliExecutor
-        self.clock = clock
     }
 
     func probe() async throws -> UsageSnapshot {
@@ -142,7 +139,7 @@ internal struct GeminiAPIProbe {
             autoResponses: [:]
         )
 
-        try await clock.sleep(nanoseconds: 1_500_000_000)
+        try await Task.sleep(nanoseconds: 1_500_000_000)
 
         AppLog.probes.debug("Gemini: CLI token refresh completed")
     }

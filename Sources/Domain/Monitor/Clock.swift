@@ -1,6 +1,5 @@
 import Foundation
 
 public protocol Clock: Sendable {
-    func sleep(for duration: Duration) async throws
-    func sleep(nanoseconds: UInt64) async throws
+    func sleep(for duration: TimeInterval) async throws
 }

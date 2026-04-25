@@ -61,13 +61,19 @@ public struct ConfigField: Sendable, Equatable, Codable {
     /// Converts the field id to CLAUDEBAR_UPPER_SNAKE_CASE.
     /// Examples: "apiKey" → "CLAUDEBAR_API_KEY", "base-url" → "CLAUDEBAR_BASE_URL"
     public var environmentVariableName: String {
-        let snake = id
-            .replacingOccurrences(of: "-", with: "_")
-            .replacing(/([a-z])([A-Z])/) { match in
-                "\(match.output.1)_\(match.output.2)"
+        let snake = id.replacingOccurrences(of: "-", with: "_")
+        var result = ""
+        for (index, char) in snake.enumerated() {
+            if char.isUppercase {
+                if index > 0 {
+                    result.append("_")
+                }
+                result.append(char.lowercased())
+            } else {
+                result.append(char)
             }
-            .uppercased()
-        return "CLAUDEBAR_\(snake)"
+        }
+        return "CLAUDEBAR_\(result.uppercased())"
     }
 
     /// Returns the stored value if present, otherwise the default value.

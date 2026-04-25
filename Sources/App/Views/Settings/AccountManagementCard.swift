@@ -8,7 +8,7 @@ import Domain
 /// to `MultiAccountProvider`.
 struct AccountManagementCard: View {
     let provider: any MultiAccountProvider
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
 
     @Environment(\.appTheme) private var theme
     @State private var isExpanded = false
@@ -58,17 +58,17 @@ struct AccountManagementCard: View {
 
                 Image(systemName: "person.2.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Accounts")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("\(provider.accounts.count) account\(provider.accounts.count == 1 ? "" : "s") configured")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -76,7 +76,7 @@ struct AccountManagementCard: View {
             // Aggregate status badge
             let statusColor = theme.statusColor(for: provider.aggregateStatus)
             Text(provider.aggregateStatus.badgeText)
-                .badge(statusColor)
+                .foregroundColor(statusColor)
         }
     }
 
@@ -96,7 +96,7 @@ struct AccountManagementCard: View {
 
                 Text(account.initialLetter)
                     .font(.system(size: 10, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(
+                    .foregroundColor(
                         account.accountId == provider.activeAccount.accountId
                             ? .white
                             : theme.textSecondary
@@ -107,13 +107,13 @@ struct AccountManagementCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.displayName)
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .lineLimit(1)
 
                 if let email = account.email {
                     Text(email)
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                         .lineLimit(1)
                 }
             }
@@ -132,7 +132,7 @@ struct AccountManagementCard: View {
             if account.accountId == provider.activeAccount.accountId {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundStyle(theme.statusHealthy)
+                    .foregroundColor(theme.statusHealthy)
             } else {
                 // Switch button
                 Button {
@@ -140,7 +140,7 @@ struct AccountManagementCard: View {
                 } label: {
                     Text("Switch")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.accentPrimary)
+                        .foregroundColor(theme.accentPrimary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(
@@ -167,7 +167,7 @@ struct AccountManagementCard: View {
                 Text("Add Account")
                     .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
             }
-            .foregroundStyle(theme.accentPrimary)
+            .foregroundColor(theme.accentPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(

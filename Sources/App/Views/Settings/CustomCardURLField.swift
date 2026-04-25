@@ -6,7 +6,7 @@ import Domain
 struct CustomCardURLField: View {
     let providerId: String
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var urlText: String = ""
@@ -17,12 +17,11 @@ struct CustomCardURLField: View {
             HStack(spacing: 6) {
                 Image(systemName: "globe")
                     .font(.system(size: 9))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
 
                 Text("CUSTOM CARD")
                     .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textTertiary)
 
                 Spacer()
 
@@ -33,7 +32,7 @@ struct CustomCardURLField: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 10))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -42,7 +41,7 @@ struct CustomCardURLField: View {
             TextField("https://example.com", text: $urlText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                .foregroundStyle(theme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .padding(6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
@@ -55,7 +54,7 @@ struct CustomCardURLField: View {
                 .onSubmit {
                     saveURL()
                 }
-                .onChange(of: urlText) { _, _ in
+                .onChange(of: urlText) { _ in
                     saveURL()
                 }
         }

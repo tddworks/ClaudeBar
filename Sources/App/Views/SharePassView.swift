@@ -25,11 +25,11 @@ struct SharePassOverlay: View {
                 HStack {
                     Image(systemName: "gift.fill")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(theme.accentPrimary)
+                        .foregroundColor(theme.accentPrimary)
 
                     Text("Share Claude Code")
                         .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Spacer()
 
@@ -38,7 +38,7 @@ struct SharePassOverlay: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -47,7 +47,7 @@ struct SharePassOverlay: View {
                 HStack(spacing: 8) {
                     Text(pass.referralURL.absoluteString)
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
@@ -58,7 +58,7 @@ struct SharePassOverlay: View {
                     } label: {
                         Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(copied ? theme.statusHealthy : theme.accentPrimary)
+                            .foregroundColor(copied ? theme.statusHealthy : theme.accentPrimary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -79,7 +79,7 @@ struct SharePassOverlay: View {
                             Text(copied ? "Copied!" : "Copy Link")
                                 .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                         }
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
@@ -100,7 +100,7 @@ struct SharePassOverlay: View {
                             Text("Open")
                                 .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                         }
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(
@@ -118,7 +118,7 @@ struct SharePassOverlay: View {
                 // Help text
                 Text("Share a free week of Claude Code with friends")
                     .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
             .padding(16)
             .background(
@@ -143,7 +143,7 @@ struct SharePassOverlay: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(pass.referralURL.absoluteString, forType: .string)
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.spring()) {
             copied = true
         }
 
@@ -157,16 +157,18 @@ struct SharePassOverlay: View {
 
 // MARK: - Preview
 
-#Preview("SharePassOverlay") {
-    ZStack {
-        DarkTheme().backgroundGradient
+struct SharePassOverlay_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            DarkTheme().backgroundGradient
 
-        SharePassOverlay(
-            pass: ClaudePass(
-                referralURL: URL(string: "https://claude.ai/referral/DJ_kWX90Xw")!
-            ),
-            onDismiss: {}
-        )
+            SharePassOverlay(
+                pass: ClaudePass(
+                    referralURL: URL(string: "https://claude.ai/referral/DJ_kWX90Xw")!
+                ),
+                onDismiss: {}
+            )
+        }
+        .frame(width: 380, height: 400)
     }
-    .frame(width: 380, height: 400)
 }

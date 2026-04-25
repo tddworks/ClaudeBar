@@ -1,14 +1,15 @@
 import Foundation
 import Domain
 import Infrastructure
+import Combine
 import ServiceManagement
 
 /// Observable settings manager for ClaudeBar preferences.
-/// Thin `@Observable` wrapper around `AppSettingsRepository` for SwiftUI reactivity.
+/// Thin `ObservableObject` wrapper around `AppSettingsRepository` for SwiftUI reactivity.
 /// All persistence is delegated to the repository (`~/.claudebar/settings.json`).
 @MainActor
-@Observable
-public final class AppSettings {
+public final class AppSettings: ObservableObject {
+    nonisolated(unsafe) public let objectWillChange = ObservableObjectPublisher()
     public static let shared = AppSettings()
 
     /// The underlying repository (internal - views access settings through AppSettings properties/methods)
@@ -17,7 +18,7 @@ public final class AppSettings {
     // MARK: - Theme Settings
 
     /// The current theme mode (light, dark, system, christmas)
-    public var themeMode: String {
+    @Published public var themeMode: String {
         didSet {
             repository.setThemeMode(themeMode)
             if !isInitializing {
@@ -27,7 +28,7 @@ public final class AppSettings {
     }
 
     /// Whether the user has explicitly chosen a theme (vs auto-enabled Christmas)
-    public var userHasChosenTheme: Bool {
+    @Published public var userHasChosenTheme: Bool {
         didSet {
             repository.setUserHasChosenTheme(userHasChosenTheme)
         }
@@ -36,14 +37,14 @@ public final class AppSettings {
     // MARK: - Display Settings
 
     /// Whether to show quota as "remaining" or "used"
-    public var usageDisplayMode: UsageDisplayMode {
+    @Published public var usageDisplayMode: UsageDisplayMode {
         didSet {
             repository.setUsageDisplayMode(usageDisplayMode.rawValue)
         }
     }
 
     /// Whether to show daily usage report cards (API Cost, Token Usage, Working Time)
-    public var showDailyUsageCards: Bool {
+    @Published public var showDailyUsageCards: Bool {
         didSet {
             repository.setShowDailyUsageCards(showDailyUsageCards)
         }
@@ -52,7 +53,7 @@ public final class AppSettings {
     // MARK: - Overview Mode Settings
 
     /// Whether to show all enabled providers at once instead of one at a time
-    public var overviewModeEnabled: Bool {
+    @Published public var overviewModeEnabled: Bool {
         didSet {
             repository.setOverviewModeEnabled(overviewModeEnabled)
         }
@@ -61,14 +62,14 @@ public final class AppSettings {
     // MARK: - Background Sync Settings
 
     /// Whether background sync is enabled (default: false)
-    public var backgroundSyncEnabled: Bool {
+    @Published public var backgroundSyncEnabled: Bool {
         didSet {
             repository.setBackgroundSyncEnabled(backgroundSyncEnabled)
         }
     }
 
     /// Background sync interval in seconds (default: 60)
-    public var backgroundSyncInterval: TimeInterval {
+    @Published public var backgroundSyncInterval: TimeInterval {
         didSet {
             repository.setBackgroundSyncInterval(backgroundSyncInterval)
         }
@@ -77,14 +78,14 @@ public final class AppSettings {
     // MARK: - Claude API Budget Settings
 
     /// Whether Claude API budget tracking is enabled
-    public var claudeApiBudgetEnabled: Bool {
+    @Published public var claudeApiBudgetEnabled: Bool {
         didSet {
             repository.setClaudeApiBudgetEnabled(claudeApiBudgetEnabled)
         }
     }
 
     /// The budget threshold for Claude API usage (in dollars)
-    public var claudeApiBudget: Decimal {
+    @Published public var claudeApiBudget: Decimal {
         didSet {
             repository.setClaudeApiBudget(NSDecimalNumber(decimal: claudeApiBudget).doubleValue)
         }
@@ -93,14 +94,14 @@ public final class AppSettings {
     // MARK: - Burn Rate Warning Settings
 
     /// Whether burn rate-based warnings are enabled (default: false, uses absolute thresholds)
-    public var burnRateWarningEnabled: Bool {
+    @Published public var burnRateWarningEnabled: Bool {
         didSet {
             repository.setBurnRateWarningEnabled(burnRateWarningEnabled)
         }
     }
 
     /// The burn rate multiplier threshold above which warnings fire (default: 1.5)
-    public var burnRateThreshold: Double {
+    @Published public var burnRateThreshold: Double {
         didSet {
             repository.setBurnRateThreshold(burnRateThreshold)
         }
@@ -109,7 +110,7 @@ public final class AppSettings {
     // MARK: - Update Settings
 
     /// Whether to receive beta updates (default: false)
-    public var receiveBetaUpdates: Bool {
+    @Published public var receiveBetaUpdates: Bool {
         didSet {
             repository.setReceiveBetaUpdates(receiveBetaUpdates)
             NotificationCenter.default.post(name: .betaUpdatesSettingChanged, object: nil)
@@ -119,17 +120,20 @@ public final class AppSettings {
     // MARK: - Launch at Login Settings
 
     /// Whether the app should launch at login (backed by SMAppService, not JSON)
-    public var launchAtLogin: Bool {
+    /// Only available on macOS 13+. Defaults to false on older systems.
+    @Published public var launchAtLogin: Bool {
         didSet {
             guard !isInitializing else { return }
-            do {
-                if launchAtLogin {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
+            if #available(macOS 13, *) {
+                do {
+                    if launchAtLogin {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    launchAtLogin = SMAppService.mainApp.status == .enabled
                 }
-            } catch {
-                launchAtLogin = SMAppService.mainApp.status == .enabled
             }
         }
     }
@@ -163,7 +167,11 @@ public final class AppSettings {
         }
 
         // Launch at login - read from SMAppService (system service, not JSON)
-        self.launchAtLogin = SMAppService.mainApp.status == .enabled
+        if #available(macOS 13, *) {
+            self.launchAtLogin = SMAppService.mainApp.status == .enabled
+        } else {
+            self.launchAtLogin = false
+        }
 
         applySeasonalTheme()
         self.isInitializing = false
@@ -195,7 +203,7 @@ public final class AppSettings {
     // MARK: - Provider Settings Access
 
     /// Access provider-specific settings for reading/writing in Settings UI.
-    /// These are non-observable (loaded into @State) - only app-level settings are @Observable.
+    /// These are non-observable (loaded into @State) - only app-level settings are ObservableObject.
     public var provider: ProviderSettingsRepository { repository }
     public var claude: ClaudeSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }

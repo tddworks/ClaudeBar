@@ -6,7 +6,7 @@ import Domain
 struct ProviderSectionView: View {
     let snapshot: UsageSnapshot
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
 
     private var effectiveOverallStatus: QuotaStatus {
         if settings.burnRateWarningEnabled {
@@ -31,7 +31,7 @@ struct ProviderSectionView: View {
                 if let email = snapshot.accountEmail {
                     Text(email)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                 }
             }
 
@@ -46,12 +46,12 @@ struct ProviderSectionView: View {
             HStack {
                 Text("Updated \(snapshot.ageDescription)")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundColor(Color(.tertiaryLabelColor))
 
                 if snapshot.isStale {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .foregroundColor(.orange)
                 }
             }
         }

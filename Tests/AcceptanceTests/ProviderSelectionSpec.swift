@@ -18,8 +18,7 @@ import Mockable
 struct ProviderSelectionSpec {
 
     private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
+        func sleep(for duration: TimeInterval) async throws {}
     }
 
     // MARK: - #4: Switch to a different provider
@@ -27,8 +26,7 @@ struct ProviderSelectionSpec {
     @Suite("Scenario: Switch to a different provider")
     struct SwitchProvider {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -85,8 +83,7 @@ struct ProviderSelectionSpec {
     @Suite("Scenario: Only enabled providers appear as pills")
     struct EnabledProviders {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -136,8 +133,7 @@ struct ProviderSelectionSpec {
     @Suite("Scenario: Disabling the currently selected provider")
     struct DisableSelectedProvider {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -192,8 +188,7 @@ struct ProviderSelectionSpec {
     @Suite("Scenario: Selecting a disabled provider")
     struct SelectDisabledProvider {
         private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
+            func sleep(for duration: TimeInterval) async throws {}
         }
 
         @Test

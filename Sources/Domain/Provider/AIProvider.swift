@@ -1,10 +1,11 @@
 import Foundation
+import Combine
 
 /// Protocol defining what an AI provider is.
 /// Each provider (Claude, Codex, Gemini) is a rich domain model implementing this protocol.
-/// Providers are @Observable classes with their own state (isSyncing, snapshot, error).
-/// Providers must be Sendable (use @unchecked Sendable for @Observable classes).
-public protocol AIProvider: AnyObject, Sendable, Identifiable where ID == String {
+/// Providers are ObservableObject classes with their own state (isSyncing, snapshot, error).
+/// Providers must be Sendable (use @unchecked Sendable for ObservableObject classes).
+public protocol AIProvider: AnyObject, ObservableObject, Sendable, Identifiable where ID == String {
     // MARK: - Identity
 
     /// Unique identifier for the provider (e.g., "claude", "codex", "gemini")

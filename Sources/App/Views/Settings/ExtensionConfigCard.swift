@@ -65,17 +65,17 @@ struct ExtensionConfigCard: View {
 
                 Image(systemName: manifest.icon ?? "puzzlepiece.extension.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(manifest.name) Configuration")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text(manifest.description ?? "Extension settings")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -89,8 +89,7 @@ struct ExtensionConfigCard: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(field.label.uppercased())
                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                .foregroundStyle(theme.textSecondary)
-                .tracking(0.5)
+                .foregroundColor(theme.textSecondary)
 
             switch field.type {
             case .string, .number, .path:
@@ -106,7 +105,7 @@ struct ExtensionConfigCard: View {
             if let helpText = field.helpText {
                 Text(helpText)
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
         }
     }
@@ -115,10 +114,10 @@ struct ExtensionConfigCard: View {
         TextField(
             "",
             text: binding(for: field),
-            prompt: Text(field.placeholder ?? "").foregroundStyle(theme.textTertiary)
+            prompt: Text(field.placeholder ?? "").foregroundColor(theme.textTertiary)
         )
         .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-        .foregroundStyle(theme.textPrimary)
+        .foregroundColor(theme.textPrimary)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(inputBackground)
@@ -131,25 +130,25 @@ struct ExtensionConfigCard: View {
                     TextField(
                         "",
                         text: binding(for: field),
-                        prompt: Text(field.placeholder ?? "").foregroundStyle(theme.textTertiary)
+                        prompt: Text(field.placeholder ?? "").foregroundColor(theme.textTertiary)
                     )
                 } else {
                     SecureField(
                         "",
                         text: binding(for: field),
-                        prompt: Text(field.placeholder ?? "").foregroundStyle(theme.textTertiary)
+                        prompt: Text(field.placeholder ?? "").foregroundColor(theme.textTertiary)
                     )
                 }
             }
             .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-            .foregroundStyle(theme.textPrimary)
+            .foregroundColor(theme.textPrimary)
 
             Button {
                 secretVisible[field.id] = !(secretVisible[field.id] ?? false)
             } label: {
                 Image(systemName: secretVisible[field.id] == true ? "eye.slash.fill" : "eye.fill")
                     .font(.system(size: 10))
-                    .foregroundStyle(theme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
             .buttonStyle(.plain)
         }

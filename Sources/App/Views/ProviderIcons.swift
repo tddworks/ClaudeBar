@@ -54,7 +54,7 @@ struct ProviderIconView: View {
 
                     Image(systemName: providerSymbol(for: providerId))
                         .font(.system(size: size * 0.45, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                 }
                 .overlay(
                     Circle()
@@ -102,59 +102,64 @@ struct ProviderIconView: View {
 
 // MARK: - Preview
 
-#Preview("Provider Icons - Dark") {
+struct ProviderIconsDark_Previews: PreviewProvider {
+    static var previews: some View {
     HStack(spacing: 30) {
         VStack {
             ProviderIconView(providerId: "claude", size: 40)
             Text("Claude")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         VStack {
             ProviderIconView(providerId: "codex", size: 40)
             Text("Codex")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
         VStack {
             ProviderIconView(providerId: "gemini", size: 40)
             Text("Gemini")
                 .font(.caption)
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
         }
     }
     .padding(40)
     .background(DarkTheme().backgroundGradient)
     .preferredColorScheme(.dark)
+    }
 }
 
-#Preview("Provider Icons - Light") {
+struct ProviderIconsLight_Previews: PreviewProvider {
+    static var previews: some View {
     HStack(spacing: 30) {
         VStack {
             ProviderIconView(providerId: "claude", size: 40)
             Text("Claude")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundColor(LightTheme().textPrimary)
         }
         VStack {
             ProviderIconView(providerId: "codex", size: 40)
             Text("Codex")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundColor(LightTheme().textPrimary)
         }
         VStack {
             ProviderIconView(providerId: "gemini", size: 40)
             Text("Gemini")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundColor(LightTheme().textPrimary)
         }
     }
     .padding(40)
     .background(LightTheme().backgroundGradient)
     .preferredColorScheme(.light)
+    }
 }
 
-#Preview("Provider Icons - Sizes") {
+struct ProviderIconsSizes_Previews: PreviewProvider {
+    static var previews: some View {
     HStack(spacing: 20) {
         ProviderIconView(providerId: "claude", size: 24)
         ProviderIconView(providerId: "claude", size: 32)
@@ -164,4 +169,5 @@ struct ProviderIconView: View {
     .padding(40)
     .background(DarkTheme().backgroundGradient)
     .preferredColorScheme(.dark)
+    }
 }

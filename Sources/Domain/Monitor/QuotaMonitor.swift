@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 
 /// Events emitted during continuous monitoring
 public enum MonitoringEvent: Sendable {
@@ -12,8 +12,8 @@ public enum MonitoringEvent: Sendable {
 /// The main domain service that coordinates quota monitoring across AI providers.
 /// Providers are rich domain models that own their own snapshots.
 /// QuotaMonitor coordinates refreshes and alerts users when status changes.
-@Observable
-public final class QuotaMonitor: @unchecked Sendable {
+public final class QuotaMonitor: ObservableObject, @unchecked Sendable {
+
     /// The providers repository (internal - access via delegation methods)
     private let providers: any AIProviderRepository
 
@@ -29,11 +29,14 @@ public final class QuotaMonitor: @unchecked Sendable {
     /// Current monitoring task
     private var monitoringTask: Task<Void, Never>?
 
+    /// Combine subscriptions for forwarding provider changes
+    private var providerCancellables: Set<AnyCancellable> = []
+
     /// Whether monitoring is active
-    public private(set) var isMonitoring: Bool = false
+    @Published public private(set) var isMonitoring: Bool = false
 
     /// The currently selected provider ID (for UI display)
-    public var selectedProviderId: String = "claude"
+    @Published public var selectedProviderId: String = "claude"
 
     // MARK: - Initialization
 
@@ -48,6 +51,20 @@ public final class QuotaMonitor: @unchecked Sendable {
         self.alerter = alerter
         self.clock = clock
         selectFirstEnabledIfNeeded()
+        forwardProviderChanges()
+    }
+
+    /// Subscribes to all providers' objectWillChange and forwards to our own.
+    private func forwardProviderChanges() {
+        for provider in providers.all {
+            ObservableSubscriber.subscribe(
+                to: provider,
+                receiveOn: RunLoop.main,
+                onChange: { [weak self] in
+                    self?.objectWillChange.send()
+                }
+            ).store(in: &providerCancellables)
+        }
     }
 
     // MARK: - Monitoring Operations
@@ -137,6 +154,13 @@ public final class QuotaMonitor: @unchecked Sendable {
     /// Adds a provider dynamically
     public func addProvider(_ provider: any AIProvider) {
         providers.add(provider)
+        ObservableSubscriber.subscribe(
+            to: provider,
+            receiveOn: RunLoop.main,
+            onChange: { [weak self] in
+                self?.objectWillChange.send()
+            }
+        ).store(in: &providerCancellables)
     }
 
     /// Removes a provider by ID
@@ -212,7 +236,7 @@ public final class QuotaMonitor: @unchecked Sendable {
     /// Starts continuous monitoring at the specified interval.
     /// Only refreshes the currently selected provider each cycle to minimize energy usage.
     /// Returns an AsyncStream of monitoring events.
-    public func startMonitoring(interval: Duration = .seconds(60)) -> AsyncStream<MonitoringEvent> {
+    public func startMonitoring(interval: TimeInterval = 60) -> AsyncStream<MonitoringEvent> {
         // Stop any existing monitoring
         monitoringTask?.cancel()
 

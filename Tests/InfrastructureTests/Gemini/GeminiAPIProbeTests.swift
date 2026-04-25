@@ -6,10 +6,6 @@ import Mockable
 
 @Suite
 struct GeminiAPIProbeTests {
-    private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
-    }
 
     // MARK: - Helpers
 
@@ -265,8 +261,7 @@ struct GeminiAPIProbeTests {
             timeout: 1.0,
             networkClient: mockService,
             maxRetries: 1,
-            cliExecutor: mockExecutor,
-            clock: TestClock()
+            cliExecutor: mockExecutor
         )
 
         let snapshot = try await probe.probe()
@@ -315,8 +310,7 @@ struct GeminiAPIProbeTests {
             timeout: 1.0,
             networkClient: mockService,
             maxRetries: 1,
-            cliExecutor: mockExecutor,
-            clock: TestClock()
+            cliExecutor: mockExecutor
         )
 
         await #expect(throws: ProbeError.authenticationRequired) {
@@ -366,8 +360,7 @@ struct GeminiAPIProbeTests {
             timeout: 1.0,
             networkClient: mockService,
             maxRetries: 1,
-            cliExecutor: mockExecutor,
-            clock: TestClock()
+            cliExecutor: mockExecutor
         )
 
         await #expect(throws: ProbeError.authenticationRequired) {
@@ -420,8 +413,7 @@ struct GeminiAPIProbeTests {
             timeout: 1.0,
             networkClient: mockService,
             maxRetries: 1,
-            cliExecutor: mockExecutor,
-            clock: TestClock()
+            cliExecutor: mockExecutor
         )
 
         await #expect(throws: ProbeError.executionFailed("HTTP 500")) {

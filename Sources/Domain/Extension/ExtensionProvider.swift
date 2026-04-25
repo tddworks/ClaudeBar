@@ -1,9 +1,11 @@
 import Foundation
+import Combine
 
 /// An AIProvider backed by an extension manifest and script-based probes.
 /// Each section has its own probe; refresh runs all probes and merges results.
-@Observable
-public final class ExtensionProvider: AIProvider, @unchecked Sendable {
+public final class ExtensionProvider: ObservableObject, AIProvider, @unchecked Sendable {
+    public let objectWillChange = ObservableObjectPublisher()
+
     // MARK: - Identity
 
     public let id: String
@@ -17,13 +19,13 @@ public final class ExtensionProvider: AIProvider, @unchecked Sendable {
 
     // MARK: - State
 
-    public var isEnabled: Bool {
+    @Published public var isEnabled: Bool {
         didSet { settingsRepository.setEnabled(isEnabled, forProvider: id) }
     }
 
-    public private(set) var isSyncing: Bool = false
-    public private(set) var snapshot: UsageSnapshot?
-    public private(set) var lastError: Error?
+    @Published public private(set) var isSyncing: Bool = false
+    @Published public private(set) var snapshot: UsageSnapshot?
+    @Published public private(set) var lastError: Error?
 
     // MARK: - Dependencies
 

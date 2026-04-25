@@ -20,7 +20,7 @@ public final class ExtensionDirectoryScanner: Sendable {
     public func scan(directory: URL) -> [ExtensionScanResult] {
         let fileManager = FileManager.default
 
-        guard fileManager.fileExists(atPath: directory.path()) else {
+        guard fileManager.fileExists(atPath: directory.path) else {
             return []
         }
 
@@ -34,12 +34,12 @@ public final class ExtensionDirectoryScanner: Sendable {
 
         return contents.compactMap { subDir -> ExtensionScanResult? in
             var isDirectory: ObjCBool = false
-            guard fileManager.fileExists(atPath: subDir.path(), isDirectory: &isDirectory),
+            guard fileManager.fileExists(atPath: subDir.path, isDirectory: &isDirectory),
                   isDirectory.boolValue else {
                 return nil
             }
 
-            let manifestURL = subDir.appending(path: "manifest.json")
+            let manifestURL = subDir.appendingPathComponent("manifest.json")
             guard let data = try? Data(contentsOf: manifestURL),
                   let manifest = try? ExtensionManifest.parse(from: data) else {
                 return nil

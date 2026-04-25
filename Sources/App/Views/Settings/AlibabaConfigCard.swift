@@ -4,9 +4,9 @@ import Infrastructure
 
 /// Alibaba Coding Plan provider configuration card for SettingsView.
 struct AlibabaConfigCard: View {
-    let monitor: QuotaMonitor
+    @ObservedObject var monitor: QuotaMonitor
 
-    @State private var settings = AppSettings.shared
+    @ObservedObject var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var alibabaConfigExpanded: Bool = false
@@ -81,17 +81,17 @@ struct AlibabaConfigCard: View {
 
                 Image(systemName: "cloud.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Alibaba Configuration")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
                 Text("Coding Plan quota tracking")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundColor(theme.textTertiary)
             }
 
             Spacer()
@@ -104,8 +104,7 @@ struct AlibabaConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("REGION")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Picker("", selection: $alibabaRegion) {
                     ForEach(AlibabaRegion.allCases, id: \.self) { region in
@@ -113,7 +112,7 @@ struct AlibabaConfigCard: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: alibabaRegion) { _, newValue in
+                .onChange(of: alibabaRegion) { newValue in
                     settings.alibaba.setAlibabaRegion(newValue)
                     Task {
                         await monitor.refresh(providerId: "alibaba")
@@ -125,8 +124,7 @@ struct AlibabaConfigCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("COOKIE SOURCE")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+                    .foregroundColor(theme.textSecondary)
 
                 Picker("", selection: $alibabaCookieSource) {
                     ForEach(AlibabaCookieSource.allCases, id: \.self) { source in
@@ -134,7 +132,7 @@ struct AlibabaConfigCard: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: alibabaCookieSource) { _, newValue in
+                .onChange(of: alibabaCookieSource) { newValue in
                     settings.alibaba.setAlibabaCookieSource(newValue)
                 }
             }
@@ -144,12 +142,11 @@ struct AlibabaConfigCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("COOKIE STRING")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
-                    TextField("", text: $alibabaManualCookieInput, prompt: Text("Paste cookie string...").foregroundStyle(theme.textTertiary))
+                    TextField("", text: $alibabaManualCookieInput, prompt: Text("Paste cookie string...").foregroundColor(theme.textTertiary))
                         .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background(
@@ -160,7 +157,7 @@ struct AlibabaConfigCard: View {
                                         .stroke(theme.glassBorder, lineWidth: 1)
                                 )
                         )
-                        .onChange(of: alibabaManualCookieInput) { _, newValue in
+                        .onChange(of: alibabaManualCookieInput) { newValue in
                             if !newValue.isEmpty {
                                 settings.alibaba.saveAlibabaManualCookie(newValue)
                             }
@@ -168,7 +165,7 @@ struct AlibabaConfigCard: View {
 
                     Text("Copy the cookie from your browser's developer tools after logging in to Alibaba Cloud.")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
             }
 
@@ -177,8 +174,7 @@ struct AlibabaConfigCard: View {
                 HStack {
                     Text("API KEY")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.5)
+                        .foregroundColor(theme.textSecondary)
 
                     Spacer()
 
@@ -189,20 +185,20 @@ struct AlibabaConfigCard: View {
                             Text("Configured")
                                 .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         }
-                        .foregroundStyle(theme.statusHealthy)
+                        .foregroundColor(theme.statusHealthy)
                     }
                 }
 
                 HStack(spacing: 6) {
                     Group {
                         if showAlibabaApiKey {
-                            TextField("", text: $alibabaApiKeyInput, prompt: Text("sk-...").foregroundStyle(theme.textTertiary))
+                            TextField("", text: $alibabaApiKeyInput, prompt: Text("sk-...").foregroundColor(theme.textTertiary))
                         } else {
-                            SecureField("", text: $alibabaApiKeyInput, prompt: Text("sk-...").foregroundStyle(theme.textTertiary))
+                            SecureField("", text: $alibabaApiKeyInput, prompt: Text("sk-...").foregroundColor(theme.textTertiary))
                         }
                     }
                     .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
@@ -219,7 +215,7 @@ struct AlibabaConfigCard: View {
                     } label: {
                         Image(systemName: showAlibabaApiKey ? "eye.slash.fill" : "eye.fill")
                             .font(.system(size: 11))
-                            .foregroundStyle(theme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                             .frame(width: 28, height: 28)
                             .background(
                                 Circle()
@@ -237,7 +233,7 @@ struct AlibabaConfigCard: View {
                         .scaleEffect(0.7)
                     Text("Testing connection...")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                 }
             } else {
                 Button {
@@ -247,7 +243,7 @@ struct AlibabaConfigCard: View {
                 } label: {
                     Text("Save & Test Connection")
                         .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -261,7 +257,7 @@ struct AlibabaConfigCard: View {
             if let result = alibabaTestResult {
                 Text(result)
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
+                    .foregroundColor(result.contains("Success") ? theme.statusHealthy : theme.statusCritical)
             }
 
             // Dashboard link
@@ -272,7 +268,7 @@ struct AlibabaConfigCard: View {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 7, weight: .bold))
                 }
-                .foregroundStyle(theme.accentPrimary)
+                .foregroundColor(theme.accentPrimary)
             }
 
             // Delete credentials
@@ -288,7 +284,7 @@ struct AlibabaConfigCard: View {
                         Text("Remove API Key")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     }
-                    .foregroundStyle(theme.statusCritical)
+                    .foregroundColor(theme.statusCritical)
                 }
                 .buttonStyle(.plain)
             }
