@@ -199,6 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let popover = popover, let button = statusItem?.button else { return }
 
         if popover.isShown {
+            windowObservation = nil
             popover.performClose(nil)
         } else {
             // Update theme when opening
@@ -223,7 +224,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 vc.rootView = rootView
             }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            constrainPopoverToScreen()
+            DispatchQueue.main.async { [weak self] in
+                self?.constrainPopoverToScreen()
+                self?.observePopoverWindow()
+            }
         }
     }
 
@@ -243,6 +247,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if windowFrame.maxY > screenFrame.maxY {
             let shift = windowFrame.maxY - screenFrame.maxY
             window.setFrameOrigin(NSPoint(x: windowFrame.origin.x, y: windowFrame.origin.y - shift))
+        }
+    }
+
+    /// Observe window frame changes and re-constrain (macOS 12 popover resizes after show).
+    private var windowObservation: NSKeyValueObservation?
+
+    private func observePopoverWindow() {
+        guard let window = popover?.contentViewController?.view.window else { return }
+        windowObservation = window.observe(\.frame, options: [.new]) { [weak self] window, _ in
+            self?.constrainPopoverToScreen()
         }
     }
 
