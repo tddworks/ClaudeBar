@@ -223,6 +223,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 vc.rootView = rootView
             }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            constrainPopoverToScreen()
+        }
+    }
+
+    /// Clamp popover position so it stays within visible screen bounds (macOS 12 fix).
+    private func constrainPopoverToScreen() {
+        guard let popover = popover,
+              let window = popover.contentViewController?.view.window,
+              let screen = window.screen ?? NSScreen.main else { return }
+
+        let screenFrame = screen.visibleFrame
+        let windowFrame = window.frame
+
+        if windowFrame.maxX > screenFrame.maxX {
+            let shift = windowFrame.maxX - screenFrame.maxX
+            window.setFrameOrigin(NSPoint(x: windowFrame.origin.x - shift, y: windowFrame.origin.y))
+        }
+        if windowFrame.maxY > screenFrame.maxY {
+            let shift = windowFrame.maxY - screenFrame.maxY
+            window.setFrameOrigin(NSPoint(x: windowFrame.origin.x, y: windowFrame.origin.y - shift))
         }
     }
 
