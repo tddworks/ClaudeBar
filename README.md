@@ -194,6 +194,84 @@ Match ClaudeBar's appearance to your terminal. Import any `.itermcolors` file:
 
 Imported themes are saved in `~/.claudebar/themes/` and persist across restarts.
 
+
+## FAQ
+
+### General
+
+**What is ClaudeBar?**
+ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas in real-time. It supports Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, Kimi, Kiro, and Amp — all from one place.
+
+**Which macOS version is required?**
+macOS 15 (Sequoia) or later.
+
+### Installation
+
+**How do I install ClaudeBar?**
+- **Homebrew**: `brew install --cask claudebar`
+- **DMG/ZIP**: Download from [GitHub Releases](https://github.com/tddworks/ClaudeBar/releases/latest) — code-signed and notarized
+- **Build from source**: See the Build from Source section above
+
+**Is ClaudeBar available on the Mac App Store?**
+No, it's distributed via Homebrew and GitHub Releases.
+
+### Supported Providers
+
+**Which AI coding assistants are supported?**
+Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, Kimi, Kiro, and Amp.
+
+**Do I need to install CLI tools for each provider?**
+Yes, each provider's CLI must be installed separately. ClaudeBar reads quota data from the local CLI tools.
+
+### Kimi Configuration
+
+**Why does Kimi require Full Disk Access?**
+In API mode, ClaudeBar reads browser cookies for authentication. Enable Full Disk Access in System Settings > Privacy & Security. Alternatively, use CLI mode (recommended) which doesn't need special permissions.
+
+**What's the difference between CLI mode and API mode for Kimi?**
+- **CLI mode** (recommended): Launches the `kimi` CLI and sends `/usage`. No special permissions needed.
+- **API mode**: Reads browser cookies directly. Requires Full Disk Access or the `KIMI_AUTH_TOKEN` environment variable.
+
+### Kiro Configuration
+
+**How do I set up Kiro monitoring?**
+Install `kiro-cli` via `uv tool install kiro-cli` or `pip install kiro-cli`, then run `kiro-cli` to authenticate. If you use Kiro IDE, both share the same authentication.
+
+### Usage
+
+**How do quota thresholds work?**
+- **> 50%**: Healthy (green)
+- **20-50%**: Warning (yellow)
+- **< 20%**: Critical (red)
+- **0%**: Depleted (gray)
+
+**Can I customize refresh intervals?**
+Yes, auto-refresh intervals are configurable in Settings.
+
+**What keyboard shortcuts are available?**
+- `⌘D`: Open Dashboard
+- `⌘R`: Manual refresh
+
+### Themes
+
+**What themes are available?**
+Light, Dark, CLI, Christmas (auto-enables during holidays), and custom themes imported from `.itermcolors` files.
+
+**How do I import a custom terminal theme?**
+Open Settings (gear icon) > Import .itermcolors > Select your file. Themes are saved in `~/.claudebar/themes/`.
+
+### Troubleshooting
+
+**ClaudeBar shows "No data" for a provider?**
+Ensure the provider's CLI is installed and accessible in your PATH. Run the CLI manually to verify it works.
+
+**Quota data seems outdated?**
+Click `⌘R` to force a refresh, or check that auto-refresh is enabled in Settings.
+
+**Where can I get help?**
+- Open an [Issue](https://github.com/tddworks/ClaudeBar/issues)
+- Check the [Releases](https://github.com/tddworks/ClaudeBar/releases) page for the latest version
+
 ## Contributing
 
 ### Adding a New AI Provider
