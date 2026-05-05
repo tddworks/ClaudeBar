@@ -147,6 +147,9 @@ struct MenuContentView: View {
             Task {
                 await refresh(providerId: newProviderId)
             }
+            if settings.backgroundSyncEnabled && settings.menuBarPercentageEnabled {
+                restartBackgroundSync()
+            }
         }
         .onChange(of: settings.backgroundSyncEnabled) { _, enabled in
             // React to background sync toggle
@@ -162,6 +165,16 @@ struct MenuContentView: View {
                 restartBackgroundSync()
             }
         }
+        .onChange(of: settings.menuBarPercentageEnabled) { _, _ in
+            if settings.backgroundSyncEnabled {
+                restartBackgroundSync()
+            }
+        }
+        .onChange(of: settings.menuBarPercentageProviderId) { _, _ in
+            if settings.backgroundSyncEnabled && settings.menuBarPercentageEnabled {
+                restartBackgroundSync()
+            }
+        }
     }
 
     // MARK: - Background Sync Control
@@ -170,11 +183,19 @@ struct MenuContentView: View {
         let interval = Duration.seconds(settings.backgroundSyncInterval)
         AppLog.monitor.info("Starting background sync (interval: \(settings.backgroundSyncInterval)s)")
         Task {
-            let stream = monitor.startMonitoring(interval: interval)
+            let stream = monitor.startMonitoring(interval: interval, providerIds: backgroundSyncProviderIds)
             for await _ in stream {
                 // Events handled internally by QuotaMonitor
             }
         }
+    }
+
+    private var backgroundSyncProviderIds: [String]? {
+        guard settings.menuBarPercentageEnabled else { return nil }
+        return [
+            selectedProviderId,
+            settings.menuBarPercentageProviderId,
+        ]
     }
 
     private func stopBackgroundSync() {

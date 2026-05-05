@@ -57,6 +57,30 @@ public final class JSONSettingsRepository:
         store.write(value: mode, key: "app.usageDisplayMode")
     }
 
+    public func menuBarPercentageEnabled() -> Bool {
+        store.read(key: "app.menuBarPercentageEnabled") ?? false
+    }
+
+    public func setMenuBarPercentageEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "app.menuBarPercentageEnabled")
+    }
+
+    public func menuBarPercentageProviderId() -> String {
+        store.read(key: "app.menuBarPercentageProviderId") ?? "claude"
+    }
+
+    public func setMenuBarPercentageProviderId(_ providerId: String) {
+        store.write(value: providerId, key: "app.menuBarPercentageProviderId")
+    }
+
+    public func menuBarPercentageQuotaKey() -> String {
+        store.read(key: "app.menuBarPercentageQuotaKey") ?? "session"
+    }
+
+    public func setMenuBarPercentageQuotaKey(_ quotaKey: String) {
+        store.write(value: quotaKey, key: "app.menuBarPercentageQuotaKey")
+    }
+
     public func showDailyUsageCards() -> Bool {
         store.read(key: "app.showDailyUsageCards") ?? true
     }

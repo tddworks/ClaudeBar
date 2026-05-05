@@ -104,6 +104,22 @@ public final class QuotaMonitor: @unchecked Sendable {
         await refreshProvider(provider)
     }
 
+    /// Refreshes the given providers once, preserving order and removing duplicates.
+    public func refresh(providerIds: [String]) async {
+        var seen = Set<String>()
+        let uniqueProviderIds = providerIds.filter { providerId in
+            seen.insert(providerId).inserted
+        }
+
+        await withTaskGroup(of: Void.self) { group in
+            for providerId in uniqueProviderIds {
+                group.addTask {
+                    await self.refresh(providerId: providerId)
+                }
+            }
+        }
+    }
+
     /// Refreshes all enabled providers except the specified one.
     public func refreshOthers(except providerId: String) async {
         let otherProviders = providers.enabled.filter { $0.id != providerId }
@@ -149,6 +165,34 @@ public final class QuotaMonitor: @unchecked Sendable {
         providers.enabled
             .compactMap(\.snapshot?.lowestQuota)
             .min()
+    }
+
+    /// Returns the selected quota for a provider from enabled provider snapshots.
+    public func quota(providerId: String, quotaKey: String) -> UsageQuota? {
+        providers.enabled
+            .first { $0.id == providerId }?
+            .snapshot?
+            .quota(forKey: quotaKey)
+    }
+
+    /// Returns the menu bar percentage display for a provider/quota selection.
+    public func menuBarPercentageDisplay(
+        providerId: String,
+        quotaKey: String,
+        mode: UsageDisplayMode,
+        burnRateWarningEnabled: Bool = false,
+        burnRateThreshold: Double = 1.5
+    ) -> MenuBarPercentageDisplay? {
+        guard let quota = quota(providerId: providerId, quotaKey: quotaKey) else {
+            return nil
+        }
+
+        return MenuBarPercentageDisplay(
+            quota: quota,
+            mode: mode,
+            burnRateWarningEnabled: burnRateWarningEnabled,
+            burnRateThreshold: burnRateThreshold
+        )
     }
 
     /// Returns the overall status across enabled providers (worst status wins)
@@ -210,9 +254,13 @@ public final class QuotaMonitor: @unchecked Sendable {
     }
 
     /// Starts continuous monitoring at the specified interval.
-    /// Only refreshes the currently selected provider each cycle to minimize energy usage.
+    /// By default, refreshes the currently selected provider each cycle to minimize energy usage.
+    /// When provider IDs are supplied, refreshes that de-duplicated provider set each cycle.
     /// Returns an AsyncStream of monitoring events.
-    public func startMonitoring(interval: Duration = .seconds(60)) -> AsyncStream<MonitoringEvent> {
+    public func startMonitoring(
+        interval: Duration = .seconds(60),
+        providerIds: [String]? = nil
+    ) -> AsyncStream<MonitoringEvent> {
         // Stop any existing monitoring
         monitoringTask?.cancel()
 
@@ -221,7 +269,11 @@ public final class QuotaMonitor: @unchecked Sendable {
         return AsyncStream { continuation in
             let task = Task {
                 while !Task.isCancelled {
-                    await self.refreshSelected()
+                    if let providerIds {
+                        await self.refresh(providerIds: providerIds)
+                    } else {
+                        await self.refreshSelected()
+                    }
                     continuation.yield(.refreshed)
 
                     do {

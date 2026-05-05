@@ -26,6 +26,42 @@ public enum QuotaType: Sendable, Equatable, Hashable {
         }
     }
 
+    /// Stable key used for persisted quota selection.
+    public var quotaKey: String {
+        switch self {
+        case .session:
+            "session"
+        case .weekly:
+            "weekly"
+        case .modelSpecific(let modelName):
+            "model:\(modelName)"
+        case .timeLimit(let name):
+            "time:\(name)"
+        }
+    }
+
+    /// Creates a quota type from a persisted quota key.
+    public init?(quotaKey: String) {
+        switch quotaKey {
+        case "session":
+            self = .session
+        case "weekly":
+            self = .weekly
+        default:
+            if quotaKey.hasPrefix("model:") {
+                let name = String(quotaKey.dropFirst("model:".count))
+                guard !name.isEmpty else { return nil }
+                self = .modelSpecific(name)
+            } else if quotaKey.hasPrefix("time:") {
+                let name = String(quotaKey.dropFirst("time:".count))
+                guard !name.isEmpty else { return nil }
+                self = .timeLimit(name)
+            } else {
+                return nil
+            }
+        }
+    }
+
     /// The duration of the quota window
     public var duration: QuotaDuration {
         switch self {

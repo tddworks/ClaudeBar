@@ -236,6 +236,10 @@ struct SettingsContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             displayModeHeader
             displayModeToggle
+            menuBarPercentageToggle
+            if settings.menuBarPercentageEnabled {
+                menuBarPercentageControls
+            }
             dailyUsageCardsToggle
         }
         .padding(14)
@@ -266,7 +270,7 @@ struct SettingsContentView: View {
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Show remaining or used percentage")
+                Text("Show remaining, used, or pace")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -287,6 +291,130 @@ struct SettingsContentView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var menuBarPercentageProviders: [any AIProvider] {
+        monitor.enabledProviders
+    }
+
+    private var selectedMenuBarPercentageProvider: (any AIProvider)? {
+        menuBarPercentageProviders.first { $0.id == settings.menuBarPercentageProviderId }
+            ?? monitor.selectedProvider
+            ?? menuBarPercentageProviders.first
+    }
+
+    private var menuBarPercentageQuotaOptions: [UsageQuota] {
+        selectedMenuBarPercentageProvider?.snapshot?.quotas ?? []
+    }
+
+    private var menuBarPercentageToggle: some View {
+        HStack {
+            Text("Menu Bar Percentage")
+                .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                .foregroundStyle(theme.textSecondary)
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { settings.menuBarPercentageEnabled },
+                set: { enabled in
+                    settings.menuBarPercentageEnabled = enabled
+                    if enabled {
+                        normalizeMenuBarPercentageSelection()
+                    }
+                }
+            ))
+            .toggleStyle(.switch)
+            .tint(theme.accentPrimary)
+            .scaleEffect(0.8)
+            .labelsHidden()
+        }
+    }
+
+    private var menuBarPercentageControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("PROVIDER")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .tracking(0.5)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(menuBarPercentageProviders, id: \.id) { provider in
+                            MenuBarProviderChoiceButton(
+                                providerId: provider.id,
+                                providerName: provider.name,
+                                isSelected: settings.menuBarPercentageProviderId == provider.id
+                            ) {
+                                settings.menuBarPercentageProviderId = provider.id
+                                selectFirstMenuBarPercentageQuotaIfNeeded(force: true)
+                            }
+                        }
+                    }
+                }
+                .disabled(menuBarPercentageProviders.isEmpty)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("QUOTA")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .tracking(0.5)
+
+                if menuBarPercentageQuotaOptions.isEmpty {
+                    Text("No quota data")
+                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                                .fill(theme.glassBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                                        .stroke(theme.glassBorder, lineWidth: 1)
+                                )
+                        )
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(menuBarPercentageQuotaOptions, id: \.quotaType.quotaKey) { quota in
+                                MenuBarQuotaChoiceButton(
+                                    title: quota.quotaType.displayName,
+                                    isSelected: settings.menuBarPercentageQuotaKey == quota.quotaType.quotaKey
+                                ) {
+                                    settings.menuBarPercentageQuotaKey = quota.quotaType.quotaKey
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            normalizeMenuBarPercentageSelection()
+        }
+    }
+
+    private func normalizeMenuBarPercentageSelection() {
+        if let provider = selectedMenuBarPercentageProvider,
+           settings.menuBarPercentageProviderId != provider.id {
+            settings.menuBarPercentageProviderId = provider.id
+        }
+        selectFirstMenuBarPercentageQuotaIfNeeded(force: false)
+    }
+
+    private func selectFirstMenuBarPercentageQuotaIfNeeded(force: Bool) {
+        guard let firstQuota = menuBarPercentageQuotaOptions.first else { return }
+        let currentQuotaExists = menuBarPercentageQuotaOptions.contains {
+            $0.quotaType.quotaKey == settings.menuBarPercentageQuotaKey
+        }
+
+        if force || !currentQuotaExists {
+            settings.menuBarPercentageQuotaKey = firstQuota.quotaType.quotaKey
         }
     }
 
@@ -1301,6 +1429,105 @@ struct DisplayModeButton: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
             )
+    }
+}
+
+// MARK: - Menu Bar Percentage Choice Buttons
+
+struct MenuBarProviderChoiceButton: View {
+    let providerId: String
+    let providerName: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @Environment(\.appTheme) private var theme
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: ProviderVisualIdentityLookup.symbolIcon(for: providerId))
+                    .font(.system(size: 10, weight: .bold))
+
+                Text(providerName)
+                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(isSelected ? selectedForeground : theme.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(buttonBackground)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+    }
+
+    private var selectedForeground: Color {
+        theme.id == "cli" ? theme.textPrimary : .white
+    }
+
+    private var buttonBackground: some View {
+        ZStack {
+            if isSelected {
+                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                    .fill(theme.accentGradient)
+                    .shadow(color: theme.accentPrimary.opacity(0.25), radius: 5, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                    .fill(isHovering ? theme.hoverOverlay : theme.glassBackground)
+            }
+
+            RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
+        }
+    }
+}
+
+struct MenuBarQuotaChoiceButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @Environment(\.appTheme) private var theme
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "gauge.with.needle.fill")
+                    .font(.system(size: 10, weight: .bold))
+
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(isSelected ? selectedForeground : theme.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(buttonBackground)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+    }
+
+    private var selectedForeground: Color {
+        theme.id == "cli" ? theme.textPrimary : .white
+    }
+
+    private var buttonBackground: some View {
+        ZStack {
+            if isSelected {
+                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                    .fill(theme.accentGradient)
+                    .shadow(color: theme.accentPrimary.opacity(0.25), radius: 5, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                    .fill(isHovering ? theme.hoverOverlay : theme.glassBackground)
+            }
+
+            RoundedRectangle(cornerRadius: theme.pillCornerRadius)
+                .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
+        }
     }
 }
 

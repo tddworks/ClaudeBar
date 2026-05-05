@@ -82,6 +82,36 @@ struct UsageSnapshotTests {
         #expect(found == nil)
     }
 
+    @Test
+    func `quota types round trip persisted quota keys`() {
+        #expect(QuotaType(quotaKey: QuotaType.session.quotaKey) == .session)
+        #expect(QuotaType(quotaKey: QuotaType.weekly.quotaKey) == .weekly)
+        #expect(QuotaType(quotaKey: QuotaType.modelSpecific("opus").quotaKey) == .modelSpecific("opus"))
+        #expect(QuotaType(quotaKey: QuotaType.timeLimit("mcp").quotaKey) == .timeLimit("mcp"))
+        #expect(QuotaType(quotaKey: "model:") == nil)
+        #expect(QuotaType(quotaKey: "unknown") == nil)
+    }
+
+    @Test
+    func `snapshot can find dynamic quota by persisted key`() {
+        // Given
+        let opusQuota = UsageQuota(percentRemaining: 80, quotaType: .modelSpecific("opus"), providerId: "claude")
+        let mcpQuota = UsageQuota(percentRemaining: 40, quotaType: .timeLimit("mcp"), providerId: "claude")
+        let snapshot = UsageSnapshot(
+            providerId: "claude",
+            quotas: [opusQuota, mcpQuota],
+            capturedAt: Date()
+        )
+
+        // When
+        let foundModel = snapshot.quota(forKey: "model:opus")
+        let foundTimeLimit = snapshot.quota(forKey: "time:mcp")
+
+        // Then
+        #expect(foundModel?.percentRemaining == 80)
+        #expect(foundTimeLimit?.percentRemaining == 40)
+    }
+
     // MARK: - Overall Status
 
     @Test

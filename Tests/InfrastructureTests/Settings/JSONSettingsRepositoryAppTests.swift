@@ -76,6 +76,37 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `menuBarPercentageEnabled defaults to false`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarPercentageEnabled() == false)
+    }
+
+    @Test
+    func `menuBarPercentageSelection defaults to claude session`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarPercentageProviderId() == "claude")
+        #expect(repo.menuBarPercentageQuotaKey() == "session")
+    }
+
+    @Test
+    func `setMenuBarPercentageSettings persists values`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setMenuBarPercentageEnabled(true)
+        repo.setMenuBarPercentageProviderId("codex")
+        repo.setMenuBarPercentageQuotaKey("weekly")
+
+        #expect(repo.menuBarPercentageEnabled() == true)
+        #expect(repo.menuBarPercentageProviderId() == "codex")
+        #expect(repo.menuBarPercentageQuotaKey() == "weekly")
+    }
+
+    @Test
     func `showDailyUsageCards defaults to true`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
@@ -198,11 +229,17 @@ struct JSONSettingsRepositoryAppTests {
         repo1.setThemeMode("cli")
         repo1.setShowDailyUsageCards(false)
         repo1.setOverviewModeEnabled(true)
+        repo1.setMenuBarPercentageEnabled(true)
+        repo1.setMenuBarPercentageProviderId("codex")
+        repo1.setMenuBarPercentageQuotaKey("model:gpt-5")
 
         // New repo, same store
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
         #expect(repo2.showDailyUsageCards() == false)
         #expect(repo2.overviewModeEnabled() == true)
+        #expect(repo2.menuBarPercentageEnabled() == true)
+        #expect(repo2.menuBarPercentageProviderId() == "codex")
+        #expect(repo2.menuBarPercentageQuotaKey() == "model:gpt-5")
     }
 }

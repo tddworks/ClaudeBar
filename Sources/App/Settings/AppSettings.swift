@@ -35,10 +35,31 @@ public final class AppSettings {
 
     // MARK: - Display Settings
 
-    /// Whether to show quota as "remaining" or "used"
+    /// Whether to show quota as remaining, used, or pace-aware.
     public var usageDisplayMode: UsageDisplayMode {
         didSet {
             repository.setUsageDisplayMode(usageDisplayMode.rawValue)
+        }
+    }
+
+    /// Whether the menu bar label should show a selected quota percentage instead of the icon.
+    public var menuBarPercentageEnabled: Bool {
+        didSet {
+            repository.setMenuBarPercentageEnabled(menuBarPercentageEnabled)
+        }
+    }
+
+    /// Provider used for the menu bar percentage label.
+    public var menuBarPercentageProviderId: String {
+        didSet {
+            repository.setMenuBarPercentageProviderId(menuBarPercentageProviderId)
+        }
+    }
+
+    /// Quota key used for the menu bar percentage label.
+    public var menuBarPercentageQuotaKey: String {
+        didSet {
+            repository.setMenuBarPercentageQuotaKey(menuBarPercentageQuotaKey)
         }
     }
 
@@ -155,6 +176,9 @@ public final class AppSettings {
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
+        self.menuBarPercentageEnabled = repository.menuBarPercentageEnabled()
+        self.menuBarPercentageProviderId = repository.menuBarPercentageProviderId()
+        self.menuBarPercentageQuotaKey = repository.menuBarPercentageQuotaKey()
 
         if let mode = UsageDisplayMode(rawValue: repository.usageDisplayMode()) {
             self.usageDisplayMode = mode
