@@ -1440,51 +1440,34 @@ struct MenuBarProviderChoiceButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    @Environment(\.appTheme) private var theme
-    @State private var isHovering = false
-
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: ProviderVisualIdentityLookup.symbolIcon(for: providerId))
-                    .font(.system(size: 10, weight: .bold))
-
-                Text(providerName)
-                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(isSelected ? selectedForeground : theme.textSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(buttonBackground)
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-    }
-
-    private var selectedForeground: Color {
-        theme.id == "cli" ? theme.textPrimary : .white
-    }
-
-    private var buttonBackground: some View {
-        ZStack {
-            if isSelected {
-                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                    .fill(theme.accentGradient)
-                    .shadow(color: theme.accentPrimary.opacity(0.25), radius: 5, y: 2)
-            } else {
-                RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                    .fill(isHovering ? theme.hoverOverlay : theme.glassBackground)
-            }
-
-            RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
-        }
+        MenuBarChoiceButton(
+            iconName: ProviderVisualIdentityLookup.symbolIcon(for: providerId),
+            label: providerName,
+            isSelected: isSelected,
+            action: action
+        )
     }
 }
 
 struct MenuBarQuotaChoiceButton: View {
     let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        MenuBarChoiceButton(
+            iconName: "gauge.with.needle.fill",
+            label: title,
+            isSelected: isSelected,
+            action: action
+        )
+    }
+}
+
+struct MenuBarChoiceButton: View {
+    let iconName: String
+    let label: String
     let isSelected: Bool
     let action: () -> Void
 
@@ -1494,10 +1477,10 @@ struct MenuBarQuotaChoiceButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: "gauge.with.needle.fill")
+                Image(systemName: iconName)
                     .font(.system(size: 10, weight: .bold))
 
-                Text(title)
+                Text(label)
                     .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
                     .lineLimit(1)
             }

@@ -243,6 +243,10 @@ struct ClaudeBarApp: App {
 
 }
 
+private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
+    phase.color
+}
+
 /// The menu bar icon that reflects the overall quota status.
 /// When a Claude Code session is active, shows a terminal icon with phase color.
 /// Uses theme's `statusBarIconName` if set, otherwise shows status-based icons.
@@ -289,10 +293,6 @@ struct StatusBarIcon: View {
     private var iconColor: Color {
         theme.statusColor(for: status)
     }
-
-    private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
-        phase.color
-    }
 }
 
 /// The menu bar percentage label for an opt-in provider/quota selection.
@@ -321,9 +321,6 @@ struct StatusBarPercentageLabel: View {
         }
     }
 
-    private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
-        phase.color
-    }
 }
 
 /// Renders status text as an original-color image because macOS can ignore
@@ -339,12 +336,11 @@ private enum StatusBarPercentageImageRenderer {
         let attributedText = NSAttributedString(string: text, attributes: attributes)
         let textSize = attributedText.size()
         let imageSize = NSSize(width: ceil(textSize.width), height: ceil(textSize.height))
-        let image = NSImage(size: imageSize)
+        let image = NSImage(size: imageSize, flipped: false) { _ in
+            attributedText.draw(at: .zero)
+            return true
+        }
         image.isTemplate = false
-
-        image.lockFocus()
-        attributedText.draw(at: .zero)
-        image.unlockFocus()
 
         return image
     }

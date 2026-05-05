@@ -13,6 +13,8 @@ struct QuotaMonitorTests {
 
     private struct SuspendingClock: Clock {
         func sleep(for duration: Duration) async throws {
+            // Keep the monitoring loop suspended after its first tick; stopMonitoring()
+            // cancels the task and interrupts this long sleep before the test waits.
             try await Task.sleep(nanoseconds: 60_000_000_000)
         }
 
