@@ -56,7 +56,7 @@ A macOS menu bar application that monitors AI coding assistant usage quotas. Kee
   - [Kimi](https://www.kimi.com/code/console) (`kimi`) - CLI mode (recommended) or API mode (see below)
   - [Kiro](https://kiro.dev) (`kiro-cli`) - Requires kiro-cli installation (see below)
   - [Amp](https://ampcode.com) (`amp`) - Auto-detected when CLI is installed
-  - [OpenCode](https://opencode.ai) (`opencode`) - Tracks OpenCode Go usage windows (5hr/$12, weekly/$30, monthly/$60) via local SQLite DB
+  - [OpenCode Go](https://opencode.ai/go) (`opencode`) - Tracks OpenCode Go usage windows (5hr/$12, weekly/$30, monthly/$60) via local SQLite DB
 
 ### Kimi Setup
 
