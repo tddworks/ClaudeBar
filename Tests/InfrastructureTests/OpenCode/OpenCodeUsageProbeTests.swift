@@ -310,9 +310,7 @@ struct OpenCodeUsageProbeTests {
 
 // MARK: - Test helpers
 
-/// Thread-safe collector for SQL strings (and binary paths) captured from the mock executor.
-/// `Mockable`'s `willProduce` closure can run on a different queue than the test body, so
-/// raw `var` captures would race under Swift 6 strict concurrency.
+/// Thread-safe collector for SQL/binary captures from the mock executor's `willProduce` closure.
 private final class CapturedSQL: @unchecked Sendable {
     private let lock = NSLock()
     private var sqls: [String] = []

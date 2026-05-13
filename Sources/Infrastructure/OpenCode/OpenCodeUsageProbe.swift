@@ -40,7 +40,6 @@ public struct OpenCodeUsageProbe: UsageProbe {
         let weekStart = Self.startOfWeekUTC(from: now)
         let weekEnd = Self.endOfWeekUTC(from: now)
 
-        // Query 1: 5h cost + weekly cost + 5h oldest + lifetime anchor
         let primary = try Self.parsePrimaryWindow(
             try runDBQuery(
                 opencodePath: opencodePath,
@@ -51,7 +50,7 @@ public struct OpenCodeUsageProbe: UsageProbe {
             )
         )
 
-        // Query 2 (only if user has any opencode-go usage): monthly cost in anchored window
+        // Monthly window is anchored to the user's first opencode-go message; skip query if none.
         let monthlyCost: Double
         let monthEnd: Date
         if let anchorMs = primary.anchorMs {
@@ -69,7 +68,7 @@ public struct OpenCodeUsageProbe: UsageProbe {
             )
         } else {
             monthlyCost = 0
-            monthEnd = now.addingTimeInterval(30 * 86400) // placeholder when no usage exists yet
+            monthEnd = now.addingTimeInterval(30 * 86400)
         }
 
         let fiveHourRemaining = Self.percentRemaining(used: primary.fiveHourCost, limit: Self.fiveHourLimit)
@@ -196,7 +195,7 @@ public struct OpenCodeUsageProbe: UsageProbe {
         return max(0, min(100, (limit - used) / limit * 100))
     }
 
-    // MARK: - Time helpers (UTC, matches OpenCode dashboard)
+    // MARK: - Time helpers (UTC)
 
     static func millisSinceEpoch(_ date: Date) -> Int64 {
         Int64(date.timeIntervalSince1970 * 1000)
@@ -256,9 +255,6 @@ public struct OpenCodeUsageProbe: UsageProbe {
     }
 }
 
-// MARK: - DB Row Model
-
-/// Result of the primary window query. Internal so tests can build it directly.
 struct PrimaryWindow: Sendable, Equatable {
     let fiveHourCost: Double
     let weeklyCost: Double
