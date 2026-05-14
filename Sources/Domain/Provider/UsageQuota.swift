@@ -182,19 +182,15 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     }
 
     /// Compact reset duration for the menu bar label (e.g., "1d", "3h 30m", "45m").
-    /// Days collapse to the single largest unit; sub-day values keep minute
-    /// precision so the hour band ("1h" covering 60–119 min) is unambiguous.
-    /// Returns "soon" when under a minute; nil when reset time is unknown.
+    /// Single largest non-zero unit ("Xd", "Xh", "Xm"); "soon" under a
+    /// minute; nil when reset time is unknown. Smaller-unit precision is
+    /// intentionally dropped to keep the menu bar label short.
     public var compactResetTime: String? {
         guard let timeUntilReset else { return nil }
         let s = Int(timeUntilReset)
-        if s / 86400 > 0 { return "\(s / 86400)d" }
-        let hours = s / 3600
-        let minutes = (s % 3600) / 60
-        if hours > 0 {
-            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
-        }
-        if minutes > 0 { return "\(minutes)m" }
+        if s >= 86400 { return "\(s / 86400)d" }
+        if s >= 3600  { return "\(s / 3600)h" }
+        if s >= 60    { return "\(s / 60)m" }
         return "soon"
     }
 

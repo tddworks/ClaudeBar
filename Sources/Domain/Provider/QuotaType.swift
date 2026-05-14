@@ -71,6 +71,8 @@ public enum QuotaType: Sendable, Equatable, Hashable {
             .days(7)
         case .modelSpecific:
             .days(7) // Model-specific limits typically follow weekly windows
+        case .timeLimit(let name) where name.localizedCaseInsensitiveCompare("Monthly") == .orderedSame:
+            .days(30)
         case .timeLimit:
             .days(7) // Generic time limits default to weekly
         }

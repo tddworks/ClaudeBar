@@ -283,11 +283,9 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
         // CLI /usage tab no longer includes account details since v2.1.79+
         let accountInfo = accountInfoResolver.resolve()
 
-        // API Usage Billing accounts don't have quota data - fall back to /cost
-        if accountTier == .claudeApi {
-            AppLog.probes.info("Detected API Usage Billing account, falling back to /cost")
-            throw ProbeError.subscriptionRequired
-        }
+        // Note: pay-as-you-go API accounts are caught earlier by extractUsageError()
+        // via the "/usage is only available for subscription plans" message and routed
+        // to /cost. detectAccountType() classifies by header/quota only.
 
         // Extract percentages
         let sessionPct = extractPercent(labelSubstring: "Current session", text: clean)
@@ -387,16 +385,12 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             return .claudeMax
         }
 
-        // Check for API Usage Billing in header (e.g., "Sonnet 4.5 · API Usage Billing")
-        // This is the ONLY case that should return .claudeApi (pay-as-you-go without quotas)
-        if lower.contains("api usage billing") {
-            AppLog.probes.info("Detected API Usage Billing account from header")
-            return .claudeApi
-        }
-
-        // Note: "Claude API" accounts (e.g., "Sonnet 4.5 · Claude API") are subscription
-        // accounts with quotas, so we should NOT treat them as .claudeApi here.
-        // They will fall through to the quota-based detection below.
+        // Pay-as-you-go API accounts are detected by extractUsageError() via the
+        // "/usage is only available for subscription plans" message — not here.
+        // The "API Usage Billing" header substring is NOT a reliable classifier on its
+        // own: subscription accounts with Extra Usage credits show the same substring
+        // alongside valid quota bars. We classify only by Pro/Max header and quota
+        // presence, defaulting to .claudeMax for any subscription-like output.
 
         // Fallback: Check for presence of quota data (subscription accounts have quotas)
         let hasSessionQuota = lower.contains("current session") && (lower.contains("% left") || lower.contains("% used"))
@@ -857,6 +851,11 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
         if lower.contains("update required") || lower.contains("please update") {
             AppLog.probes.error("Claude probe failed: CLI update required")
             return .updateRequired
+        }
+
+        if lower.contains("/usage is only available for subscription plans") {
+            AppLog.probes.info("Claude /usage unavailable for this account: subscription required")
+            return .subscriptionRequired
         }
 
         // Check for rate limit errors, but exclude promotional messages like "rate limits are 2x higher"

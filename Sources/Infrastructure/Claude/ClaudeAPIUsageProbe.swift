@@ -1,6 +1,79 @@
 import Foundation
 import Domain
 
+/// Thread-safe TTL cache for a successful `UsageSnapshot`. Quota numbers
+/// move on multi-hour timescales (5h session, 7d weekly), so returning the
+/// most recent successful snapshot for a short window costs nothing in
+/// freshness and dramatically reduces requests against the rate-limited
+/// usage endpoint.
+private final class SnapshotCache: @unchecked Sendable {
+    private var cached: UsageSnapshot?
+    private var cachedAt: Date?
+    private let ttl: TimeInterval
+    private let lock = NSLock()
+
+    /// Creates a snapshot cache with the given maximum lifetime for a cached
+    /// entry. A `ttl` of `0` effectively disables caching (every `get` misses).
+    init(ttl: TimeInterval) {
+        self.ttl = ttl
+    }
+
+    /// Returns the cached snapshot if it was stored within `ttl` of `now`;
+    /// otherwise evicts the stale entry and returns `nil` so the caller knows
+    /// to re-fetch.
+    func get(now: Date = Date()) -> UsageSnapshot? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let cached, let cachedAt else { return nil }
+        // Inclusive comparison so `ttl == 0` is always immediately stale.
+        // With `>`, a 0-TTL cache would still hit within the same instant.
+        if now.timeIntervalSince(cachedAt) >= ttl {
+            self.cached = nil
+            self.cachedAt = nil
+            return nil
+        }
+        return cached
+    }
+
+    /// Stores a fresh snapshot and stamps it with `now`, replacing any prior
+    /// entry. The next `get` call within `ttl` of `now` will hit this entry.
+    func set(_ snapshot: UsageSnapshot, now: Date = Date()) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.cached = snapshot
+        self.cachedAt = now
+    }
+}
+
+/// Thread-safe holder for an active rate-limit window. When the API returns
+/// HTTP 429, the probe stores `retryAt` here so subsequent calls short-circuit
+/// without re-hitting the endpoint until the window has elapsed.
+private final class RateLimitState: @unchecked Sendable {
+    private var retryAt: Date?
+    private let lock = NSLock()
+
+    /// Returns `retryAt` only if it is still in the future; otherwise clears
+    /// it and returns nil so the next probe is allowed through.
+    func activeRetryAt(now: Date = Date()) -> Date? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let retryAt else { return nil }
+        if retryAt <= now {
+            self.retryAt = nil
+            return nil
+        }
+        return retryAt
+    }
+
+    /// Records a new rate-limit window expiring at `retryAt`. Subsequent
+    /// `activeRetryAt` calls return this value until it falls into the past.
+    func set(retryAt: Date) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.retryAt = retryAt
+    }
+}
+
 /// Thread-safe in-memory cache for Claude OAuth credentials with TTL.
 /// Avoids repeated Keychain/CLI lookups on every probe cycle while ensuring
 /// external credential changes (e.g. CLI re-login) are picked up.
@@ -53,6 +126,24 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     private let networkClient: any NetworkClient
     private let timeout: TimeInterval
     private let cache = CredentialCache()
+    private let rateLimit = RateLimitState()
+    private let snapshotCache: SnapshotCache
+
+    /// Fallback retry window applied when the API returns 429 without a
+    /// usable `Retry-After` header. Five minutes is conservative enough to
+    /// stop hammering a throttled endpoint while still picking back up
+    /// reasonably quickly once the window opens.
+    static let defaultRetryAfter: TimeInterval = 5 * 60
+
+    /// Default TTL for the in-memory snapshot cache. Anthropic's
+    /// /api/oauth/usage throttle has been observed handing out 1-hour
+    /// Retry-After windows in response to even one call after a quiet
+    /// period (see deferred memory + anthropics/claude-code#30930), so
+    /// we err on the conservative side. 15 minutes drops the 60s monitor
+    /// cadence to ~4 calls/hour — well under any reasonable threshold —
+    /// while still keeping the displayed quotas fresh enough that a user
+    /// glancing at the menu bar isn't looking at hour-old data.
+    public static let defaultSnapshotCacheTTL: TimeInterval = 15 * 60
 
     // API endpoints
     private static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
@@ -67,11 +158,13 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     public init(
         credentialLoader: ClaudeCredentialLoader = ClaudeCredentialLoader(),
         networkClient: any NetworkClient = URLSession.shared,
-        timeout: TimeInterval = 15
+        timeout: TimeInterval = 15,
+        snapshotCacheTTL: TimeInterval = Self.defaultSnapshotCacheTTL
     ) {
         self.credentialLoader = credentialLoader
         self.networkClient = networkClient
         self.timeout = timeout
+        self.snapshotCache = SnapshotCache(ttl: snapshotCacheTTL)
     }
 
     public func isAvailable() async -> Bool {
@@ -80,6 +173,21 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     }
 
     public func probe() async throws -> UsageSnapshot {
+        // Serve a fresh cached snapshot before doing anything else. This is
+        // the dominant code path during normal monitor polling and means
+        // we make ~1 actual HTTP call per cache TTL instead of one per
+        // monitor tick — well under Anthropic's per-token throttle.
+        if let cached = snapshotCache.get() {
+            return cached
+        }
+
+        // Honor an active rate-limit window before doing any work so we stop
+        // hammering the endpoint while Anthropic is throttling us.
+        if let retryAt = rateLimit.activeRetryAt() {
+            AppLog.probes.info("Claude API: Skipping probe — rate-limited until \(retryAt)")
+            throw ProbeError.rateLimited(retryAt: retryAt)
+        }
+
         // Check cache first, fall back to loading from file/keychain
         // Only update cache when loading from file (not from cache hit) to preserve TTL
         // 仅在从文件加载时更新缓存，避免滑动续期导致 TTL 永不过期
@@ -160,7 +268,9 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             }
         }
 
-        return parseUsageResponse(usageData, subscriptionType: credentials.oauth.subscriptionType)
+        let snapshot = parseUsageResponse(usageData, subscriptionType: credentials.oauth.subscriptionType)
+        snapshotCache.set(snapshot)
+        return snapshot
     }
 
     // MARK: - Token Refresh
@@ -279,6 +389,14 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             break
         case 401, 403:
             throw ProbeError.authenticationRequired
+        case 429:
+            let retryAfter = Self.parseRetryAfter(
+                httpResponse.value(forHTTPHeaderField: "Retry-After")
+            ) ?? Self.defaultRetryAfter
+            let retryAt = Date().addingTimeInterval(retryAfter)
+            rateLimit.set(retryAt: retryAt)
+            AppLog.probes.warning("Claude API: Rate limited (HTTP 429), retrying after \(Int(retryAfter))s")
+            throw ProbeError.rateLimited(retryAt: retryAt)
         default:
             AppLog.probes.error("Claude API: HTTP error \(httpResponse.statusCode)")
             throw ProbeError.executionFailed("HTTP error: \(httpResponse.statusCode)")
@@ -385,6 +503,30 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             accountTier: accountTier,
             costUsage: costUsage
         )
+    }
+
+    /// Parses an HTTP `Retry-After` header value into a duration.
+    /// Per RFC 7231 the value is either a non-negative integer of seconds, or
+    /// an HTTP-date. Returns nil for missing, malformed, or past-dated values
+    /// so the caller can apply its own fallback.
+    static func parseRetryAfter(_ value: String?, now: Date = Date()) -> TimeInterval? {
+        guard let value = value?.trimmingCharacters(in: .whitespaces), !value.isEmpty else {
+            return nil
+        }
+        // Reject 0 — the /api/oauth/usage endpoint has been observed returning
+        // `Retry-After: 0` while continuing to 429, so treating 0 as "retry
+        // immediately" lands us right back in a hammering loop. See
+        // anthropics/claude-code#30930.
+        if let seconds = TimeInterval(value), seconds > 0 {
+            return seconds
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        guard let date = formatter.date(from: value) else { return nil }
+        let delta = date.timeIntervalSince(now)
+        return delta > 0 ? delta : nil
     }
 
     private func parseISODate(_ isoString: String?) -> Date? {

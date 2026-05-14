@@ -639,6 +639,10 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 1.0, green: 0.47, blue: 0.0)
                 : Color(red: 0.90, green: 0.38, blue: 0.0)
+        case "opencode-go":
+            return scheme == .dark
+                ? Color(red: 0.52, green: 0.36, blue: 1.0)
+                : Color(red: 0.42, green: 0.28, blue: 1.0)
         default:
             return purpleVibrant(for: scheme)
         }
@@ -687,6 +691,10 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.85, green: 0.25, blue: 0.0)
                 : Color(red: 0.75, green: 0.20, blue: 0.0)
+        case "opencode-go":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.36, green: 0.20, blue: 0.90)
+                : Color(red: 0.30, green: 0.15, blue: 0.80)
         default:
             return accentGradient(for: scheme)
         }
@@ -710,6 +718,7 @@ extension AppTheme {
         case "bedrock": return "BedrockIcon"
         case "minimax": return "MiniMaxIcon"
         case "alibaba": return "AlibabaIcon"
+        case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
         }
     }
@@ -726,6 +735,7 @@ extension AppTheme {
         case "bedrock": return "AWS Bedrock"
         case "minimax": return "MiniMax"
         case "alibaba": return "Alibaba"
+        case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
         }
     }
@@ -742,6 +752,7 @@ extension AppTheme {
         case "bedrock": return "cloud.fill" // AWS cloud icon
         case "minimax": return "waveform"
         case "alibaba": return "cloud.fill"
+        case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"
         }
     }

@@ -28,7 +28,7 @@ struct MenuBarDurationDisplayTests {
 
     @Test
     func `text shows compact days when reset is days away`() {
-        let q = quota(resetsAt: Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600))
+        let q = quota(resetsAt: Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600 + 30))
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "2d")
     }

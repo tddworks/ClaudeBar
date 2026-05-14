@@ -168,22 +168,39 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
             snapshot = await attachDailyReport(to: newSnapshot)
             lastError = nil
             return snapshot!
-        } catch {
-            if let fallback = await fallbackProbe() {
+        } catch let primaryError {
+            if Self.shouldAttemptFallback(after: primaryError),
+               let fallback = await fallbackProbe() {
                 do {
                     let newSnapshot = try await fallback.probe()
                     snapshot = await attachDailyReport(to: newSnapshot)
                     lastError = nil
                     return snapshot!
                 } catch {
-                    lastError = error
-                    throw error
+                    // Both probes failed. Surface the primary error — it is
+                    // the actual root cause (e.g. HTTP 429). The fallback's
+                    // failure is incidental and would otherwise mask it,
+                    // sending users chasing the wrong problem.
+                    lastError = primaryError
+                    throw primaryError
                 }
             }
 
-            lastError = error
-            throw error
+            lastError = primaryError
+            throw primaryError
         }
+    }
+
+    /// Decides whether the fallback probe should run after the primary fails.
+    /// Rate-limit failures are an upstream per-token throttle: the CLI talks
+    /// to the same Anthropic backend, so the fallback can't help and would
+    /// just amplify the problem. Surface the rate-limit error immediately so
+    /// the backoff window does its job. All other failure modes (auth,
+    /// parse, network, etc.) still try the fallback — those can legitimately
+    /// be recovered by the alternate probe path.
+    private static func shouldAttemptFallback(after error: Error) -> Bool {
+        if case ProbeError.rateLimited = error { return false }
+        return true
     }
 
     /// Attaches daily usage report to snapshot if analyzer is available.

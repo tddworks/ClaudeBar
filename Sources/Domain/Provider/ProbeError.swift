@@ -33,6 +33,11 @@ public enum ProbeError: Error, Sendable, LocalizedError {
     /// Usage data requires a subscription plan (API billing accounts don't support /usage)
     case subscriptionRequired
 
+    /// The provider's API is rate-limiting us (HTTP 429). `retryAt` is the
+    /// earliest time we should try again, derived from the `Retry-After`
+    /// header when present or a sensible default otherwise.
+    case rateLimited(retryAt: Date)
+
     // MARK: - LocalizedError
 
     public var errorDescription: String? {
@@ -60,6 +65,15 @@ public enum ProbeError: Error, Sendable, LocalizedError {
             return reason
         case .subscriptionRequired:
             return "Subscription required for usage data"
+        case .rateLimited(let retryAt):
+            // Relative formatting ("in 30 minutes") is unambiguous across
+            // midnight rollovers and more glance-able than an absolute clock
+            // time. errorDescription is recomputed on each access, so the
+            // string updates naturally as the window ticks down.
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            let relative = formatter.localizedString(for: retryAt, relativeTo: Date())
+            return "Rate limited. Retrying \(relative)."
         }
     }
 }
@@ -89,6 +103,8 @@ extension ProbeError: Equatable {
             return a == b
         case (.subscriptionRequired, .subscriptionRequired):
             return true
+        case (.rateLimited(let a), .rateLimited(let b)):
+            return a == b
         default:
             return false
         }

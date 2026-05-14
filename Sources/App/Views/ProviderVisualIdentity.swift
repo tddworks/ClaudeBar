@@ -380,6 +380,34 @@ extension MistralProvider: ProviderVisualIdentity {
     }
 }
 
+// MARK: - OpenCodeProvider Visual Identity
+
+extension OpenCodeProvider: ProviderVisualIdentity {
+    public var symbolIcon: String { "square.stack.3d.up.fill" }
+
+    public var iconAssetName: String { "OpenCodeIcon" }
+
+    public func themeColor(for scheme: ColorScheme) -> Color {
+        // OpenCode brand purple
+        scheme == .dark
+            ? Color(red: 0.52, green: 0.36, blue: 1.0)
+            : Color(red: 0.42, green: 0.28, blue: 1.0)
+    }
+
+    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                themeColor(for: scheme),
+                scheme == .dark
+                    ? Color(red: 0.36, green: 0.20, blue: 0.90)
+                    : Color(red: 0.30, green: 0.15, blue: 0.80)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 // MARK: - AIProvider Visual Identity Helper
 
 /// Extension to access visual identity from any AIProvider.
@@ -476,6 +504,10 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? Color(red: 1.0, green: 0.55, blue: 0.0)
                 : Color(red: 0.90, green: 0.45, blue: 0.0)
+        case "opencode-go":
+            return scheme == .dark
+                ? Color(red: 0.52, green: 0.36, blue: 1.0)
+                : Color(red: 0.42, green: 0.28, blue: 1.0)
         default:
             return BaseTheme.purpleVibrant
         }
@@ -539,6 +571,10 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.85, green: 0.35, blue: 0.10)
                 : Color(red: 0.75, green: 0.25, blue: 0.05)
+        case "opencode-go":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.36, green: 0.20, blue: 0.90)
+                : Color(red: 0.30, green: 0.15, blue: 0.80)
         default:
             return LinearGradient(
                 colors: [BaseTheme.coralAccent, BaseTheme.pinkHot],
@@ -570,6 +606,7 @@ enum ProviderVisualIdentityLookup {
         case "minimax": return "MiniMaxIcon"
         case "cursor": return "CursorIcon"
         case "mistral": return "MistralIcon"
+        case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
         }
     }
@@ -590,6 +627,7 @@ enum ProviderVisualIdentityLookup {
         case "minimax": return "MiniMax"
         case "cursor": return "Cursor"
         case "mistral": return "Mistral"
+        case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
         }
     }
@@ -610,6 +648,7 @@ enum ProviderVisualIdentityLookup {
         case "minimax": return "waveform"
         case "cursor": return "cursorarrow.rays"
         case "mistral": return "cat.fill"
+        case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"
         }
     }

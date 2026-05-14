@@ -641,6 +641,29 @@ struct ClaudeUsageProbeParsingTests {
     Esc to cancel
     """
 
+    // Subscription account that has added Extra Usage credits. The CLI header shows
+    // only "API Usage Billing" (no Pro/Max tier word), but valid quota bars still
+    // appear — there is NO "/usage is only available for subscription plans" error.
+    static let apiUsageBillingWithQuotasOutput = """
+    ▐▛███▜▌   Claude Code v2.1.34
+    ▝▜█████▛▘  Sonnet 4.5 · API Usage Billing · user@example.com
+    ▘▘ ▝▝    ~/Library/Application Support/ClaudeBar/Probe
+
+    ❯ /usage
+    Settings:  Status   Config   Usage  (←/→ or tab to cycle)
+
+
+    Current session
+    ██▌                                                5% used
+    Resets 9pm (Asia/Shanghai)
+
+    Current week (all models)
+    █████████▌                                         19% used
+    Resets Feb 12 at 4pm (Asia/Shanghai)
+
+    Esc to cancel
+    """
+
     // Claude API account (subscription with quotas, different from API Usage Billing)
     static let claudeApiWithQuotasOutput = """
     ▐▛███▜▌   Claude Code v2.1.34
@@ -667,16 +690,42 @@ struct ClaudeUsageProbeParsingTests {
     """
 
     @Test
-    func `detects API Usage Billing account from header`() throws {
-        // Given
+    func `treats API Usage Billing with quotas as subscription account`() throws {
+        // Given — header has "API Usage Billing" but no subscription-only error,
+        // and the output contains real quota bars (subscription with Extra Usage credits).
         let probe = ClaudeUsageProbe()
-        let output = "Sonnet 4.5 · API Usage Billing · dzienisz"
+        let output = Self.apiUsageBillingWithQuotasOutput
 
         // When
         let accountType = probe.detectAccountType(output)
 
+        // Then — must NOT be .claudeApi; quota fallback defaults to .claudeMax
+        #expect(accountType != .claudeApi)
+        #expect(accountType == .claudeMax)
+    }
+
+    @Test
+    func `parses subscription account with API Usage Billing header and Extra Usage credits`() throws {
+        // When
+        let snapshot = try simulateParse(text: Self.apiUsageBillingWithQuotasOutput)
+
+        // Then — quotas parsed; no fall-through to /cost
+        #expect(snapshot.accountTier == .claudeMax)
+        #expect(snapshot.sessionQuota?.percentRemaining == 95) // 5% used → 95% remaining
+        #expect(snapshot.weeklyQuota?.percentRemaining == 81)  // 19% used → 81% remaining
+    }
+
+    @Test
+    func `extractUsageError returns subscriptionRequired for /usage subscription error`() throws {
+        // Given
+        let probe = ClaudeUsageProbe()
+        let output = "/usage is only available for subscription plans."
+
+        // When
+        let error = probe.extractUsageError(output)
+
         // Then
-        #expect(accountType == .claudeApi)
+        #expect(error == .subscriptionRequired)
     }
 
     @Test
@@ -716,9 +765,6 @@ struct ClaudeUsageProbeParsingTests {
             try simulateParse(text: output)
         }
     }
-
-    // Note: The "only available for subscription" error check was removed from extractUsageError
-    // because API billing accounts are now detected earlier via detectAccountType() in parseClaudeOutput()
 
     // MARK: - /cost Command Parsing
 

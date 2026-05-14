@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, AWS Bedrock, Amp Code, Kimi). It probes CLI tools and APIs to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
+ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, AWS Bedrock, Amp Code, Kimi, OpenCode Go). It probes CLI tools and APIs to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
 
 ## Build & Test Commands
 
@@ -96,7 +96,7 @@ ProviderSettingsRepository (base)
 **Provider Dependencies:**
 | Provider | Repository Type |
 |----------|----------------|
-| Claude, Codex, Gemini, Antigravity, Amp Code, Kiro, Cursor | `ProviderSettingsRepository` |
+| Claude, Codex, Gemini, Antigravity, Amp Code, Kiro, Cursor, OpenCode Go | `ProviderSettingsRepository` |
 | Z.ai | `ZaiSettingsRepository` |
 | Copilot | `CopilotSettingsRepository` |
 | Bedrock | `BedrockSettingsRepository` |
@@ -205,6 +205,7 @@ Sources/App/Resources/
 │   ├── CodexIcon.imageset/
 │   ├── CopilotIcon.imageset/
 │   ├── GeminiIcon.imageset/
+│   ├── OpenCodeIcon.imageset/
 │   └── AntigravityIcon.imageset/
 ├── ClaudeIcon.svg             # Source SVG files (kept for reference)
 ├── CodexIcon.svg

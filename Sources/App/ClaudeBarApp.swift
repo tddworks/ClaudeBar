@@ -98,6 +98,10 @@ struct ClaudeBarApp: App {
                 probe: MistralUsageProbe(),
                 settingsRepository: settingsRepository
             ),
+            OpenCodeProvider(
+                probe: OpenCodeUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
         ])
         AppLog.providers.info("Created \(repository.all.count) providers")
 

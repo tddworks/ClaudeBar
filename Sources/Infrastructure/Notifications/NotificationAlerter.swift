@@ -89,6 +89,7 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         case "antigravity": return "Antigravity"
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
+        case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
         }
     }
