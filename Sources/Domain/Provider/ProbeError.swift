@@ -66,9 +66,14 @@ public enum ProbeError: Error, Sendable, LocalizedError {
         case .subscriptionRequired:
             return "Subscription required for usage data"
         case .rateLimited(let retryAt):
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "Rate limited. Retrying after \(formatter.string(from: retryAt))."
+            // Relative formatting ("in 30 minutes") is unambiguous across
+            // midnight rollovers and more glance-able than an absolute clock
+            // time. errorDescription is recomputed on each access, so the
+            // string updates naturally as the window ticks down.
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            let relative = formatter.localizedString(for: retryAt, relativeTo: Date())
+            return "Rate limited. Retrying \(relative)."
         }
     }
 }
