@@ -10,7 +10,7 @@ public struct AntigravityUsageProbe: UsageProbe {
     private let timeout: TimeInterval
 
     // Match both Intel and ARM binaries
-    private static let processNames = ["language_server_macos", "language_server_macos_arm"]
+    private static let processNames = ["language_server_macos", "language_server_macos_arm", "language_server"]
 
     public init(
         cliExecutor: (any CLIExecutor)? = nil,
@@ -97,7 +97,7 @@ public struct AntigravityUsageProbe: UsageProbe {
         // Use pgrep for more reliable process detection (avoids PTY buffering issues)
         let result = try cliExecutor.execute(
             binary: "/usr/bin/pgrep",
-            args: ["-lf", "language_server_macos"],
+            args: ["-lf", "language_server"],
             input: nil,
             timeout: timeout,
             workingDirectory: nil,

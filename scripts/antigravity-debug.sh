@@ -9,7 +9,7 @@ echo
 
 # Step 1: Find Antigravity process
 echo "Step 1: Finding Antigravity process..."
-PROCESS_LINE=$(pgrep -lf language_server_macos | grep -E "(antigravity|--app_data_dir.*antigravity)" | head -1)
+PROCESS_LINE=$(pgrep -lf "language_server" | grep -E "(antigravity|--app_data_dir.*antigravity)" | head -1)
 
 if [ -z "$PROCESS_LINE" ]; then
     echo "ERROR: Antigravity process not found. Is the app running?"
