@@ -18,6 +18,10 @@ struct AntigravityUsageProbeTests {
     26416 /Applications/Antigravity.app/Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm --csrf_token 9f808dbe-cb96-4829 --extension_server_port 58445 --app_data_dir antigravity
     """
 
+    static let samplePsOutputWithCurrentAntigravity = """
+    5588 /Applications/Antigravity.app/Contents/Resources/bin/language_server --standalone --override_ide_name antigravity --subclient_type hub --override_ide_version 2.0.6 --override_user_agent_name antigravity --https_server_port 0 --csrf_token 21ee9ede-f085-4e96-9588-849208669d00 --app_data_dir antigravity --api_server_url https://generativelanguage.googleapis.com --cloud_code_endpoint https://daily-cloudcode-pa.googleapis.com --enable_sidecars
+    """
+
     static let samplePsOutputNoAntigravity = """
     12345 /path/to/some_other_binary --flag value
     67890 /another/process
@@ -95,6 +99,20 @@ struct AntigravityUsageProbeTests {
     }
 
     @Test
+    func `isAvailable returns true when current language_server binary detected with CSRF token`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willReturn(CLIResult(output: Self.samplePsOutputWithCurrentAntigravity, exitCode: 0))
+
+        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+
+        // When & Then
+        #expect(await probe.isAvailable() == true)
+    }
+
+    @Test
     func `isAvailable returns false when process running but CSRF token missing`() async {
         // Given
         let mockExecutor = MockCLIExecutor()
@@ -152,12 +170,14 @@ struct AntigravityUsageProbeTests {
         let antigravityLine = "/path/to/language_server_macos --app_data_dir antigravity"
         // ARM binary
         let antigravityARMLine = "/Applications/Antigravity.app/Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm --csrf_token abc --app_data_dir antigravity"
+        let currentAntigravityLine = "/Applications/Antigravity.app/Contents/Resources/bin/language_server --csrf_token abc --app_data_dir antigravity"
         let otherLine = "/path/to/some_other_binary"
         let antigravityPathLine = "/Users/test/.antigravity/language_server_macos"
 
         // When & Then
         #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityLine) == true)
         #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityARMLine) == true)
+        #expect(AntigravityUsageProbe.isAntigravityProcess(currentAntigravityLine) == true)
         #expect(AntigravityUsageProbe.isAntigravityProcess(otherLine) == false)
         #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityPathLine) == true)
     }
