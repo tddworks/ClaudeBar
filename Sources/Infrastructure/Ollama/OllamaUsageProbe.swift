@@ -106,8 +106,11 @@ public struct OllamaUsageProbe: UsageProbe {
             AppLog.probes.error("Ollama API: rate limited (429)")
             throw ProbeError.rateLimited(retryAt: Date().addingTimeInterval(60))
         default:
-            let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            AppLog.probes.error("Ollama API: HTTP \(httpResponse.statusCode) - \(body.prefix(200))")
+            // Never log the raw response body — Ollama responses can embed
+            // account email, plan name, session token IDs, etc. The status
+            // code plus body length is enough signal for debugging (CodeRabbit
+            // review on PR #197).
+            AppLog.probes.error("Ollama API: HTTP \(httpResponse.statusCode) (\(data.count) bytes)")
             throw ProbeError.executionFailed("Ollama API returned HTTP \(httpResponse.statusCode)")
         }
     }

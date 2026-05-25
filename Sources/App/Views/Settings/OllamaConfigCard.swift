@@ -364,7 +364,13 @@ struct OllamaConfigCard: View {
         await monitor.refresh(providerId: "ollama")
 
         if let error = monitor.provider(for: "ollama")?.lastError {
-            AppLog.credentials.error("Ollama connection test failed: \(error.localizedDescription)")
+            // Keep the credential log static — `error.localizedDescription` can
+            // contain bearer-token fragments or session cookie context that
+            // shouldn't land in os_log (CodeRabbit review on PR #197).
+            // The user-facing string in the UI still shows the message so the
+            // human running the test sees what happened; the system log does
+            // not.
+            AppLog.credentials.error("Ollama connection test failed")
             ollamaTestResult = "Failed: \(error.localizedDescription)"
         } else {
             AppLog.credentials.info("Ollama connection test succeeded")
