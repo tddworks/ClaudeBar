@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, KimiSettingsRepository, MiniMaxSettingsRepository, AlibabaSettingsRepository, HookSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, KimiSettingsRepository, MiniMaxSettingsRepository, AlibabaSettingsRepository, OllamaSettingsRepository, HookSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -356,6 +356,43 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         userDefaults.object(forKey: Keys.alibabaApiKey) != nil
     }
 
+    // MARK: - OllamaSettingsRepository
+
+    public func ollamaProbeMode() -> OllamaProbeMode {
+        guard let rawValue = userDefaults.string(forKey: Keys.ollamaProbeMode) else {
+            return .api // Default to API mode (more reliable than cookie scraping)
+        }
+        return OllamaProbeMode(rawValue: rawValue) ?? .api
+    }
+
+    public func setOllamaProbeMode(_ mode: OllamaProbeMode) {
+        userDefaults.set(mode.rawValue, forKey: Keys.ollamaProbeMode)
+    }
+
+    public func ollamaAuthEnvVar() -> String {
+        userDefaults.string(forKey: Keys.ollamaAuthEnvVar) ?? ""
+    }
+
+    public func setOllamaAuthEnvVar(_ envVar: String) {
+        userDefaults.set(envVar, forKey: Keys.ollamaAuthEnvVar)
+    }
+
+    public func saveOllamaApiKey(_ key: String) {
+        userDefaults.set(key, forKey: Keys.ollamaApiKey)
+    }
+
+    public func getOllamaApiKey() -> String? {
+        userDefaults.string(forKey: Keys.ollamaApiKey)
+    }
+
+    public func deleteOllamaApiKey() {
+        userDefaults.removeObject(forKey: Keys.ollamaApiKey)
+    }
+
+    public func hasOllamaApiKey() -> Bool {
+        userDefaults.object(forKey: Keys.ollamaApiKey) != nil
+    }
+
     // MARK: - HookSettingsRepository
 
     public func isHookEnabled() -> Bool {
@@ -415,6 +452,10 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         static let alibabaCookieSource = "providerConfig.alibabaCookieSource"
         static let alibabaManualCookie = "com.claudebar.credentials.alibaba-manual-cookie"
         static let alibabaApiKey = "com.claudebar.credentials.alibaba-api-key"
+        // Ollama settings
+        static let ollamaProbeMode = "providerConfig.ollamaProbeMode"
+        static let ollamaAuthEnvVar = "providerConfig.ollamaAuthEnvVar"
+        static let ollamaApiKey = "com.claudebar.credentials.ollama-api-key"
         // Credentials (kept compatible with old UserDefaultsCredentialRepository keys)
         static let githubToken = "com.claudebar.credentials.github-copilot-token"
         static let githubUsername = "com.claudebar.credentials.github-username"

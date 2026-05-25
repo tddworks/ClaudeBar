@@ -102,6 +102,11 @@ struct ClaudeBarApp: App {
                 probe: OpenCodeUsageProbe(),
                 settingsRepository: settingsRepository
             ),
+            OllamaProvider(
+                apiProbe: OllamaUsageProbe(settingsRepository: settingsRepository),
+                webProbe: OllamaWebUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
         ])
         AppLog.providers.info("Created \(repository.all.count) providers")
 

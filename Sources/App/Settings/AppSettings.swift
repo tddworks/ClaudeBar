@@ -239,6 +239,7 @@ public final class AppSettings {
     public var bedrock: BedrockSettingsRepository { repository }
     public var minimax: MiniMaxSettingsRepository { repository }
     public var alibaba: AlibabaSettingsRepository { repository }
+    public var ollama: OllamaSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
 
     /// Extension config repository for dynamic extension provider settings.
