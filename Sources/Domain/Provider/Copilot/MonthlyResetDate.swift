@@ -13,6 +13,7 @@ public enum MonthlyResetDate {
               let startOfCurrent = calendar.date(from: comps),
               let nextMonth = calendar.date(byAdding: .month, value: 1, to: startOfCurrent)
         else {
+            // Unreachable: year and month are always extractable from a Date
             return referenceDate
         }
         return nextMonth
