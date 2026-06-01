@@ -112,7 +112,7 @@ struct CopilotProviderTests {
     func `copilot provider delegates refresh to probe`() async throws {
         let expectedSnapshot = UsageSnapshot(
             providerId: "copilot",
-            quotas: [UsageQuota(percentRemaining: 95, quotaType: .session, providerId: "copilot", resetText: "100/2000 requests")],
+            quotas: [UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Monthly"), providerId: "copilot", resetText: "100/2000 requests")],
             capturedAt: Date()
         )
         let mockProbe = MockUsageProbe()
@@ -132,7 +132,7 @@ struct CopilotProviderTests {
     func `copilot provider stores snapshot after refresh`() async throws {
         let expectedSnapshot = UsageSnapshot(
             providerId: "copilot",
-            quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "copilot")],
+            quotas: [UsageQuota(percentRemaining: 80, quotaType: .timeLimit("Monthly"), providerId: "copilot")],
             capturedAt: Date()
         )
         let mockProbe = MockUsageProbe()
@@ -326,7 +326,7 @@ struct CopilotProviderTests {
 
         let billingSnapshot = UsageSnapshot(
             providerId: "copilot",
-            quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "copilot", resetText: "10/50 requests")],
+            quotas: [UsageQuota(percentRemaining: 80, quotaType: .timeLimit("Monthly"), providerId: "copilot", resetText: "10/50 requests")],
             capturedAt: Date()
         )
         given(billingProbe).probe().willReturn(billingSnapshot)
@@ -354,7 +354,7 @@ struct CopilotProviderTests {
 
         let internalSnapshot = UsageSnapshot(
             providerId: "copilot",
-            quotas: [UsageQuota(percentRemaining: 99.3, quotaType: .session, providerId: "copilot", resetText: "2/300 requests")],
+            quotas: [UsageQuota(percentRemaining: 99.3, quotaType: .timeLimit("Monthly"), providerId: "copilot", resetText: "2/300 requests")],
             capturedAt: Date()
         )
         given(internalProbe).probe().willReturn(internalSnapshot)
@@ -380,7 +380,7 @@ struct CopilotProviderTests {
 
         let billingSnapshot = UsageSnapshot(
             providerId: "copilot",
-            quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "copilot", resetText: "10/50 requests")],
+            quotas: [UsageQuota(percentRemaining: 80, quotaType: .timeLimit("Monthly"), providerId: "copilot", resetText: "10/50 requests")],
             capturedAt: Date()
         )
         given(billingProbe).probe().willReturn(billingSnapshot)
