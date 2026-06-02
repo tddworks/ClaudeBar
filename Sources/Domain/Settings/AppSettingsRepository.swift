@@ -33,6 +33,9 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarPercentageQuotaKey() -> String
     func setMenuBarPercentageQuotaKey(_ quotaKey: String)
 
+    func menuBarSecondaryQuotaKey() -> String
+    func setMenuBarSecondaryQuotaKey(_ quotaKey: String)
+
     func showDailyUsageCards() -> Bool
     func setShowDailyUsageCards(_ show: Bool)
 

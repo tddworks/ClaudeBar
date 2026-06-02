@@ -132,9 +132,10 @@ public struct CopilotInternalAPIProbe: UsageProbe {
             // Return 100% remaining if no premium interactions quota exists
             let quota = UsageQuota(
                 percentRemaining: 100,
-                quotaType: .session,
+                quotaType: .timeLimit("Monthly"),
                 providerId: "copilot",
-                resetText: "No premium requests quota"
+                resetsAt: MonthlyResetDate.nextMonthlyResetDate(),
+                resetText: "No AI credits quota"
             )
             return UsageSnapshot(
                 providerId: "copilot",
@@ -149,9 +150,10 @@ public struct CopilotInternalAPIProbe: UsageProbe {
             AppLog.probes.info("Copilot Internal API: Unlimited premium interactions")
             let quota = UsageQuota(
                 percentRemaining: 100,
-                quotaType: .session,
+                quotaType: .timeLimit("Monthly"),
                 providerId: "copilot",
-                resetText: "Unlimited premium requests"
+                resetsAt: MonthlyResetDate.nextMonthlyResetDate(),
+                resetText: "Unlimited AI credits"
             )
             return UsageSnapshot(
                 providerId: "copilot",
@@ -168,14 +170,15 @@ public struct CopilotInternalAPIProbe: UsageProbe {
         // Calculate used from entitlement - remaining (clamp to non-negative)
         let used = max(0, entitlement - remaining)
 
-        AppLog.probes.debug("Copilot Internal API: Used \(used)/\(entitlement) premium requests, \(Int(percentRemaining))% remaining")
+        AppLog.probes.debug("Copilot Internal API: Used \(used)/\(entitlement) AI credits, \(Int(percentRemaining))% remaining")
 
-        let resetText = "\(used)/\(entitlement) requests"
+        let resetText = "\(used)/\(entitlement) AI credits"
 
         let quota = UsageQuota(
             percentRemaining: percentRemaining,
-            quotaType: .session,
+            quotaType: .timeLimit("Monthly"),
             providerId: "copilot",
+            resetsAt: MonthlyResetDate.nextMonthlyResetDate(),
             resetText: resetText
         )
 

@@ -36,6 +36,29 @@ struct QuotaTypeTests {
         #expect(QuotaType.timeLimit("daily limit").displayName == "Daily Limit")
     }
 
+    // MARK: - Short Label Tests
+
+    @Test
+    func `session quota has short label 5h`() {
+        #expect(QuotaType.session.shortLabel == "5h")
+    }
+
+    @Test
+    func `weekly quota has short label 7d`() {
+        #expect(QuotaType.weekly.shortLabel == "7d")
+    }
+
+    @Test
+    func `model specific quota short label capitalizes model name`() {
+        #expect(QuotaType.modelSpecific("opus").shortLabel == "Opus")
+        #expect(QuotaType.modelSpecific("sonnet").shortLabel == "Sonnet")
+    }
+
+    @Test
+    func `time limit quota short label capitalizes name`() {
+        #expect(QuotaType.timeLimit("monthly").shortLabel == "Monthly")
+    }
+
     // MARK: - Duration Tests
 
     @Test

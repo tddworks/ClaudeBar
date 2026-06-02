@@ -107,6 +107,29 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `menuBarSecondaryQuotaKey defaults to empty`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarSecondaryQuotaKey() == "")
+    }
+
+    @Test
+    func `setMenuBarSecondaryQuotaKey persists value`() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+        let fileURL = tempDir.appendingPathComponent("settings.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = JSONSettingsStore(fileURL: fileURL)
+        let repo1 = JSONSettingsRepository(store: store)
+        repo1.setMenuBarSecondaryQuotaKey("weekly")
+
+        let repo2 = JSONSettingsRepository(store: store)
+        #expect(repo2.menuBarSecondaryQuotaKey() == "weekly")
+    }
+
+    @Test
     func `menuBarDurationEnabled defaults to false`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

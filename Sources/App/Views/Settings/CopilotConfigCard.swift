@@ -113,7 +113,7 @@ struct CopilotConfigCard: View {
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Premium usage tracking")
+                Text("AI credits usage tracking")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -312,7 +312,7 @@ struct CopilotConfigCard: View {
             if copilotProbeMode == .billing {
                 // Monthly Limit
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("MONTHLY PREMIUM REQUEST LIMIT")
+                    Text("MONTHLY AI CREDITS LIMIT")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.5)
@@ -340,7 +340,7 @@ struct CopilotConfigCard: View {
                         settings.copilot.setCopilotMonthlyLimit(newValue)
                     }
 
-                    Text("Note: This is for premium requests (Copilot Chat with advanced models), not code completions")
+                    Text("Note: This is for AI credits, not code completions")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textTertiary)
                 }
@@ -394,7 +394,7 @@ struct CopilotConfigCard: View {
                 // Manual usage input
                 if copilotManualOverrideEnabled {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("CURRENT PREMIUM REQUEST USAGE")
+                        Text("CURRENT AI CREDITS USAGE")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                             .foregroundStyle(theme.textSecondary)
                             .tracking(0.5)
@@ -446,7 +446,7 @@ struct CopilotConfigCard: View {
                                 .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                                 .foregroundStyle(.red)
                         } else {
-                            Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
+                            Text("Enter AI credits used (e.g., 99) or percentage (e.g., 198%)")
                                 .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                                 .foregroundStyle(theme.textTertiary)
                         }

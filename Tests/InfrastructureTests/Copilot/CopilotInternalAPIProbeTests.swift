@@ -101,9 +101,10 @@ struct CopilotInternalAPIProbeTests {
         #expect(snapshot.quotas.count == 1)
 
         let quota = snapshot.quotas.first!
-        #expect(quota.quotaType == .session)
+        #expect(quota.quotaType == .timeLimit("Monthly"))
         #expect(quota.percentRemaining == 99.3)
-        #expect(quota.resetText == "2/300 requests")
+        #expect(quota.resetText == "2/300 AI credits")
+        #expect(quota.resetsAt != nil)
     }
 
     @Test
@@ -137,7 +138,8 @@ struct CopilotInternalAPIProbeTests {
         #expect(snapshot.accountEmail == "pro")
         let quota = snapshot.quotas.first!
         #expect(quota.percentRemaining == 90.0)
-        #expect(quota.resetText == "150/1500 requests")
+        #expect(quota.resetText == "150/1500 AI credits")
+        #expect(quota.resetsAt != nil)
     }
 
     @Test
@@ -169,7 +171,9 @@ struct CopilotInternalAPIProbeTests {
 
         let quota = snapshot.quotas.first!
         #expect(quota.percentRemaining == 100)
-        #expect(quota.resetText == "Unlimited premium requests")
+        #expect(quota.resetText == "Unlimited AI credits")
+        #expect(quota.quotaType == .timeLimit("Monthly"))
+        #expect(quota.resetsAt != nil)
     }
 
     @Test
@@ -200,7 +204,9 @@ struct CopilotInternalAPIProbeTests {
 
         let quota = snapshot.quotas.first!
         #expect(quota.percentRemaining == 100)
-        #expect(quota.resetText == "No premium requests quota")
+        #expect(quota.resetText == "No AI credits quota")
+        #expect(quota.quotaType == .timeLimit("Monthly"))
+        #expect(quota.resetsAt != nil)
     }
 
     // MARK: - Error Handling Tests
@@ -282,5 +288,36 @@ struct CopilotInternalAPIProbeTests {
         await #expect(throws: ProbeError.self) {
             try await probe.probe()
         }
+    }
+
+    @Test
+    func `probe populates resetsAt with start of next UTC month`() async throws {
+        let settings = makeSettingsRepository(hasToken: true)
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "copilot_plan": "business",
+          "quota_snapshots": {
+            "premium_interactions": {
+              "entitlement": 300,
+              "percent_remaining": 99.3,
+              "remaining": 298,
+              "unlimited": false
+            }
+          }
+        }
+        """.data(using: .utf8)!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
+
+        let probe = CopilotInternalAPIProbe(
+            networkClient: mockNetwork,
+            settingsRepository: settings
+        )
+
+        let snapshot = try await probe.probe()
+        let quota = try #require(snapshot.quotas.first)
+        let expected = MonthlyResetDate.nextMonthlyResetDate(referenceDate: snapshot.capturedAt)
+        #expect(quota.resetsAt == expected)
     }
 }

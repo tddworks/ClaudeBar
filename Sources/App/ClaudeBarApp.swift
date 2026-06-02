@@ -146,40 +146,21 @@ struct ClaudeBarApp: App {
         return snapshot.overallStatus
     }
 
-    private var menuBarPercentageDisplay: MenuBarPercentageDisplay? {
-        guard settings.menuBarPercentageEnabled else { return nil }
-
-        return monitor.menuBarPercentageDisplay(
+    /// The composed menu bar label (percentage and/or duration, for one or two
+    /// quota windows). Driven by the user's independent menu-bar toggles and the
+    /// primary/secondary quota selection. Recomputed on every body evaluation so
+    /// the duration countdown stays current.
+    private var menuBarLabel: MenuBarLabel? {
+        monitor.menuBarLabel(
             providerId: settings.menuBarPercentageProviderId,
-            quotaKey: settings.menuBarPercentageQuotaKey,
+            primaryQuotaKey: settings.menuBarPercentageQuotaKey,
+            secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
+            showPercentage: settings.menuBarPercentageEnabled,
+            showDuration: settings.menuBarDurationEnabled,
             mode: settings.usageDisplayMode,
             burnRateWarningEnabled: settings.burnRateWarningEnabled,
             burnRateThreshold: settings.burnRateThreshold
         )
-    }
-
-    private var menuBarDurationDisplay: MenuBarDurationDisplay? {
-        guard settings.menuBarDurationEnabled else { return nil }
-
-        return monitor.menuBarDurationDisplay(
-            providerId: settings.menuBarPercentageProviderId,
-            quotaKey: settings.menuBarPercentageQuotaKey,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
-        )
-    }
-
-    private var menuBarLabelText: (text: String, status: QuotaStatus)? {
-        switch (menuBarPercentageDisplay, menuBarDurationDisplay) {
-        case let (.some(perc), .some(dur)):
-            return ("\(perc.text) · \(dur.text)", perc.status)
-        case let (.some(perc), .none):
-            return (perc.text, perc.status)
-        case let (.none, .some(dur)):
-            return (dur.text, dur.status)
-        case (.none, .none):
-            return nil
-        }
     }
 
     /// Current theme mode from settings
@@ -304,7 +285,7 @@ struct ClaudeBarApp: App {
             // while the popover is closed. `.task(id:)` restarts the loop when the
             // cadence or target provider changes and SwiftUI tears it down on exit.
             Group {
-                if let label = menuBarLabelText {
+                if let label = menuBarLabel {
                     StatusBarPercentageLabel(
                         text: label.text,
                         status: label.status,
