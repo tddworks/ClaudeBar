@@ -214,6 +214,134 @@ struct QuotaMonitorTests {
         #expect(display == nil)
     }
 
+    // MARK: - Menu Bar Label (single + dual window)
+
+    /// Builds a Claude-only monitor, refreshed once with the given quotas.
+    private func makeRefreshedClaudeMonitor(quotas: [UsageQuota]) async -> QuotaMonitor {
+        let settings = makeSettingsRepository()
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(UsageSnapshot(
+            providerId: "claude",
+            quotas: quotas,
+            capturedAt: Date()
+        ))
+        let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        await monitor.refresh(providerId: "claude")
+        return monitor
+    }
+
+    @Test
+    func `menu bar label shows single window with no prefix when secondary empty`() async {
+        // Given
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then — unchanged single-window output
+        #expect(label?.text == "75%")
+        #expect(label?.status == .healthy)
+    }
+
+    @Test
+    func `menu bar label shows both windows prefixed by short label`() async {
+        // Given — session 75% (healthy), weekly 35% (warning)
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "weekly",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then — both windows, prefixed, worst status (warning) wins
+        #expect(label?.text == "5h 75% | 7d 35%")
+        #expect(label?.status == .warning)
+    }
+
+    @Test
+    func `menu bar label ignores secondary equal to primary`() async {
+        // Given
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+        ])
+
+        // When — secondary same as primary
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "session",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then — deduped to a single unprefixed window
+        #expect(label?.text == "75%")
+    }
+
+    @Test
+    func `menu bar label falls back to single window when secondary quota missing`() async {
+        // Given — only session quota present, but weekly requested as secondary
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "weekly",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then — no secondary data, primary shown alone without prefix
+        #expect(label?.text == "75%")
+    }
+
+    @Test
+    func `menu bar label is nil when neither percentage nor duration enabled`() async {
+        // Given
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "weekly",
+            showPercentage: false,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then
+        #expect(label == nil)
+    }
+
     @Test
     func `monitor skips unavailable providers`() async {
         // Given

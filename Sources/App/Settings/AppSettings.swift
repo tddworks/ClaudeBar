@@ -72,6 +72,14 @@ public final class AppSettings {
         }
     }
 
+    /// Optional secondary quota key shown alongside the primary in the menu bar
+    /// (e.g. weekly next to session). Empty string means no secondary window.
+    public var menuBarSecondaryQuotaKey: String {
+        didSet {
+            repository.setMenuBarSecondaryQuotaKey(menuBarSecondaryQuotaKey)
+        }
+    }
+
     /// Whether to show daily usage report cards (API Cost, Token Usage, Working Time)
     public var showDailyUsageCards: Bool {
         didSet {
@@ -189,6 +197,7 @@ public final class AppSettings {
         self.menuBarDurationEnabled = repository.menuBarDurationEnabled()
         self.menuBarPercentageProviderId = repository.menuBarPercentageProviderId()
         self.menuBarPercentageQuotaKey = repository.menuBarPercentageQuotaKey()
+        self.menuBarSecondaryQuotaKey = repository.menuBarSecondaryQuotaKey()
 
         if let mode = UsageDisplayMode(rawValue: repository.usageDisplayMode()) {
             self.usageDisplayMode = mode

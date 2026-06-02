@@ -89,6 +89,14 @@ public final class JSONSettingsRepository:
         store.write(value: quotaKey, key: "app.menuBarPercentageQuotaKey")
     }
 
+    public func menuBarSecondaryQuotaKey() -> String {
+        store.read(key: "app.menuBarSecondaryQuotaKey") ?? ""
+    }
+
+    public func setMenuBarSecondaryQuotaKey(_ quotaKey: String) {
+        store.write(value: quotaKey, key: "app.menuBarSecondaryQuotaKey")
+    }
+
     public func showDailyUsageCards() -> Bool {
         store.read(key: "app.showDailyUsageCards") ?? true
     }

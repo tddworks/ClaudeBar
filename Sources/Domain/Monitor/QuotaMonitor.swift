@@ -214,6 +214,80 @@ public final class QuotaMonitor: @unchecked Sendable {
         )
     }
 
+    /// Builds the fully composed menu bar label for one or two quota windows.
+    ///
+    /// The primary window renders exactly as the single-window label always has
+    /// (percentage and/or duration joined by " · "). When `secondaryQuotaKey` is
+    /// non-empty and differs from the primary, a second window is appended: each
+    /// window is prefixed with its `QuotaType.shortLabel` and the two are joined
+    /// by " | ", e.g. "5h 12% | 7d 34%". The status is the most severe of the
+    /// shown windows.
+    ///
+    /// Returns nil when neither percentage nor duration is enabled, or when no
+    /// quota data is available for the requested windows.
+    public func menuBarLabel(
+        providerId: String,
+        primaryQuotaKey: String,
+        secondaryQuotaKey: String = "",
+        showPercentage: Bool,
+        showDuration: Bool,
+        mode: UsageDisplayMode,
+        burnRateWarningEnabled: Bool = false,
+        burnRateThreshold: Double = 1.5
+    ) -> MenuBarLabel? {
+        func segment(forQuotaKey quotaKey: String) -> (text: String, status: QuotaStatus)? {
+            let percentage = showPercentage
+                ? menuBarPercentageDisplay(
+                    providerId: providerId,
+                    quotaKey: quotaKey,
+                    mode: mode,
+                    burnRateWarningEnabled: burnRateWarningEnabled,
+                    burnRateThreshold: burnRateThreshold
+                )
+                : nil
+            let duration = showDuration
+                ? menuBarDurationDisplay(
+                    providerId: providerId,
+                    quotaKey: quotaKey,
+                    burnRateWarningEnabled: burnRateWarningEnabled,
+                    burnRateThreshold: burnRateThreshold
+                )
+                : nil
+
+            switch (percentage, duration) {
+            case let (.some(percentage), .some(duration)):
+                return ("\(percentage.text) · \(duration.text)", percentage.status)
+            case let (.some(percentage), .none):
+                return (percentage.text, percentage.status)
+            case let (.none, .some(duration)):
+                return (duration.text, duration.status)
+            case (.none, .none):
+                return nil
+            }
+        }
+
+        let primary = segment(forQuotaKey: primaryQuotaKey)
+        let secondary = (!secondaryQuotaKey.isEmpty && secondaryQuotaKey != primaryQuotaKey)
+            ? segment(forQuotaKey: secondaryQuotaKey)
+            : nil
+
+        switch (primary, secondary) {
+        case let (.some(primary), .some(secondary)):
+            let primaryLabel = QuotaType(quotaKey: primaryQuotaKey)?.shortLabel ?? primaryQuotaKey
+            let secondaryLabel = QuotaType(quotaKey: secondaryQuotaKey)?.shortLabel ?? secondaryQuotaKey
+            return MenuBarLabel(
+                text: "\(primaryLabel) \(primary.text) | \(secondaryLabel) \(secondary.text)",
+                status: max(primary.status, secondary.status)
+            )
+        case let (.some(primary), .none):
+            return MenuBarLabel(text: primary.text, status: primary.status)
+        case let (.none, .some(secondary)):
+            return MenuBarLabel(text: secondary.text, status: secondary.status)
+        case (.none, .none):
+            return nil
+        }
+    }
+
     /// Returns the overall status across enabled providers (worst status wins)
     public var overallStatus: QuotaStatus {
         providers.enabled
