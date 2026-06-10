@@ -35,6 +35,7 @@ struct SettingsContentView: View {
         static let kimi = "kimi"
         static let minimax = "minimax"
         static let alibaba = "alibaba"
+        static let mistral = "mistral"
     }
 
     private var isCopilotEnabled: Bool {
@@ -67,6 +68,10 @@ struct SettingsContentView: View {
 
     private var isAlibabaEnabled: Bool {
         monitor.provider(for: ProviderID.alibaba)?.isEnabled ?? false
+    }
+
+    private var isMistralEnabled: Bool {
+        monitor.provider(for: ProviderID.mistral)?.isEnabled ?? false
     }
 
     /// Extension providers that are enabled and have config fields declared in their manifest.
@@ -118,6 +123,10 @@ struct SettingsContentView: View {
                     }
                     if isAlibabaEnabled {
                         AlibabaConfigCard(monitor: monitor)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if isMistralEnabled {
+                        MistralConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isCopilotEnabled {

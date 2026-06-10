@@ -15,6 +15,7 @@ public final class JSONSettingsRepository:
     ClaudeSettingsRepository,
     CodexSettingsRepository,
     KimiSettingsRepository,
+    MistralSettingsRepository,
     MiniMaxSettingsRepository,
     AlibabaSettingsRepository,
     HookSettingsRepository,
@@ -240,6 +241,46 @@ public final class JSONSettingsRepository:
 
     public func setKimiProbeMode(_ mode: KimiProbeMode) {
         store.write(value: mode.rawValue, key: "kimi.probeMode")
+    }
+
+    // MARK: - MistralSettingsRepository
+
+    public func mistralProbeMode() -> MistralProbeMode {
+        guard let raw: String = store.read(key: "mistral.probeMode"),
+              let mode = MistralProbeMode(rawValue: raw) else {
+            return .localLogs
+        }
+        return mode
+    }
+
+    public func setMistralProbeMode(_ mode: MistralProbeMode) {
+        store.write(value: mode.rawValue, key: "mistral.probeMode")
+    }
+
+    public func mistralChatAuthEnvVar() -> String {
+        store.read(key: "mistral.chatAuthEnvVar") ?? ""
+    }
+
+    public func setMistralChatAuthEnvVar(_ envVar: String) {
+        store.write(value: envVar, key: "mistral.chatAuthEnvVar")
+    }
+
+    // Mistral Chat session cookie (UserDefaults for now)
+
+    public func saveMistralChatCookie(_ cookie: String) {
+        credentials.set(cookie, forKey: "com.claudebar.credentials.mistral-chat-cookie")
+    }
+
+    public func getMistralChatCookie() -> String? {
+        credentials.string(forKey: "com.claudebar.credentials.mistral-chat-cookie")
+    }
+
+    public func deleteMistralChatCookie() {
+        credentials.removeObject(forKey: "com.claudebar.credentials.mistral-chat-cookie")
+    }
+
+    public func hasMistralChatCookie() -> Bool {
+        getMistralChatCookie() != nil
     }
 
     // MARK: - ZaiSettingsRepository

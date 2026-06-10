@@ -3,7 +3,7 @@ import Observation
 
 /// Mistral AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
-/// Owns its probe and manages its own data lifecycle.
+/// Supports dual probe modes: Local Logs (default) and Vibe API.
 @Observable
 public final class MistralProvider: AIProvider, @unchecked Sendable {
     // MARK: - Identity (Protocol Requirement)
@@ -13,7 +13,7 @@ public final class MistralProvider: AIProvider, @unchecked Sendable {
     public let cliCommand: String = "" // log-only provider, no CLI
 
     public var dashboardURL: URL? {
-        URL(string: "https://console.mistral.ai")
+        URL(string: "https://console.mistral.ai/codestral/cli")
     }
 
     public var statusPageURL: URL? {
@@ -38,36 +38,81 @@ public final class MistralProvider: AIProvider, @unchecked Sendable {
     /// The last error that occurred during refresh
     public private(set) var lastError: Error?
 
+    // MARK: - Probe Mode
+
+    /// The current probe mode (Local Logs or Vibe API)
+    public var probeMode: MistralProbeMode {
+        get {
+            if let mistralSettings = settingsRepository as? MistralSettingsRepository {
+                return mistralSettings.mistralProbeMode()
+            }
+            return .localLogs
+        }
+        set {
+            if let mistralSettings = settingsRepository as? MistralSettingsRepository {
+                mistralSettings.setMistralProbeMode(newValue)
+            }
+        }
+    }
+
     // MARK: - Internal
 
-    /// The probe used to fetch usage data
-    private let probe: any UsageProbe
+    /// The local logs probe (reads ~/.vibe/logs/session/)
+    private let localLogsProbe: any UsageProbe
+
+    /// The API probe for fetching usage via Mistral Console tRPC API
+    private let apiProbe: (any UsageProbe)?
+
+    /// The settings repository for persisting provider settings
     private let settingsRepository: any ProviderSettingsRepository
+
+    /// Returns the active probe based on current mode
+    private var activeProbe: any UsageProbe {
+        switch probeMode {
+        case .localLogs:
+            return localLogsProbe
+        case .api:
+            return apiProbe ?? localLogsProbe
+        }
+    }
 
     // MARK: - Initialization
 
+    /// Creates a Mistral provider with a single probe (legacy initializer)
     public init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
-        self.probe = probe
+        self.localLogsProbe = probe
+        self.apiProbe = nil
         self.settingsRepository = settingsRepository
-        // Default to disabled until user explicitly enables
+        self.isEnabled = settingsRepository.isEnabled(forProvider: "mistral", defaultValue: false)
+    }
+
+    /// Creates a Mistral provider with both local logs and API probes
+    public init(
+        localLogsProbe: any UsageProbe,
+        apiProbe: any UsageProbe,
+        settingsRepository: any MistralSettingsRepository
+    ) {
+        self.localLogsProbe = localLogsProbe
+        self.apiProbe = apiProbe
+        self.settingsRepository = settingsRepository
         self.isEnabled = settingsRepository.isEnabled(forProvider: "mistral", defaultValue: false)
     }
 
     // MARK: - AIProvider Protocol
 
     public func isAvailable() async -> Bool {
-        await probe.isAvailable()
+        await activeProbe.isAvailable()
     }
 
     /// Refreshes the usage data and updates the snapshot.
-    /// Sets isSyncing during refresh and captures any errors.
+    /// Uses the active probe based on current probe mode.
     @discardableResult
     public func refresh() async throws -> UsageSnapshot {
         isSyncing = true
         defer { isSyncing = false }
 
         do {
-            let newSnapshot = try await probe.probe()
+            let newSnapshot = try await activeProbe.probe()
             snapshot = newSnapshot
             lastError = nil
             return newSnapshot
@@ -75,5 +120,10 @@ public final class MistralProvider: AIProvider, @unchecked Sendable {
             lastError = error
             throw error
         }
+    }
+
+    /// Whether API mode is available (API probe was provided)
+    public var supportsApiMode: Bool {
+        apiProbe != nil
     }
 }
