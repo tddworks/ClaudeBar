@@ -39,7 +39,10 @@ struct MistralAPIUsageProbeParsingTests {
     """
 
     static let sampleErrorResponse = """
-    {"json":[0,0,[[{"error":"Unauthorized"}]]}
+    {"json":{"0":[[0],[null,0,0]],"1":[[0],[null,0,1]]}}
+    {"json":[0,0,[[{"result":0}],["result",0,3]]]}
+    {"json":[3,0,[[{"data":0}],["data",0,4]]]}
+    {"json":[4,0,[[{"error":"Unauthorized"}]]]}
     """
 
     // MARK: - Parsing Tests
@@ -68,7 +71,8 @@ struct MistralAPIUsageProbeParsingTests {
         let resetsAt = snapshot.quotas[0].resetsAt
         #expect(resetsAt != nil)
         if let resetsAt {
-            let calendar = Calendar.current
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(secondsFromGMT: 0)!
             let components = calendar.dateComponents([.year, .month, .day], from: resetsAt)
             #expect(components.year == 2026)
             #expect(components.month == 7)
@@ -103,8 +107,17 @@ struct MistralAPIUsageProbeParsingTests {
     func `throws parseFailed on invalid JSON`() throws {
         let data = Data("not json".utf8)
 
-        #expect(throws: ProbeError.self) {
-            try MistralAPIUsageProbe.parseResponse(data, providerId: "mistral")
+        var caughtError: ProbeError?
+        do {
+            _ = try MistralAPIUsageProbe.parseResponse(data, providerId: "mistral")
+        } catch let error as ProbeError {
+            caughtError = error
+        }
+        #expect(caughtError != nil)
+        if case .parseFailed = caughtError {
+            // expected
+        } else {
+            Issue.record("Expected parseFailed but got \(String(describing: caughtError))")
         }
     }
 
@@ -112,8 +125,17 @@ struct MistralAPIUsageProbeParsingTests {
     func `throws executionFailed on error response`() throws {
         let data = Data(Self.sampleErrorResponse.utf8)
 
-        #expect(throws: ProbeError.self) {
-            try MistralAPIUsageProbe.parseResponse(data, providerId: "mistral")
+        var caughtError: ProbeError?
+        do {
+            _ = try MistralAPIUsageProbe.parseResponse(data, providerId: "mistral")
+        } catch let error as ProbeError {
+            caughtError = error
+        }
+        #expect(caughtError != nil)
+        if case .executionFailed(let message) = caughtError {
+            #expect(message.contains("Unauthorized"))
+        } else {
+            Issue.record("Expected executionFailed but got \(String(describing: caughtError))")
         }
     }
 }

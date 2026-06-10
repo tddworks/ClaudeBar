@@ -131,9 +131,7 @@ public struct MistralAPIUsageProbe: UsageProbe {
             throw ProbeError.executionFailed("Mistral Chat API returned HTTP \(httpResponse.statusCode)")
         }
 
-        if let responseText = String(data: data, encoding: .utf8) {
-            AppLog.probes.debug("MistralAPI response: \(responseText.prefix(500))")
-        }
+        AppLog.probes.debug("MistralAPI response: \(data.count) bytes")
 
         return try Self.parseResponse(data, providerId: "mistral")
     }
@@ -188,10 +186,16 @@ public struct MistralAPIUsageProbe: UsageProbe {
         }
 
         for obj in objects {
-            if let dict = obj as? [String: Any],
-               let error = dict["error"] as? String {
-                AppLog.probes.error("MistralAPI: Error in response: \(error)")
-                throw ProbeError.executionFailed("Mistral API error: \(error)")
+            if let dict = obj as? [String: Any] {
+                if let error = dict["error"] as? String {
+                    AppLog.probes.error("MistralAPI: Error in response: \(error)")
+                    throw ProbeError.executionFailed("Mistral API error: \(error)")
+                }
+                if let jsonVal = dict["json"],
+                   let nestedError = Self.findError(in: jsonVal) {
+                    AppLog.probes.error("MistralAPI: Error in response: \(nestedError)")
+                    throw ProbeError.executionFailed("Mistral API error: \(nestedError)")
+                }
             }
         }
 
@@ -208,6 +212,22 @@ public struct MistralAPIUsageProbe: UsageProbe {
         if let arr = value as? [Any] {
             for element in arr {
                 if let found = findUsagePercentage(in: element) {
+                    return found
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Recursively search for `"error"` string in arbitrarily nested JSON (tRPC responses).
+    static func findError(in value: Any) -> String? {
+        if let dict = value as? [String: Any],
+           let error = dict["error"] as? String {
+            return error
+        }
+        if let arr = value as? [Any] {
+            for element in arr {
+                if let found = findError(in: element) {
                     return found
                 }
             }

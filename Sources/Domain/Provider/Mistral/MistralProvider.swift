@@ -3,7 +3,7 @@ import Observation
 
 /// Mistral AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
-/// Supports dual probe modes: Local Logs (default) and Vibe API.
+/// Supports dual probe modes: Local Logs (default) and Code API.
 @Observable
 public final class MistralProvider: AIProvider, @unchecked Sendable {
     // MARK: - Identity (Protocol Requirement)

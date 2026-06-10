@@ -204,7 +204,7 @@ public protocol KimiSettingsRepository: ProviderSettingsRepository {
 }
 
 /// Mistral-specific settings repository, extending base ProviderSettingsRepository.
-/// Includes configuration for probe mode (Local Logs vs Vibe API).
+/// Includes configuration for probe mode (Local Logs vs Code API).
 /// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
 /// App uses UserDefaultsProviderSettingsRepository.
 public protocol MistralSettingsRepository: ProviderSettingsRepository {
