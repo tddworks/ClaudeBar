@@ -1,6 +1,7 @@
 import SwiftUI
 import Domain
 import Infrastructure
+import MenuBarExtraAccess
 #if ENABLE_SPARKLE
 import Sparkle
 #endif
@@ -16,7 +17,16 @@ struct ClaudeBarApp: App {
     @State private var monitor: QuotaMonitor
 
     /// Monitors Claude Code sessions via hook events
-    @State private var sessionMonitor = SessionMonitor()
+    @State private var sessionMonitor: SessionMonitor
+
+    /// Drives the menu-bar pixels and the background-refresh lifecycle
+    /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
+    /// permanently stop re-evaluating after system sleep (issue #192).
+    private let statusItemDriver: StatusItemLabelDriver
+
+    /// Binding required by `.menuBarExtraAccess`; also enables programmatic
+    /// dropdown control if ever needed.
+    @State private var isMenuPresented = false
 
     /// The hook HTTP server that receives events from Claude Code
     private let hookServer = HookHTTPServer()
@@ -107,11 +117,25 @@ struct ClaudeBarApp: App {
 
         // Initialize the domain service with quota alerter
         // QuotaMonitor automatically validates selected provider on init
-        monitor = QuotaMonitor(
+        let monitor = QuotaMonitor(
             providers: repository,
             alerter: quotaAlerter
         )
+        self.monitor = monitor
         AppLog.monitor.info("QuotaMonitor initialized")
+
+        let sessionMonitor = SessionMonitor()
+        self.sessionMonitor = sessionMonitor
+
+        // The driver owns the menu-bar pixels and the refresh-loop lifecycle
+        // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
+        // once `.menuBarExtraAccess` hands over the NSStatusItem.
+        statusItemDriver = StatusItemLabelDriver(
+            monitor: monitor,
+            settings: AppSettings.shared,
+            sessionMonitor: sessionMonitor
+        )
+        statusItemDriver.startMonitoringLifecycle()
 
         // Load user extensions from ~/.claudebar/extensions/
         let extensionRegistry = ExtensionRegistry(
@@ -137,74 +161,9 @@ struct ClaudeBarApp: App {
     /// App settings for theme
     @State private var settings = AppSettings.shared
 
-    /// Status of selected provider, considering burn rate setting
-    private var effectiveSelectedProviderStatus: QuotaStatus {
-        guard let snapshot = monitor.selectedProvider?.snapshot else { return .healthy }
-        if settings.burnRateWarningEnabled {
-            return snapshot.paceAwareOverallStatus(burnRateThreshold: settings.burnRateThreshold)
-        }
-        return snapshot.overallStatus
-    }
-
-    /// The composed menu bar label (percentage and/or duration, for one or two
-    /// quota windows). Driven by the user's independent menu-bar toggles and the
-    /// primary/secondary quota selection. Recomputed on every body evaluation so
-    /// the duration countdown stays current.
-    private var menuBarLabel: MenuBarLabel? {
-        monitor.menuBarLabel(
-            providerId: settings.menuBarPercentageProviderId,
-            primaryQuotaKey: settings.menuBarPercentageQuotaKey,
-            secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
-            showPercentage: settings.menuBarPercentageEnabled,
-            showDuration: settings.menuBarDurationEnabled,
-            mode: settings.usageDisplayMode,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
-        )
-    }
-
     /// Current theme mode from settings
     private var currentThemeMode: ThemeMode {
         ThemeMode(rawValue: settings.themeMode) ?? .system
-    }
-
-    // MARK: - Background Refresh
-
-    /// Identity for the app-lifetime background-refresh loop. When any field
-    /// changes, the scene `.task(id:)` cancels the running loop and restarts it
-    /// with the new cadence/target — replacing the per-setting `.onChange`
-    /// restarts that used to live in `MenuContentView`.
-    private struct RefreshLoopKey: Hashable {
-        let isEnabled: Bool
-        let seconds: Int
-        let providerIds: [String]?
-    }
-
-    /// The current `RefreshLoopKey` derived from settings + monitor state. The
-    /// scene `.task(id:)` observes this, so any change here (cadence toggled,
-    /// selected or menu-bar provider switched) tears down and restarts the loop.
-    private var refreshLoopKey: RefreshLoopKey {
-        let interval = settings.refreshInterval
-        return RefreshLoopKey(
-            isEnabled: interval.isEnabled,
-            seconds: interval.seconds ?? 0,
-            providerIds: backgroundRefreshProviderIds
-        )
-    }
-
-    /// While the dropdown is closed we only need the menu-bar provider(s) fresh,
-    /// so narrow the periodic refresh to the selected + configured menu-bar
-    /// provider when a menu-bar readout is on; otherwise just the selected
-    /// provider. Disabled providers are dropped — their readouts never render,
-    /// so polling them would be wasted work. Keeps background work minimal for
-    /// energy (issue #67).
-    private var backgroundRefreshProviderIds: [String]? {
-        guard settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled else { return nil }
-        let enabledProviderIds = Set(monitor.enabledProviders.map(\.id))
-        return [
-            monitor.selectedProviderId,
-            settings.menuBarPercentageProviderId,
-        ].filter { enabledProviderIds.contains($0) }
     }
 
     private func startHookServer() {
@@ -268,54 +227,37 @@ struct ClaudeBarApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            #if ENABLE_SPARKLE
-            MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
-                    if enabled { startHookServer() } else { stopHookServer() }
-                }
-                .appThemeProvider(themeModeId: settings.themeMode)
-                .environment(\.sparkleUpdater, sparkleUpdater)
-            #else
-            MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
-                    if enabled { startHookServer() } else { stopHookServer() }
-                }
-                .appThemeProvider(themeModeId: settings.themeMode)
-            #endif
-        } label: {
-            // Show overall status + active session indicator in menu bar.
-            //
-            // The background-refresh loop is attached here, to the always-present
-            // menu-bar label, so it runs for the app's lifetime independent of
-            // whether the dropdown is open — keeping the at-a-glance number fresh
-            // while the popover is closed. `.task(id:)` restarts the loop when the
-            // cadence or target provider changes and SwiftUI tears it down on exit.
             Group {
-                if let label = menuBarLabel {
-                    StatusBarPercentageLabel(
-                        text: label.text,
-                        status: label.status,
-                        activeSession: sessionMonitor.activeSession
-                    )
+                #if ENABLE_SPARKLE
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+                        if enabled { startHookServer() } else { stopHookServer() }
+                    }
                     .appThemeProvider(themeModeId: settings.themeMode)
-                } else {
-                    StatusBarIcon(status: effectiveSelectedProviderStatus, activeSession: sessionMonitor.activeSession)
-                        .appThemeProvider(themeModeId: settings.themeMode)
-                }
+                    .environment(\.sparkleUpdater, sparkleUpdater)
+                #else
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+                        if enabled { startHookServer() } else { stopHookServer() }
+                    }
+                    .appThemeProvider(themeModeId: settings.themeMode)
+                #endif
             }
-            .task(id: refreshLoopKey) {
-                guard refreshLoopKey.isEnabled else {
-                    monitor.stopMonitoring()
-                    return
-                }
-                AppLog.monitor.info("Background refresh starting (interval: \(refreshLoopKey.seconds)s, providers: \(refreshLoopKey.providerIds?.joined(separator: ",") ?? "selected"))")
-                let stream = monitor.startMonitoring(
-                    interval: .seconds(refreshLoopKey.seconds),
-                    providerIds: refreshLoopKey.providerIds
-                )
-                for await _ in stream {
-                    // QuotaMonitor updates provider snapshots; the menu-bar label
-                    // re-renders from observable state — nothing to do per event.
-                }
-            }
+            // Opening/closing the dropdown flips `isMenuPresented`, which makes
+            // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
+            // image. The dropdown's lifecycle maps 1:1 to those flips, so
+            // re-assert the menu-bar pixels on both edges.
+            .onAppear { statusItemDriver.reassertPresentation() }
+            .onDisappear { statusItemDriver.reassertPresentation() }
+        } label: {
+            // Deliberately static: the menu-bar pixels are drawn by
+            // StatusItemLabelDriver into the status item's button image,
+            // because this SwiftUI label hosting can permanently stop
+            // re-evaluating after system sleep (issue #192). The placeholder
+            // only gives the scene a label to anchor the dropdown to.
+            Color.clear.frame(width: 1, height: 1)
+        }
+        // Must be the first scene modifier (extends MenuBarExtra, not Scene).
+        .menuBarExtraAccess(isPresented: $isMenuPresented) { statusItem in
+            statusItemDriver.attach(statusItem)
         }
         .menuBarExtraStyle(.window)
     }
@@ -371,60 +313,6 @@ struct StatusBarIcon: View {
 
     private var iconColor: Color {
         theme.statusColor(for: status)
-    }
-}
-
-/// The menu bar text label for an opt-in provider/quota selection.
-/// Renders one composed string (percentage, duration, or both joined by " · ")
-/// driven by the user's independent menu-bar toggles.
-struct StatusBarPercentageLabel: View {
-    let text: String
-    let status: QuotaStatus
-    var activeSession: ClaudeSession? = nil
-
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        let statusColor = theme.statusColor(for: status)
-
-        HStack(spacing: 3) {
-            if let session = activeSession {
-                Image(systemName: "terminal.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(sessionPhaseColor(session.phase))
-            }
-
-            Image(nsImage: StatusBarPercentageImageRenderer.image(
-                text: text,
-                color: statusColor
-            ))
-            .renderingMode(.original)
-            .accessibilityLabel(text)
-        }
-    }
-
-}
-
-/// Renders status text as an original-color image because macOS can ignore
-/// `Text.foregroundStyle` inside a `MenuBarExtra` label.
-private enum StatusBarPercentageImageRenderer {
-    @MainActor
-    static func image(text: String, color: Color) -> NSImage {
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor(color),
-        ]
-        let attributedText = NSAttributedString(string: text, attributes: attributes)
-        let textSize = attributedText.size()
-        let imageSize = NSSize(width: ceil(textSize.width), height: ceil(textSize.height))
-        let image = NSImage(size: imageSize, flipped: false) { _ in
-            attributedText.draw(at: .zero)
-            return true
-        }
-        image.isTemplate = false
-
-        return image
     }
 }
 

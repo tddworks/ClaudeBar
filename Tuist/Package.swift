@@ -32,5 +32,9 @@ let package = Package(
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.12.0"),
         .package(url: "https://github.com/awslabs/aws-sdk-swift", exact: "1.6.99"),
         .package(url: "https://github.com/steipete/SweetCookieKit.git", from: "0.3.0"),
+        // Exposes MenuBarExtra's underlying NSStatusItem so the menu-bar label
+        // can be driven imperatively (AppKit), surviving the SwiftUI label
+        // freeze after system sleep (issue #192).
+        .package(url: "https://github.com/orchetect/MenuBarExtraAccess", from: "1.3.0"),
     ]
 )

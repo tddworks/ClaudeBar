@@ -83,6 +83,7 @@ let project = Project(
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
                 .external(name: "Sparkle"),
+                .external(name: "MenuBarExtraAccess"),
             ],
             settings: .settings(
                 base: [

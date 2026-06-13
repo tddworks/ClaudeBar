@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Menu-bar usage text no longer freezes or disappears after system sleep. SwiftUI's
+  `MenuBarExtra` label hosting can permanently stop receiving updates after wake (the
+  dropdown kept working while the label — and the refresh-loop restarts attached to it —
+  went dead until relaunch). The menu-bar pixels and the background-refresh lifecycle are
+  now driven imperatively (AppKit `NSStatusItem` via MenuBarExtraAccess + observation
+  tracking), independent of SwiftUI view invalidation. (#192)
+
 ---
 
 ## [0.4.68] - 2026-06-10
