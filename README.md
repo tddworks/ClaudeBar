@@ -81,6 +81,26 @@ Kiro monitors AWS Kiro (formerly CodeWhisperer) usage through the `kiro-cli` com
 
 **Kiro IDE Users**: If you use Kiro IDE, simply install kiro-cli. Both share the same authentication, so no additional login is required.
 
+### Mistral Setup
+
+Mistral supports two probe modes, extending the existing Mistral Vibe support:
+
+**Local Logs Mode (Default)** - Reads `~/.vibe/logs/session/` for token-based cost calculation. Works without authentication.
+
+**Code API Mode** - Fetches Vibe Coding Plan usage percentage via `chat.mistral.ai` Code API with session cookie authentication:
+1. Open Chrome DevTools (F12) → **Network tab** on [chat.mistral.ai](https://chat.mistral.ai) while logged in
+2. Trigger any action (e.g., refresh), select a request, and copy the full `Cookie` header from the **Request Headers** section (contains `ory_session_*`, `csrftoken`, `csrf_token_*`)
+3. Set the environment variable before launching ClaudeBar:
+   ```bash
+   # Session cookies are sensitive credentials. Use a leading space to prevent
+   # shell history logging. Never commit this value to version control.
+   export MISTRAL_CHAT_COOKIE='ory_session_coolcurranf83m3srkfl=...; csrftoken=...; ...'
+   open -a ClaudeBar
+   ```
+4. In Settings → Mistral → Probe Mode, select **Code API**
+
+> **Note**: The Code API cookies expire and require periodic refresh. Re-authenticate at chat.mistral.ai and export fresh cookies when needed.
+
 ## Installation
 
 ### Homebrew

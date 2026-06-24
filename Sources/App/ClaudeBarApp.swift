@@ -105,7 +105,8 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             MistralProvider(
-                probe: MistralUsageProbe(),
+                localLogsProbe: MistralUsageProbe(),
+                apiProbe: MistralAPIUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
             OpenCodeProvider(

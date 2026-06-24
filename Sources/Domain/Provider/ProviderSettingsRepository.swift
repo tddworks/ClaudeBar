@@ -203,6 +203,36 @@ public protocol KimiSettingsRepository: ProviderSettingsRepository {
     func setKimiProbeMode(_ mode: KimiProbeMode)
 }
 
+/// Mistral-specific settings repository, extending base ProviderSettingsRepository.
+/// Includes configuration for probe mode (Local Logs vs Code API).
+/// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
+/// App uses UserDefaultsProviderSettingsRepository.
+public protocol MistralSettingsRepository: ProviderSettingsRepository {
+    /// Gets the probe mode for Mistral (localLogs or api)
+    func mistralProbeMode() -> MistralProbeMode
+
+    /// Sets the probe mode for Mistral
+    func setMistralProbeMode(_ mode: MistralProbeMode)
+
+    /// Gets the env var name for Mistral Chat session cookie (empty = use default MISTRAL_CHAT_COOKIE)
+    func mistralChatAuthEnvVar() -> String
+
+    /// Sets the env var name for Mistral Chat session cookie
+    func setMistralChatAuthEnvVar(_ envVar: String)
+
+    /// Saves the Mistral Chat session cookie (for Settings UI input)
+    func saveMistralChatCookie(_ cookie: String)
+
+    /// Retrieves the Mistral Chat session cookie
+    func getMistralChatCookie() -> String?
+
+    /// Deletes the Mistral Chat session cookie
+    func deleteMistralChatCookie()
+
+    /// Checks if a Mistral Chat session cookie is saved
+    func hasMistralChatCookie() -> Bool
+}
+
 /// MiniMax-specific settings repository, extending base ProviderSettingsRepository.
 /// Stores API key and region configuration for MiniMax Coding Plan quota monitoring.
 /// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
