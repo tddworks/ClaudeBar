@@ -35,6 +35,7 @@ struct SettingsContentView: View {
         static let kimi = "kimi"
         static let minimax = "minimax"
         static let alibaba = "alibaba"
+        static let ollama = "ollama"
     }
 
     private var isCopilotEnabled: Bool {
@@ -67,6 +68,10 @@ struct SettingsContentView: View {
 
     private var isAlibabaEnabled: Bool {
         monitor.provider(for: ProviderID.alibaba)?.isEnabled ?? false
+    }
+
+    private var isOllamaEnabled: Bool {
+        monitor.provider(for: ProviderID.ollama)?.isEnabled ?? false
     }
 
     /// Extension providers that are enabled and have config fields declared in their manifest.
@@ -130,6 +135,10 @@ struct SettingsContentView: View {
                     }
                     if isBedrockEnabled {
                         BedrockConfigCard(monitor: monitor)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if isOllamaEnabled {
+                        OllamaConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     ForEach(enabledExtensionProvidersWithConfig, id: \.id) { extProvider in

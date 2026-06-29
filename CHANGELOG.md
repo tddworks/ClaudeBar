@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **[Ollama Cloud / Pro](https://ollama.com) quota tracking**: New `OllamaProvider` monitors Ollama's paid subscription with two probe modes:
+  - **API mode** (default): Bearer-token authentication against `https://ollama.com/api/tags`. Resolves the key from a user-configured env-var name, then `OLLAMA_API_KEY` / `OLLAMA_KEY`, then a value stored in Settings.
+  - **Web mode**: Cookie-based scraping of the `ollama.com/settings` page via SweetCookieKit (already a project dependency). Recognises `__Secure-next-auth.session-token` plus chunked variants and the older `session` / `ollama_session` cookie names; parses session and weekly usage percentages along with reset times out of the rendered HTML.
+  - Settings UI: `OllamaConfigCard` with a probe-mode picker, secure API-key field with show/hide toggle, env-var name override, lookup-order legend, and a "Save & Test" button.
+  - Endpoints, cookie names, and parsing markers were derived from the working Ollama support in [steipete/CodexBar](https://github.com/steipete/CodexBar/tree/main/Sources/CodexBarCore/Providers/Ollama) (MIT).
+  - Defaults to disabled. Ollama does not currently publish a public JSON usage endpoint, so the API probe returns a connectivity-only snapshot until one exists; the Web probe returns full session and weekly quotas today. A TODO comment in `OllamaUsageProbe.swift` flags the URL/parser change needed when an API endpoint ships.
+
+
 ---
 
 ## [0.4.69] - 2026-06-25

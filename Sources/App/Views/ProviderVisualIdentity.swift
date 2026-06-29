@@ -384,6 +384,34 @@ extension MistralProvider: ProviderVisualIdentity {
     }
 }
 
+// MARK: - OllamaProvider Visual Identity
+
+extension OllamaProvider: ProviderVisualIdentity {
+    public var symbolIcon: String { "cloud.fill" }
+
+    public var iconAssetName: String { "OllamaIcon" }
+
+    public func themeColor(for scheme: ColorScheme) -> Color {
+        // Neutral graphite/black matching Ollama's wordmark
+        scheme == .dark
+            ? Color(red: 0.65, green: 0.65, blue: 0.68)
+            : Color(red: 0.30, green: 0.30, blue: 0.33)
+    }
+
+    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                themeColor(for: scheme),
+                scheme == .dark
+                    ? Color(red: 0.45, green: 0.45, blue: 0.48)
+                    : Color(red: 0.18, green: 0.18, blue: 0.20)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 // MARK: - OpenCodeProvider Visual Identity
 
 extension OpenCodeProvider: ProviderVisualIdentity {
@@ -512,6 +540,10 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? Color(red: 0.52, green: 0.36, blue: 1.0)
                 : Color(red: 0.42, green: 0.28, blue: 1.0)
+        case "ollama":
+            return scheme == .dark
+                ? Color(red: 0.65, green: 0.65, blue: 0.68)
+                : Color(red: 0.30, green: 0.30, blue: 0.33)
         default:
             return BaseTheme.purpleVibrant
         }
@@ -579,6 +611,10 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.36, green: 0.20, blue: 0.90)
                 : Color(red: 0.30, green: 0.15, blue: 0.80)
+        case "ollama":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.45, green: 0.45, blue: 0.48)
+                : Color(red: 0.18, green: 0.18, blue: 0.20)
         default:
             return LinearGradient(
                 colors: [BaseTheme.coralAccent, BaseTheme.pinkHot],
@@ -611,6 +647,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "CursorIcon"
         case "mistral": return "MistralIcon"
         case "opencode-go": return "OpenCodeIcon"
+        case "ollama": return "OllamaIcon"
         default: return "QuestionIcon"
         }
     }
@@ -632,6 +669,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "Cursor"
         case "mistral": return "Mistral"
         case "opencode-go": return "OpenCode Go"
+        case "ollama": return "Ollama"
         default: return providerId.capitalized
         }
     }
@@ -653,6 +691,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "cursorarrow.rays"
         case "mistral": return "cat.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
+        case "ollama": return "cloud.fill"
         default: return "questionmark.circle.fill"
         }
     }

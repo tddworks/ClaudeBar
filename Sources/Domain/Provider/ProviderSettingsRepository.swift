@@ -203,6 +203,39 @@ public protocol KimiSettingsRepository: ProviderSettingsRepository {
     func setKimiProbeMode(_ mode: KimiProbeMode)
 }
 
+/// Ollama-specific settings repository, extending base ProviderSettingsRepository.
+///
+/// Stores configuration for Ollama Pro / Ollama Cloud quota monitoring:
+/// probe mode (API vs Web), an optional API key entered in the Settings UI,
+/// and the name of an environment variable to consult for the API key when
+/// none is saved.
+public protocol OllamaSettingsRepository: ProviderSettingsRepository {
+    /// Gets the probe mode for Ollama (API or Web)
+    func ollamaProbeMode() -> OllamaProbeMode
+
+    /// Sets the probe mode for Ollama
+    func setOllamaProbeMode(_ mode: OllamaProbeMode)
+
+    /// Gets the environment variable name for the Ollama API key
+    /// (empty = use the default `OLLAMA_API_KEY`).
+    func ollamaAuthEnvVar() -> String
+
+    /// Sets the environment variable name for the Ollama API key.
+    func setOllamaAuthEnvVar(_ envVar: String)
+
+    /// Saves the Ollama API key (for Settings UI input).
+    func saveOllamaApiKey(_ key: String)
+
+    /// Retrieves the Ollama API key (if one was saved via Settings).
+    func getOllamaApiKey() -> String?
+
+    /// Deletes the saved Ollama API key.
+    func deleteOllamaApiKey()
+
+    /// Whether an Ollama API key is currently saved.
+    func hasOllamaApiKey() -> Bool
+}
+
 /// MiniMax-specific settings repository, extending base ProviderSettingsRepository.
 /// Stores API key and region configuration for MiniMax Coding Plan quota monitoring.
 /// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.

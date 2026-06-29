@@ -17,6 +17,7 @@ public final class JSONSettingsRepository:
     KimiSettingsRepository,
     MiniMaxSettingsRepository,
     AlibabaSettingsRepository,
+    OllamaSettingsRepository,
     HookSettingsRepository,
     @unchecked Sendable
 {
@@ -501,5 +502,45 @@ public final class JSONSettingsRepository:
 
     public func hasMinimaxApiKey() -> Bool {
         getMinimaxApiKey() != nil
+    }
+
+    // MARK: - OllamaSettingsRepository
+
+    public func ollamaProbeMode() -> OllamaProbeMode {
+        guard let raw: String = store.read(key: "ollama.probeMode"),
+              let mode = OllamaProbeMode(rawValue: raw) else {
+            return .api
+        }
+        return mode
+    }
+
+    public func setOllamaProbeMode(_ mode: OllamaProbeMode) {
+        store.write(value: mode.rawValue, key: "ollama.probeMode")
+    }
+
+    public func ollamaAuthEnvVar() -> String {
+        store.read(key: "ollama.authEnvVar") ?? ""
+    }
+
+    public func setOllamaAuthEnvVar(_ envVar: String) {
+        store.write(value: envVar, key: "ollama.authEnvVar")
+    }
+
+    // Ollama Credentials (UserDefaults for now, Keychain migration later)
+
+    public func saveOllamaApiKey(_ key: String) {
+        credentials.set(key, forKey: "com.claudebar.credentials.ollama-api-key")
+    }
+
+    public func getOllamaApiKey() -> String? {
+        credentials.string(forKey: "com.claudebar.credentials.ollama-api-key")
+    }
+
+    public func deleteOllamaApiKey() {
+        credentials.removeObject(forKey: "com.claudebar.credentials.ollama-api-key")
+    }
+
+    public func hasOllamaApiKey() -> Bool {
+        getOllamaApiKey() != nil
     }
 }
