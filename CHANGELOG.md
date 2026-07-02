@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.70] - 2026-07-02
+
 ### Added
 - Claude Fable 5 weekly limit is now parsed from both the CLI `/usage` output
   ("Current week (Fable)") and the OAuth usage API's new `limits` array, shown as a
@@ -814,7 +818,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.69...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.70...HEAD
+[0.4.70]: https://github.com/tddworks/ClaudeBar/compare/v0.4.69...v0.4.70
 [0.4.69]: https://github.com/tddworks/ClaudeBar/compare/v0.4.68...v0.4.69
 [0.4.68]: https://github.com/tddworks/ClaudeBar/compare/v0.4.67...v0.4.68
 [0.4.67]: https://github.com/tddworks/ClaudeBar/compare/v0.4.66...v0.4.67
