@@ -24,6 +24,7 @@ public struct SimpleCLIExecutor: CLIExecutor {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: binaryPath)
         task.arguments = args
+        task.environment = Self.augmentedEnvironment(binaryPath: binaryPath)
         
         if let workingDirectory {
             task.currentDirectoryURL = workingDirectory
@@ -79,5 +80,27 @@ public struct SimpleCLIExecutor: CLIExecutor {
         let output = String(data: combinedData, encoding: .utf8) ?? ""
         
         return CLIResult(output: output, exitCode: task.terminationStatus)
+    }
+
+    /// Builds the child environment with a PATH that works outside a login
+    /// shell. Menu bar apps launched by launchd inherit a minimal PATH
+    /// (`/usr/bin:/bin:...`), which breaks script CLIs whose shebang resolves
+    /// a runtime via `/usr/bin/env` (e.g. `#!/usr/bin/env bun` for omp).
+    /// Appends the common install directories plus the resolved binary's own
+    /// directory (runtimes usually live next to the tools they run).
+    static func augmentedEnvironment(binaryPath: String) -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        let currentPath = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+
+        var entries = currentPath.split(separator: ":").map(String.init)
+        var seen = Set(entries)
+
+        let binaryDirectory = URL(fileURLWithPath: binaryPath).deletingLastPathComponent().path
+        for directory in [binaryDirectory] + BinaryLocator.commonPaths where seen.insert(directory).inserted {
+            entries.append(directory)
+        }
+
+        environment["PATH"] = entries.joined(separator: ":")
+        return environment
     }
 }

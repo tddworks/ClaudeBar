@@ -90,6 +90,7 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
         case "opencode-go": return "OpenCode Go"
+        case "omp": return "Oh My Pi"
         default: return providerId.capitalized
         }
     }

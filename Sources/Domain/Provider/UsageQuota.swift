@@ -18,6 +18,11 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// Raw reset text from CLI (e.g., "Resets 11am", "Resets Jan 15")
     public let resetText: String?
 
+    /// The actual duration of this quota's window in seconds, when the data
+    /// source reports it (e.g. Oh My Pi's `window.durationMs`). Pace math
+    /// falls back to `quotaType.duration` when nil.
+    public let windowDuration: TimeInterval?
+
     /// Dollar balance remaining for credit-based quotas with no cap (e.g., "$50 remaining").
     /// nil for percentage-based quotas that have a known total.
     public let dollarRemaining: Decimal?
@@ -30,6 +35,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         providerId: String,
         resetsAt: Date? = nil,
         resetText: String? = nil,
+        windowDuration: TimeInterval? = nil,
         dollarRemaining: Decimal? = nil
     ) {
         self.percentRemaining = min(100, percentRemaining)  // Allow negative, cap at 100
@@ -37,6 +43,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         self.providerId = providerId
         self.resetsAt = resetsAt
         self.resetText = resetText
+        self.windowDuration = windowDuration
         self.dollarRemaining = dollarRemaining
     }
 
@@ -142,7 +149,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// Calculated as: `(totalDuration - timeUntilReset) / totalDuration * 100`
     public var percentTimeElapsed: Double? {
         guard let timeUntilReset else { return nil }
-        let totalDuration = quotaType.duration.seconds
+        let totalDuration = windowDuration ?? quotaType.duration.seconds
         guard totalDuration > 0 else { return nil }
         let elapsed = totalDuration - timeUntilReset
         return min(100, max(0, elapsed / totalDuration * 100))

@@ -22,7 +22,7 @@ public enum QuotaType: Sendable, Equatable, Hashable {
         case .modelSpecific(let modelName):
             modelName.capitalized
         case .timeLimit(let name):
-            name.capitalized
+            name
         }
     }
 
@@ -37,7 +37,7 @@ public enum QuotaType: Sendable, Equatable, Hashable {
         case .modelSpecific(let modelName):
             modelName.capitalized
         case .timeLimit(let name):
-            name.capitalized
+            name
         }
     }
 

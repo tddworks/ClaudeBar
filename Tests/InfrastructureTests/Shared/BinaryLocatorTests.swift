@@ -53,6 +53,14 @@ struct BinaryLocatorTests {
     }
 
     @Test
+    func `common paths include bun global bin`() {
+        // Bun-installed CLIs (e.g. omp) live in ~/.bun/bin, which launchd
+        // contexts never have on PATH.
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        #expect(BinaryLocator.commonPaths.contains("\(home)/.bun/bin"))
+    }
+
+    @Test
     func `which falls back to common paths when shell fails`() {
         // This test verifies the overall behavior: which() should find binaries
         // even in launchd contexts where the shell PATH is restricted.

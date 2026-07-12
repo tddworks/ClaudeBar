@@ -436,4 +436,35 @@ struct UsageQuotaTests {
         // No reset time → falls back to absolute: 35% remaining → warning
         #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .warning)
     }
+
+    // MARK: - Window Duration Override
+
+    @Test
+    func `percentTimeElapsed uses explicit windowDuration over quota type duration`() {
+        // A .timeLimit quota defaults to a 7-day window; an explicit 5h
+        // window (as reported by aggregating probes like Oh My Pi) must win.
+        let resetsAt = Date().addingTimeInterval(2.5 * 3600) // half of a 5h window left
+        let quota = UsageQuota(
+            percentRemaining: 50,
+            quotaType: .timeLimit("Claude 5h"),
+            providerId: "omp",
+            resetsAt: resetsAt,
+            windowDuration: 5 * 3600
+        )
+        let elapsed = quota.percentTimeElapsed!
+        #expect(elapsed > 49 && elapsed < 51)
+    }
+
+    @Test
+    func `percentTimeElapsed falls back to quota type duration without windowDuration`() {
+        let resetsAt = Date().addingTimeInterval(3.5 * 24 * 3600) // half of the default 7d left
+        let quota = UsageQuota(
+            percentRemaining: 50,
+            quotaType: .timeLimit("Anything"),
+            providerId: "omp",
+            resetsAt: resetsAt
+        )
+        let elapsed = quota.percentTimeElapsed!
+        #expect(elapsed > 49 && elapsed < 51)
+    }
 }

@@ -112,6 +112,10 @@ struct ClaudeBarApp: App {
                 probe: OpenCodeUsageProbe(),
                 settingsRepository: settingsRepository
             ),
+            OmpProvider(
+                probe: OmpUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
         ])
         AppLog.providers.info("Created \(repository.all.count) providers")
 

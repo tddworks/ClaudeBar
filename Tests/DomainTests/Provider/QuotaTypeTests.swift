@@ -40,9 +40,12 @@ struct QuotaTypeTests {
     }
 
     @Test
-    func `time limit quota capitalizes name`() {
-        #expect(QuotaType.timeLimit("mcp").displayName == "Mcp")
-        #expect(QuotaType.timeLimit("daily limit").displayName == "Daily Limit")
+    func `time limit quota preserves name verbatim`() {
+        // Labels arrive display-ready; capitalizing would mangle acronyms
+        // ("MCP" → "Mcp") and window tokens ("Claude 5h" → "Claude 5H").
+        #expect(QuotaType.timeLimit("MCP").displayName == "MCP")
+        #expect(QuotaType.timeLimit("Daily Limit").displayName == "Daily Limit")
+        #expect(QuotaType.timeLimit("Claude 5h").displayName == "Claude 5h")
     }
 
     // MARK: - Short Label Tests
@@ -64,8 +67,9 @@ struct QuotaTypeTests {
     }
 
     @Test
-    func `time limit quota short label capitalizes name`() {
-        #expect(QuotaType.timeLimit("monthly").shortLabel == "Monthly")
+    func `time limit quota short label preserves name verbatim`() {
+        #expect(QuotaType.timeLimit("Monthly").shortLabel == "Monthly")
+        #expect(QuotaType.timeLimit("Codex 7d").shortLabel == "Codex 7d")
     }
 
     // MARK: - Duration Tests

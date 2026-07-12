@@ -412,6 +412,34 @@ extension OpenCodeProvider: ProviderVisualIdentity {
     }
 }
 
+// MARK: - OmpProvider Visual Identity
+
+extension OmpProvider: ProviderVisualIdentity {
+    public var symbolIcon: String { "terminal.fill" }
+
+    public var iconAssetName: String { "OmpIcon" }
+
+    public func themeColor(for scheme: ColorScheme) -> Color {
+        // Oh My Pi green
+        scheme == .dark
+            ? Color(red: 0.30, green: 0.85, blue: 0.55)
+            : Color(red: 0.16, green: 0.62, blue: 0.38)
+    }
+
+    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                themeColor(for: scheme),
+                scheme == .dark
+                    ? Color(red: 0.16, green: 0.62, blue: 0.42)
+                    : Color(red: 0.10, green: 0.48, blue: 0.30)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 // MARK: - AIProvider Visual Identity Helper
 
 /// Extension to access visual identity from any AIProvider.
@@ -512,6 +540,10 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? Color(red: 0.52, green: 0.36, blue: 1.0)
                 : Color(red: 0.42, green: 0.28, blue: 1.0)
+        case "omp":
+            return scheme == .dark
+                ? Color(red: 0.30, green: 0.85, blue: 0.55)
+                : Color(red: 0.16, green: 0.62, blue: 0.38)
         default:
             return BaseTheme.purpleVibrant
         }
@@ -579,6 +611,10 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.36, green: 0.20, blue: 0.90)
                 : Color(red: 0.30, green: 0.15, blue: 0.80)
+        case "omp":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.16, green: 0.62, blue: 0.42)
+                : Color(red: 0.10, green: 0.48, blue: 0.30)
         default:
             return LinearGradient(
                 colors: [BaseTheme.coralAccent, BaseTheme.pinkHot],
@@ -611,6 +647,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "CursorIcon"
         case "mistral": return "MistralIcon"
         case "opencode-go": return "OpenCodeIcon"
+        case "omp": return "OmpIcon"
         default: return "QuestionIcon"
         }
     }
@@ -632,6 +669,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "Cursor"
         case "mistral": return "Mistral"
         case "opencode-go": return "OpenCode Go"
+        case "omp": return "Oh My Pi"
         default: return providerId.capitalized
         }
     }
@@ -653,6 +691,7 @@ enum ProviderVisualIdentityLookup {
         case "cursor": return "cursorarrow.rays"
         case "mistral": return "cat.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
+        case "omp": return "terminal.fill"
         default: return "questionmark.circle.fill"
         }
     }

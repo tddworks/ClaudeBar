@@ -96,6 +96,7 @@ struct ProviderIconView: View {
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "minimax": return "waveform"
         case "opencode-go": return "square.stack.3d.up.fill"
+        case "omp": return "terminal.fill"
         default: return "questionmark"
         }
     }
