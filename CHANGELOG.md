@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.71] - 2026-07-13
+
 ### Added
 - Oh My Pi (`omp`) provider: shows the rate-limit windows of every account the
   harness is signed into (Claude, Codex, Z.ai, ...) via `omp usage --json`. Each
@@ -842,7 +846,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.70...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.71...HEAD
+[0.4.71]: https://github.com/tddworks/ClaudeBar/compare/v0.4.70...v0.4.71
 [0.4.70]: https://github.com/tddworks/ClaudeBar/compare/v0.4.69...v0.4.70
 [0.4.69]: https://github.com/tddworks/ClaudeBar/compare/v0.4.68...v0.4.69
 [0.4.68]: https://github.com/tddworks/ClaudeBar/compare/v0.4.67...v0.4.68
