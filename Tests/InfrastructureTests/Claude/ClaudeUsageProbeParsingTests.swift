@@ -613,6 +613,7 @@ struct ClaudeUsageProbeParsingTests {
         #expect(costUsage != nil)
         #expect(costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(costUsage?.budget == Decimal(string: "20.00"))
+        #expect(costUsage?.kind == .extraUsage)
     }
 
     @Test
@@ -862,6 +863,7 @@ struct ClaudeUsageProbeParsingTests {
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "0.55"))
         #expect(snapshot.costUsage?.budget == nil)
+        #expect(snapshot.costUsage?.kind == .apiCost)
         #expect(snapshot.quotas.isEmpty)
     }
 

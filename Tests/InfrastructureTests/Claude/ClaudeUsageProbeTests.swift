@@ -287,6 +287,7 @@ struct ClaudeUsageProbeTests {
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(snapshot.costUsage?.budget == Decimal(string: "20.00"))
+        #expect(snapshot.costUsage?.kind == .extraUsage)
         #expect(snapshot.quotas.count >= 1)
     }
 

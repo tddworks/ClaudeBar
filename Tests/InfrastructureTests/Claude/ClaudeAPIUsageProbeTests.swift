@@ -46,6 +46,31 @@ struct ClaudeAPIUsageProbeTests {
         try data.write(to: filePath)
     }
 
+    private func probe(responseJSON: String, subscriptionType: String = "claude_pro") async throws -> UsageSnapshot {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(
+            at: tempDir,
+            expiresAt: futureExpiry,
+            subscriptionType: subscriptionType
+        )
+
+        let mockNetwork = MockNetworkClient()
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((Data(responseJSON.utf8), response))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        return try await probe.probe()
+    }
+
     // MARK: - isAvailable Tests
 
     @Test
@@ -608,6 +633,7 @@ struct ClaudeAPIUsageProbeTests {
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         // 2000 cents -> $20.00
         #expect(snapshot.costUsage?.budget == Decimal(string: "20"))
+        #expect(snapshot.costUsage?.kind == .extraUsage)
     }
 
     @Test
@@ -653,6 +679,152 @@ struct ClaudeAPIUsageProbeTests {
         #expect(snapshot.costUsage?.budget == Decimal(string: "50"))
         // Verify formatted output shows dollars, not cents
         #expect(snapshot.costUsage?.formattedCost.contains("26.72") == true)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe uses spend when spend and legacy extra usage agree`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 50000, "currency": "USD", "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 0,
+            "monthly_limit": 50000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == 0)
+        #expect(snapshot.costUsage?.budget == 500)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe prefers spend when legacy extra usage differs`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 125, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 1000, "currency": "USD", "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
+        #expect(snapshot.costUsage?.budget == 10)
+    }
+
+    @Test
+    func `probe parses uncapped spend exactly`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 123456, "currency": "USD", "exponent": 2 },
+            "limit": null,
+            "percent": 0
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "monthly_limit": null,
+            "used_credits": 123456,
+            "decimal_places": 2,
+            "currency": "USD"
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1234.56"))
+        #expect(snapshot.costUsage?.budget == nil)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe respects spend money exponents`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 12345, "exponent": 3 },
+            "limit": { "amount_minor": 2000, "exponent": 1 }
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "12.345"))
+        #expect(snapshot.costUsage?.budget == 200)
+    }
+
+    @Test
+    func `probe falls back to legacy when spend has no used amount`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": null,
+            "limit": { "amount_minor": 1000, "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
+        #expect(snapshot.costUsage?.budget == 20)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe respects legacy extra usage decimal places`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 3
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "0.541"))
+        #expect(snapshot.costUsage?.budget == 2)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe omits disabled spend and extra usage`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": false,
+            "used": { "amount_minor": 541, "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": false,
+            "used_credits": 541,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage == nil)
     }
 
     @Test
@@ -682,6 +854,7 @@ struct ClaudeAPIUsageProbeTests {
 
         // Should succeed but have no quotas
         #expect(snapshot.quotas.isEmpty)
+        #expect(snapshot.costUsage == nil)
     }
 
     // MARK: - Account Tier Detection Tests

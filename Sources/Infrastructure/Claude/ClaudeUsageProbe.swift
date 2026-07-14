@@ -463,6 +463,7 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
                     budget: costInfo.budget,
                     apiDuration: 0,
                     providerId: "claude",
+                    kind: .extraUsage,
                     capturedAt: Date(),
                     resetsAt: resetDate,
                     resetText: cleanResetText(resetText)
