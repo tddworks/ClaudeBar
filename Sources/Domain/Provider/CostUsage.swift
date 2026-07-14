@@ -3,6 +3,14 @@ import Foundation
 /// Represents cost-based usage data for Claude accounts.
 /// Used for API accounts (pay-per-use) and Pro accounts with Extra usage enabled.
 public struct CostUsage: Sendable, Equatable, Hashable {
+    public enum Kind: Sendable, Equatable, Hashable {
+        case apiCost
+        case extraUsage
+    }
+
+    /// Whether this represents general API cost or subscription Extra usage.
+    public let kind: Kind
+
     /// The total cost/spent amount in dollars
     public let totalCost: Decimal
 
@@ -44,10 +52,12 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         linesAdded: Int = 0,
         linesRemoved: Int = 0,
         providerId: String,
+        kind: Kind = .apiCost,
         capturedAt: Date = Date(),
         resetsAt: Date? = nil,
         resetText: String? = nil
     ) {
+        self.kind = kind
         self.totalCost = totalCost
         self.budget = budget
         self.apiDuration = apiDuration
@@ -112,6 +122,12 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     public var budgetPercentUsedFromBuiltIn: Double? {
         guard let budget else { return nil }
         return budgetPercentUsed(budget: budget)
+    }
+
+    /// The unspent built-in budget, floored at zero.
+    public var budgetRemaining: Decimal? {
+        guard let budget else { return nil }
+        return max(0, budget - totalCost)
     }
 
     /// Formatted budget string (e.g., "$20.00")
