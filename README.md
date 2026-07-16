@@ -276,6 +276,27 @@ Thanks to everyone who has contributed to ClaudeBar!
     <td align="center"><a href="https://github.com/tomstetson"><img src="https://github.com/tomstetson.png?size=80" width="80" alt="tomstetson"/><br/><sub><b>tomstetson</b></sub></a></td>
     <td align="center"><a href="https://github.com/logancox"><img src="https://github.com/logancox.png?size=80" width="80" alt="logancox"/><br/><sub><b>logancox</b></sub></a></td>
     <td align="center"><a href="https://github.com/hansonkim"><img src="https://github.com/hansonkim.png?size=80" width="80" alt="hansonkim"/><br/><sub><b>hansonkim</b></sub></a></td>
+    <td align="center"><a href="https://github.com/farmdawgnation"><img src="https://github.com/farmdawgnation.png?size=80" width="80" alt="farmdawgnation"/><br/><sub><b>farmdawgnation</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/sailesh"><img src="https://github.com/sailesh.png?size=80" width="80" alt="sailesh"/><br/><sub><b>sailesh</b></sub></a></td>
+    <td align="center"><a href="https://github.com/billyjack2"><img src="https://github.com/billyjack2.png?size=80" width="80" alt="billyjack2"/><br/><sub><b>billyjack2</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nero-sensei"><img src="https://github.com/nero-sensei.png?size=80" width="80" alt="nero-sensei"/><br/><sub><b>nero-sensei</b></sub></a></td>
+    <td align="center"><a href="https://github.com/marcusquinn"><img src="https://github.com/marcusquinn.png?size=80" width="80" alt="marcusquinn"/><br/><sub><b>marcusquinn</b></sub></a></td>
+    <td align="center"><a href="https://github.com/jeffscottmtl"><img src="https://github.com/jeffscottmtl.png?size=80" width="80" alt="jeffscottmtl"/><br/><sub><b>jeffscottmtl</b></sub></a></td>
+    <td align="center"><a href="https://github.com/LunarECL"><img src="https://github.com/LunarECL.png?size=80" width="80" alt="LunarECL"/><br/><sub><b>LunarECL</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/jeffWelling"><img src="https://github.com/jeffWelling.png?size=80" width="80" alt="jeffWelling"/><br/><sub><b>jeffWelling</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Zada5"><img src="https://github.com/Zada5.png?size=80" width="80" alt="Zada5"/><br/><sub><b>Zada5</b></sub></a></td>
+    <td align="center"><a href="https://github.com/fredericoricco-debug"><img src="https://github.com/fredericoricco-debug.png?size=80" width="80" alt="fredericoricco-debug"/><br/><sub><b>fredericoricco-debug</b></sub></a></td>
+    <td align="center"><a href="https://github.com/benjaminbelaga"><img src="https://github.com/benjaminbelaga.png?size=80" width="80" alt="benjaminbelaga"/><br/><sub><b>benjaminbelaga</b></sub></a></td>
+    <td align="center"><a href="https://github.com/y5mei"><img src="https://github.com/y5mei.png?size=80" width="80" alt="y5mei"/><br/><sub><b>y5mei</b></sub></a></td>
+    <td align="center"><a href="https://github.com/josecancino"><img src="https://github.com/josecancino.png?size=80" width="80" alt="josecancino"/><br/><sub><b>josecancino</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/isnakolah"><img src="https://github.com/isnakolah.png?size=80" width="80" alt="isnakolah"/><br/><sub><b>isnakolah</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Mitsi-ag"><img src="https://github.com/Mitsi-ag.png?size=80" width="80" alt="Mitsi-ag"/><br/><sub><b>Mitsi-ag</b></sub></a></td>
   </tr>
 </table>
 
