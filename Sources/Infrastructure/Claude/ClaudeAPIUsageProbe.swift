@@ -503,13 +503,14 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             ))
         }
 
-        // Prefer the current spend payload, then fall back to legacy extra_usage.
+        // Prefer the current spend payload, then fall back to legacy
+        // extra_usage. A shape with a present-but-invalid cap is dropped
+        // (falls through) rather than reclassified as uncapped.
         let costUsage: CostUsage?
-        if response.spend?.enabled == true,
-           let used = response.spend?.used?.amount {
+        if let pair = response.spend?.costPair {
             costUsage = CostUsage(
-                totalCost: used,
-                budget: response.spend?.limit?.amount,
+                totalCost: pair.used,
+                budget: pair.cap,
                 apiDuration: 0,
                 providerId: "claude",
                 kind: .extraUsage,
@@ -517,11 +518,10 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 resetsAt: nil,
                 resetText: nil
             )
-        } else if response.extraUsage?.isEnabled == true,
-                  let used = response.extraUsage?.usedAmount {
+        } else if let pair = response.extraUsage?.costPair {
             costUsage = CostUsage(
-                totalCost: used,
-                budget: response.extraUsage?.monthlyLimitAmount,
+                totalCost: pair.used,
+                budget: pair.cap,
                 apiDuration: 0,
                 providerId: "claude",
                 kind: .extraUsage,
@@ -688,6 +688,17 @@ private struct SpendData: Decodable {
     let used: MoneyData?
     let limit: MoneyData?
     let enabled: Bool?
+
+    /// The decoded (used, cap) pair, or `nil` when the shape is disabled or
+    /// invalid. A `nil` cap inside the pair means genuinely uncapped
+    /// (`limit` absent or JSON null). A present-but-invalid `limit` poisons
+    /// the whole shape instead of silently reading as "no monthly cap".
+    var costPair: (used: Decimal, cap: Decimal?)? {
+        guard enabled == true, let used = used?.amount else { return nil }
+        guard let limit else { return (used, nil) }
+        guard let cap = limit.amount else { return nil }
+        return (used, cap)
+    }
 }
 
 private struct MoneyData: Decodable {
@@ -714,6 +725,15 @@ private struct ExtraUsageData: Decodable {
     let usedCredits: Decimal?
     let monthlyLimit: Decimal?
     let decimalPlaces: Int?
+
+    /// Same cap semantics as `SpendData.costPair`: absent/null limit means
+    /// uncapped; a present-but-invalid limit invalidates the shape.
+    var costPair: (used: Decimal, cap: Decimal?)? {
+        guard isEnabled == true, let used = usedAmount else { return nil }
+        guard monthlyLimit != nil else { return (used, nil) }
+        guard let cap = monthlyLimitAmount else { return nil }
+        return (used, cap)
+    }
 
     var usedAmount: Decimal? {
         scaledAmount(usedCredits)

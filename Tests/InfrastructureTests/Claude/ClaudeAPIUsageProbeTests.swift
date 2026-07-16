@@ -770,6 +770,61 @@ struct ClaudeAPIUsageProbeTests {
     }
 
     @Test
+    func `probe drops spend with invalid cap instead of reporting uncapped`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used":  { "amount_minor": 541, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": -2000, "currency": "USD", "exponent": 2 }
+          }
+        }
+        """)
+
+        // A present-but-invalid cap must not be reclassified as "no monthly
+        // cap"; the whole shape is dropped.
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
+    func `probe falls back to legacy when spend cap is invalid`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used":  { "amount_minor": 125, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 2000, "currency": "USD", "exponent": -1 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
+        #expect(snapshot.costUsage?.budget == Decimal(string: "20"))
+    }
+
+    @Test
+    func `probe drops legacy shape with invalid monthly limit`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": -2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
     func `probe parses uncapped spend exactly`() async throws {
         let snapshot = try await probe(responseJSON: """
         {
