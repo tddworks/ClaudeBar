@@ -26,10 +26,10 @@ struct CursorUsageProbeParsingTests {
                     "used": 326,
                     "limit": 40000,
                     "remaining": 39674,
-                    "breakdown": { "included": 326, "bonus": 0, "total": 326 },
+                    "breakdown": { "included": 40000, "bonus": 0, "total": 40000 },
                     "autoPercentUsed": 0.033,
                     "apiPercentUsed": 0.586,
-                    "totalPercentUsed": 0.217
+                    "totalPercentUsed": 0.815
                 },
                 "onDemand": {
                     "enabled": false,
@@ -149,6 +149,47 @@ struct CursorUsageProbeParsingTests {
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].percentRemaining == 0)
         #expect(snapshot.quotas[0].resetText == "500/500 requests")
+    }
+
+    @Test
+    func `parse pro plan with bonus credits reports remaining from total capacity`() throws {
+        // Regression: a Pro user with bonus credits. The `used`/`limit` fields describe
+        // only the *included* base (2000/2000 = maxed), but `breakdown.total` shows the
+        // real capacity (9770 incl. 7770 bonus) and `totalPercentUsed` shows true usage
+        // (28.32%). The old logic derived percentRemaining from used/limit -> 0% -> EMPTY.
+        // Correct behavior: ~71.68% remaining, NOT depleted.
+        let json = """
+        {
+            "billingCycleStart": "2026-06-25T03:47:17.000Z",
+            "billingCycleEnd": "2026-07-25T03:47:17.000Z",
+            "membershipType": "pro",
+            "limitType": "user",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 2000,
+                    "limit": 2000,
+                    "remaining": 0,
+                    "breakdown": { "included": 2000, "bonus": 7770, "total": 9770 },
+                    "autoPercentUsed": 23.05,
+                    "apiPercentUsed": 63.44,
+                    "totalPercentUsed": 28.32
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            },
+            "teamUsage": {}
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        let quota = snapshot.quotas[0]
+        #expect(quota.quotaType == .timeLimit("Monthly"))
+        // 28.32% used of the full 9770 capacity -> 71.68% remaining (was incorrectly 0)
+        #expect(abs(quota.percentRemaining - 71.68) < 0.1)
+        #expect(quota.resetText == "2767/9770 requests")
     }
 
     @Test

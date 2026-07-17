@@ -239,21 +239,28 @@ public struct CursorUsageProbe: UsageProbe {
             let used = Self.intValue(from: planUsage, key: "used") ?? 0
             let limit = Self.intValue(from: planUsage, key: "limit") ?? 0
 
-            // Enterprise plans have limit == 0; fall back to breakdown.total
+            // The `used`/`limit` fields describe only the *included* base allotment. Users
+            // with bonus credits have `limit` maxed (used == limit) while real capacity is
+            // `breakdown.total` (included + bonus). Enterprise plans report `limit == 0` and
+            // carry everything in the breakdown. Use the larger of the two as the true
+            // capacity so bonus credits aren't ignored.
             let breakdown = planUsage["breakdown"] as? [String: Any]
             let breakdownTotal = breakdown.flatMap { Self.intValue(from: $0, key: "total") } ?? 0
-            let effectiveLimit = limit > 0 ? limit : breakdownTotal
+            let effectiveLimit = max(limit, breakdownTotal)
 
             if effectiveLimit > 0 {
-                // When limit field is 0, derive used from totalPercentUsed (enterprise API quirk)
+                // `totalPercentUsed` is Cursor's authoritative usage figure across the full
+                // capacity (matches the "You've used X%" message in Cursor's own UI). Prefer
+                // it; fall back to used/limit only when the API doesn't provide it.
+                let percentRemaining: Double
                 let effectiveUsed: Int
-                if limit == 0, let totalPercentUsed = planUsage["totalPercentUsed"] as? Double {
+                if let totalPercentUsed = planUsage["totalPercentUsed"] as? Double {
+                    percentRemaining = 100 - totalPercentUsed
                     effectiveUsed = Int((totalPercentUsed * Double(effectiveLimit) / 100).rounded())
                 } else {
                     effectiveUsed = used
+                    percentRemaining = Double(effectiveLimit - used) / Double(effectiveLimit) * 100
                 }
-
-                let percentRemaining = Double(effectiveLimit - effectiveUsed) / Double(effectiveLimit) * 100
 
                 quotas.append(UsageQuota(
                     percentRemaining: max(0, percentRemaining),

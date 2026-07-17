@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Cursor no longer shows "EMPTY" for Pro/paid accounts that have bonus credits.
+  The probe derived remaining usage from the `used`/`limit` fields, which cover
+  only the *included* base allotment; once that base is consumed (`used == limit`)
+  it reported 0% remaining even when plenty of bonus capacity was left. It now
+  uses Cursor's authoritative `totalPercentUsed` and the full `breakdown.total`
+  capacity (included + bonus), matching the "You've used X%" figure in Cursor's
+  own UI.
+
 ---
 
 ## [0.4.72] - 2026-07-15
