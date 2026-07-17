@@ -195,7 +195,7 @@ public struct OmpUsageProbe: UsageProbe {
                         dollarUsed: monetaryAmounts?.used,
                         dollarCap: monetaryAmounts?.cap,
                         group: group,
-                        compactTitle: Self.compactTitle(limit: limit, meter: meter)
+                        compactTitle: Self.compactTitle(limit: limit, meter: meter, providerName: providerName)
                     )
                 )
             }
@@ -419,15 +419,30 @@ public struct OmpUsageProbe: UsageProbe {
     /// Builds the short in-section card title (e.g. "5h", "Spark 7d",
     /// "Tokens 5h") — the provider/account context lives in the section
     /// header (`UsageQuota.group`), so it is not repeated per card.
-    static func compactTitle(limit: UsageLimit, meter: String?) -> String {
+    /// Purely presentational: quota labels and persisted quota keys keep
+    /// the raw window token (see `UsageQuota.compactTitle`).
+    static func compactTitle(limit: UsageLimit, meter: String?, providerName: String) -> String {
         var parts: [String] = []
         if let tier = limit.scope?.tier, !tier.isEmpty {
             parts.append(tier.capitalized)
         }
-        if let meter, !meter.isEmpty {
+        // Monetary rows keep their spend-oriented `labelToken` contract
+        // ("Extra", "Monthly", "Spend") — window humanization only applies
+        // to window/rate meters.
+        if limit.isMonetary {
+            if let meter, !meter.isEmpty {
+                parts.append(meter)
+            }
+            parts.append(limit.labelToken)
+            return parts.joined(separator: " ")
+        }
+        let display = limit.displayWindowToken(providerName: providerName)
+        // A label-derived token already names the metered resource
+        // ("Premium Requests"); prefixing the meter would duplicate it.
+        if let meter, !meter.isEmpty, !display.selfDescribing {
             parts.append(meter)
         }
-        parts.append(limit.labelToken)
+        parts.append(display.token)
         return parts.joined(separator: " ")
     }
 
@@ -607,8 +622,87 @@ public struct OmpUsageProbe: UsageProbe {
         }
 
         /// Compact window token like "5h", "7d", "1w", "1mo".
+        ///
+        /// This raw chain is identity: it feeds quota labels (persisted
+        /// quota keys) and meter-qualification grouping, so it is never
+        /// humanized — display cleanup lives in `displayWindowToken`.
         var windowToken: String {
             scope?.windowId ?? window?.id ?? window?.label ?? "limit"
+        }
+
+        /// Card-title token plus whether it already describes the metered
+        /// resource on its own (label-derived tokens do; machine tokens
+        /// need the meter prefix when several meters share one window).
+        struct DisplayWindowToken {
+            let token: String
+            let selfDescribing: Bool
+        }
+
+        /// Humanized token for the in-section card title.
+        ///
+        /// Some reporters emit machine window ids next to human labels
+        /// (Kimi's 5-hour rate limit arrives as `300time_unit_minute` with
+        /// label "5h limit"; its summary row is `default` with label
+        /// "Total quota"). Prefer, in order: an already-compact id, a token
+        /// derived from the window duration, the limit's own label, the
+        /// window label, the raw id. Label-derived tokens drop a leading
+        /// provider name (Gemini labels embed it) since the section header
+        /// already carries that context.
+        func displayWindowToken(providerName: String) -> DisplayWindowToken {
+            let raw = scope?.windowId ?? window?.id
+            if let raw, Self.isCompactWindowToken(raw) {
+                return DisplayWindowToken(token: raw, selfDescribing: false)
+            }
+            if let seconds = windowDurationSeconds,
+               let derived = Self.compactDurationToken(seconds) {
+                return DisplayWindowToken(token: derived, selfDescribing: false)
+            }
+            if let label, !label.isEmpty {
+                return DisplayWindowToken(
+                    token: Self.strippingProviderPrefix(label, providerName: providerName),
+                    selfDescribing: true
+                )
+            }
+            if let windowLabel = window?.label, !windowLabel.isEmpty {
+                return DisplayWindowToken(
+                    token: Self.strippingProviderPrefix(windowLabel, providerName: providerName),
+                    selfDescribing: true
+                )
+            }
+            return DisplayWindowToken(token: raw ?? "limit", selfDescribing: false)
+        }
+
+        /// True for tokens that already read as a compact window ("5h",
+        /// "7d", "1mo") and can go on a card verbatim.
+        static func isCompactWindowToken(_ token: String) -> Bool {
+            token.range(
+                of: "^\\d{1,4}(s|m|h|d|w|mo|y)$",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil
+        }
+
+        /// Formats a window length as its largest whole unit ("5h", "7d",
+        /// "90m"); nil for non-positive lengths and for payload garbage
+        /// (non-finite or Int-overflowing durations must degrade to the
+        /// label fallback, never trap).
+        static func compactDurationToken(_ seconds: TimeInterval) -> String? {
+            guard let total = Int(exactly: seconds.rounded()), total > 0 else { return nil }
+            if total % 86_400 == 0 { return "\(total / 86_400)d" }
+            if total % 3_600 == 0 { return "\(total / 3_600)h" }
+            if total % 60 == 0 { return "\(total / 60)m" }
+            return "\(total)s"
+        }
+
+        /// Drops a leading "<providerName> " from a label-derived token —
+        /// the section header already names the provider, and some
+        /// reporters (Gemini) embed it in every limit label.
+        static func strippingProviderPrefix(_ label: String, providerName: String) -> String {
+            let trimmed = label.trimmingCharacters(in: .whitespaces)
+            guard trimmed.count > providerName.count + 1,
+                  trimmed.lowercased().hasPrefix(providerName.lowercased() + " ")
+            else { return trimmed }
+            return String(trimmed.dropFirst(providerName.count + 1))
+                .trimmingCharacters(in: .whitespaces)
         }
 
         /// Groups limits that share a (tier, window) on one account, so

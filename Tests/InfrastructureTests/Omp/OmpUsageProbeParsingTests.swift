@@ -466,6 +466,134 @@ struct OmpUsageProbeParsingTests {
         #expect(!labels.contains { $0.hasSuffix("(2)") })
     }
 
+    // MARK: - Card Title Humanization
+
+    /// Modeled on live `omp usage --json` output for `kimi-code` (omp
+    /// v17.0.2): the reporter emits machine window ids alongside human
+    /// labels. All values are synthetic.
+    static let kimiResponse = """
+    { "reports": [ {
+        "provider": "kimi-code",
+        "limits": [
+          {
+            "id": "kimi-code:0",
+            "label": "Total quota",
+            "scope": { "provider": "kimi-code", "windowId": "default", "shared": true },
+            "window": { "id": "default", "label": "Usage window", "resetsAt": 1784828755000 },
+            "amount": { "unit": "unknown", "limit": 100, "used": 16, "remaining": 84, "usedFraction": 0.16, "remainingFraction": 0.84 }
+          },
+          {
+            "id": "kimi-code:1",
+            "label": "5h limit",
+            "scope": { "provider": "kimi-code", "windowId": "300time_unit_minute", "shared": true },
+            "window": { "id": "300time_unit_minute", "label": "5h limit", "durationMs": 18000000 },
+            "amount": { "unit": "unknown", "limit": 100, "used": 81, "remaining": 19, "usedFraction": 0.81, "remainingFraction": 0.19 }
+          }
+        ],
+        "metadata": { "endpoint": "https://api.kimi.com/coding/v1/usages" }
+    } ] }
+    """
+
+    @Test
+    func `derives a compact card title from the window duration for machine ids`() throws {
+        // "300time_unit_minute" is omp's machine id for Kimi's 5-hour rate
+        // limit; the card must read "5h", not the raw id. The quota label —
+        // and therefore the persisted quota key — keeps the raw token.
+        let snapshot = try OmpUsageProbe.parse(Self.kimiResponse)
+        let rate = try #require(snapshot.quota(for: .timeLimit("Kimi 300time_unit_minute")))
+
+        #expect(rate.compactTitle == "5h")
+        #expect(rate.percentRemaining == 19.0)
+        #expect(rate.windowDuration == 18_000)
+    }
+
+    @Test
+    func `falls back to the limit label for card titles when a window has no duration`() throws {
+        // Kimi's summary row has windowId "default" and no duration; the
+        // card shows Kimi's own "Total quota" label while the quota key
+        // stays on the raw token.
+        let snapshot = try OmpUsageProbe.parse(Self.kimiResponse)
+        let total = try #require(snapshot.quota(for: .timeLimit("Kimi default")))
+
+        #expect(total.compactTitle == "Total quota")
+        #expect(total.resetsAt == Date(timeIntervalSince1970: 1_784_828_755))
+        #expect(snapshot.quotas.allSatisfy { $0.group == "Kimi" })
+    }
+
+    @Test
+    func `strips the provider prefix from label-derived card titles`() throws {
+        // Gemini limit labels embed the provider name ("Gemini <model>")
+        // and its window ids ("reset-<epoch>") carry no duration; the card
+        // sits inside the "Gemini" section already, so the prefix goes.
+        let json = """
+        { "reports": [ {
+            "provider": "google-gemini-cli",
+            "limits": [ {
+              "label": "Gemini gemini-2.5-pro",
+              "scope": { "provider": "google-gemini-cli", "windowId": "reset-1784310000000" },
+              "window": { "id": "reset-1784310000000", "label": "Quota window", "resetsAt": 1784310000000 },
+              "amount": { "usedFraction": 0.3, "remainingFraction": 0.7 }
+            } ]
+        } ] }
+        """
+        let snapshot = try OmpUsageProbe.parse(json)
+        let quota = try #require(snapshot.quota(for: .timeLimit("Gemini reset-1784310000000")))
+
+        #expect(quota.compactTitle == "gemini-2.5-pro")
+    }
+
+    @Test
+    func `keeps meter words off self-describing card titles`() throws {
+        // Copilot meters three request pools over one "monthly" window;
+        // each label already names its resource, so the shared-window meter
+        // prefix must not double it ("Requests Premium Requests").
+        let json = """
+        { "reports": [ {
+            "provider": "github-copilot",
+            "limits": [
+              {
+                "label": "Premium Requests",
+                "scope": { "windowId": "monthly" },
+                "window": { "id": "monthly", "label": "Monthly" },
+                "amount": { "usedFraction": 0.1, "remainingFraction": 0.9, "unit": "requests" }
+              },
+              {
+                "label": "Chat Requests",
+                "scope": { "windowId": "monthly" },
+                "window": { "id": "monthly", "label": "Monthly" },
+                "amount": { "usedFraction": 0.2, "remainingFraction": 0.8, "unit": "requests" }
+              }
+            ]
+        } ] }
+        """
+        let snapshot = try OmpUsageProbe.parse(json)
+        let titles = snapshot.quotas.compactMap(\.compactTitle)
+
+        #expect(titles == ["Premium Requests", "Chat Requests"])
+    }
+
+    @Test
+    func `degrades oversized window durations to the label instead of trapping`() throws {
+        // durationMs is attacker-adjacent external JSON; a finite value past
+        // Int.max must fall through to the label fallback, not crash the
+        // Int conversion.
+        let json = """
+        { "reports": [ {
+            "provider": "kimi-code",
+            "limits": [ {
+              "label": "Broken window",
+              "scope": { "windowId": "broken_machine_id" },
+              "window": { "id": "broken_machine_id", "durationMs": 1.0e308 },
+              "amount": { "usedFraction": 0.5, "remainingFraction": 0.5 }
+            } ]
+        } ] }
+        """
+        let snapshot = try OmpUsageProbe.parse(json)
+        let quota = try #require(snapshot.quota(for: .timeLimit("Kimi broken_machine_id")))
+
+        #expect(quota.compactTitle == "Broken window")
+    }
+
     // MARK: - Accounts Without Usage
 
     @Test

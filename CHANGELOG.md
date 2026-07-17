@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one another, so spend notes and other account notes remain visible together.
 - Claude's configured API budget now applies only to API-cost cards; it no
   longer supplies a misleading cap for uncapped Extra Usage.
+- Oh My Pi quota cards no longer show raw machine window ids. For Kimi,
+  the 5-hour rate-limit card now reads "5h" (derived from the reported
+  window duration) instead of "300TIME_UNIT_MINUTE", and the total-quota
+  card shows Kimi's own "Total quota" label instead of "DEFAULT".
+  Label-derived card titles also drop a duplicated provider prefix
+  (Gemini) and redundant shared-window meter words (Copilot). Card
+  titles only: full quota labels and persisted quota keys are unchanged,
+  so existing menu-bar selections keep working.
 
 ---
 
