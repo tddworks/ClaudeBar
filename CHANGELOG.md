@@ -8,10 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Cursor no longer shows "EMPTY" for Pro/paid accounts that have bonus credits.
+  The probe derived remaining usage from the `used`/`limit` fields, which cover
+  only the *included* base allotment; once that base is consumed (`used == limit`)
+  it reported 0% remaining even when plenty of bonus capacity was left. It now
+  uses Cursor's authoritative `totalPercentUsed` and the full `breakdown.total`
+  capacity (included + bonus), matching the "You've used X%" figure in Cursor's
+  own UI.
 - The pace tick under quota progress bars now explains itself: hovering the
   bar shows a mode-aware tooltip ("steady usage would leave ~N% remaining by
   now"), so the marker no longer reads as a misaligned rendering glitch.
-=======
+
 ### Added
 - Claude Extra Usage now reads the current OAuth `spend` payload (with the
   legacy `extra_usage` shape as a tolerant fallback), converts minor units with
