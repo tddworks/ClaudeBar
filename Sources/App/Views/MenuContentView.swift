@@ -582,16 +582,11 @@ struct MenuContentView: View {
                         .foregroundStyle(theme.textTertiary)
                 }
 
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(group.quotas.enumerated()), id: \.element.quotaType) { index, quota in
-                        WrappedStatCard(quota: quota, delay: baseDelay + Double(index) * 0.08)
-                    }
+                TwoColumnCardGrid(
+                    items: Array(group.quotas.enumerated()),
+                    id: \.element.quotaType
+                ) { entry in
+                    WrappedStatCard(quota: entry.element, delay: baseDelay + Double(entry.offset) * 0.08)
                 }
             }
         }
@@ -605,16 +600,11 @@ struct MenuContentView: View {
             if snapshot.hasQuotaGroups {
                 quotaGroupSections(snapshot: snapshot)
             } else if !snapshot.quotas.isEmpty {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(snapshot.quotas.enumerated()), id: \.element.quotaType) { index, quota in
-                        WrappedStatCard(quota: quota, delay: Double(index) * 0.08)
-                    }
+                TwoColumnCardGrid(
+                    items: Array(snapshot.quotas.enumerated()),
+                    id: \.element.quotaType
+                ) { entry in
+                    WrappedStatCard(quota: entry.element, delay: Double(entry.offset) * 0.08)
                 }
             }
 
@@ -633,15 +623,11 @@ struct MenuContentView: View {
             // Controlled via Settings toggle or ~/.claudebar/settings.json
             if settings.showDailyUsageCards, let report = snapshot.dailyUsageReport {
                 let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
+                HStack(spacing: 10) {
                     DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
+                        .frame(maxWidth: .infinity)
                     DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
+                        .frame(maxWidth: .infinity)
                 }
                 if report.today.workingTime > 0 || report.previous.workingTime > 0 {
                     DailyUsageCardView(metric: .workingTime, report: report, delay: baseDelay + 0.16)
@@ -652,16 +638,11 @@ struct MenuContentView: View {
             if let extensionMetrics = snapshot.extensionMetrics?.filter({ $0.group == nil }),
                !extensionMetrics.isEmpty {
                 let metricBaseDelay = Double(snapshot.quotas.count + 2) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(extensionMetrics.enumerated()), id: \.element.label) { index, metric in
-                        ExtensionMetricCardView(metric: metric, delay: metricBaseDelay + Double(index) * 0.08)
-                    }
+                TwoColumnCardGrid(
+                    items: Array(extensionMetrics.enumerated()),
+                    id: \.element.label
+                ) { entry in
+                    ExtensionMetricCardView(metric: entry.element, delay: metricBaseDelay + Double(entry.offset) * 0.08)
                 }
             }
 
@@ -925,6 +906,75 @@ struct ProviderPill: View {
 
     private var providerIcon: String {
         ProviderVisualIdentityLookup.symbolIcon(for: providerId)
+    }
+}
+
+// MARK: - Two-Column Card Grid
+
+/// Non-lazy two-column grid for popover cards.
+///
+/// The popover shows at most a few dozen lightweight cards, so laziness buys
+/// nothing — and `LazyVGrid` actively hurts: lazy containers report an
+/// estimated height and correct it as cells materialize, and inside the
+/// popover's vertical `ScrollView` each correction rewrites the scroll offset
+/// mid-gesture. Scrolling upward trembled, snapped back, and only got through
+/// with an exaggerated flick. An eager grid hands the scroll view exact
+/// content heights up front, so dragging stays smooth in both directions.
+///
+/// Layout matches the `LazyVGrid` it replaces: two equal flexible columns,
+/// `spacing` between rows and columns, cells center-aligned per row, and a
+/// lone card in the last row keeps column width instead of stretching.
+struct TwoColumnCardGrid<Item, ID: Hashable, Cell: View>: View {
+    let items: [Item]
+    let id: KeyPath<Item, ID>
+    var spacing: CGFloat = 10
+    @ViewBuilder let cell: (Item) -> Cell
+
+    init(
+        items: [Item],
+        id: KeyPath<Item, ID>,
+        spacing: CGFloat = 10,
+        @ViewBuilder cell: @escaping (Item) -> Cell
+    ) {
+        self.items = items
+        self.id = id
+        self.spacing = spacing
+        self.cell = cell
+    }
+
+    /// Rows are keyed by their leading item so a stable card list keeps
+    /// stable row identity across refreshes (no re-run of card appear
+    /// animations); when the list itself changes, affected rows rebuild.
+    private var rows: [(id: ID, leading: Item, trailing: Item?)] {
+        stride(from: 0, to: items.count, by: 2).map { start in
+            (
+                id: items[start][keyPath: id],
+                leading: items[start],
+                trailing: start + 1 < items.count ? items[start + 1] : nil
+            )
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: spacing) {
+            ForEach(rows, id: \.id) { row in
+                HStack(spacing: spacing) {
+                    cell(row.leading)
+                        .frame(maxWidth: .infinity)
+                    if let trailing = row.trailing {
+                        cell(trailing)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        // Hold the empty slot so a lone final card keeps
+                        // column width instead of stretching across the row.
+                        Color.clear
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 0)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
     }
 }
 

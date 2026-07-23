@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Popover scrolling no longer trembles or snaps back while dragging upward.
+  The card grids were `LazyVGrid`s inside the popover's vertical `ScrollView`,
+  so lazy height estimation kept correcting the scroll offset mid-gesture as
+  cells materialized. Cards now lay out eagerly — the popover shows a few
+  dozen at most, so laziness bought nothing — and the scroll view knows exact
+  content heights up front.
+
 ---
 
 ## [0.4.73] - 2026-07-19
