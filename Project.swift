@@ -58,6 +58,7 @@ let project = Project(
                 .external(name: "AWSSSO"),
                 .external(name: "AWSSSOOIDC"),
                 .external(name: "SweetCookieKit"),
+                .external(name: "Subprocess"),
             ],
             settings: .settings(
                 base: [

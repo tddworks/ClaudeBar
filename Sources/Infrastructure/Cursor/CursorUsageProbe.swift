@@ -78,7 +78,7 @@ public struct CursorUsageProbe: UsageProbe {
 
         AppLog.probes.info("Cursor: Reading auth token from database...")
 
-        let accessToken = try readAccessToken(from: dbPath)
+        let accessToken = try await readAccessToken(from: dbPath)
         let userId = try Self.extractUserIdFromJWT(accessToken)
         let cookie = "WorkosCursorSessionToken=\(userId)::\(accessToken)"
 
@@ -94,30 +94,25 @@ public struct CursorUsageProbe: UsageProbe {
     // MARK: - Token Extraction
 
     /// Reads the access token from Cursor's SQLite database using the sqlite3 CLI.
-    private func readAccessToken(from dbPath: String) throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [dbPath, "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
+    private func readAccessToken(from dbPath: String) async throws -> String {
+        let result: SubprocessSupport.Output
         do {
-            try process.run()
-            process.waitUntilExit()
+            result = try await SubprocessSupport.run(
+                executablePath: "/usr/bin/sqlite3",
+                arguments: [dbPath, "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"],
+                outputLimit: 64 * 1024
+            )
         } catch {
             AppLog.probes.error("Cursor: Failed to run sqlite3 - \(error.localizedDescription)")
             throw ProbeError.executionFailed("Failed to read Cursor database: \(error.localizedDescription)")
         }
 
-        guard process.terminationStatus == 0 else {
-            AppLog.probes.error("Cursor: sqlite3 exited with status \(process.terminationStatus)")
-            throw ProbeError.executionFailed("sqlite3 exited with status \(process.terminationStatus)")
+        guard result.isSuccess else {
+            AppLog.probes.error("Cursor: sqlite3 exited with status \(result.exitCode)")
+            throw ProbeError.executionFailed("sqlite3 exited with status \(result.exitCode)")
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let token = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let token = result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !token.isEmpty else {
             AppLog.probes.error("Cursor: No access token found in database (not logged in?)")

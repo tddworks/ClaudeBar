@@ -51,7 +51,7 @@ public struct AmpCodeUsageProbe: UsageProbe {
         // Step 2: Execute `amp usage --no-color`
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: ampPath,
                 args: ["usage", "--no-color"],
                 input: nil,

@@ -23,8 +23,11 @@ public struct DefaultCLIExecutor: CLIExecutor {
         timeout: TimeInterval,
         workingDirectory: URL?,
         autoResponses: [String: String]
-    ) throws -> CLIResult {
+    ) async throws -> CLIResult {
         let runner = InteractiveRunner()
+        // Built here, on the task, so the `qualityOfService` default argument
+        // reads the ambient `ProbeExecutionContext` task local before we hop
+        // off the cooperative pool below (task locals do not cross that hop).
         let options = InteractiveRunner.Options(
             timeout: timeout,
             workingDirectory: workingDirectory,
@@ -32,8 +35,32 @@ public struct DefaultCLIExecutor: CLIExecutor {
             autoResponses: autoResponses,
             environmentExclusions: environmentExclusions
         )
+        let inputText = input ?? ""
 
-        let result = try runner.run(binary: binary, input: input ?? "", options: options)
-        return CLIResult(output: result.output, exitCode: result.exitCode)
+        // `InteractiveRunner.run` polls with `usleep` and blocks for up to
+        // `timeout`. Running it on the cooperative pool would park a thread that
+        // every other provider's refresh needs, so hop to a dedicated queue.
+        return try await withCheckedThrowingContinuation { continuation in
+            Self.executionQueue.async {
+                continuation.resume(
+                    with: Swift.Result {
+                        let result = try runner.run(
+                            binary: binary,
+                            input: inputText,
+                            options: options
+                        )
+                        return CLIResult(output: result.output, exitCode: result.exitCode)
+                    }
+                )
+            }
+        }
     }
+
+    /// Dedicated queue for blocking PTY runs, kept off the Swift cooperative
+    /// pool. Concurrent so providers still refresh in parallel.
+    private static let executionQueue = DispatchQueue(
+        label: "com.tddworks.claudebar.cli-execution",
+        qos: .utility,
+        attributes: .concurrent
+    )
 }

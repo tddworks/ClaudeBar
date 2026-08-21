@@ -798,6 +798,10 @@ struct MenuContentView: View {
                 gradient: theme.accentGradient,
                 isLoading: isCurrentlyRefreshing
             ) {
+                // An explicit refresh is the moment a user who just installed a
+                // CLI expects it to be picked up, so drop the cached lookups
+                // instead of waiting for their TTL to lapse.
+                BinaryLocator.invalidateCaches()
                 if settings.overviewModeEnabled {
                     Task { await refreshAllEnabled() }
                 } else {

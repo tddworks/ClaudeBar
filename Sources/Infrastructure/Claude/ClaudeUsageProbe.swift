@@ -60,7 +60,7 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
         let usageResult: CLIResult
         let cliStart = CFAbsoluteTimeGetCurrent()
         do {
-            usageResult = try cliExecutor.execute(
+            usageResult = try await cliExecutor.execute(
                 binary: claudeBinary,
                 args: ["/usage", "--allowed-tools", ""],
                 input: "",
@@ -124,7 +124,7 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
 
         let costResult: CLIResult
         do {
-            costResult = try cliExecutor.execute(
+            costResult = try await cliExecutor.execute(
                 binary: claudeBinary,
                 args: ["/cost", "--allowed-tools", ""],
                 input: "",

@@ -36,7 +36,7 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
     public func probe() async throws -> UsageSnapshot {
         let command = buildCommand()
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: "/bin/sh",
             args: ["-c", command],
             input: nil,

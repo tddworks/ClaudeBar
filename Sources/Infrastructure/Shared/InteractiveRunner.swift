@@ -39,19 +39,28 @@ public struct InteractiveRunner: Sendable {
         /// Use this to prevent env vars like `CLAUDE_CODE_OAUTH_TOKEN` from being
         /// inherited by the subprocess, forcing it to use stored credentials instead.
         public var environmentExclusions: [String]
+        /// Quality of service for the spawned process tree.
+        ///
+        /// Defaults to the ambient `ProbeExecutionContext` value. Because default
+        /// arguments are evaluated at the call site, constructing `Options` inside
+        /// the monitor's `.utility` scope captures `.utility` — `run()` itself may
+        /// then execute on a plain thread without losing the task local (issue #204).
+        public var qualityOfService: QualityOfService
 
         public init(
             timeout: TimeInterval = 20.0,
             workingDirectory: URL? = nil,
             arguments: [String] = [],
             autoResponses: [String: String] = [:],
-            environmentExclusions: [String] = []
+            environmentExclusions: [String] = [],
+            qualityOfService: QualityOfService = ProbeExecutionContext.qualityOfService
         ) {
             self.timeout = timeout
             self.workingDirectory = workingDirectory
             self.arguments = arguments
             self.autoResponses = autoResponses
             self.environmentExclusions = environmentExclusions
+            self.qualityOfService = qualityOfService
         }
     }
 
@@ -213,10 +222,11 @@ public struct InteractiveRunner: Sendable {
         process.standardOutput = terminalHandle
         process.standardError = terminalHandle
         process.environment = Self.terminalEnvironment(excluding: options.environmentExclusions)
-        // Inherit the ambient probe QoS: the background monitoring loop binds
-        // `.utility` so the spawned CLI tree runs on efficiency cores / throttled,
-        // cutting idle heat (issue #204). Interactive runs stay `.default`.
-        process.qualityOfService = ProbeExecutionContext.qualityOfService
+        // Carry the probe QoS captured when `Options` was built: the background
+        // monitoring loop binds `.utility` so the spawned CLI tree runs on
+        // efficiency cores / throttled, cutting idle heat (issue #204).
+        // Interactive runs stay `.default`.
+        process.qualityOfService = options.qualityOfService
 
         if let workingDirectory = options.workingDirectory {
             process.currentDirectoryURL = workingDirectory

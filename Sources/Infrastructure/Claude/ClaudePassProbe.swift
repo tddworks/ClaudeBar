@@ -61,7 +61,7 @@ public final class ClaudePassProbe: ClaudePassProbing, @unchecked Sendable {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: claudeBinary,
                 args: ["/passes", "--allowed-tools", ""],
                 input: "",

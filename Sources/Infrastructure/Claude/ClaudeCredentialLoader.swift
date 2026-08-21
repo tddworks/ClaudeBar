@@ -236,10 +236,12 @@ public struct ClaudeCredentialLoader: Sendable {
 
         do {
             try process.run()
+            // Drain before waiting: `waitUntilExit()` first would deadlock if the
+            // child ever filled the pipe buffer, since nothing is reading it.
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else { return nil }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let jsonString = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
                   !jsonString.isEmpty else { return nil }

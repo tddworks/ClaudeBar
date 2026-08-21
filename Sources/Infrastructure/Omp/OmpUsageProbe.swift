@@ -64,7 +64,7 @@ public struct OmpUsageProbe: UsageProbe {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: ompBinary,
                 args: ["usage", "--json"],
                 input: nil,

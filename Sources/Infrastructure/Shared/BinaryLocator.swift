@@ -57,14 +57,79 @@ public struct BinaryLocator: Sendable {
         Self.which(tool)
     }
 
+    // MARK: - Caching
+
+    /// Resolved tool paths. `nil` values are cached too, so a missing CLI does
+    /// not re-spawn a login shell on every refresh.
+    private static let toolCache = SingleFlightCache<String?>()
+
+    /// The login shell's `PATH`, cached under a single fixed key.
+    private static let shellPathCache = SingleFlightCache<String>()
+
+    private static let shellPathCacheKey = "shellPath"
+
+    /// A tool that was found stays cached for a while; the path is re-validated
+    /// on read, so an uninstall is noticed immediately regardless of this value.
+    private static let foundTTL: TimeInterval = 600
+
+    /// A tool that was *not* found expires sooner, so installing a CLI while the
+    /// app runs is picked up without a restart.
+    private static let notFoundTTL: TimeInterval = 120
+
+    private static let shellPathTTL: TimeInterval = 600
+
+    /// Clears cached lookups so the next call re-resolves from the shell.
+    /// Wired to manual refresh, where the user may have just installed a tool.
+    public static func invalidateCaches() {
+        toolCache.invalidateAll()
+        shellPathCache.invalidateAll()
+        AppLog.probes.debug("BinaryLocator: caches invalidated")
+    }
+
     /// Finds a tool by name using the user's login shell.
     ///
     /// First tries to run `which` through a login shell to access the user's full PATH.
     /// If that fails (common in menu bar apps), falls back to checking common paths directly.
     ///
+    /// Results are cached: this is called by every provider on every refresh, and
+    /// each miss costs a login-shell spawn.
+    ///
     /// - Parameter tool: The name of the CLI tool
     /// - Returns: The full path to the tool if found, nil otherwise
     public static func which(_ tool: String) -> String? {
+        let cached = cachedResolve(tool)
+
+        // A cached hit goes stale when the tool is upgraded or uninstalled
+        // (version-pinned paths like nvm's move). Re-resolve rather than handing
+        // back a path that no longer runs.
+        if let cached, !FileManager.default.isExecutableFile(atPath: cached) {
+            AppLog.probes.debug("BinaryLocator: cached path for '\(tool)' is stale, re-resolving")
+            toolCache.invalidate(tool)
+            return cachedResolve(tool)
+        }
+
+        return cached
+    }
+
+    private static func cachedResolve(_ tool: String) -> String? {
+        toolCache.value(
+            for: tool,
+            ttl: { $0 == nil ? notFoundTTL : foundTTL },
+            compute: { resolve(tool) }
+        )
+    }
+
+    /// Uncached resolution: login shell first, then common install paths.
+    private static func resolve(_ tool: String) -> String? {
+        // An explicit path needs no lookup — and would never survive one, since
+        // the shell-injection guard in `Shell.whichArguments` rejects `/`.
+        // Callers legitimately pass already-resolved paths (a probe that located
+        // its binary once, then executes it), which `InteractiveRunner` has
+        // always accepted; accept them here too so both executors agree.
+        if tool.contains("/"), FileManager.default.isExecutableFile(atPath: tool) {
+            return tool
+        }
+
         // First, try using the login shell's `which`
         if let path = whichViaShell(tool) {
             return path
@@ -90,12 +155,14 @@ public struct BinaryLocator: Sendable {
 
         do {
             try proc.run()
+            // Drain before waiting: reading only after `waitUntilExit()` deadlocks
+            // if the child fills the pipe buffer while nothing consumes it.
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             proc.waitUntilExit()
             let elapsed = CFAbsoluteTimeGetCurrent() - startTime
             AppLog.probes.debug("BinaryLocator.whichViaShell('\(tool)') took \(String(format: "%.3f", elapsed))s")
             guard proc.terminationStatus == 0 else { return nil }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else { return nil }
 
             return shell.parseWhichOutput(output)
@@ -159,8 +226,20 @@ public struct BinaryLocator: Sendable {
 
     /// Gets the user's PATH from their login shell.
     ///
+    /// Cached: this runs inside `InteractiveRunner`'s environment setup, so an
+    /// uncached call spawns a login shell for every probe of every provider.
+    ///
     /// - Returns: The full PATH string from the user's shell, or system PATH as fallback
     public static func shellPath() -> String {
+        shellPathCache.value(
+            for: shellPathCacheKey,
+            ttl: { _ in shellPathTTL },
+            compute: { computeShellPath() }
+        )
+    }
+
+    /// Uncached login-shell `PATH` lookup.
+    private static func computeShellPath() -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
         let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let shell = Shell.detect(from: shellPath)
@@ -177,12 +256,13 @@ public struct BinaryLocator: Sendable {
 
         do {
             try proc.run()
+            // Drain before waiting, as above.
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             proc.waitUntilExit()
             let elapsed = CFAbsoluteTimeGetCurrent() - startTime
             AppLog.probes.debug("BinaryLocator.shellPath() took \(String(format: "%.3f", elapsed))s")
             guard proc.terminationStatus == 0 else { return fallback }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else { return fallback }
 
             let path = shell.parsePathOutput(output)

@@ -43,7 +43,7 @@ public struct KimiCLIUsageProbe: UsageProbe {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: kimiBinary,
                 args: [],
                 input: nil,

@@ -95,7 +95,7 @@ public struct AntigravityUsageProbe: UsageProbe {
 
     private func detectProcess() async throws -> ProcessInfo {
         // Use pgrep for more reliable process detection (avoids PTY buffering issues)
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: "/usr/bin/pgrep",
             args: ["-lf", "language_server"],
             input: nil,
@@ -142,7 +142,7 @@ public struct AntigravityUsageProbe: UsageProbe {
             FileManager.default.isExecutableFile(atPath: $0)
         } ?? "/usr/sbin/lsof"
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: lsofPath,
             args: ["-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", String(pid)],
             input: nil,

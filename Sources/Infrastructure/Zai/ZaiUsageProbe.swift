@@ -145,7 +145,7 @@ public struct ZaiUsageProbe: UsageProbe {
         }
         AppLog.probes.debug("Using Z.ai config path: \(configPath.path)")
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: "cat",
             args: [configPath.path],
             input: nil,

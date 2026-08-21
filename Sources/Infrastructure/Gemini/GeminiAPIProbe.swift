@@ -133,7 +133,7 @@ internal struct GeminiAPIProbe {
 
         AppLog.probes.debug("Gemini: Running CLI to refresh OAuth token...")
 
-        _ = try cliExecutor.execute(
+        _ = try await cliExecutor.execute(
             binary: "gemini",
             args: [],
             input: "/quit\n",

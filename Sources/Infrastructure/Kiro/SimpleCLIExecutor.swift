@@ -1,7 +1,12 @@
-import Foundation
 import Domain
+import Foundation
+import System
 
-/// Simple CLI executor that uses Process directly without PTY
+/// Simple CLI executor that runs commands over plain pipes, without a PTY.
+///
+/// Used by tools that emit machine-readable output and do not need to believe
+/// they are attached to a terminal. Providers that do need that go through
+/// `DefaultCLIExecutor`/`InteractiveRunner` instead.
 public struct SimpleCLIExecutor: CLIExecutor {
     public init() {}
     
@@ -16,70 +21,52 @@ public struct SimpleCLIExecutor: CLIExecutor {
         timeout: TimeInterval,
         workingDirectory: URL?,
         autoResponses: [String: String]
-    ) throws -> CLIResult {
+    ) async throws -> CLIResult {
         guard let binaryPath = locate(binary) else {
             throw ProbeError.cliNotFound(binary)
         }
         
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: binaryPath)
-        task.arguments = args
-        task.environment = Self.augmentedEnvironment(binaryPath: binaryPath)
-        
-        if let workingDirectory {
-            task.currentDirectoryURL = workingDirectory
+        let result: SubprocessSupport.Output
+        do {
+            result = try await withThrowingTaskGroup(of: SubprocessSupport.Output.self) { group in
+                group.addTask {
+                    try await SubprocessSupport.run(
+                        executablePath: binaryPath,
+                        arguments: args,
+                        environment: SubprocessSupport.environment(
+                            Self.augmentedEnvironment(binaryPath: binaryPath)
+                        ),
+                        workingDirectory: workingDirectory.map { FilePath($0.path) },
+                        input: input
+                    )
+                }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(timeout))
+                    throw ProbeError.executionFailed("Command timed out after \(timeout) seconds")
+                }
+
+                guard let first = try await group.next() else {
+                    throw ProbeError.executionFailed("Command produced no result")
+                }
+                // Whichever task lost the race is cancelled here. If that is the
+                // subprocess, cancellation drives Subprocess's teardown sequence
+                // (SIGTERM, then SIGKILL) and the child is reaped — the previous
+                // `terminate()`-and-throw left a zombie behind.
+                group.cancelAll()
+                return first
+            }
+        } catch let error as ProbeError {
+            throw error
+        } catch {
+            throw ProbeError.executionFailed("Failed to run \(binary): \(error.localizedDescription)")
         }
-        
-        let inputPipe = Pipe()
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardInput = inputPipe
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-        
-        try task.run()
-        
-        // Send input if provided
-        if let input, let data = input.data(using: .utf8) {
-            inputPipe.fileHandleForWriting.write(data)
-        }
-        try? inputPipe.fileHandleForWriting.close()
-        
-        // Read output asynchronously to avoid deadlock
-        var outputData = Data()
-        var errorData = Data()
-        
-        let outputQueue = DispatchQueue(label: "kiro.cli.output")
-        let errorQueue = DispatchQueue(label: "kiro.cli.error")
-        
-        outputQueue.async {
-            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        }
-        errorQueue.async {
-            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        }
-        
-        // Wait for completion with timeout
-        let deadline = Date().addingTimeInterval(timeout)
-        while task.isRunning && Date() < deadline {
-            usleep(100000) // 0.1 second
-        }
-        
-        if task.isRunning {
-            task.terminate()
-            throw ProbeError.executionFailed("Command timed out after \(timeout) seconds")
-        }
-        
-        // Wait for async reads to complete
-        outputQueue.sync {}
-        errorQueue.sync {}
-        
-        // Combine stdout and stderr
-        var combinedData = outputData
-        combinedData.append(errorData)
-        let output = String(data: combinedData, encoding: .utf8) ?? ""
-        
-        return CLIResult(output: output, exitCode: task.terminationStatus)
+
+        // Combine stdout and stderr, as before: Kiro reports errors on stderr and
+        // callers parse a single blob.
+        return CLIResult(
+            output: result.standardOutput + result.standardError,
+            exitCode: result.exitCode
+        )
     }
 
     /// Builds the child environment with a PATH that works outside a login

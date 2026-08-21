@@ -124,7 +124,7 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
     private func fetchViaTTY() async throws -> CodexRateLimitsResponse {
         AppLog.probes.info("Starting Codex TTY fallback...")
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: executable,
             args: ["-s", "read-only", "-a", "untrusted"],
             input: "/status\n",
