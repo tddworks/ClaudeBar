@@ -23,6 +23,36 @@ struct MiniMaxUsageProbeParsingTests {
     }
     """
 
+    static let sampleTokenPlanResponse = """
+    {
+      "base_resp": { "status_code": 0, "status_msg": "success" },
+      "model_remains": [
+        {
+          "model_name": "general",
+          "current_interval_total_count": 0,
+          "current_interval_usage_count": 0,
+          "current_interval_remaining_percent": 100,
+          "current_weekly_remaining_percent": 98,
+          "start_time": 1787673600000,
+          "end_time": 1787691600000,
+          "weekly_start_time": 1787500800000,
+          "weekly_end_time": 1788105600000
+        },
+        {
+          "model_name": "video",
+          "current_interval_total_count": 0,
+          "current_interval_usage_count": 0,
+          "current_interval_remaining_percent": 100,
+          "current_weekly_remaining_percent": 100,
+          "start_time": 1787673600000,
+          "end_time": 1787760000000,
+          "weekly_start_time": 1787500800000,
+          "weekly_end_time": 1788105600000
+        }
+      ]
+    }
+    """
+
     static let sampleMultiModelResponse = """
     {
       "base_resp": { "status_code": 0, "status_msg": "success" },
@@ -100,6 +130,19 @@ struct MiniMaxUsageProbeParsingTests {
         // Then
         let expected = Double(255) / Double(1500) * 100.0
         #expect(snapshot.quotas[0].percentRemaining == expected)
+    }
+
+    @Test
+    func `uses token plan remaining percentages when count totals are zero`() throws {
+        let data = Data(Self.sampleTokenPlanResponse.utf8)
+
+        let snapshot = try MiniMaxUsageProbe.parseResponse(data, providerId: "minimax")
+
+        #expect(snapshot.quotas.count == 2)
+        #expect(snapshot.quotas[0].percentRemaining == 98)
+        #expect(snapshot.quotas[0].resetText == "2% used")
+        #expect(snapshot.quotas[0].windowDuration == 604_800.0)
+        #expect(snapshot.quotas[1].percentRemaining == 100)
     }
 
     @Test

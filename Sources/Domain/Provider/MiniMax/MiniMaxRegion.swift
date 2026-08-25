@@ -53,6 +53,6 @@ public enum MiniMaxRegion: String, Sendable, Equatable, CaseIterable {
 
     /// Full API URL for the coding plan remains endpoint (Coding Plan 剩余额度 API URL)
     public var codingPlanRemainsURL: String {
-        "\(apiBaseURL)/v1/api/openplatform/coding_plan/remains"
+        "\(apiBaseURL)/v1/token_plan/remains"
     }
 }

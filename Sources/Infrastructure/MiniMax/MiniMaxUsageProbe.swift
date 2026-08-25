@@ -135,28 +135,44 @@ public struct MiniMaxUsageProbe: UsageProbe {
         }
 
         let quotas = modelRemains.map { model -> UsageQuota in
+            let legacyRemaining: Double? = {
+                let total = model.currentIntervalTotalCount
+                guard total > 0 else { return nil }
+                let clampedRemaining = min(max(model.currentIntervalUsageCount, 0), total)
+                return Double(clampedRemaining) / Double(total) * 100.0
+            }()
+
+            // Token Plan returns percentages directly. Older responses only
+            // exposed counts, so keep that path for existing installations.
+            let intervalRemaining = model.currentIntervalRemainingPercent.map(Self.clampPercentage) ?? legacyRemaining
+            let weeklyRemaining = model.currentWeeklyRemainingPercent.map(Self.clampPercentage)
+            let remaining = min(intervalRemaining ?? 0, weeklyRemaining ?? 100)
+
+            let useWeeklyWindow = if let weeklyRemaining {
+                weeklyRemaining < (intervalRemaining ?? 100)
+            } else {
+                false
+            }
+            let resetMilliseconds = useWeeklyWindow ? model.weeklyEndTime : model.endTime
+            let windowDuration = useWeeklyWindow
+                ? Self.windowDuration(start: model.weeklyStartTime, end: model.weeklyEndTime)
+                : Self.windowDuration(start: model.startTime, end: model.endTime)
+            let resetsAt = resetMilliseconds.map { Date(timeIntervalSince1970: Double($0) / 1000.0) }
+
             let total = model.currentIntervalTotalCount
-            // ⚠️ MiniMax API naming is misleading:
-            // Despite being called "current_interval_usage_count", this field
-            // actually represents the REMAINING count, not the used count.
-            // Confirmed via MiniMax dashboard: when dashboard shows "3% used",
-            // API returns usage_count=1459 out of total=1500 (i.e. 1459 remaining).
-            // (MiniMax API 命名有误导性：usage_count 实际是剩余次数，非已用次数)
-            let clampedRemaining = min(max(model.currentIntervalUsageCount, 0), total)
-            let usedCount = total - clampedRemaining
-            let remaining = total > 0 ? Double(clampedRemaining) / Double(total) * 100.0 : 0.0
-
-            // Parse end_time as millisecond timestamp (毫秒时间戳)
-            let resetsAt: Date? = model.endTime.map { Date(timeIntervalSince1970: Double($0) / 1000.0) }
-
-            let resetText = "\(usedCount)/\(total) requests"
+            let clampedRemaining = min(max(model.currentIntervalUsageCount, 0), max(total, 0))
+            let usedCount = max(total - clampedRemaining, 0)
+            let resetText = intervalRemaining != nil && model.currentIntervalRemainingPercent != nil
+                ? "\(Int((100 - remaining).rounded()))% used"
+                : "\(usedCount)/\(total) requests"
 
             return UsageQuota(
                 percentRemaining: remaining,
                 quotaType: .modelSpecific(model.modelName),
                 providerId: providerId,
                 resetsAt: resetsAt,
-                resetText: resetText
+                resetText: resetText,
+                windowDuration: windowDuration
             )
         }
 
@@ -165,6 +181,15 @@ public struct MiniMaxUsageProbe: UsageProbe {
             quotas: quotas,
             capturedAt: Date()
         )
+    }
+
+    private static func windowDuration(start: Int64?, end: Int64?) -> TimeInterval? {
+        guard let start, let end, end > start else { return nil }
+        return Double(end - start) / 1000.0
+    }
+
+    private static func clampPercentage(_ value: Double) -> Double {
+        min(max(value, 0), 100)
     }
 }
 
@@ -184,6 +209,11 @@ struct ModelRemain: Decodable {
     let modelName: String
     let currentIntervalTotalCount: Int
     let currentIntervalUsageCount: Int
+    let currentIntervalRemainingPercent: Double?
+    let currentWeeklyRemainingPercent: Double?
     let remainsTime: Int?
+    let startTime: Int64?
     let endTime: Int64?
+    let weeklyStartTime: Int64?
+    let weeklyEndTime: Int64?
 }

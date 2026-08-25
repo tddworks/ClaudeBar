@@ -77,7 +77,7 @@ struct MiniMaxUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         let responseData = Data(Self.sampleApiResponse.utf8)
         let httpResponse = HTTPURLResponse(
-            url: URL(string: "https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains")!,
+            url: URL(string: "https://api.minimaxi.com/v1/token_plan/remains")!,
             statusCode: 200,
             httpVersion: nil,
             headerFields: nil
@@ -113,7 +113,7 @@ struct MiniMaxUsageProbeTests {
         // Given
         let mockNetwork = MockNetworkClient()
         let httpResponse = HTTPURLResponse(
-            url: URL(string: "https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains")!,
+            url: URL(string: "https://api.minimaxi.com/v1/token_plan/remains")!,
             statusCode: 401,
             httpVersion: nil,
             headerFields: nil
@@ -135,7 +135,7 @@ struct MiniMaxUsageProbeTests {
         // Given
         let mockNetwork = MockNetworkClient()
         let httpResponse = HTTPURLResponse(
-            url: URL(string: "https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains")!,
+            url: URL(string: "https://api.minimaxi.com/v1/token_plan/remains")!,
             statusCode: 500,
             httpVersion: nil,
             headerFields: nil
@@ -160,7 +160,7 @@ struct MiniMaxUsageProbeTests {
         let probe = makeProbe(apiKey: "test-key", region: nil)
 
         // Then: falls back to china for backward compatibility (兼容旧版默认中国区)
-        #expect(probe.apiURL == "https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains")
+        #expect(probe.apiURL == "https://api.minimaxi.com/v1/token_plan/remains")
     }
 
     @Test
@@ -169,7 +169,7 @@ struct MiniMaxUsageProbeTests {
         let probe = makeProbe(apiKey: "test-key", region: .china)
 
         // Then
-        #expect(probe.apiURL == "https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains")
+        #expect(probe.apiURL == "https://api.minimaxi.com/v1/token_plan/remains")
     }
 
     @Test
@@ -178,7 +178,7 @@ struct MiniMaxUsageProbeTests {
         let probe = makeProbe(apiKey: "test-key", region: .international)
 
         // Then
-        #expect(probe.apiURL == "https://api.minimax.io/v1/api/openplatform/coding_plan/remains")
+        #expect(probe.apiURL == "https://api.minimax.io/v1/token_plan/remains")
     }
 
     @Test
@@ -187,7 +187,7 @@ struct MiniMaxUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         let responseData = Data(Self.sampleApiResponse.utf8)
         let httpResponse = HTTPURLResponse(
-            url: URL(string: "https://api.minimax.io/v1/api/openplatform/coding_plan/remains")!,
+            url: URL(string: "https://api.minimax.io/v1/token_plan/remains")!,
             statusCode: 200,
             httpVersion: nil,
             headerFields: nil
@@ -210,6 +210,6 @@ struct MiniMaxUsageProbeTests {
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.providerId == "minimax")
         // Verify the request was sent to international endpoint (验证请求发送到国际版端点)
-        #expect(capturedRequest?.url?.absoluteString == "https://api.minimax.io/v1/api/openplatform/coding_plan/remains")
+        #expect(capturedRequest?.url?.absoluteString == "https://api.minimax.io/v1/token_plan/remains")
     }
 }
