@@ -302,12 +302,12 @@ struct UsageQuotaTests {
     }
 
     @Test
-    func `displayProgressPercent returns percentUsed in remaining mode`() {
+    func `displayProgressPercent returns percentRemaining in remaining mode`() {
         // Given
         let quota = UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude")
 
-        // When & Then - bar always encodes consumption
-        #expect(quota.displayProgressPercent(mode: .remaining) == 25)
+        // When & Then - bar shares the headline number's scale
+        #expect(quota.displayProgressPercent(mode: .remaining) == 75)
     }
 
     @Test
@@ -331,17 +331,28 @@ struct UsageQuotaTests {
     }
 
     @Test
-    func `displayProgressPercent returns percentUsed in pace mode`() {
+    func `displayProgressPercent returns percentRemaining in pace mode`() {
         // Given
         let quota = UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude")
 
-        // When & Then - pace mode progress bar shows used (same as remaining/used)
-        #expect(quota.displayProgressPercent(mode: .pace) == 25)
+        // When & Then - pace mode shows the remaining number, so the bar matches it
+        #expect(quota.displayProgressPercent(mode: .pace) == 75)
     }
 
     @Test
-    func `expectedProgressPercent returns elapsed time on the used scale`() {
-        // Session is 5h. 1.25h remaining -> 75% elapsed -> tick at 75 used.
+    func `displayProgressPercent matches displayPercent in every mode`() {
+        // Given - regression for #268: an 87% Remaining card drew a 13% bar
+        let quota = UsageQuota(percentRemaining: 87, quotaType: .session, providerId: "claude")
+
+        // When & Then - the bar and the headline number never disagree
+        for mode in UsageDisplayMode.allCases {
+            #expect(quota.displayProgressPercent(mode: mode) == quota.displayPercent(mode: mode))
+        }
+    }
+
+    @Test
+    func `expectedProgressPercent puts the tick on the bar's own scale`() {
+        // Session is 5h. 1.25h remaining -> 75% elapsed -> tick at 25 remaining, 75 used.
         let quota = UsageQuota(
             percentRemaining: 43,
             quotaType: .session,
@@ -351,9 +362,9 @@ struct UsageQuotaTests {
         let expectedRemaining = quota.expectedProgressPercent(mode: .remaining)!
         let expectedUsed = quota.expectedProgressPercent(mode: .used)!
         let expectedPace = quota.expectedProgressPercent(mode: .pace)!
-        #expect(expectedRemaining > 74 && expectedRemaining < 76)
+        #expect(expectedRemaining > 24 && expectedRemaining < 26)
         #expect(expectedUsed > 74 && expectedUsed < 76)
-        #expect(expectedPace > 74 && expectedPace < 76)
+        #expect(expectedPace > 24 && expectedPace < 26)
     }
 
     // MARK: - Dollar-Based Quotas
@@ -561,8 +572,8 @@ struct UsageQuotaTests {
     }
 
     @Test
-    func `paceTickHelp explains expected used in remaining mode`() {
-        // 75% of a 5h window elapsed -> steady usage would have used ~75%.
+    func `paceTickHelp explains expected remaining in remaining mode`() {
+        // 75% of a 5h window elapsed -> steady usage would leave ~25% remaining.
         let quota = UsageQuota(
             percentRemaining: 43,
             quotaType: .timeLimit("Z.ai 5h"),
@@ -571,8 +582,8 @@ struct UsageQuotaTests {
             windowDuration: 5 * 3600
         )
         let help = quota.paceTickHelp(mode: .remaining)!
-        #expect(help.contains("~75%"))
-        #expect(help.contains("used"))
+        #expect(help.contains("~25%"))
+        #expect(help.contains("remaining"))
         // 57 used vs 75 elapsed -> below expected usage, surfaced inline.
         #expect(help.contains("below expected usage"))
     }

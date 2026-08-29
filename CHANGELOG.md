@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The quota bar no longer contradicts the number above it. In "Remaining" mode an 87% card drew a 13% bar, because the bar tracked usage while the headline tracked what was left. The bar again shares the headline's scale: it starts full and drains as quota is consumed, inverting only in "Used" mode. The pace tick moves back onto the same scale. (#268)
+
 ---
 
 ## [0.4.85] - 2026-08-25

@@ -182,22 +182,25 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
 
     /// Returns the percentage to use for progress bar width.
     ///
-    /// The bar always fills left-to-right as quota is consumed (`percentUsed`),
-    /// regardless of display mode. The headline number still follows
-    /// `displayPercent`; bar color still follows remaining/status.
+    /// The bar shares the headline number's scale so the two never disagree:
+    /// `.remaining` and `.pace` start full and drain from the right as quota is
+    /// consumed, `.used` fills from the left. Bar color still follows remaining/status.
     public func displayProgressPercent(mode: UsageDisplayMode) -> Double {
         switch mode {
-        case .remaining, .used, .pace: percentUsed
+        case .remaining, .pace: percentRemaining
+        case .used: percentUsed
         }
     }
 
     /// Returns the expected progress bar position based on time elapsed.
-    /// This is the used-scale tick: where the bar should sit if usage were
-    /// spread evenly across the window. Returns nil when reset time is unknown.
+    /// This is where the bar would sit if usage were spread evenly across the
+    /// window, on the same scale as the fill it annotates. Returns nil when
+    /// reset time is unknown.
     public func expectedProgressPercent(mode: UsageDisplayMode) -> Double? {
         guard let percentTimeElapsed else { return nil }
         switch mode {
-        case .remaining, .used, .pace: return percentTimeElapsed
+        case .remaining, .pace: return 100 - percentTimeElapsed
+        case .used: return percentTimeElapsed
         }
     }
 
@@ -267,11 +270,16 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     }
 
     /// Tooltip copy explaining the pace tick mark under the progress bar.
-    /// Describes where the used-fill bar would sit if usage were spread
+    /// Mode-aware: describes where the bar would sit if usage were spread
     /// evenly across the window. Returns nil when reset time is unknown.
     public func paceTickHelp(mode: UsageDisplayMode) -> String? {
         guard let expected = expectedProgressPercent(mode: mode) else { return nil }
-        let base = "Pace marker: steady usage would have used ~\(Int(expected.rounded()))% by now"
+        let base = switch mode {
+        case .used:
+            "Pace marker: steady usage would have used ~\(Int(expected.rounded()))% by now"
+        case .remaining, .pace:
+            "Pace marker: steady usage would leave ~\(Int(expected.rounded()))% remaining by now"
+        }
         guard let insight = paceInsight else { return base + "." }
         return base + " — " + insight.prefix(1).lowercased() + insight.dropFirst() + "."
     }
