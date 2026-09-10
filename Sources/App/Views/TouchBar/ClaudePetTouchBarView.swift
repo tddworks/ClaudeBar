@@ -772,7 +772,7 @@ public final class ClaudePetTouchBarView: NSView {
             (.backflip(endTime: now + 1.2), 4),
             (.skateboard(endTime: now + 3.0), 4),
             (.theWorm(endTime: now + 2.5), 3),
-            (.ninjaVanish(endTime: now + 1.8, targetX: CGFloat.random(in: 40...petRightBoundary - 20)), 3),
+            (.ninjaVanish(endTime: now + 1.8, targetX: CGFloat.random(in: 40...max(40, petRightBoundary - 20))), 3),
             (.glassKnock(endTime: now + 2.0), 3),
             (.quotaSnack(endTime: now + 2.2), 3),
             (.bellyRub(endTime: now + 3.0), 3),
