@@ -362,6 +362,32 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
+    func `parse unlimited plan with split percentages keeps monthly first`() throws {
+        let json = """
+        {
+            "membershipType": "business",
+            "isUnlimited": true,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 0,
+                    "limit": 0,
+                    "autoPercentUsed": 39.9,
+                    "apiPercentUsed": 97.2
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas[0].resetText == "Unlimited")
+    }
+
+    @Test
     func `parse free plan`() throws {
         let json = """
         {

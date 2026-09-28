@@ -264,29 +264,29 @@ public struct CursorUsageProbe: UsageProbe {
                     resetsAt: resetsAt,
                     resetText: "\(effectiveUsed)/\(effectiveLimit) requests"
                 ))
-            }
 
-            // Cursor splits plan usage by model kind: `autoPercentUsed` covers its own
-            // models, `apiPercentUsed` third-party API models. `totalPercentUsed` is
-            // their combined figure. Each split gets its own row (no resetText — the
-            // used/limit text stays on the Monthly row). Appended, not prepended, so
-            // QuotaMonitor's `quotas.first` primary stays the combined Monthly quota.
-            if let autoPercentUsed = planUsage["autoPercentUsed"] as? Double {
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, 100 - autoPercentUsed),
-                    quotaType: .timeLimit("Auto"),
-                    providerId: "cursor",
-                    resetsAt: resetsAt
-                ))
-            }
+                // Cursor splits plan usage by model kind: `autoPercentUsed` covers its own
+                // models, `apiPercentUsed` third-party API models. `totalPercentUsed` is
+                // their combined figure. Each split gets its own row (no resetText — the
+                // used/limit text stays on the Monthly row). Appended, not prepended, so
+                // QuotaMonitor's `quotas.first` primary stays the combined Monthly quota.
+                if let autoPercentUsed = planUsage["autoPercentUsed"] as? Double {
+                    quotas.append(UsageQuota(
+                        percentRemaining: max(0, 100 - autoPercentUsed),
+                        quotaType: .timeLimit("Auto"),
+                        providerId: "cursor",
+                        resetsAt: resetsAt
+                    ))
+                }
 
-            if let apiPercentUsed = planUsage["apiPercentUsed"] as? Double {
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, 100 - apiPercentUsed),
-                    quotaType: .timeLimit("API"),
-                    providerId: "cursor",
-                    resetsAt: resetsAt
-                ))
+                if let apiPercentUsed = planUsage["apiPercentUsed"] as? Double {
+                    quotas.append(UsageQuota(
+                        percentRemaining: max(0, 100 - apiPercentUsed),
+                        quotaType: .timeLimit("API"),
+                        providerId: "cursor",
+                        resetsAt: resetsAt
+                    ))
+                }
             }
         }
 
