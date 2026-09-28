@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Cursor now shows Auto and API cards when those fields are in the usage response, next to Monthly. The menu bar still defaults to Monthly; set the secondary quota to API to see both. ([#303](https://github.com/tddworks/ClaudeBar/issues/303))
 - Touch Bar gauges now colour by their quota's status. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.
 
 ---

@@ -45,14 +45,30 @@ struct CursorUsageProbeParsingTests {
         let snapshot = try CursorUsageProbe.parseUsageSummary(json)
 
         #expect(snapshot.providerId == "cursor")
-        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas.count == 3)
         #expect(snapshot.accountTier == .custom("ULTRA"))
 
-        let quota = snapshot.quotas[0]
-        #expect(quota.quotaType == .timeLimit("Monthly"))
-        #expect(abs(quota.percentRemaining - 99.185) < 0.01)
-        #expect(quota.resetText == "326/40000 requests")
-        #expect(quota.resetsAt != nil)
+        let monthly = snapshot.quotas[0]
+        #expect(monthly.quotaType == .timeLimit("Monthly"))
+        #expect(monthly.quotaType.quotaKey == "time:Monthly")
+        #expect(abs(monthly.percentRemaining - 99.185) < 0.01)
+        #expect(monthly.resetText == "326/40000 requests")
+        #expect(monthly.resetsAt != nil)
+        #expect(monthly.windowDuration == nil)
+
+        let auto = snapshot.quotas[1]
+        #expect(auto.quotaType == .timeLimit("Auto"))
+        #expect(abs(auto.percentRemaining - 99.967) < 0.01)
+        #expect(auto.resetText == nil)
+        #expect(auto.resetsAt == monthly.resetsAt)
+        #expect(auto.windowDuration == TimeInterval(28 * 24 * 3600))
+
+        let api = snapshot.quotas[2]
+        #expect(api.quotaType == .timeLimit("API"))
+        #expect(abs(api.percentRemaining - 99.414) < 0.01)
+        #expect(api.resetText == nil)
+        #expect(api.resetsAt == monthly.resetsAt)
+        #expect(api.windowDuration == TimeInterval(28 * 24 * 3600))
     }
 
     // MARK: - Plan Usage
@@ -184,12 +200,27 @@ struct CursorUsageProbeParsingTests {
 
         let snapshot = try CursorUsageProbe.parseUsageSummary(json)
 
-        #expect(snapshot.quotas.count == 1)
-        let quota = snapshot.quotas[0]
-        #expect(quota.quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas.count == 3)
+        let monthly = snapshot.quotas[0]
+        #expect(monthly.quotaType == .timeLimit("Monthly"))
         // 28.32% used of the full 9770 capacity -> 71.68% remaining (was incorrectly 0)
-        #expect(abs(quota.percentRemaining - 71.68) < 0.1)
-        #expect(quota.resetText == "2767/9770 requests")
+        #expect(abs(monthly.percentRemaining - 71.68) < 0.1)
+        #expect(monthly.resetText == "2767/9770 requests")
+        #expect(monthly.resetsAt != nil)
+        #expect(monthly.windowDuration == nil)
+
+        let auto = snapshot.quotas[1]
+        #expect(auto.quotaType == .timeLimit("Auto"))
+        #expect(abs(auto.percentRemaining - 76.95) < 0.1)
+        #expect(auto.resetText == nil)
+        #expect(auto.resetsAt == monthly.resetsAt)
+        #expect(auto.windowDuration == TimeInterval(30 * 24 * 3600))
+
+        let api = snapshot.quotas[2]
+        #expect(api.quotaType == .timeLimit("API"))
+        #expect(abs(api.percentRemaining - 36.56) < 0.1)
+        #expect(api.resetText == nil)
+        #expect(api.windowDuration == TimeInterval(30 * 24 * 3600))
     }
 
     @Test
@@ -315,18 +346,32 @@ struct CursorUsageProbeParsingTests {
         #expect(snapshot.providerId == "cursor")
         #expect(snapshot.accountTier == .custom("ENTERPRISE"))
 
-        // Should have individual plan quota (from breakdown.total) + team quota
-        #expect(snapshot.quotas.count == 2)
+        // Monthly + Auto (integer 0) + API + team on-demand
+        #expect(snapshot.quotas.count == 4)
+        #expect(snapshot.quotas.map(\.quotaType) == [
+            .timeLimit("Monthly"), .timeLimit("Auto"), .timeLimit("API"), .timeLimit("Team"),
+        ])
 
-        let individualQuota = snapshot.quotas.first { $0.quotaType == .timeLimit("Monthly") }
-        #expect(individualQuota != nil)
+        let monthly = snapshot.quotas[0]
         // 6.9% used of 300 -> ~93.1% remaining
-        #expect(abs(individualQuota!.percentRemaining - 93.1) < 0.5)
+        #expect(abs(monthly.percentRemaining - 93.1) < 0.5)
+        #expect(monthly.resetText != nil)
+        #expect(monthly.windowDuration == nil)
 
-        let teamQuota = snapshot.quotas.first { $0.quotaType == .timeLimit("Team") }
-        #expect(teamQuota != nil)
-        #expect(teamQuota!.percentRemaining == 100.0)
-        #expect(teamQuota!.resetText == "0/10000 team credits")
+        let auto = snapshot.quotas[1]
+        #expect(auto.percentRemaining == 100)
+        #expect(auto.resetText == nil)
+        #expect(auto.resetsAt == monthly.resetsAt)
+        #expect(auto.windowDuration == TimeInterval(31 * 24 * 3600))
+
+        let api = snapshot.quotas[2]
+        #expect(abs(api.percentRemaining - 93.1) < 0.5)
+        #expect(api.resetText == nil)
+        #expect(api.windowDuration == TimeInterval(31 * 24 * 3600))
+
+        let teamQuota = snapshot.quotas[3]
+        #expect(teamQuota.percentRemaining == 100.0)
+        #expect(teamQuota.resetText == "0/10000 team credits")
     }
 
     @Test
@@ -446,6 +491,330 @@ struct CursorUsageProbeParsingTests {
 
         let snapshot = try CursorUsageProbe.parseUsageSummary(json)
         #expect(snapshot.quotas[0].resetsAt != nil)
+    }
+
+    // MARK: - Auto / API pool percents
+
+    @Test
+    func `parse total-only response keeps a single monthly card`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "billingCycleStart": "2026-01-01T00:00:00.000Z",
+            "billingCycleEnd": "2026-02-01T00:00:00.000Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 100,
+                    "limit": 500,
+                    "remaining": 400,
+                    "totalPercentUsed": 20
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas[0].quotaType.quotaKey == "time:Monthly")
+        #expect(abs(snapshot.quotas[0].percentRemaining - 80) < 0.01)
+        #expect(snapshot.quotas[0].resetText == "100/500 requests")
+    }
+
+    @Test
+    func `parse integer zero auto percent as fully remaining`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "billingCycleStart": "2026-01-01T00:00:00.000Z",
+            "billingCycleEnd": "2026-01-31T00:00:00.000Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 0,
+                    "limit": 500,
+                    "remaining": 500,
+                    "autoPercentUsed": 0,
+                    "apiPercentUsed": 0,
+                    "totalPercentUsed": 0
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 3)
+        #expect(snapshot.quotas[0].percentRemaining == 100)
+        #expect(snapshot.quotas[1].quotaType == .timeLimit("Auto"))
+        #expect(snapshot.quotas[1].percentRemaining == 100)
+        #expect(snapshot.quotas[2].quotaType == .timeLimit("API"))
+        #expect(snapshot.quotas[2].percentRemaining == 100)
+        #expect(snapshot.quotas[1].windowDuration == TimeInterval(30 * 24 * 3600))
+    }
+
+    @Test
+    func `parse null auto and api percent omits those cards`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 50,
+                    "limit": 100,
+                    "remaining": 50,
+                    "autoPercentUsed": null,
+                    "apiPercentUsed": null,
+                    "totalPercentUsed": 50
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas[0].percentRemaining == 50)
+    }
+
+    @Test
+    func `parse non-numeric auto and api percent omits those cards`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 50,
+                    "limit": 100,
+                    "remaining": 50,
+                    "autoPercentUsed": "high",
+                    "apiPercentUsed": [],
+                    "totalPercentUsed": 50
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+    }
+
+    @Test
+    func `parse boolean auto and api percent omits those cards`() throws {
+        // JSON true/false are CFBoolean and must not become 1.0 / 0.0. Integer 0
+        // still has to produce a card (see parse integer zero auto percent).
+        let json = """
+        {
+            "membershipType": "pro",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 50,
+                    "limit": 100,
+                    "remaining": 50,
+                    "autoPercentUsed": false,
+                    "apiPercentUsed": true,
+                    "totalPercentUsed": 50
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas[0].percentRemaining == 50)
+    }
+
+    @Test
+    func `parse auto and api percent over 100 clamps remaining to zero`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "billingCycleStart": "2026-01-01T00:00:00.000Z",
+            "billingCycleEnd": "2026-02-01T00:00:00.000Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 500,
+                    "limit": 500,
+                    "remaining": 0,
+                    "autoPercentUsed": 142.5,
+                    "apiPercentUsed": 100.1,
+                    "totalPercentUsed": 110
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 3)
+        #expect(snapshot.quotas[0].percentRemaining == 0)
+        #expect(snapshot.quotas[1].quotaType == .timeLimit("Auto"))
+        #expect(snapshot.quotas[1].percentRemaining == 0)
+        #expect(snapshot.quotas[2].quotaType == .timeLimit("API"))
+        #expect(snapshot.quotas[2].percentRemaining == 0)
+    }
+
+    @Test
+    func `parse negative auto and api percent omits those cards`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 10,
+                    "limit": 100,
+                    "remaining": 90,
+                    "autoPercentUsed": -4,
+                    "apiPercentUsed": -0.1,
+                    "totalPercentUsed": 10
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
+        #expect(snapshot.quotas[0].percentRemaining == 90)
+    }
+
+    @Test
+    func `parse billing cycle without start omits auto api reset pace`() throws {
+        // Existing fixtures sometimes only have billingCycleEnd (see parse pro plan with plan usage).
+        let json = """
+        {
+            "membershipType": "pro",
+            "billingCycleEnd": "2025-02-01T00:00:00Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 123,
+                    "limit": 500,
+                    "remaining": 377,
+                    "autoPercentUsed": 10,
+                    "apiPercentUsed": 20,
+                    "totalPercentUsed": 15
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 3)
+
+        let monthly = snapshot.quotas[0]
+        #expect(monthly.quotaType == .timeLimit("Monthly"))
+        #expect(abs(monthly.percentRemaining - 85) < 0.01)
+        #expect(monthly.resetText == "75/500 requests")
+        #expect(monthly.resetsAt != nil)
+        #expect(monthly.windowDuration == nil)
+
+        let auto = snapshot.quotas[1]
+        #expect(auto.quotaType == .timeLimit("Auto"))
+        #expect(auto.percentRemaining == 90)
+        #expect(auto.resetText == nil)
+        #expect(auto.resetsAt == nil)
+        #expect(auto.windowDuration == nil)
+
+        let api = snapshot.quotas[2]
+        #expect(api.quotaType == .timeLimit("API"))
+        #expect(api.percentRemaining == 80)
+        #expect(api.resetsAt == nil)
+        #expect(api.windowDuration == nil)
+    }
+
+    @Test
+    func `parse unusable billing cycle start omits auto api window duration`() throws {
+        let json = """
+        {
+            "membershipType": "pro",
+            "billingCycleStart": "not-a-date",
+            "billingCycleEnd": "2026-02-01T00:00:00.000Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 10,
+                    "limit": 100,
+                    "remaining": 90,
+                    "autoPercentUsed": 5,
+                    "apiPercentUsed": 8,
+                    "totalPercentUsed": 6
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+
+        #expect(snapshot.quotas.count == 3)
+        #expect(snapshot.quotas[0].resetsAt != nil)
+        #expect(snapshot.quotas[1].resetsAt == nil)
+        #expect(snapshot.quotas[1].windowDuration == nil)
+        #expect(snapshot.quotas[2].resetsAt == nil)
+        #expect(snapshot.quotas[2].windowDuration == nil)
+    }
+
+    @Test
+    func `first quota stays monthly so the default menu bar selection is unchanged`() throws {
+        let json = """
+        {
+            "membershipType": "ultra",
+            "billingCycleStart": "2026-02-06T03:34:49.000Z",
+            "billingCycleEnd": "2026-03-06T03:34:49.000Z",
+            "isUnlimited": false,
+            "individualUsage": {
+                "plan": {
+                    "enabled": true,
+                    "used": 326,
+                    "limit": 40000,
+                    "remaining": 39674,
+                    "autoPercentUsed": 39.9,
+                    "apiPercentUsed": 97.2,
+                    "totalPercentUsed": 44.7
+                },
+                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let first = try #require(snapshot.quotas.first)
+
+        #expect(first.quotaType == .timeLimit("Monthly"))
+        #expect(first.quotaType.quotaKey == "time:Monthly")
+        #expect(snapshot.quotas.contains { $0.quotaType.quotaKey == "time:API" })
     }
 
     // MARK: - JWT Parsing
