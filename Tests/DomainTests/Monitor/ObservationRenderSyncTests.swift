@@ -26,6 +26,19 @@ struct ObservationRenderSyncTests {
         func record(_ value: String) { rendered.append(value) }
     }
 
+    /// Counts how often the sync re-reads its source. One state change must
+    /// cost exactly one re-read: `withObservationTracking` fires *every* armed
+    /// registration on a write, and each firing spawns a re-arm, so the re-read
+    /// count is the observable shadow of how many registrations are live.
+    @MainActor
+    final class ReadCounter {
+        private(set) var count = 0
+        func read(_ value: String) -> String {
+            count += 1
+            return value
+        }
+    }
+
     /// Yields the main actor until `condition` holds or ~2s elapse, so the
     /// re-armed observation's main-actor hop gets a chance to run without
     /// real-time sleeps.
@@ -250,6 +263,58 @@ struct ObservationRenderSyncTests {
 
         // Then
         #expect(recorder.rendered == ["initial"])
+    }
+
+    // MARK: - Registration leaks (issue #313)
+
+    @Test
+    func `forced redraws leave exactly one registration armed`() async {
+        // Given — a session's worth of forced redraws: every background
+        // refresh tick, every dropdown open/close, every appearance flip and
+        // every status-bar re-attach comes through renderNow.
+        let source = Source()
+        let counter = ReadCounter()
+        let sync = ObservationRenderSync(
+            read: { counter.read(source.value) },
+            render: { _ in }
+        )
+        sync.start()
+        for _ in 0..<50 { sync.renderNow() }
+        let readsBeforeChange = counter.count
+
+        // When — one genuine state change arrives
+        source.value = "changed"
+        await waitUntil { counter.count > readsBeforeChange }
+
+        // Then — exactly one registration was armed, so exactly one re-read.
+        // Arming per redraw would leave 50 live registrations, all watching
+        // the same property, all firing here and each re-arming: 50 re-reads,
+        // and the count would keep climbing for as long as the app ran
+        // (issue #313 — GB-scale heap growth and a CPU floor that rose with it).
+        #expect(counter.count == readsBeforeChange + 1)
+    }
+
+    @Test
+    func `a restart retires the previous registration instead of adding one`() async {
+        // Given — a stop/start cycle, which leaves the pre-stop registration
+        // armed in the runtime until it next fires.
+        let source = Source()
+        let counter = ReadCounter()
+        let sync = ObservationRenderSync(
+            read: { counter.read(source.value) },
+            render: { _ in }
+        )
+        sync.start()
+        sync.stop()
+        sync.start()
+        let readsBeforeChange = counter.count
+
+        // When
+        source.value = "changed"
+        await waitUntil { counter.count > readsBeforeChange }
+
+        // Then — only the newest registration re-arms
+        #expect(counter.count == readsBeforeChange + 1)
     }
 
     @Test

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Memory no longer grows without bound the longer the app runs — up to 4.3 GB and a pegged CPU after ~45 hours. Every menu bar redraw left an observation registration armed for good; only real state changes arm one now. https://github.com/tddworks/ClaudeBar/issues/313
 - `claudebar://open` now opens the popover and `claudebar://refresh` refreshes, instead of both opening the Settings window. Also fixes tapping the Touch Bar widget. https://github.com/tddworks/ClaudeBar/pull/310
 - Touch Bar gauges now colour by their quota's status. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.
 

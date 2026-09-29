@@ -84,11 +84,13 @@ The label draws in `monospacedDigitSystemFont`, where only the **digits** are fi
 
 25% rather than 0% also keeps the time reading as a complete value; a fully vanishing colon reads as a dropped character.
 
-### `refreshNow()`, not `renderNow()`
+### Only `start()` and a real state change arm observation
 
-Each `ObservationRenderSync.sync()` arms a **new** `withObservationTracking` registration, and a registration is only torn down when it fires. A caller ticking at 2 Hz through `renderNow()` would accumulate one armed registration per tick — roughly 1,200 over ten idle minutes — all watching the same properties, then fire the entire backlog in a single burst on the next probe result, each spawning a Task that re-arms.
+Each `ObservationRenderSync.sync()` arms a **new** `withObservationTracking` registration, a registration is only torn down when it fires, and *every* armed registration fires on a write. So the number of live registrations is the number of things that re-arm: arm anywhere else and the second registration does not merely sit there, it multiplies the re-arms on the next probe result, each spawning a Task that arms again.
 
-`refreshNow()` re-reads and renders **without** arming a new registration. This is safe because the registration from the last real `sync()` is still armed and still catches genuine state changes; reading the values untracked does not consume it. It also keeps the equality check that `renderNow()` deliberately bypasses.
+`refreshNow()` re-reads and renders **without** arming. This is safe because the registration from the last real `sync()` is still armed and still catches genuine state changes; reading the values untracked does not consume it. It also keeps the equality check that `renderNow()` deliberately bypasses — which is why the 2 Hz tick uses it: a `2d` label with no colon to pulse is re-read without repainting.
+
+`renderNow()` — the forced redraw behind system wake, an appearance flip, a dropdown open/close, a background-refresh tick and a status-bar re-attach — leaked a registration per call for the same reason. At a few events a minute that reached hundreds of thousands of live registrations over a couple of days, each holding the key-path set and closures behind its `read`: gigabytes of heap, and a CPU floor that climbed with it because every write walked the whole armed set (issue #313). It now re-reads untracked too, so the two entry points differ only in the equality check. A generation counter additionally retires a registration left over from an earlier `start`/`stop` cycle, which keeps "at most one live registration" an invariant rather than a tendency.
 
 ### `colonVisible` only alternates when there is a colon
 
