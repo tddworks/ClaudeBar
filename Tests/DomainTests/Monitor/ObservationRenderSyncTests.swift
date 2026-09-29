@@ -295,9 +295,10 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `a restart retires the previous registration instead of adding one`() async {
-        // Given — a stop/start cycle, which leaves the pre-stop registration
-        // armed in the runtime until it next fires.
+    func `a restart does not let a stranded registration re-arm`() async {
+        // Given — a stop/start cycle. `stop` cannot unregister the pending
+        // registration, so it is still live when the next one is armed; what
+        // must not happen is both re-arming and doubling the fan-out.
         let source = Source()
         let counter = ReadCounter()
         let sync = ObservationRenderSync(

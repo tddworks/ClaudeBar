@@ -17,12 +17,18 @@ import Observation
 /// cycle. `render` receives only values that differ from the last one
 /// rendered, so cheap no-op changes don't repaint the menu bar.
 ///
-/// **At most one observation registration is live at a time.** That invariant
-/// is load-bearing, because a `withObservationTracking` registration is
-/// released only when it fires, and *every* armed registration fires on a
-/// write — so a second live registration does not merely sit there, it
-/// multiplies the re-arms on the next state change. Only `start` and a
-/// genuine `onChange` arm; every other entry point re-reads untracked.
+/// **Only `start` and a genuine `onChange` arm**, which is what holds the
+/// registration count at one — and the count is load-bearing: a
+/// `withObservationTracking` registration is released only when it fires, and
+/// *every* armed registration fires on a write, so a second one does not merely
+/// sit there, it multiplies the re-arms on the next state change. Every other
+/// entry point therefore re-reads untracked.
+///
+/// A registration cannot be cancelled — that needs the macOS 27 token API — so
+/// `stop` only advances a generation counter that stops a stranded registration
+/// from re-arming when it finally fires. Restarts with no state change in
+/// between leave one stranded registration each, and each retires at the next
+/// write.
 @MainActor
 public final class ObservationRenderSync<Content: Equatable> {
     private let read: @MainActor () -> Content
@@ -31,9 +37,10 @@ public final class ObservationRenderSync<Content: Equatable> {
     private var isStarted = false
 
     /// Incremented on every arm and on `stop`. A registration captures the
-    /// generation it was armed with, so one left over from a previous
+    /// generation it was armed with, so one stranded by an earlier
     /// start/stop cycle retires on its next fire instead of re-arming
-    /// alongside the current one.
+    /// alongside the current one. It is still live until then — `stop` cannot
+    /// unregister it — but it no longer counts.
     private var armGeneration = 0
 
     public init(
