@@ -5,6 +5,7 @@ import Mockable
 @testable import Infrastructure
 
 @Suite
+@MainActor
 struct AIProvidersTests {
 
     /// Creates a mock settings repository that returns true for all providers

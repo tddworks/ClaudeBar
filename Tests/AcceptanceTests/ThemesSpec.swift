@@ -23,6 +23,7 @@ struct ThemesSpec {
     // MARK: - #49: Each provider has distinct identity for themed display
 
     @Suite("Scenario: Provider identity for themed display")
+    @MainActor
     struct ProviderIdentity {
 
         private static func makeSettings() -> MockProviderSettingsRepository {

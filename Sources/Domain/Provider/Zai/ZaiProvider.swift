@@ -4,8 +4,9 @@ import Observation
 /// Z.ai (GLM Coding Plan) provider - a rich domain model.
 /// Z.ai provides an API-compatible replacement for Anthropic's API,
 /// offering GLM-4.7 models with generous usage quotas.
+@MainActor
 @Observable
-public final class ZaiProvider: AIProvider, @unchecked Sendable {
+public final class ZaiProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "zai"

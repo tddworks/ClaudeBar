@@ -11,6 +11,8 @@ struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
     let quotaAlerter: QuotaAlerter
+    /// Closes the popover (Escape). The presentation binding lives on the App.
+    var onClose: (() -> Void)?
     var onHookSettingsChanged: ((Bool) -> Void)?
 
     @Environment(\.appTheme) private var theme
@@ -18,12 +20,15 @@ struct MenuContentView: View {
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
+    @Environment(\.openWindow) private var openWindow
     @State private var isHoveringRefresh = false
     @State private var animateIn = false
-    @State private var showSettings = false
     @State private var showSharePass = false
     @State private var settings = AppSettings.shared
     @State private var hasRequestedNotificationPermission = false
+    @State private var pillsOverflow = false
+    @State private var pillsContentWidth: CGFloat = 0
+    @State private var pillsViewportWidth: CGFloat = 0
 
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
@@ -54,44 +59,49 @@ struct MenuContentView: View {
             // Theme overlay (e.g., snowfall for Christmas)
             theme.overlayView
 
-            if showSettings {
-                // Settings View
-                SettingsContentView(showSettings: $showSettings, monitor: monitor)
-            } else {
-                // Main Content
-                VStack(spacing: 0) {
-                    // Header with branding
-                    headerView
+            // Main Content
+            VStack(spacing: 0) {
+                // Header with branding
+                headerView
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
+
+                // Provider Pills (hidden in overview mode)
+                if !settings.overviewModeEnabled {
+                    providerPills
                         .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 16)
+                }
 
-                    // Provider Pills (hidden in overview mode)
-                    if !settings.overviewModeEnabled {
-                        providerPills
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 16)
-                    }
+                // Session Indicator (shown when Claude Code is active)
+                if let session = sessionMonitor.activeSession {
+                    SessionIndicatorView(session: session)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                }
 
-                    // Session Indicator (shown when Claude Code is active)
-                    if let session = sessionMonitor.activeSession {
-                        SessionIndicatorView(session: session)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
-                    }
-
-                    // Main Content Area - no scroll, dynamic height
+                // Main Content Area — hugs its content, but caps at the
+                // screen height and scrolls beyond it (aggregating
+                // providers can show a dozen cards; the action bar must
+                // never be pushed off-screen).
+                ScrollView(.vertical, showsIndicators: true) {
                     VStack(spacing: 12) {
                         metricsContent
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
-
-                    // Bottom Action Bar
-                    actionBar
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
                 }
+                .frame(maxHeight: contentMaxHeight)
+                // Recreate the scroll view when the shown content
+                // changes, so a newly selected provider starts at the
+                // top instead of inheriting the previous scroll offset.
+                .id(settings.overviewModeEnabled ? "overview" : monitor.selectedProviderId)
+
+                // Bottom Action Bar
+                actionBar
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
             }
 
             // Share Pass Overlay
@@ -103,10 +113,26 @@ struct MenuContentView: View {
                     }
                 }
             }
+
+            // Share Pass Error Overlay
+            if let claudeProvider = selectedProvider as? ClaudeProvider,
+               let passError = claudeProvider.passError {
+                SharePassErrorOverlay(message: passError.localizedDescription) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        claudeProvider.clearPassError()
+                    }
+                }
+            }
         }
         .frame(width: 400)
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .background(TouchBarWindowAccessor())
+        .background(keyboardShortcuts)
+        .background(PopoverKeyWindowAccessor())
+        .touchBar {
+            ClaudeBarNativeTouchBar(monitor: monitor)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .hookSettingsChanged)) { notification in
             let enabled = notification.userInfo?["enabled"] as? Bool ?? false
             onHookSettingsChanged?(enabled)
@@ -145,6 +171,54 @@ struct MenuContentView: View {
             Task {
                 await refresh(providerId: newProviderId)
             }
+        }
+    }
+
+    /// Upper bound for the scrollable content region — see
+    /// `PopoverContentHeight` for the policy and its tests.
+    private var contentMaxHeight: CGFloat {
+        PopoverContentHeight.maxHeight(
+            visibleScreenHeight: NSScreen.main?.visibleFrame.height ?? 800,
+            overviewMode: settings.overviewModeEnabled
+        )
+    }
+
+    // MARK: - Keyboard Shortcuts
+
+    /// Shortcuts with no button of their own: Escape, and ⌘1–⌘9 for the
+    /// provider pills. The action bar's buttons carry theirs directly.
+    private var keyboardShortcuts: some View {
+        ZStack {
+            Button("Close", action: handleEscape)
+                .keyboardShortcut(.cancelAction)
+
+            if !settings.overviewModeEnabled {
+                ForEach(1...9, id: \.self) { position in
+                    Button("Select provider \(position)") {
+                        monitor.selectProvider(atPosition: position)
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character(String(position))))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    /// Escape backs out one level: an open overlay first, then the popover.
+    private func handleEscape() {
+        if showSharePass {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showSharePass = false
+            }
+        } else if let claudeProvider = selectedProvider as? ClaudeProvider, claudeProvider.passError != nil {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                claudeProvider.clearPassError()
+            }
+        } else {
+            onClose?()
         }
     }
 
@@ -257,13 +331,24 @@ struct MenuContentView: View {
         }
     }
 
-    /// Status of the currently selected provider
-    private var selectedProviderStatus: QuotaStatus {
-        guard let snapshot = selectedProvider?.snapshot else { return .healthy }
+    /// Status of the currently selected provider, nil when it has no snapshot.
+    private var selectedProviderStatus: QuotaStatus? {
+        guard let snapshot = selectedProvider?.snapshot else { return nil }
         if settings.burnRateWarningEnabled {
             return snapshot.paceAwareOverallStatus(burnRateThreshold: settings.burnRateThreshold)
         }
         return snapshot.overallStatus
+    }
+
+    /// What the header pill says. A provider that failed to probe reads as
+    /// "UNAVAILABLE" rather than borrowing a green "HEALTHY" it has no data
+    /// for (#259).
+    private var selectedProviderBadge: ProviderBadgeState {
+        ProviderBadgeState(
+            isSyncing: isSelectedProviderSyncing,
+            quotaStatus: selectedProviderStatus,
+            hasError: selectedProvider?.lastError != nil
+        )
     }
 
     /// Whether the selected provider is currently syncing
@@ -272,7 +357,7 @@ struct MenuContentView: View {
     }
 
     private var statusBadge: some View {
-        let statusColor = theme.statusColor(for: selectedProviderStatus)
+        let statusColor = selectedProviderBadge.badgeColor(theme)
 
         return HStack(spacing: 6) {
             // Animated pulse dot
@@ -298,8 +383,7 @@ struct MenuContentView: View {
     }
 
     private var statusText: String {
-        if isSelectedProviderSyncing { return "Syncing..." }
-        return selectedProviderStatus.badgeText
+        selectedProviderBadge.badgeText
     }
 
     /// Help text for settings button, includes update info if available
@@ -309,7 +393,7 @@ struct MenuContentView: View {
             return "Update available: v\(version)"
         }
         #endif
-        return "Settings"
+        return "Settings (⌘,)"
     }
 
     // MARK: - Provider Pills
@@ -322,7 +406,7 @@ struct MenuContentView: View {
     private var providerPills: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(enabledProviders, id: \.id) { provider in
+                ForEach(Array(enabledProviders.enumerated()), id: \.element.id) { index, provider in
                     ProviderPill(
                         providerId: provider.id,
                         providerName: provider.name,
@@ -332,13 +416,53 @@ struct MenuContentView: View {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
                         selectedProviderId = provider.id
                     }
+                    .help(index < 9 ? "\(provider.name) (⌘\(index + 1))" : provider.name)
                 }
             }
             .background(HorizontalScrollBooster())
+            .overlay {
+                GeometryReader { geo in
+                    Color.clear.preference(key: PillsContentWidthKey.self, value: geo.size.width)
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: PillsViewportWidthKey.self, value: geo.size.width)
+            }
+        )
+        .onPreferenceChange(PillsContentWidthKey.self) { contentWidth in
+            updatePillsOverflow(contentWidth: contentWidth)
+        }
+        .onPreferenceChange(PillsViewportWidthKey.self) { viewportWidth in
+            updatePillsOverflow(viewportWidth: viewportWidth)
+        }
+        .mask {
+            HStack(spacing: 0) {
+                Rectangle().fill(.white)
+                if pillsOverflow {
+                    LinearGradient(
+                        colors: [.white, .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: 28)
+                }
+            }
         }
         .opacity(animateIn ? 1 : 0)
         .offset(y: animateIn ? 0 : 10)
         .animation(.easeOut(duration: 0.5).delay(0.1), value: animateIn)
+    }
+
+    private func updatePillsOverflow(contentWidth: CGFloat? = nil, viewportWidth: CGFloat? = nil) {
+        if let contentWidth { pillsContentWidth = contentWidth }
+        if let viewportWidth { pillsViewportWidth = viewportWidth }
+        let overflows = pillsViewportWidth > 0 && pillsContentWidth > pillsViewportWidth + 1
+        if pillsOverflow != overflows {
+            pillsOverflow = overflows
+        }
     }
 
     // MARK: - Metrics Content
@@ -368,25 +492,19 @@ struct MenuContentView: View {
         }
     }
 
-    /// Max height for the overview scroll area (80% of screen or 500pt)
-    private var overviewMaxHeight: CGFloat {
-        let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
-        return min(screenHeight * 0.8, 500)
-    }
-
     private func overviewContent(providers: [any AIProvider]) -> some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(spacing: 12) {
-                ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
-                    if index > 0 {
-                        Divider()
-                            .background(theme.glassBorder)
-                    }
-                    providerSection(provider: provider)
+        // Scrolling is owned by the shared middle-region ScrollView in
+        // `body`; nesting another vertical ScrollView here would break
+        // height negotiation and swallow gestures.
+        VStack(spacing: 12) {
+            ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
+                if index > 0 {
+                    Divider()
+                        .background(theme.glassBorder)
                 }
+                providerSection(provider: provider)
             }
         }
-        .frame(maxHeight: overviewMaxHeight)
         .opacity(animateIn ? 1 : 0)
         .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
     }
@@ -490,21 +608,145 @@ struct MenuContentView: View {
         .glassCard(cornerRadius: 12, padding: 10)
     }
 
+    /// Collapsed state of quota-group sections, keyed by `QuotaGroup.id`.
+    /// Ephemeral by design: reopening the popover starts fully expanded.
+    @State private var collapsedQuotaGroups: Set<String> = []
+
+    /// Sections for aggregating providers (e.g. Oh My Pi): one collapsible
+    /// block per upstream account, so ten flat cards become scannable.
+    @ViewBuilder
+    private func quotaGroupSections(snapshot: UsageSnapshot) -> some View {
+        let groups = snapshot.quotaGroups
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(groups.enumerated()), id: \.element.id) { groupIndex, group in
+                let baseDelay = Double(groups.prefix(groupIndex).reduce(0) { $0 + $1.quotas.count }) * 0.08
+                quotaGroupSection(group, baseDelay: baseDelay)
+            }
+        }
+    }
+
+    private func quotaGroupSection(_ group: QuotaGroup, baseDelay: Double) -> some View {
+        // Note-only sections (accounts without usable quota data) have no
+        // cards to collapse; the note renders inline in the header.
+        let isNoteOnly = group.quotas.isEmpty
+        let isCollapsed = !isNoteOnly && collapsedQuotaGroups.contains(group.id)
+        let sharedReset = group.quotas.sharedResetDescription()
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    collapsedQuotaGroups = isCollapsed
+                        ? collapsedQuotaGroups.subtracting([group.id])
+                        : collapsedQuotaGroups.union([group.id])
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if !isNoteOnly {
+                        Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+
+                    Text((group.title ?? "Other").uppercased())
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .tracking(0.5)
+
+                    Spacer(minLength: 4)
+
+                    if case .headerInline(let note) = group.notePlacement {
+                        Text(note)
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    } else if isNoteOnly {
+                        Text("No usage data")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    } else {
+                        // Collapsed sections keep their headline number visible.
+                        if isCollapsed, let lowest = group.lowestQuota {
+                            Text("\(Int(lowest.percentRemaining))% left")
+                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                                .foregroundStyle(theme.textTertiary)
+                        }
+
+                        Text(group.worstStatus.badgeText)
+                            .badge(theme.statusColor(for: group.worstStatus))
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isNoteOnly)
+
+            if !isNoteOnly && !isCollapsed {
+                // A note attached to a quota-bearing section (the same
+                // account also reported "No usage" somewhere) is shown as
+                // its own row - never silently dropped.
+                if case .row(let note) = group.notePlacement {
+                    Text(note)
+                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+
+                if let sharedReset {
+                    sharedResetRow(sharedReset)
+                }
+
+                TwoColumnCardGrid(
+                    items: Array(group.quotas.enumerated()),
+                    id: \.element.quotaType
+                ) { entry in
+                    WrappedStatCard(
+                        quota: entry.element,
+                        delay: baseDelay + Double(entry.offset) * 0.08,
+                        showsReset: sharedReset == nil
+                    )
+                }
+            }
+        }
+    }
+
+    private func sharedResetRow(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "clock.fill")
+                .font(.system(size: 8))
+
+            Text(text)
+                .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(theme.textTertiary)
+        .padding(.horizontal, 4)
+    }
+
     @ViewBuilder
     private func statsGrid(snapshot: UsageSnapshot) -> some View {
         VStack(spacing: 10) {
-            // Show quota cards if quotas exist (Max/Pro accounts)
-            if !snapshot.quotas.isEmpty {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(snapshot.quotas.enumerated()), id: \.element.quotaType) { index, quota in
-                        WrappedStatCard(quota: quota, delay: Double(index) * 0.08)
-                    }
+            // Grouped sections cover aggregating providers even when every
+            // account lacks quota data (note-only sections must still render).
+            if snapshot.hasQuotaGroups {
+                quotaGroupSections(snapshot: snapshot)
+            }
+
+            if !snapshot.hasQuotaGroups, !snapshot.quotas.isEmpty {
+                let sharedReset = snapshot.quotas.sharedResetDescription()
+                if let sharedReset {
+                    sharedResetRow(sharedReset)
+                }
+            }
+
+            if !snapshot.hasQuotaGroups, !snapshot.quotas.isEmpty {
+                let sharedReset = snapshot.quotas.sharedResetDescription()
+                TwoColumnCardGrid(
+                    items: Array(snapshot.quotas.enumerated()),
+                    id: \.element.quotaType
+                ) { entry in
+                    WrappedStatCard(
+                        quota: entry.element,
+                        delay: Double(entry.offset) * 0.08,
+                        showsReset: sharedReset == nil
+                    )
                 }
             }
 
@@ -523,15 +765,11 @@ struct MenuContentView: View {
             // Controlled via Settings toggle or ~/.claudebar/settings.json
             if settings.showDailyUsageCards, let report = snapshot.dailyUsageReport {
                 let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
+                HStack(spacing: 10) {
                     DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
+                        .frame(maxWidth: .infinity)
                     DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
+                        .frame(maxWidth: .infinity)
                 }
                 if report.today.workingTime > 0 || report.previous.workingTime > 0 {
                     DailyUsageCardView(metric: .workingTime, report: report, delay: baseDelay + 0.16)
@@ -539,18 +777,14 @@ struct MenuContentView: View {
             }
 
             // Show extension metrics cards (from extension probes)
-            if let extensionMetrics = snapshot.extensionMetrics, !extensionMetrics.isEmpty {
+            if let extensionMetrics = snapshot.extensionMetrics?.filter({ $0.group == nil }),
+               !extensionMetrics.isEmpty {
                 let metricBaseDelay = Double(snapshot.quotas.count + 2) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(extensionMetrics.enumerated()), id: \.element.label) { index, metric in
-                        ExtensionMetricCardView(metric: metric, delay: metricBaseDelay + Double(index) * 0.08)
-                    }
+                TwoColumnCardGrid(
+                    items: Array(extensionMetrics.enumerated()),
+                    id: \.element.label
+                ) { entry in
+                    ExtensionMetricCardView(metric: entry.element, delay: metricBaseDelay + Double(entry.offset) * 0.08)
                 }
             }
 
@@ -611,6 +845,7 @@ struct MenuContentView: View {
                 }
             }
             .keyboardShortcut("d")
+            .help("Open dashboard (⌘D)")
 
             // Refresh Button
             let isCurrentlyRefreshing = settings.overviewModeEnabled
@@ -622,6 +857,10 @@ struct MenuContentView: View {
                 gradient: theme.accentGradient,
                 isLoading: isCurrentlyRefreshing
             ) {
+                // An explicit refresh is the moment a user who just installed a
+                // CLI expects it to be picked up, so drop the cached lookups
+                // instead of waiting for their TTL to lapse.
+                BinaryLocator.invalidateCaches()
                 if settings.overviewModeEnabled {
                     Task { await refreshAllEnabled() }
                 } else {
@@ -629,6 +868,7 @@ struct MenuContentView: View {
                 }
             }
             .keyboardShortcut("r")
+            .help("Refresh (⌘R)")
 
             Spacer()
 
@@ -656,14 +896,16 @@ struct MenuContentView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .help("Share Claude Code")
+                .help("Share Claude Code (⌘S)")
                 .keyboardShortcut("s")
             }
 
             // Settings Button with update indicator
             Button {
-                // Avoid window resize animation glitches in MenuBarExtra.
-                showSettings = true
+                // Settings live in a standalone window. The app is an
+                // LSUIElement, so activate it to bring the window forward.
+                openWindow(id: "settings")
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
                 ZStack {
                     Circle()
@@ -702,7 +944,7 @@ struct MenuContentView: View {
                 }
             }
             .buttonStyle(.plain)
-            .help("Quit ClaudeBar")
+            .help("Quit ClaudeBar (⌘Q)")
             .keyboardShortcut("q")
         }
         .opacity(animateIn ? 1 : 0)
@@ -714,9 +956,12 @@ struct MenuContentView: View {
     /// Refresh all enabled providers concurrently
     private func refreshAllEnabled() async {
         await withTaskGroup(of: Void.self) { group in
-            for provider in monitor.enabledProviders {
+            // The `isSyncing` guard reads main-actor provider state, so evaluate
+            // it here on the main actor (this closure inherits the caller's
+            // isolation). Each child task then awaits `refresh()`, whose heavy
+            // probe work still suspends off-main, keeping the refreshes concurrent.
+            for provider in monitor.enabledProviders where !provider.isSyncing {
                 group.addTask {
-                    guard !provider.isSyncing else { return }
                     do {
                         try await provider.refresh()
                     } catch {
@@ -758,7 +1003,8 @@ struct MenuContentView: View {
                 showSharePass = true
             }
         } catch {
-            // Provider stores error in lastError
+            // Provider stores the error in passError, which the popover surfaces
+            // as SharePassErrorOverlay — a failed click is never silent.
         }
     }
 }
@@ -814,11 +1060,114 @@ struct ProviderPill: View {
     }
 }
 
+// MARK: - Provider Pill Overflow
+
+private struct PillsContentWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct PillsViewportWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+// MARK: - Two-Column Card Grid
+
+/// Non-lazy two-column grid for popover cards.
+///
+/// The popover shows at most a few dozen lightweight cards, so laziness buys
+/// nothing — and `LazyVGrid` actively hurts: lazy containers report an
+/// estimated height and correct it as cells materialize, and inside the
+/// popover's vertical `ScrollView` each correction rewrites the scroll offset
+/// mid-gesture. Scrolling upward trembled, snapped back, and only got through
+/// with an exaggerated flick. An eager grid hands the scroll view exact
+/// content heights up front, so dragging stays smooth in both directions.
+///
+/// Layout matches the `LazyVGrid` it replaces: two equal flexible columns,
+/// `spacing` between rows and columns, cells center-aligned per row, and a
+/// lone card in the last row keeps column width instead of stretching.
+struct TwoColumnCardGrid<Item, ID: Hashable, Cell: View>: View {
+    let items: [Item]
+    let id: KeyPath<Item, ID>
+    var spacing: CGFloat = 10
+    @ViewBuilder let cell: (Item) -> Cell
+
+    init(
+        items: [Item],
+        id: KeyPath<Item, ID>,
+        spacing: CGFloat = 10,
+        @ViewBuilder cell: @escaping (Item) -> Cell
+    ) {
+        self.items = items
+        self.id = id
+        self.spacing = spacing
+        self.cell = cell
+    }
+
+    /// A row's identity: its position plus the ids of the cards it holds.
+    ///
+    /// Keying a row on its leading card's id alone (the original form) is not
+    /// unique: providers can report two cards of the same `QuotaType` — one
+    /// `.session` per account, say — and two rows then claim the same `ForEach`
+    /// id. Duplicate ids leave SwiftUI free to recycle one row's backing layer
+    /// for another's content, which is one way cards end up drawing garbled
+    /// (see #272). The position keeps ids unique whatever the cards contain,
+    /// and the card ids keep a row's identity tied to what it actually shows.
+    private struct RowID: Hashable {
+        let index: Int
+        let leading: ID
+        let trailing: ID?
+    }
+
+    private var rows: [(id: RowID, leading: Item, trailing: Item?)] {
+        stride(from: 0, to: items.count, by: 2).map { start in
+            let trailing = start + 1 < items.count ? items[start + 1] : nil
+            return (
+                id: RowID(
+                    index: start,
+                    leading: items[start][keyPath: id],
+                    trailing: trailing?[keyPath: id]
+                ),
+                leading: items[start],
+                trailing: trailing
+            )
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: spacing) {
+            ForEach(rows, id: \.id) { row in
+                HStack(spacing: spacing) {
+                    cell(row.leading)
+                        .frame(maxWidth: .infinity)
+                    if let trailing = row.trailing {
+                        cell(trailing)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        // Hold the empty slot so a lone final card keeps
+                        // column width instead of stretching across the row.
+                        Color.clear
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 0)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Wrapped Stat Card
 
 struct WrappedStatCard: View {
     let quota: UsageQuota
     let delay: Double
+    var showsReset: Bool = true
 
     @Environment(\.appTheme) private var theme
     @State private var isHovering = false
@@ -841,6 +1190,16 @@ struct WrappedStatCard: View {
         theme.statusColor(for: quota.status)
     }
 
+    private var isCappedSpend: Bool {
+        quota.dollarUsed != nil && quota.dollarCap != nil
+    }
+
+    private var valueCaption: String {
+        if isCappedSpend { return "Spent" }
+        if quota.isDollarBased { return "Remaining" }
+        return effectiveDisplayMode.displayLabel
+    }
+
     /// The color used for the pace label/number
     private var paceColor: Color {
         quota.pace.displayColor
@@ -856,7 +1215,7 @@ struct WrappedStatCard: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(statusColor)
 
-                    Text(quota.quotaType.displayName.uppercased())
+                    Text((quota.compactTitle ?? quota.quotaType.displayName).uppercased())
                         .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
@@ -874,43 +1233,51 @@ struct WrappedStatCard: View {
                 }
             }
 
-            // Large value display with label (end-aligned)
+            // Large value display with label (end-aligned).
+            //
+            // The headline number deliberately carries no
+            // `.contentTransition(.numericText())`: that modifier hands the
+            // digits to a separate morphing text layer, and those layers are
+            // what users see come back mirrored after a refresh (#272) — the
+            // flipped fields are the ones whose value just changed. A number
+            // that reads correctly is worth more than a rolling animation.
             HStack(alignment: .firstTextBaseline) {
-                if let dollarText = quota.formattedDollarRemaining {
+                if let dollarUsed = quota.formattedDollarUsed,
+                   let dollarCap = quota.formattedDollarCap {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(dollarUsed)
+                            .font(.system(size: 20, weight: .heavy, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+
+                        Text("of \(dollarCap)")
+                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(theme.textSecondary)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .layoutPriority(1)
+                } else if let dollarText = quota.formattedDollarRemaining {
                     Text(dollarText)
                         .font(.system(size: 18, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
-                        .contentTransition(.numericText())
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
                         Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))")
-                            .font(.system(size: 32, weight: .bold, design: theme.fontDesign))
+                            .font(.system(size: 26, weight: .bold, design: theme.fontDesign))
                             .foregroundStyle(effectiveDisplayMode == .pace ? paceColor : theme.textPrimary)
-                            .contentTransition(.numericText())
 
                         Text("%")
-                            .font(.system(size: 16, weight: .medium, design: theme.fontDesign))
+                            .font(.system(size: 13, weight: .medium, design: theme.fontDesign))
                             .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.7) : theme.textTertiary)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
-                Text(quota.isDollarBased ? "Remaining" : effectiveDisplayMode.displayLabel)
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                Text(valueCaption)
+                    .font(.system(size: isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign))
+                    .fixedSize()
                     .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.8) : theme.textTertiary)
-            }
-
-            // Pace insight line
-            if effectiveDisplayMode == .pace, let insight = quota.paceInsight {
-                HStack(spacing: 3) {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 7))
-                    Text(insight)
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
-                }
-                .foregroundStyle(paceColor.opacity(0.8))
-                .lineLimit(1)
             }
 
             // Progress bar with gradient and pace tick
@@ -948,9 +1315,10 @@ struct WrappedStatCard: View {
                     .frame(height: 5)
                 }
             }
+            .help(quota.paceTickHelp(mode: effectiveDisplayMode) ?? "")
 
-            // Reset info
-            if let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {
+            // Reset info (hidden when the grid hoisted a shared countdown)
+            if showsReset, let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {
                 HStack(spacing: 3) {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 7))
@@ -981,6 +1349,11 @@ struct WrappedStatCard: View {
     }
 
     private var iconName: String {
+        let title = (quota.compactTitle ?? quota.quotaType.displayName).lowercased()
+        if title.contains("build") { return "hammer.fill" }
+        if title.contains("chat") { return "bubble.left.fill" }
+        if title.contains("imagine") { return "sparkles" }
+
         switch quota.quotaType {
         case .session: return "bolt.fill"
         case .weekly: return "calendar.badge.clock"
@@ -1320,7 +1693,6 @@ struct BedrockUsageCard: View {
                     Text(usage.formattedTotalCost)
                         .font(.system(size: 36, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
-                        .contentTransition(.numericText())
                 }
 
                 Spacer()

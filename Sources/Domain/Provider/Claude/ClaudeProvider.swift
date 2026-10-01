@@ -4,8 +4,9 @@ import Observation
 /// Claude AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Supports dual probe modes: CLI (default) and API.
+@MainActor
 @Observable
-public final class ClaudeProvider: AIProvider, @unchecked Sendable {
+public final class ClaudeProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "claude"
@@ -43,6 +44,11 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
 
     /// Whether the provider is currently fetching passes
     public private(set) var isFetchingPasses: Bool = false
+
+    /// The last error from a guest pass fetch (nil when the last fetch succeeded).
+    /// Kept separate from `lastError` so a failed invitation-link fetch never
+    /// makes the provider's usage data look unavailable.
+    public private(set) var passError: Error?
 
     // MARK: - Probe Mode
 
@@ -91,6 +97,15 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     /// Optional analyzer for daily usage from JSONL session data
     private let dailyUsageAnalyzer: (any DailyUsageAnalyzing)?
 
+    /// Reports something the user cannot see in the UI, such as a fallback probe
+    /// that ran and then failed.
+    ///
+    /// The Domain layer holds no logger of its own — `AppLog` lives in
+    /// Infrastructure, which depends on Domain and not the other way round — so
+    /// the composition root injects one. It is nil by default, and tests leave
+    /// it nil.
+    private let diagnose: (@MainActor (String) -> Void)?
+
     /// Returns the active probe based on current mode
     private var activeProbe: any UsageProbe {
         switch probeMode {
@@ -99,6 +114,23 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         case .api:
             // Fall back to CLI if API probe not available
             return apiProbe ?? cliProbe
+        }
+    }
+
+    /// Which probe ran first, and which one rescues it, in the current mode.
+    /// Named for the log so a reader can tell "the rescue did not run" from
+    /// "the rescue ran and failed" without reading the code (#317).
+    private var primaryName: String {
+        switch probeMode {
+        case .cli: return "CLI"
+        case .api: return "API"
+        }
+    }
+
+    private var fallbackName: String {
+        switch probeMode {
+        case .cli: return "API"
+        case .api: return "CLI"
         }
     }
 
@@ -113,13 +145,15 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         probe: any UsageProbe,
         passProbe: (any ClaudePassProbing)? = nil,
         settingsRepository: any ProviderSettingsRepository,
-        dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil
+        dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil,
+        diagnose: (@MainActor (String) -> Void)? = nil
     ) {
         self.cliProbe = probe
         self.apiProbe = nil
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
         self.dailyUsageAnalyzer = dailyUsageAnalyzer
+        self.diagnose = diagnose
         // Load persisted enabled state (defaults to true)
         self.isEnabled = settingsRepository.isEnabled(forProvider: "claude")
     }
@@ -135,13 +169,15 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         apiProbe: any UsageProbe,
         passProbe: (any ClaudePassProbing)? = nil,
         settingsRepository: any ClaudeSettingsRepository,
-        dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil
+        dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil,
+        diagnose: (@MainActor (String) -> Void)? = nil
     ) {
         self.cliProbe = cliProbe
         self.apiProbe = apiProbe
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
         self.dailyUsageAnalyzer = dailyUsageAnalyzer
+        self.diagnose = diagnose
         // Load persisted enabled state (defaults to true)
         self.isEnabled = settingsRepository.isEnabled(forProvider: "claude")
     }
@@ -207,6 +243,16 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
                     // the actual root cause (e.g. HTTP 429). The fallback's
                     // failure is incidental and would otherwise mask it,
                     // sending users chasing the wrong problem.
+                    //
+                    // It is still worth a line: the fallback's error says why
+                    // the rescue did not work, and now that this path runs on
+                    // every failed probe (#317) a swallowed failure here is
+                    // indistinguishable from one that never ran. The message
+                    // names the probe and its error, never any credential.
+                    diagnose?(
+                        "Claude \(fallbackName) fallback also failed: \(error.localizedDescription)"
+                            + " — reporting the \(primaryName) failure instead"
+                    )
                     lastError = primaryError
                     throw primaryError
                 }
@@ -227,6 +273,34 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     private static func shouldAttemptFallback(after error: Error) -> Bool {
         if case ProbeError.rateLimited = error { return false }
         return true
+    }
+
+    /// The alternate probe to try when the active one fails, or `nil` when there
+    /// is nothing to try.
+    ///
+    /// Deliberately not gated on the fallback probe's `isAvailable()`. That call
+    /// is a second, independently implemented answer to "can you work?", and when
+    /// it said no the rescue was skipped without a word in the log. The log
+    /// attached to #317 holds 114 `Claude parse failed` lines, all from the
+    /// broken CLI probe, while the user saw "Claude Unavailable" throughout.
+    /// That the gate is what skipped each rescue is an inference, not something
+    /// the log states: it records no API-probe lines at all, so the API probe
+    /// either never ran or ran silently, and nothing here distinguishes the two.
+    /// The cost the gate saved was nothing either way —
+    /// `ClaudeAPIUsageProbe.isAvailable()` reads the same credentials `probe()`
+    /// reads before it makes any network call, and the probe's own error is
+    /// discarded in favour of the primary one, so a wrong answer here could only
+    /// ever cost a rescue (#317).
+    ///
+    /// The one policy gate stays: `claude.cliFallbackEnabled`, the user's switch
+    /// for running the CLI in the background.
+    private func fallbackProbe() async -> (any UsageProbe)? {
+        switch probeMode {
+        case .cli:
+            return apiProbe
+        case .api:
+            return cliFallbackEnabled ? cliProbe : nil
+        }
     }
 
     /// Attaches the daily-usage report for interactive refreshes only.
@@ -277,19 +351,6 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
             .claudeCliFallbackEnabled() ?? true
     }
 
-    private func fallbackProbe() async -> (any UsageProbe)? {
-        switch probeMode {
-        case .cli:
-            guard let apiProbe, await apiProbe.isAvailable() else {
-                return nil
-            }
-            return apiProbe
-        case .api:
-            guard cliFallbackEnabled else { return nil }
-            return await cliProbe.isAvailable() ? cliProbe : nil
-        }
-    }
-
     // MARK: - Guest Pass
 
     /// Fetches the current guest pass information.
@@ -306,17 +367,25 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         do {
             let pass = try await passProbe.probe()
             guestPass = pass
-            lastError = nil
+            passError = nil
             return pass
         } catch {
-            lastError = error
+            passError = error
             throw error
         }
     }
 
-    /// Whether guest passes feature is available
+    /// Dismisses the last guest pass error.
+    public func clearPassError() {
+        passError = nil
+    }
+
+    /// Whether the guest passes feature is available.
+    /// Requires both a configured probe and a Max account — Anthropic issues
+    /// invitation links to Max subscribers only, and an unknown tier is not
+    /// evidence of one (issue #243).
     public var supportsGuestPasses: Bool {
-        passProbe != nil
+        passProbe != nil && snapshot?.accountTier?.supportsGuestPasses == true
     }
 
     /// Whether API mode is available (API probe was provided)

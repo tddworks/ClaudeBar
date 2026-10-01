@@ -27,8 +27,21 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarDurationEnabled() -> Bool
     func setMenuBarDurationEnabled(_ enabled: Bool)
 
+    func menuBarStackedEnabled() -> Bool
+    func setMenuBarStackedEnabled(_ enabled: Bool)
+
+    func menuBarStackedSize() -> String
+    func setMenuBarStackedSize(_ size: String)
+
     func menuBarPercentageProviderId() -> String
     func setMenuBarPercentageProviderId(_ providerId: String)
+
+    /// Additional providers displayed after the primary, limited to two.
+    func menuBarAdditionalProviderIds() -> [String]
+    func setMenuBarAdditionalProviderIds(_ providerIds: [String])
+
+    func menuBarProviderSettings() -> [String: MenuBarProviderSettings]
+    func setMenuBarProviderSettings(_ settings: [String: MenuBarProviderSettings])
 
     func menuBarPercentageQuotaKey() -> String
     func setMenuBarPercentageQuotaKey(_ quotaKey: String)
@@ -38,6 +51,18 @@ public protocol AppSettingsRepository: Sendable {
 
     func showDailyUsageCards() -> Bool
     func setShowDailyUsageCards(_ show: Bool)
+
+    // MARK: - Notch
+
+    /// Whether the notch live activity is shown (default: false).
+    func notchEnabled() -> Bool
+    func setNotchEnabled(_ enabled: Bool)
+
+    // MARK: - Touch Bar
+
+    /// Whether Touch Bar status integration is enabled (default: true).
+    func touchBarEnabled() -> Bool
+    func setTouchBarEnabled(_ enabled: Bool)
 
     // MARK: - Overview
 
@@ -67,6 +92,16 @@ public protocol AppSettingsRepository: Sendable {
 
     func burnRateThreshold() -> Double
     func setBurnRateThreshold(_ threshold: Double)
+
+    // MARK: - Status Colors
+
+    /// The user's own status colors, overriding the theme per status.
+    func statusColorOverrides() -> StatusColorOverrides
+    func setStatusColorOverrides(_ overrides: StatusColorOverrides)
+
+    /// Whether the built-in appearance-aware High Contrast palette is on.
+    func highContrastEnabled() -> Bool
+    func setHighContrastEnabled(_ enabled: Bool)
 
     // MARK: - Updates
 

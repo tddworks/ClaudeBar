@@ -20,10 +20,10 @@ struct MenuBarDurationDisplayTests {
     // MARK: - Text formatting
 
     @Test
-    func `text shows compact hours when reset is hours away`() {
-        let q = quota(resetsAt: Date().addingTimeInterval(3.0 * 3600 + 30))
+    func `text shows hours with minutes when reset is hours away`() {
+        let q = quota(resetsAt: Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30))
         let display = MenuBarDurationDisplay(quota: q)
-        #expect(display.text == "3h")
+        #expect(display.text == "3:58")
     }
 
     @Test

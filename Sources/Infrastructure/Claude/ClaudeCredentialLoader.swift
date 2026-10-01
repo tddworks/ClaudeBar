@@ -58,6 +58,63 @@ public struct ClaudeCredentialLoader: Sendable {
     /// Refresh buffer: 5 minutes before expiration
     private static let refreshBufferMs: Double = 5 * 60 * 1000
 
+    static func keychainSaveArguments(
+        service: String,
+        account: String,
+        password: String
+    ) -> [String] {
+        [
+            "add-generic-password",
+            "-U",
+            "-s", service,
+            "-a", account,
+            "-w", password
+        ]
+    }
+
+    /// Serializes credentials for the Keychain.
+    ///
+    /// Deliberately compact: `security find-generic-password -w` on macOS 26
+    /// returns any password containing a byte outside printable ASCII as a hex
+    /// string rather than raw text, and pretty-printing's newlines are enough
+    /// to trigger it — leaving a password we can write but not read back (#255).
+    static func keychainPayload(from data: [String: Any]) -> String? {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: []) else {
+            return nil
+        }
+        return String(data: jsonData, encoding: .utf8)
+    }
+
+    /// Decodes a password read back from `security find-generic-password -w`,
+    /// undoing the macOS 26 hex encoding when present.
+    ///
+    /// A payload written by an older ClaudeBar build comes back hex-encoded;
+    /// this keeps those users working instead of stranding them until their
+    /// next `claude` login. Valid JSON always starts with `{`, which is not a
+    /// hex digit, so an all-hex payload is unambiguously the encoded form.
+    static func decodeKeychainPayload(_ raw: String) -> Data? {
+        if let decoded = hexDecoded(raw) {
+            return decoded
+        }
+        return raw.data(using: .utf8)
+    }
+
+    private static func hexDecoded(_ string: String) -> Data? {
+        guard !string.isEmpty, string.count % 2 == 0 else { return nil }
+
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(string.count / 2)
+
+        var index = string.startIndex
+        while index < string.endIndex {
+            let next = string.index(index, offsetBy: 2)
+            guard let byte = UInt8(string[index..<next], radix: 16) else { return nil }
+            bytes.append(byte)
+            index = next
+        }
+        return Data(bytes)
+    }
+
     public init(
         homeDirectory: String = NSHomeDirectory(),
         keychainService: String = "Claude Code-credentials",
@@ -119,10 +176,11 @@ public struct ClaudeCredentialLoader: Sendable {
 
         var updatedData = result.fullData
 
-        // Update the OAuth section
-        var oauthDict: [String: Any] = [
-            "accessToken": result.oauth.accessToken
-        ]
+        // Merge into the existing OAuth section so fields we do not model
+        // (e.g. `scopes`) survive the write-back — the file is shared with
+        // Claude Code, which reads them.
+        var oauthDict = (result.fullData["claudeAiOauth"] as? [String: Any]) ?? [:]
+        oauthDict["accessToken"] = result.oauth.accessToken
         if let refreshToken = result.oauth.refreshToken {
             oauthDict["refreshToken"] = refreshToken
         }
@@ -217,23 +275,48 @@ public struct ClaudeCredentialLoader: Sendable {
         process.arguments = ["find-generic-password", "-s", keychainService, "-w"]
 
         let pipe = Pipe()
+        let errorPipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = errorPipe
 
         do {
             try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
-
+            // Drain before waiting: `waitUntilExit()` first would deadlock if the
+            // child ever filled the pipe buffer, since nothing is reading it.
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+
+            // On macOS the Keychain is the only place `claude login` leaves
+            // credentials — there is no `~/.claude/.credentials.json` to fall
+            // back to. A silent nil here surfaces as "Authentication required.
+            // Please log in." to someone who is already logged in, with nothing
+            // in the log to say the read was denied rather than empty (#271).
+            guard process.terminationStatus == 0 else {
+                let stderr = String(data: errorData, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                AppLog.credentials.error(
+                    "Keychain read of '\(keychainService)' failed: security exited \(process.terminationStatus)"
+                    + (stderr.isEmpty ? "" : " — \(stderr)")
+                )
+                return nil
+            }
+
             guard let jsonString = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
-                  !jsonString.isEmpty else { return nil }
+                  !jsonString.isEmpty else {
+                AppLog.credentials.error("Keychain item '\(keychainService)' held an empty password")
+                return nil
+            }
 
-            guard let jsonData = jsonString.data(using: .utf8),
+            guard let jsonData = Self.decodeKeychainPayload(jsonString),
                   let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                   let oauthDict = json["claudeAiOauth"] as? [String: Any],
                   let rawAccessToken = oauthDict["accessToken"] as? String else {
+                // Shape only — never the payload, which is the token itself.
+                AppLog.credentials.error(
+                    "Keychain item '\(keychainService)' did not hold a readable claudeAiOauth access token"
+                )
                 return nil
             }
 
@@ -255,25 +338,18 @@ public struct ClaudeCredentialLoader: Sendable {
     }
 
     private func saveToKeychain(_ data: [String: Any]) {
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
+        guard let jsonString = Self.keychainPayload(from: data) else {
             AppLog.credentials.error("Failed to serialize Claude credentials for Keychain")
             return
         }
 
-        // Delete existing item first (ignore errors if not found)
-        let deleteProcess = Process()
-        deleteProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        deleteProcess.arguments = ["delete-generic-password", "-s", keychainService]
-        deleteProcess.standardOutput = Pipe()
-        deleteProcess.standardError = Pipe()
-        try? deleteProcess.run()
-        deleteProcess.waitUntilExit()
-
-        // Add new item
         let addProcess = Process()
         addProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        addProcess.arguments = ["add-generic-password", "-s", keychainService, "-w", jsonString]
+        addProcess.arguments = Self.keychainSaveArguments(
+            service: keychainService,
+            account: NSUserName(),
+            password: jsonString
+        )
         addProcess.standardOutput = Pipe()
         addProcess.standardError = Pipe()
 

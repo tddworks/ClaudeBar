@@ -3,884 +3,1461 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClaudeBar - AI Usage Monitor for macOS</title>
+    <title>ClaudeBar — every AI quota, one macOS menu bar</title>
+    <meta name="description" content="ClaudeBar is a native macOS menu bar app that tracks usage quotas across 19 AI coding assistants — Claude, Codex, Gemini, Copilot, Kimi, Grok and more. Free, open source, MIT licensed.">
+    <link rel="icon" href="app-icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="app-icon.png">
+    <meta property="og:title" content="ClaudeBar — every AI quota, one macOS menu bar">
+    <meta property="og:description" content="Track usage quotas across 19 AI coding assistants from your macOS menu bar. Native SwiftUI, free and open source.">
+    <meta property="og:image" content="https://tddworks.github.io/ClaudeBar/screenshots/screenshot-latest.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        /* Runs before first paint: with no stored choice the page just follows
+           prefers-color-scheme, the same way the app's System theme does. */
+        document.documentElement.classList.add('js');
+        try {
+            var m = localStorage.getItem('claudebar-appearance');
+            if (m === 'light' || m === 'dark') document.documentElement.setAttribute('data-theme', m);
+        } catch (e) {}
+    </script>
     <style>
+        /* ───────────────────────────────────────────────
+           Tokens — light is the default, dark is a swap.
+           ─────────────────────────────────────────────── */
         :root {
-            --aurora-1: #0f0c29;
-            --aurora-2: #302b63;
-            --aurora-3: #24243e;
-            --glow-purple: #a855f7;
-            --glow-pink: #ec4899;
-            --glow-teal: #2dd4bf;
-            --glow-blue: #3b82f6;
-            --glass-bg: rgba(255, 255, 255, 0.06);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.7);
-            --text-muted: rgba(255, 255, 255, 0.5);
+            color-scheme: light;
+
+            --paper: #f5f4f0;
+            --paper-2: #edece7;
+            --surface: #ffffff;
+            --surface-2: #fbfaf8;
+            --ink: #15161a;
+            --ink-2: #4c4f57;
+            --ink-3: #7b7f89;
+            --hair: rgba(20, 22, 28, 0.11);
+            --hair-2: rgba(20, 22, 28, 0.055);
+            --azure: #1d51d1;
+            --azure-ink: #ffffff;
+            --azure-soft: rgba(29, 81, 209, 0.09);
+
+            --ok: #0f8a51;
+            --warn: #a56812;
+            --crit: #c72840;
+            --gone: #8b8f98;
+
+            /* Provider marks are lightened by this much on dark surfaces so
+               near-black brand colours stay legible. */
+            --mark-tint: #ffffff;
+            --mark-tint-amt: 0%;
+
+            --shadow-1: 0 1px 2px rgba(16, 18, 24, 0.05), 0 2px 6px rgba(16, 18, 24, 0.045);
+            --shadow-2: 0 1px 3px rgba(16, 18, 24, 0.05), 0 10px 28px rgba(16, 18, 24, 0.075);
+            --shadow-3: 0 3px 10px rgba(16, 18, 24, 0.07), 0 32px 72px rgba(16, 18, 24, 0.17);
+            --grain: 0.038;
+            --bloom: 0.42;
+
+            --sans: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+            --bar-h: 38px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                color-scheme: dark;
+                --paper: #0b0c0f;
+                --paper-2: #121419;
+                --surface: #15171d;
+                --surface-2: #1a1d24;
+                --ink: #eceef2;
+                --ink-2: #a5aab5;
+                --ink-3: #7a808c;
+                --hair: rgba(255, 255, 255, 0.115);
+                --hair-2: rgba(255, 255, 255, 0.06);
+                --azure: #7ea9ff;
+                --azure-ink: #071022;
+                --azure-soft: rgba(126, 169, 255, 0.13);
+                --ok: #3ecf8e;
+                --warn: #e2a53c;
+                --crit: #f2647a;
+                --gone: #7c828d;
+                --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+                --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 12px 30px rgba(0, 0, 0, 0.4);
+                --shadow-3: 0 4px 14px rgba(0, 0, 0, 0.5), 0 36px 80px rgba(0, 0, 0, 0.6);
+                --mark-tint-amt: 32%;
+                --grain: 0.055;
+                --bloom: 0.3;
+            }
         }
 
-        html {
-            scroll-behavior: smooth;
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --paper: #0b0c0f;
+            --paper-2: #121419;
+            --surface: #15171d;
+            --surface-2: #1a1d24;
+            --ink: #eceef2;
+            --ink-2: #a5aab5;
+            --ink-3: #7a808c;
+            --hair: rgba(255, 255, 255, 0.115);
+            --hair-2: rgba(255, 255, 255, 0.06);
+            --azure: #7ea9ff;
+            --azure-ink: #071022;
+            --azure-soft: rgba(126, 169, 255, 0.13);
+            --ok: #3ecf8e;
+            --warn: #e2a53c;
+            --crit: #f2647a;
+            --gone: #7c828d;
+            --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 12px 30px rgba(0, 0, 0, 0.4);
+            --shadow-3: 0 4px 14px rgba(0, 0, 0, 0.5), 0 36px 80px rgba(0, 0, 0, 0.6);
+            --mark-tint-amt: 32%;
+            --grain: 0.055;
+            --bloom: 0.3;
         }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        * { margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; scroll-padding-top: calc(var(--bar-h) + 24px); }
 
         body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--aurora-1);
-            color: var(--text-primary);
+            font-family: var(--sans);
+            font-size: 17px;
+            line-height: 1.6;
+            color: var(--ink);
+            background: var(--paper);
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
             overflow-x: hidden;
-            min-height: 100vh;
+            padding-top: var(--bar-h);
         }
 
-        /* Aurora Background */
-        .aurora-bg {
+        /* Paper grain — keeps the flat light canvas from feeling like a blank div. */
+        body::after {
+            content: '';
             position: fixed;
             inset: 0;
-            z-index: -1;
-            overflow: hidden;
+            z-index: 900;
+            pointer-events: none;
+            opacity: var(--grain);
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
-        .aurora-gradient {
+        a { color: inherit; text-decoration: none; }
+
+        /* width/height attributes are there to reserve layout space; without this
+           the height attribute wins as a presentational hint and stretches the image. */
+        img { display: block; max-width: 100%; height: auto; }
+
+        code, kbd, .mono { font-family: var(--mono); font-feature-settings: "zero" 1; }
+
+        .wrap { width: 100%; max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+
+        ::selection { background: var(--azure); color: var(--azure-ink); }
+
+        :focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; border-radius: 4px; }
+
+        /* ───────────────────────────────────────────────
+           The nav is a macOS menu bar. The product lives
+           in one, so the page wears one.
+           ─────────────────────────────────────────────── */
+        .menubar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--bar-h);
+            z-index: 1000;
+            background: color-mix(in srgb, var(--paper) 78%, transparent);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--hair);
+        }
+
+        .mb-inner {
+            height: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mb-logo {
+            width: 21px; height: 21px;
+            border-radius: 6px;
+            margin-right: 6px;
+            flex-shrink: 0;
+            box-shadow: 0 0 0 1px var(--hair-2);
+        }
+
+        .mb-menus { display: flex; align-items: center; gap: 1px; }
+
+        .mb-menus a {
+            font-size: 13.5px;
+            letter-spacing: -0.005em;
+            color: var(--ink);
+            padding: 4px 9px;
+            border-radius: 6px;
+            transition: background-color 0.12s ease, color 0.12s ease;
+            white-space: nowrap;
+        }
+
+        .mb-menus a:hover { background: var(--azure); color: var(--azure-ink); }
+        .mb-app { font-weight: 700; }
+
+        .mb-extras {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* The menu bar extra: a live illustration of ClaudeBar itself. */
+        .mb-quota {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 3px 9px 3px 7px;
+            border-radius: 100px;
+            border: 1px solid var(--hair);
+            background: var(--surface);
+            box-shadow: var(--shadow-1);
+        }
+
+        .mb-quota:hover { border-color: color-mix(in srgb, var(--ok) 45%, var(--hair)); }
+
+        .mb-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--ok);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+        }
+
+        .mb-quota .pct { color: var(--ink); }
+        .mb-quota .sep { color: var(--ink-3); opacity: 0.45; }
+        .mb-quota .cd { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+        .mb-quota .colon { animation: colon-pulse 1s ease-in-out infinite; }
+
+        @keyframes colon-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+        .mb-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px; height: 22px;
+            border: 0;
+            background: transparent;
+            color: var(--ink-2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.12s ease, color 0.12s ease;
+        }
+
+        .mb-btn:hover { background: var(--azure); color: var(--azure-ink); }
+        .mb-btn svg { width: 15px; height: 15px; display: none; }
+        .mb-btn[data-mode="auto"] .ico-auto,
+        .mb-btn[data-mode="light"] .ico-light,
+        .mb-btn[data-mode="dark"] .ico-dark { display: block; }
+
+        .mb-clock {
+            font-size: 13px;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .mb-get {
+            display: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 3px 11px;
+            border-radius: 100px;
+            background: var(--ink);
+            color: var(--paper);
+        }
+
+        /* ───────────────────────────────────────────────
+           Hero
+           ─────────────────────────────────────────────── */
+        .hero { position: relative; padding: 84px 0 0; overflow: hidden; }
+
+        .hero::before {
+            content: '';
             position: absolute;
-            width: 150%;
-            height: 150%;
-            top: -25%;
-            left: -25%;
-            background:
-                radial-gradient(ellipse 80% 50% at 20% 40%, rgba(168, 85, 247, 0.4) 0%, transparent 50%),
-                radial-gradient(ellipse 60% 40% at 80% 20%, rgba(236, 72, 153, 0.3) 0%, transparent 50%),
-                radial-gradient(ellipse 50% 60% at 60% 80%, rgba(45, 212, 191, 0.25) 0%, transparent 50%),
-                radial-gradient(ellipse 70% 50% at 10% 90%, rgba(59, 130, 246, 0.3) 0%, transparent 50%);
-            animation: aurora-drift 20s ease-in-out infinite alternate;
-        }
-
-        @keyframes aurora-drift {
-            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-            33% { transform: translate(5%, -3%) rotate(2deg) scale(1.05); }
-            66% { transform: translate(-3%, 5%) rotate(-1deg) scale(0.98); }
-            100% { transform: translate(2%, 2%) rotate(1deg) scale(1.02); }
-        }
-
-        .noise-overlay {
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.03;
+            inset: 0 0 auto 0;
+            height: 620px;
+            background-image:
+                linear-gradient(var(--hair-2) 1px, transparent 1px),
+                linear-gradient(90deg, var(--hair-2) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 0%, transparent 75%);
+            -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 0%, transparent 75%);
             pointer-events: none;
         }
 
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            backdrop-filter: blur(20px);
-            background: rgba(15, 12, 41, 0.5);
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-family: 'Outfit', sans-serif;
-            font-weight: 700;
-            font-size: 1.5rem;
-            text-decoration: none;
-            color: var(--text-primary);
-        }
-
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--glow-purple), var(--glow-pink));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.95rem;
-            transition: color 0.3s ease;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-primary);
-        }
-
-        .nav-cta {
-            background: linear-gradient(135deg, var(--glow-purple), var(--glow-pink));
-            padding: 0.6rem 1.5rem;
-            border-radius: 100px;
-            color: white !important;
-            font-weight: 500;
-            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .nav-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 30px rgba(168, 85, 247, 0.5);
-        }
-
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            padding: 8rem 2rem 4rem;
-            max-width: 1400px;
-            margin: 0 auto;
-            gap: 4rem;
-        }
-
-        .hero-content {
-            flex: 1;
-            max-width: 600px;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            animation: fade-up 0.8s ease-out;
-        }
-
-        .hero-badge span {
-            width: 8px;
-            height: 8px;
-            background: var(--glow-teal);
-            border-radius: 50%;
-            animation: pulse-dot 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-        }
-
-        .hero h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: clamp(3rem, 6vw, 4.5rem);
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            animation: fade-up 0.8s ease-out 0.1s both;
-        }
-
-        .hero h1 .gradient-text {
-            background: linear-gradient(135deg, var(--glow-purple) 0%, var(--glow-pink) 50%, var(--glow-teal) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-description {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            line-height: 1.7;
-            margin-bottom: 2.5rem;
-            animation: fade-up 0.8s ease-out 0.2s both;
-        }
-
-        .hero-actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            animation: fade-up 0.8s ease-out 0.3s both;
-        }
-
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, var(--glow-purple), var(--glow-pink));
-            border: none;
-            border-radius: 14px;
-            color: white;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            font-weight: 500;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 25px rgba(168, 85, 247, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 40px rgba(168, 85, 247, 0.5);
-        }
-
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            color: var(--text-primary);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            font-weight: 500;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        @keyframes fade-up {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Hero Visual */
-        .hero-visual {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .hero-grid {
             position: relative;
-            animation: fade-up 1s ease-out 0.4s both;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
+            gap: 72px;
+            align-items: center;
         }
 
-        .app-mockup {
-            position: relative;
-            z-index: 2;
-        }
-
-        .app-mockup img {
-            max-width: 420px;
-            width: 100%;
-            border-radius: 20px;
-            box-shadow:
-                0 25px 80px rgba(0, 0, 0, 0.4),
-                0 0 60px rgba(168, 85, 247, 0.2);
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-        }
-
-        .mockup-glow {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%);
-            filter: blur(60px);
-            z-index: 1;
-        }
-
-        /* Providers Section */
-        .providers {
-            padding: 2rem;
-            text-align: center;
-            animation: fade-up 0.8s ease-out 0.5s both;
-        }
-
-        .providers p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 0.09em;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            color: var(--ink-2);
+            padding: 5px 12px 5px 10px;
+            border: 1px solid var(--hair);
+            border-radius: 100px;
+            background: var(--surface);
+            box-shadow: var(--shadow-1);
         }
 
-        .provider-logos {
+        .eyebrow b { color: var(--ink); font-weight: 600; }
+
+        h1 {
+            margin: 26px 0 0;
+            font-size: clamp(2.85rem, 6.1vw, 4.9rem);
+            font-weight: 600;
+            line-height: 0.98;
+            letter-spacing: -0.042em;
+        }
+
+        h1 .quiet { display: block; color: var(--ink-3); }
+        h1 .loud { display: block; color: var(--ink); }
+
+        .lede {
+            margin-top: 24px;
+            max-width: 30em;
+            font-size: 1.16rem;
+            line-height: 1.62;
+            color: var(--ink-2);
+        }
+
+        .lede strong { color: var(--ink); font-weight: 600; }
+
+        /* Install: the terminal line is the primary call to action. */
+        .term {
+            margin-top: 32px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 3rem;
-            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 430px;
+            padding: 11px 11px 11px 15px;
+            background: var(--surface);
+            border: 1px solid var(--hair);
+            border-radius: 12px;
+            box-shadow: var(--shadow-2);
         }
 
-        .provider-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-secondary);
-            font-family: 'Outfit', sans-serif;
-            font-weight: 500;
-            font-size: 1.1rem;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
+        .term .prompt { color: var(--ok); font-family: var(--mono); font-size: 14px; user-select: none; }
+        .term code { flex: 1; min-width: 0; font-size: 14px; text-align: left; color: var(--ink); overflow-x: auto; white-space: nowrap; }
 
-        .provider-item:hover {
-            opacity: 1;
-        }
-
-        .provider-icon {
-            width: 28px;
-            height: 28px;
+        .copy {
+            flex-shrink: 0;
+            font-family: var(--sans);
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink-2);
+            background: var(--paper-2);
+            border: 1px solid var(--hair-2);
             border-radius: 8px;
+            padding: 5px 11px;
+            cursor: pointer;
+            transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .copy:hover { color: var(--ink); border-color: var(--hair); }
+        .copy[data-copied="1"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+
+        .actions { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            padding: 12px 22px;
+            border-radius: 11px;
+            border: 1px solid transparent;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+        }
+
+        .btn svg { width: 17px; height: 17px; }
+
+        .btn-primary { background: var(--ink); color: var(--paper); box-shadow: var(--shadow-2); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-3); }
+
+        .btn-ghost { background: transparent; border-color: var(--hair); color: var(--ink); }
+        .btn-ghost:hover { background: var(--surface); border-color: var(--ink-3); }
+
+        .req {
+            margin-top: 18px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--ink-3);
+            letter-spacing: 0.01em;
+        }
+
+        /* Product shot */
+        .shot { position: relative; justify-self: center; width: 100%; max-width: 460px; }
+
+        .shot .bloom {
+            position: absolute;
+            inset: 6% -14% -10% -14%;
+            z-index: 0;
+            opacity: var(--bloom);
+            filter: blur(58px);
+            background:
+                radial-gradient(circle at 22% 26%, #34d399 0%, transparent 55%),
+                radial-gradient(circle at 78% 22%, #a78bfa 0%, transparent 55%),
+                radial-gradient(circle at 68% 82%, #f472b6 0%, transparent 55%),
+                radial-gradient(circle at 18% 76%, #60a5fa 0%, transparent 55%);
+            pointer-events: none;
+        }
+
+        .shot img {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            border-radius: 22px;
+            border: 1px solid var(--hair);
+            box-shadow: var(--shadow-3);
+            animation: hover-drift 9s ease-in-out infinite;
+        }
+
+        @keyframes hover-drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        /* Stat rail */
+        .stats {
+            position: relative;
+            margin-top: 88px;
+            border-top: 1px solid var(--hair);
+            border-bottom: 1px solid var(--hair);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .stat { padding: 26px 4px 26px 26px; border-left: 1px solid var(--hair); }
+        .stat:first-child { border-left: 0; padding-left: 0; }
+
+        /* Hues here are decorative. Green/amber/red stay reserved for quota status,
+           so they never appear as ornament. */
+        .stat b {
+            display: block;
+            color: color-mix(in srgb, var(--h, var(--ink)), var(--mark-tint) var(--mark-tint-amt));
+            font-family: var(--mono);
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .stat span {
+            display: block;
+            margin-top: 6px;
+            font-size: 13px;
+            color: var(--ink-3);
+            letter-spacing: 0.005em;
+        }
+
+        /* ───────────────────────────────────────────────
+           Section furniture
+           ─────────────────────────────────────────────── */
+        section { position: relative; }
+
+        .band { padding: 104px 0; }
+        .band-alt { background: var(--paper-2); border-block: 1px solid var(--hair); }
+
+        .head { max-width: 640px; margin-bottom: 52px; }
+        .head.center { margin-inline: auto; text-align: center; }
+
+        .kicker {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            color: var(--azure);
+        }
+
+        h2 {
+            margin-top: 14px;
+            font-size: clamp(1.9rem, 3.7vw, 2.7rem);
+            font-weight: 600;
+            line-height: 1.08;
+            letter-spacing: -0.032em;
+        }
+
+        .head p { margin-top: 16px; font-size: 1.06rem; color: var(--ink-2); }
+
+        /* ───────────────────────────────────────────────
+           Provider board
+           ─────────────────────────────────────────────── */
+        /* Hairlines live on the cells, not in the gaps — so a short last row
+           reads as the board simply ending, not as a grey hole. */
+        .pv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
+            gap: 1px;
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px var(--hair);
+        }
+
+        /* --mc is --m, lightened just enough for whichever surface it lands on. */
+        .pv { --mc: color-mix(in srgb, var(--m), var(--mark-tint) var(--mark-tint-amt)); }
+
+        .pv {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
+            gap: 12px;
+            padding: 15px 16px;
+            background: var(--surface);
+            box-shadow: 0 0 0 1px var(--hair);
+            transition: background-color 0.2s ease;
         }
 
-        .provider-icon.claude { background: linear-gradient(135deg, #d4a574, #c4956a); }
-        .provider-icon.codex { background: linear-gradient(135deg, #10a37f, #0d8a6a); }
-        .provider-icon.gemini { background: linear-gradient(135deg, #4285f4, #34a853); }
-        .provider-icon.copilot { background: linear-gradient(135deg, #6e40c9, #8957e5); }
-        .provider-icon.antigravity { background: linear-gradient(135deg, #09b6a2, #00d4aa); }
+        .pv:hover { background: var(--surface-2); }
 
-        /* Contributors Section */
-        .contributors {
-            padding: 6rem 2rem;
-            max-width: 1000px;
-            margin: 0 auto;
+        .pv-mark {
+            flex-shrink: 0;
+            width: 30px; height: 30px;
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            color: var(--mc);
+            background: color-mix(in srgb, var(--m) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--m) 30%, transparent);
+            transition: background-color 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
         }
 
-        .contributors-grid {
+        .pv:hover .pv-mark {
+            background: color-mix(in srgb, var(--m) 19%, transparent);
+            border-color: color-mix(in srgb, var(--m) 44%, transparent);
+        }
+
+        .pv-name { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
+        .pv-src { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+
+        .pv-note { margin-top: 22px; font-size: 14px; color: var(--ink-3); }
+        .pv-note a { color: var(--azure); border-bottom: 1px solid color-mix(in srgb, var(--azure) 35%, transparent); }
+
+        /* ───────────────────────────────────────────────
+           Threshold legend — the app's colour language
+           ─────────────────────────────────────────────── */
+        .legend-layout { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 64px; align-items: center; }
+
+        .legend {
+            border: 1px solid var(--hair);
+            border-radius: 16px;
+            background: var(--surface);
+            box-shadow: var(--shadow-2);
+            overflow: hidden;
+        }
+
+        .lg-row {
+            display: grid;
+            grid-template-columns: 82px 1fr 84px;
+            gap: 18px;
+            align-items: center;
+            padding: 18px 22px;
+            border-top: 1px solid var(--hair-2);
+        }
+
+        .lg-row:first-child { border-top: 0; }
+
+        .lg-range { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+        .meter { height: 7px; border-radius: 100px; background: var(--paper-2); overflow: hidden; }
+        .meter i { display: block; height: 100%; width: 0; border-radius: 100px; background: var(--c); transition: width 1.1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .in-view .meter i { width: var(--w); }
+
+        /* Depleted is genuinely empty — dash the track so it reads as intent, not a bug. */
+        .lg-row.empty .meter { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gone) 42%, transparent); }
+
+        .lg-label { font-size: 13.5px; font-weight: 600; color: var(--c); text-align: right; letter-spacing: -0.01em; }
+
+        /* ───────────────────────────────────────────────
+           Themes
+           ─────────────────────────────────────────────── */
+        .seg {
+            display: inline-flex;
+            padding: 3px;
+            gap: 2px;
+            background: var(--paper-2);
+            border: 1px solid var(--hair);
+            border-radius: 11px;
+            box-shadow: inset 0 1px 2px var(--hair-2);
+        }
+
+        .seg button {
+            font-family: var(--sans);
+            font-size: 13.5px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: var(--ink-2);
+            background: transparent;
+            border: 0;
+            border-radius: 8px;
+            padding: 7px 16px;
+            cursor: pointer;
+            transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .seg button:hover { color: var(--ink); }
+        .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); }
+
+        .theme-stage {
+            position: relative;
+            margin-top: 36px;
+            aspect-ratio: 1 / 1;
+            max-width: 620px;
+            margin-inline: auto;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid var(--hair);
+            box-shadow: var(--shadow-3);
+            background: var(--paper-2);
+        }
+
+        .theme-stage img {
+            position: absolute;
+            inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.45s ease;
+        }
+
+        .theme-stage img[data-active="1"] { opacity: 1; }
+
+        .theme-cap { margin-top: 22px; text-align: center; font-size: 14px; color: var(--ink-3); }
+        .theme-cap code { color: var(--ink-2); font-size: 12.5px; background: var(--surface); padding: 2px 7px; border-radius: 6px; border: 1px solid var(--hair-2); }
+
+        /* ───────────────────────────────────────────────
+           Features
+           ─────────────────────────────────────────────── */
+        .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; }
+
+        .feat {
+            padding: 28px;
+            background: var(--surface);
+            border: 1px solid var(--hair);
+            border-radius: 16px;
+            box-shadow: var(--shadow-1);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+
+        .feat:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--ink-3); }
+
+        .feat-ico {
+            width: 38px; height: 38px;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: color-mix(in srgb, var(--f), var(--mark-tint) var(--mark-tint-amt));
+            background: color-mix(in srgb, var(--f) 13%, transparent);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--f) 24%, transparent);
+            margin-bottom: 20px;
+            transition: background-color 0.25s ease;
+        }
+
+        .feat { --f: var(--azure); }
+        .feat:hover .feat-ico { background: color-mix(in srgb, var(--f) 20%, transparent); }
+
+        .feat-ico svg { width: 19px; height: 19px; }
+
+        .feat h3 { font-size: 1.03rem; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 8px; }
+        .feat p { font-size: 14.5px; line-height: 1.62; color: var(--ink-2); }
+        .feat p code { font-size: 13px; color: var(--ink); }
+
+        .keys { margin-top: 34px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--ink-3); }
+
+        kbd {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--ink);
+            background: var(--surface);
+            border: 1px solid var(--hair);
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            padding: 3px 8px;
+            box-shadow: var(--shadow-1);
+        }
+
+        /* ───────────────────────────────────────────────
+           Sponsor
+           ─────────────────────────────────────────────── */
+        .sponsor-card {
             display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1.5rem;
+            align-items: center;
+            gap: 36px;
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 30px 34px;
+            background: var(--surface);
+            border: 1px solid var(--hair);
+            border-radius: 16px;
+            box-shadow: var(--shadow-1);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
         }
+
+        .sponsor-card:hover { border-color: var(--ink-3); box-shadow: var(--shadow-2); transform: translateY(-2px); }
+
+        /* Swapped by CSS, not by <picture media>, so the in-page theme toggle
+           reaches it too — a media query only ever sees the system preference. */
+        .sponsor-logo { width: 190px; flex-shrink: 0; }
+        .sponsor-logo img { width: 100%; }
+        .sponsor-logo .on-dark { display: none; }
+        :root[data-theme="dark"] .sponsor-logo .on-light { display: none; }
+        :root[data-theme="dark"] .sponsor-logo .on-dark { display: block; }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) .sponsor-logo .on-light { display: none; }
+            :root:not([data-theme="light"]) .sponsor-logo .on-dark { display: block; }
+        }
+        .sponsor-card p { font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+        .sponsor-card strong { color: var(--ink); font-weight: 600; }
+
+        .independence {
+            max-width: 780px;
+            margin: 22px auto 0;
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: var(--ink-3);
+            text-align: center;
+        }
+
+        /* ───────────────────────────────────────────────
+           Contributors
+           ─────────────────────────────────────────────── */
+        .contributors-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 22px 26px; }
 
         .contributor-card {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.6rem;
-            text-decoration: none;
-            transition: transform 0.3s ease;
+            gap: 9px;
+            width: 84px;
+            transition: transform 0.22s ease;
         }
 
-        .contributor-card:hover {
-            transform: translateY(-4px);
-        }
+        .contributor-card:hover { transform: translateY(-3px); }
 
         .contributor-avatar {
-            width: 72px;
-            height: 72px;
+            width: 56px; height: 56px;
             border-radius: 50%;
-            border: 2px solid var(--glass-border);
-            background: var(--glass-bg);
-            transition: border-color 0.3s ease;
+            background: var(--paper-2);
+            box-shadow: 0 0 0 1px var(--hair), var(--shadow-1);
+            transition: box-shadow 0.22s ease;
         }
 
-        .contributor-card:hover .contributor-avatar {
-            border-color: var(--glow-purple);
-        }
+        .contributor-card:hover .contributor-avatar { box-shadow: 0 0 0 2px var(--azure), var(--shadow-2); }
 
         .contributor-name {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            font-family: 'Outfit', sans-serif;
-            font-weight: 500;
-        }
-
-        /* Features Section */
-        .features {
-            padding: 6rem 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-header {
+            font-size: 11.5px;
+            line-height: 1.35;
+            color: var(--ink-3);
             text-align: center;
-            margin-bottom: 4rem;
-        }
-
-        .section-header h2 {
-            font-family: 'Outfit', sans-serif;
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .section-header p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .feature-card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 2rem;
-            backdrop-filter: blur(20px);
-            transition: all 0.4s ease;
-            position: relative;
             overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
         }
 
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
+        .contributor-card:hover .contributor-name { color: var(--ink); }
 
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(168, 85, 247, 0.3);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
+        /* ───────────────────────────────────────────────
+           Closing CTA
+           ─────────────────────────────────────────────── */
+        .cta { text-align: center; padding: 116px 0; }
+        .cta h2 { max-width: 18em; margin-inline: auto; }
+        .cta .term { margin-inline: auto; }
+        .cta .actions { justify-content: center; }
+        .cta .req { text-align: center; }
 
-        .feature-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
+        /* ───────────────────────────────────────────────
+           Footer
+           ─────────────────────────────────────────────── */
+        footer { border-top: 1px solid var(--hair); background: var(--paper-2); padding: 52px 0 42px; }
+
+        .foot-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; flex-wrap: wrap; }
+
+        .foot-brand { display: flex; align-items: center; gap: 11px; font-weight: 600; letter-spacing: -0.015em; }
+        .foot-brand img { width: 26px; height: 26px; border-radius: 7px; box-shadow: 0 0 0 1px var(--hair-2); }
+
+        .foot-links { display: flex; gap: 26px; flex-wrap: wrap; font-size: 14px; }
+        .foot-links a { color: var(--ink-2); transition: color 0.15s ease; }
+        .foot-links a:hover { color: var(--ink); }
+
+        .appcast {
+            margin-top: 34px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .feature-icon.purple { background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2)); }
-        .feature-icon.teal { background: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 130, 246, 0.2)); }
-        .feature-icon.pink { background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.2)); }
-
-        .feature-card h3 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-
-        .feature-card p {
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        /* Download Section */
-        .download {
-            padding: 6rem 2rem;
-            text-align: center;
-        }
-
-        .download-card {
-            max-width: 700px;
-            margin: 0 auto;
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.1));
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            border-radius: 30px;
-            padding: 4rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .download-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
-            animation: rotate-slow 20s linear infinite;
-        }
-
-        @keyframes rotate-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .download-card > * {
-            position: relative;
-            z-index: 1;
-        }
-
-        .download-card h2 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .download-card p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-        }
-
-        .system-req {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 1.5rem;
-        }
-
-        /* Footer */
-        footer {
-            padding: 3rem 2rem;
-            text-align: center;
-            border-top: 1px solid var(--glass-border);
-        }
-
-        .footer-content {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 1.5rem;
+            gap: 12px;
             flex-wrap: wrap;
+            padding: 13px 16px;
+            border: 1px solid var(--hair);
+            border-radius: 11px;
+            background: var(--surface);
         }
 
-        .footer-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.3s ease;
+        .appcast span { font-size: 12.5px; color: var(--ink-3); }
+        .appcast code { min-width: 0; font-size: 12.5px; color: var(--ink-2); overflow-x: auto; white-space: nowrap; }
+        .appcast .copy { margin-left: auto; }
+
+        .foot-fine {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--hair);
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            flex-wrap: wrap;
+            font-size: 12.5px;
+            color: var(--ink-3);
         }
 
-        .footer-links a:hover {
-            color: var(--text-primary);
+        /* ───────────────────────────────────────────────
+           Reveal on scroll
+           ─────────────────────────────────────────────── */
+        /* Reveal is decoration, so it only ever hides content once JS has proven
+           it can bring it back. Without JS every section renders as-is. */
+        .rise { transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .js .rise { opacity: 0; transform: translateY(22px); }
+        .js .rise.in-view { opacity: 1; transform: none; }
+
+        .js .hero .rise { opacity: 1; transform: none; animation: rise-in 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0s) both; }
+        @keyframes rise-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+
+        /* ───────────────────────────────────────────────
+           Responsive
+           ─────────────────────────────────────────────── */
+        @media (max-width: 1020px) {
+            .hero-grid { grid-template-columns: 1fr; gap: 56px; }
+            .hero { padding-top: 66px; }
+            .lede { max-width: none; }
+            .legend-layout { grid-template-columns: 1fr; gap: 44px; }
+            .shot { max-width: 420px; }
         }
 
-        .appcast-info {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+        @media (max-width: 780px) {
+            body { font-size: 16px; }
+            .wrap { padding: 0 20px; }
+            .mb-menus a:not(.mb-app) { display: none; }
+            .mb-clock { display: none; }
+            .mb-get { display: inline-flex; }
+            .band { padding: 76px 0; }
+            .cta { padding: 84px 0; }
+            .stats { grid-template-columns: 1fr 1fr; margin-top: 64px; }
+            .stat { padding: 20px 4px 20px 20px; }
+            .stat:nth-child(3) { border-left: 0; padding-left: 0; }
+            .stat:nth-child(3), .stat:nth-child(4) { border-top: 1px solid var(--hair); }
+            .sponsor-card { flex-direction: column; text-align: center; gap: 22px; padding: 28px 22px; }
+            .lg-row { grid-template-columns: 74px 1fr; gap: 8px 14px; padding: 16px 18px; }
+            .lg-label { grid-column: 2; text-align: left; }
+            .term { max-width: none; }
+            .actions .btn { flex: 1 1 auto; justify-content: center; }
+            .foot-fine { flex-direction: column; gap: 8px; }
         }
 
-        .appcast-info code {
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-            font-size: 0.8rem;
-            color: var(--glow-teal);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.3rem 0.6rem;
-            border-radius: 6px;
+        @media (max-width: 460px) {
+            .mb-quota { display: none; }
+            .contributor-card { width: 70px; }
+            .contributor-avatar { width: 48px; height: 48px; }
         }
 
-        .copyright {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 968px) {
-            .hero {
-                flex-direction: column;
-                text-align: center;
-                padding-top: 10rem;
-            }
-
-            .hero-content {
-                max-width: 100%;
-            }
-
-            .hero-actions {
-                justify-content: center;
-            }
-
-            .nav-links {
-                display: none;
-            }
-
-            .app-mockup img {
-                max-width: 420px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            nav {
-                padding: 1rem;
-            }
-
-            .hero {
-                padding: 8rem 1rem 2rem;
-            }
-
-            .features {
-                padding: 4rem 1rem;
-            }
-
-            .download-card {
-                padding: 2.5rem 1.5rem;
-            }
-
-            .provider-logos {
-                gap: 1.5rem;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
+            .js .rise, .js .hero .rise { opacity: 1 !important; transform: none !important; animation: none !important; }
+            .meter i { width: var(--w); }
         }
     </style>
 </head>
 <body>
-    <div class="aurora-bg">
-        <div class="aurora-gradient"></div>
-        <div class="noise-overlay"></div>
+
+    <!-- ─── The page wears a menu bar, because the app lives in one ─── -->
+    <div class="menubar">
+        <div class="mb-inner">
+            <img src="app-icon.png" alt="" class="mb-logo" aria-hidden="true">
+            <nav class="mb-menus" aria-label="Main">
+                <a href="#top" class="mb-app">ClaudeBar</a>
+                <a href="#providers">Providers</a>
+                <a href="#themes">Themes</a>
+                <a href="#features">Features</a>
+                <a href="#contributors">Community</a>
+                <a href="https://github.com/tddworks/claudebar">GitHub</a>
+            </nav>
+            <div class="mb-extras">
+                <a href="#download" class="mb-quota" title="An illustration of ClaudeBar's own menu bar item">
+                    <span class="mb-dot" aria-hidden="true"></span>
+                    <span class="pct" aria-hidden="true">85%</span>
+                    <span class="sep" aria-hidden="true">|</span>
+                    <span class="cd" aria-hidden="true">4<span class="colon">:</span><span id="cd-secs">59</span></span>
+                    <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Example quota reading</span>
+                </a>
+                <button class="mb-btn" id="theme-toggle" data-mode="auto" type="button">
+                    <svg class="ico-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4a8.6 8.6 0 000 17.2z" fill="currentColor" stroke="none"/></svg>
+                    <svg class="ico-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+                    <svg class="ico-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20.5 14.6A8.6 8.6 0 019.4 3.5 8.9 8.9 0 1020.5 14.6z"/></svg>
+                </button>
+                <span class="mb-clock" id="clock" aria-hidden="true"></span>
+                <a href="#download" class="mb-get">Get</a>
+            </div>
+        </div>
     </div>
 
-    <nav>
-        <a href="#" class="logo">
-            <div class="logo-icon">A</div>
-            ClaudeBar
-        </a>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="https://github.com/tddworks/claudebar">GitHub</a>
-            <a href="https://github.com/tddworks/claudebar/releases" class="nav-cta">Download</a>
-        </div>
-    </nav>
+    <!-- ─── Hero ─── -->
+    <header class="hero" id="top">
+        <div class="wrap">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow rise" style="--d:0.05s"><b>19 providers</b> · one menu bar item</p>
+                    <h1 class="rise" style="--d:0.12s">
+                        <span class="quiet">Every AI quota.</span>
+                        <span class="loud">One menu bar.</span>
+                    </h1>
+                    <p class="lede rise" style="--d:0.2s">
+                        ClaudeBar reads the usage limits your AI coding tools already know about — Claude,
+                        Codex, Gemini, Copilot, Kimi, Grok and fourteen more — and keeps them a glance away.
+                        <strong>Native SwiftUI. No sign-up. MIT licensed.</strong>
+                    </p>
 
-    <section class="hero">
-        <div class="hero-content">
-            <div class="hero-badge">
-                <span></span>
-                Free & Open Source
+                    <div class="rise" style="--d:0.28s">
+                        <div class="term">
+                            <span class="prompt" aria-hidden="true">$</span>
+                            <code>brew install --cask claudebar</code>
+                            <button class="copy" data-copy="brew install --cask claudebar">Copy</button>
+                        </div>
+                        <div class="actions">
+                            <a href="https://github.com/tddworks/claudebar/releases/latest" class="btn btn-primary">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11.5m0 0l-4.2-4.2M12 15l4.2-4.2"/><path d="M4.2 17.6v1.4a1.5 1.5 0 001.5 1.5h12.6a1.5 1.5 0 001.5-1.5v-1.4"/></svg>
+                                Download the .dmg
+                            </a>
+                            <a href="https://github.com/tddworks/claudebar" class="btn btn-ghost">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg>
+                                Read the source
+                            </a>
+                        </div>
+                        <p class="req">macOS 15 or later · free forever · auto-updates via Sparkle</p>
+                    </div>
+                </div>
+
+                <div class="shot rise" style="--d:0.36s">
+                    <div class="bloom" aria-hidden="true"></div>
+                    <img src="screenshots/screenshot-latest.png" width="800" height="800"
+                         alt="The ClaudeBar popover showing Claude session and weekly quotas at 85% and 62% remaining, plus cost, token and working-time cards.">
+                </div>
             </div>
-            <h1>
-                Monitor your<br>
-                <span class="gradient-text">AI coding quotas</span><br>
-                from the menu bar
-            </h1>
-            <p class="hero-description">
-                A sleek macOS menu bar app that tracks your usage quotas for Claude, Codex, Gemini, GitHub Copilot, and Antigravity.
-                Get real-time updates and notifications before you hit limits.
+
+            <div class="stats rise" style="--d:0.48s">
+                <div class="stat" style="--h:#1d7fd1"><b>19</b><span>providers tracked</span></div>
+                <div class="stat" style="--h:#7c4ddb"><b>5</b><span>themes, plus your own</span></div>
+                <div class="stat" style="--h:#0e8f9e"><b>0</b><span>accounts to create</span></div>
+                <div class="stat" style="--h:#c2603f"><b>MIT</b><span>open source, forever</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── Providers ─── -->
+    <section class="band" id="providers">
+        <div class="wrap">
+            <div class="head rise">
+                <p class="kicker">The board</p>
+                <h2>Nineteen assistants, one place to look.</h2>
+                <p>
+                    ClaudeBar reads each provider the way that provider expects — its CLI, its API, its local
+                    server, its own database. Nothing to configure for most of them; enable only the ones you use.
+                </p>
+            </div>
+
+            <div class="pv-grid rise">
+                <div class="pv" style="--m:#d97757"><span class="pv-mark">Cl</span><div><span class="pv-name">Claude</span><span class="pv-src">claude</span></div></div>
+                <div class="pv" style="--m:#10a37f"><span class="pv-mark">Cx</span><div><span class="pv-name">Codex</span><span class="pv-src">codex</span></div></div>
+                <div class="pv" style="--m:#4285f4"><span class="pv-mark">Ge</span><div><span class="pv-name">Gemini</span><span class="pv-src">gemini</span></div></div>
+                <div class="pv" style="--m:#8957e5"><span class="pv-mark">Co</span><div><span class="pv-name">GitHub Copilot</span><span class="pv-src">GitHub API</span></div></div>
+                <div class="pv" style="--m:#00a99d"><span class="pv-mark">Ag</span><div><span class="pv-name">Antigravity</span><span class="pv-src">local server</span></div></div>
+                <div class="pv" style="--m:#3f6ff5"><span class="pv-mark">Za</span><div><span class="pv-name">Z.ai</span><span class="pv-src">GLM coding plan</span></div></div>
+                <div class="pv" style="--m:#ff9900"><span class="pv-mark">Br</span><div><span class="pv-name">AWS Bedrock</span><span class="pv-src">AWS profile</span></div></div>
+                <div class="pv" style="--m:#e8590c"><span class="pv-mark">Am</span><div><span class="pv-name">Amp</span><span class="pv-src">amp</span></div></div>
+                <div class="pv" style="--m:#5b5bf5"><span class="pv-mark">Ki</span><div><span class="pv-name">Kimi</span><span class="pv-src">kimi · or API</span></div></div>
+                <div class="pv" style="--m:#9333ea"><span class="pv-mark">Kr</span><div><span class="pv-name">Kiro</span><span class="pv-src">kiro-cli</span></div></div>
+                <div class="pv" style="--m:#0f8ba8"><span class="pv-mark">Cu</span><div><span class="pv-name">Cursor</span><span class="pv-src">cursor</span></div></div>
+                <div class="pv" style="--m:#e5484d"><span class="pv-mark">Mm</span><div><span class="pv-name">MiniMax</span><span class="pv-src">API key</span></div></div>
+                <div class="pv" style="--m:#4d6bfe"><span class="pv-mark">Ds</span><div><span class="pv-name">DeepSeek</span><span class="pv-src">API key</span></div></div>
+                <div class="pv" style="--m:#64748b"><span class="pv-mark">Vc</span><div><span class="pv-name">Vercel Gateway</span><span class="pv-src">API token</span></div></div>
+                <div class="pv" style="--m:#ff6a00"><span class="pv-mark">Al</span><div><span class="pv-name">Alibaba</span><span class="pv-src">coding plan</span></div></div>
+                <div class="pv" style="--m:#fa520f"><span class="pv-mark">Ms</span><div><span class="pv-name">Mistral</span><span class="pv-src">local logs</span></div></div>
+                <div class="pv" style="--m:#12a594"><span class="pv-mark">Oc</span><div><span class="pv-name">OpenCode Go</span><span class="pv-src">opencode</span></div></div>
+                <div class="pv" style="--m:#d9a01e"><span class="pv-mark">Op</span><div><span class="pv-name">Oh My Pi</span><span class="pv-src">omp</span></div></div>
+                <div class="pv" style="--m:#52525b"><span class="pv-mark">Gk</span><div><span class="pv-name">Grok</span><span class="pv-src">grok</span></div></div>
+            </div>
+
+            <p class="pv-note rise">
+                A few need one-time setup — Copilot credentials, an AWS profile, a Kimi mode.
+                It's all in the <a href="https://github.com/tddworks/claudebar#requirements">requirements guide</a>.
             </p>
-            <div class="hero-actions">
-                <a href="https://github.com/tddworks/claudebar/releases" class="btn-primary">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg>
-                    Download from GitHub
-                </a>
-                <a href="https://github.com/tddworks/claudebar" class="btn-secondary">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>
-                    View Source
-                </a>
-            </div>
         </div>
-        <div class="hero-visual">
-            <div class="mockup-glow"></div>
-            <div class="app-mockup">
-                <img src="screenshots/screenshot-latest.png" alt="ClaudeBar App Screenshot">
+    </section>
+
+    <!-- ─── Threshold legend ─── -->
+    <section class="band band-alt">
+        <div class="wrap">
+            <div class="legend-layout">
+                <div class="head rise" style="margin-bottom:0">
+                    <p class="kicker">At a glance</p>
+                    <h2>Colour first, numbers second.</h2>
+                    <p>
+                        Every quota carries a status, and the status carries a colour. You learn to read the
+                        menu bar without reading it — and a macOS notification arrives the moment something
+                        crosses into warning or critical.
+                    </p>
+                </div>
+                <div class="legend rise">
+                    <div class="lg-row" style="--c:var(--ok); --w:78%">
+                        <span class="lg-range">&gt; 50%</span>
+                        <span class="meter"><i></i></span>
+                        <span class="lg-label">Healthy</span>
+                    </div>
+                    <div class="lg-row" style="--c:var(--warn); --w:34%">
+                        <span class="lg-range">20–50%</span>
+                        <span class="meter"><i></i></span>
+                        <span class="lg-label">Warning</span>
+                    </div>
+                    <div class="lg-row" style="--c:var(--crit); --w:12%">
+                        <span class="lg-range">&lt; 20%</span>
+                        <span class="meter"><i></i></span>
+                        <span class="lg-label">Critical</span>
+                    </div>
+                    <div class="lg-row empty" style="--c:var(--gone); --w:0%">
+                        <span class="lg-range">0%</span>
+                        <span class="meter"><i></i></span>
+                        <span class="lg-label">Depleted</span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <section class="providers">
-        <p>Track quotas for</p>
-        <div class="provider-logos">
-            <div class="provider-item">
-                <div class="provider-icon claude">A</div>
-                Claude
+    <!-- ─── Themes ─── -->
+    <section class="band" id="themes">
+        <div class="wrap">
+            <div class="head center rise">
+                <p class="kicker">Themes</p>
+                <h2>It should look like it belongs on your Mac.</h2>
+                <p>Light and Dark ship built in. System follows your macOS appearance. CLI matches your terminal. Christmas turns itself on for the holidays.</p>
             </div>
-            <div class="provider-item">
-                <div class="provider-icon codex">&lt;/&gt;</div>
-                Codex
+
+            <div style="text-align:center" class="rise">
+                <div class="seg" role="group" aria-label="Preview a theme">
+                    <button type="button" aria-pressed="true" data-shot="light">Light</button>
+                    <button type="button" aria-pressed="false" data-shot="dark">Dark</button>
+                    <button type="button" aria-pressed="false" data-shot="cli">CLI</button>
+                    <button type="button" aria-pressed="false" data-shot="xmas">Christmas</button>
+                </div>
             </div>
-            <div class="provider-item">
-                <div class="provider-icon gemini">*</div>
-                Gemini
+
+            <div class="theme-stage rise">
+                <img data-shot="light" data-active="1" src="screenshots/Screenshot-light.png" width="1024" height="1024" alt="ClaudeBar in the Light theme.">
+                <img data-shot="dark" src="screenshots/Screenshot-dark.png" width="1024" height="1024" loading="lazy" alt="ClaudeBar in the Dark theme.">
+                <img data-shot="cli" src="screenshots/Screenshot-cli-dark.png" width="1024" height="1024" loading="lazy" alt="ClaudeBar in the CLI theme.">
+                <img data-shot="xmas" src="screenshots/Christmas-theme.png" width="1024" height="1024" loading="lazy" alt="ClaudeBar in the Christmas theme.">
             </div>
-            <div class="provider-item">
-                <div class="provider-icon copilot">&#x2699;</div>
-                GitHub Copilot
+
+            <p class="theme-cap rise">
+                Already tuned your terminal? Import any <code>.itermcolors</code> file and ClaudeBar wears it too.
+            </p>
+        </div>
+    </section>
+
+    <!-- ─── Features ─── -->
+    <section class="band band-alt" id="features">
+        <div class="wrap">
+            <div class="head rise">
+                <p class="kicker">What it does</p>
+                <h2>Small app. Very few surprises.</h2>
+                <p>Everything here exists to answer one question faster: can I keep going?</p>
             </div>
-            <div class="provider-item">
-                <div class="provider-icon antigravity">&#x1F680;</div>
-                Antigravity
+
+            <div class="feat-grid rise">
+                <div class="feat" style="--f:#1d7fd1">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 16.5a9 9 0 1117 0"/><path d="M12 16.5l4.2-5.4"/><circle cx="12" cy="16.5" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+                    <h3>Live quota tracking</h3>
+                    <p>Session, weekly and per-model windows, refreshed on an interval you choose — plus cost, tokens and working time where the provider reports them.</p>
+                </div>
+                <div class="feat" style="--f:#7c4ddb">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.3 2"/></svg></div>
+                    <h3>Reset countdowns</h3>
+                    <p>Timezone-aware, down to the second, with a colon that ticks on its own clock. You always know how long until the window turns over.</p>
+                </div>
+                <div class="feat" style="--f:#d1483c">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 10.4a5.6 5.6 0 0111.2 0c0 4 1.6 5.6 1.6 5.6H4.8s1.6-1.6 1.6-5.6z"/><path d="M10.2 19a2 2 0 003.6 0"/></svg></div>
+                    <h3>Notifications that matter</h3>
+                    <p>A system notification when a provider crosses into warning or critical — and when a window resets. Nothing else pings you.</p>
+                </div>
+                <div class="feat" style="--f:#0f9160">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.1"/><circle cx="10" cy="16" r="2.1"/></svg></div>
+                    <h3>Only what you use</h3>
+                    <p>Toggle any of the nineteen providers off in Settings. The tab strip and the menu bar shrink to match — no dead entries for tools you don't have.</p>
+                </div>
+                <div class="feat" style="--f:#d98a15">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3.6a8.4 8.4 0 000 16.8c1.4 0 2-.9 2-1.9 0-1.6-1.4-1.7-1.4-3 0-1 .8-1.7 2-1.7h2.2a3.6 3.6 0 003.6-3.6c0-3.7-3.6-6.6-8.4-6.6z"/><circle cx="8.4" cy="10.2" r="1.05" fill="currentColor" stroke="none"/><circle cx="12" cy="7.8" r="1.05" fill="currentColor" stroke="none"/><circle cx="15.6" cy="9.6" r="1.05" fill="currentColor" stroke="none"/></svg></div>
+                    <h3>Five themes, or yours</h3>
+                    <p>Light, Dark, System, CLI and Christmas ship built in. Import an <code>.itermcolors</code> file and ClaudeBar generates a theme from it.</p>
+                </div>
+                <div class="feat" style="--f:#0e8f9e">
+                    <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 10-2.6 5.9"/><path d="M20 6.6V12h-5.4"/></svg></div>
+                    <h3>Native and self-updating</h3>
+                    <p>SwiftUI throughout, no web view in sight. Sparkle picks up new releases in the background, so the app you have is the current one.</p>
+                </div>
+            </div>
+
+            <div class="keys rise">
+                <span>Everywhere shortcuts:</span>
+                <kbd>⌘D</kbd> <span>Dashboard</span>
+                <kbd>⌘R</kbd> <span>Refresh</span>
             </div>
         </div>
     </section>
 
-    <section class="features" id="features">
-        <div class="section-header">
-            <h2>Everything you need to stay productive</h2>
-            <p>Keep coding without interruptions. Know your limits before you hit them.</p>
-        </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon purple">&#x26A1;</div>
-                <h3>Real-time Monitoring</h3>
-                <p>Live quota updates directly in your menu bar. See session, daily, and weekly usage at a glance without leaving your workflow.</p>
+    <!-- ─── Sponsor ─── -->
+    <section class="band" id="sponsors">
+        <div class="wrap">
+            <div class="head center rise">
+                <p class="kicker">Sponsor</p>
+                <h2>Kept free by its sponsors.</h2>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon teal">&#x1F514;</div>
-                <h3>Smart Notifications</h3>
-                <p>Get notified when quotas are running low or have reset. Never be caught off guard by hitting your limits mid-task.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon pink">&#x1F5D3;</div>
-                <h3>Reset Timers</h3>
-                <p>Know exactly when your quotas refresh with timezone-aware reset countdowns. Plan your heavy coding sessions accordingly.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon teal">&#x1F4CA;</div>
-                <h3>Multi-Provider Dashboard</h3>
-                <p>Switch between Claude, Codex, Gemini, Copilot, and Antigravity tabs. One app to monitor all your AI coding assistants.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon purple">&#x2728;</div>
-                <h3>Native macOS Experience</h3>
-                <p>Built with SwiftUI for a truly native feel. Lightweight, fast, and designed to match macOS aesthetics perfectly.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon pink">&#x1F504;</div>
-                <h3>Auto Updates</h3>
-                <p>Powered by Sparkle framework. Get the latest features and improvements automatically without manual downloads.</p>
-            </div>
+
+            <a href="https://www.testmuai.com/?utm_source=ClaudeBar&amp;utm_medium=opensourcecollab" target="_blank" rel="noopener" class="sponsor-card rise">
+                <span class="sponsor-logo">
+                    <img src="sponsors/testmuai/testmuai-light.svg" alt="TestMu AI" class="on-light">
+                    <img src="sponsors/testmuai/testmuai-dark.svg" alt="" aria-hidden="true" class="on-dark">
+                </span>
+                <p><strong>TestMu AI</strong> (formerly LambdaTest) is the world's first full-stack agentic AI quality engineering platform, trusted by 18,000+ enterprises.</p>
+            </a>
+
+            <p class="independence rise">
+                Editorial independence: sponsorship does not influence which providers ClaudeBar supports,
+                how they are ordered in the app, or how their quota data is reported.
+            </p>
         </div>
     </section>
 
-    <section class="contributors" id="contributors">
-        <div class="section-header">
-            <h2>Built by the community</h2>
-            <p>Thanks to everyone who has contributed to ClaudeBar.</p>
-        </div>
-        <div class="contributors-grid">
-            <a href="https://github.com/hanrw" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/hanrw.png?size=144" width="72" height="72" alt="hanrw" class="contributor-avatar"/>
-                <span class="contributor-name">hanrw</span>
-            </a>
-            <a href="https://github.com/ramarivera" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/ramarivera.png?size=144" width="72" height="72" alt="ramarivera" class="contributor-avatar"/>
-                <span class="contributor-name">ramarivera</span>
-            </a>
-            <a href="https://github.com/zenibako" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/zenibako.png?size=144" width="72" height="72" alt="zenibako" class="contributor-avatar"/>
-                <span class="contributor-name">zenibako</span>
-            </a>
-            <a href="https://github.com/AlexanderWillner" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/AlexanderWillner.png?size=144" width="72" height="72" alt="AlexanderWillner" class="contributor-avatar"/>
-                <span class="contributor-name">AlexanderWillner</span>
+    <!-- ─── Contributors ─── -->
+    <section class="band band-alt" id="contributors">
+        <div class="wrap">
+            <div class="head center rise">
+                <p class="kicker">Community</p>
+                <h2>Built by everyone who filed the issue and then fixed it.</h2>
+            </div>
+
+            <div class="contributors-grid rise">
+            <!-- CONTRIBUTORS:START — generated by scripts/sync-contributors.py, do not edit by hand -->
+            <a href="https://tddworks.com/" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/1201118?v=4&amp;s=144" width="72" height="72" alt="itshan" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">itshan</span>
             </a>
             <a href="https://github.com/avishj" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/avishj.png?size=144" width="72" height="72" alt="avishj" class="contributor-avatar"/>
-                <span class="contributor-name">avishj</span>
+                <img src="https://avatars.githubusercontent.com/u/58023328?v=4&amp;s=144" width="72" height="72" alt="Avish Jha" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Avish Jha</span>
+            </a>
+            <a href="https://github.com/ramarivera" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/7547875?v=4&amp;s=144" width="72" height="72" alt="Ramiro" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Ramiro</span>
+            </a>
+            <a href="https://github.com/LunarECL" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/38317983?v=4&amp;s=144" width="72" height="72" alt="LunarECL" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">LunarECL</span>
+            </a>
+            <a href="https://github.com/zenibako" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/18584424?v=4&amp;s=144" width="72" height="72" alt="Chandler Anderson" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Chandler Anderson</span>
+            </a>
+            <a href="https://frmr.me" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/620189?v=4&amp;s=144" width="72" height="72" alt="Matt Farmer" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Matt Farmer</span>
+            </a>
+            <a href="https://willner.ws" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/307605?v=4&amp;s=144" width="72" height="72" alt="Alex" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Alex</span>
+            </a>
+            <a href="https://github.com/sailesh" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/493129?v=4&amp;s=144" width="72" height="72" alt="sailesh" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">sailesh</span>
+            </a>
+            <a href="https://github.com/billyjack2" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/28798344?v=4&amp;s=144" width="72" height="72" alt="Billy Smith" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Billy Smith</span>
+            </a>
+            <a href="https://github.com/nero-sensei" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/77715088?v=4&amp;s=144" width="72" height="72" alt="nero" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">nero</span>
             </a>
             <a href="https://github.com/BryanQQYue" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/BryanQQYue.png?size=144" width="72" height="72" alt="BryanQQYue" class="contributor-avatar"/>
-                <span class="contributor-name">BryanQQYue</span>
+                <img src="https://avatars.githubusercontent.com/u/169884865?v=4&amp;s=144" width="72" height="72" alt="BryanYue" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">BryanYue</span>
             </a>
-            <a href="https://github.com/frankhommers" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/frankhommers.png?size=144" width="72" height="72" alt="frankhommers" class="contributor-avatar"/>
-                <span class="contributor-name">frankhommers</span>
+            <a href="https://blog.d0zingcat.dev/" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/8235790?v=4&amp;s=144" width="72" height="72" alt="Tony Tang" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Tony Tang</span>
+            </a>
+            <a href="https://initialize.nl/" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/7355878?v=4&amp;s=144" width="72" height="72" alt="Frank Hommers" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Frank Hommers</span>
+            </a>
+            <a href="https://www.marcusquinn.com" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/6428977?v=4&amp;s=144" width="72" height="72" alt="Marcus Quinn" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Marcus Quinn</span>
             </a>
             <a href="https://github.com/hagiwaratakayuki" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/hagiwaratakayuki.png?size=144" width="72" height="72" alt="hagiwaratakayuki" class="contributor-avatar"/>
-                <span class="contributor-name">hagiwaratakayuki</span>
+                <img src="https://avatars.githubusercontent.com/u/141513?v=4&amp;s=144" width="72" height="72" alt="hagiwara takayuki" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">hagiwara takayuki</span>
+            </a>
+            <a href="https://github.com/jeffscottmtl" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/33327731?v=4&amp;s=144" width="72" height="72" alt="jeffscottmtl" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">jeffscottmtl</span>
             </a>
             <a href="https://github.com/tomstetson" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/tomstetson.png?size=144" width="72" height="72" alt="tomstetson" class="contributor-avatar"/>
-                <span class="contributor-name">tomstetson</span>
+                <img src="https://avatars.githubusercontent.com/u/11658911?v=4&amp;s=144" width="72" height="72" alt="Tom" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Tom</span>
+            </a>
+            <a href="https://github.com/jeffWelling" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/105077?v=4&amp;s=144" width="72" height="72" alt="Jeff Welling" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Jeff Welling</span>
+            </a>
+            <a href="https://github.com/Zada5" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/91982194?v=4&amp;s=144" width="72" height="72" alt="Zada5" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Zada5</span>
+            </a>
+            <a href="https://github.com/fredericoricco-debug" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/75469834?v=4&amp;s=144" width="72" height="72" alt="fredericoricco-debug" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">fredericoricco-debug</span>
+            </a>
+            <a href="https://lystic.dev" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/15372623?v=4&amp;s=144" width="72" height="72" alt="Kegan Hollern" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Kegan Hollern</span>
+            </a>
+            <a href="https://github.com/jsg333" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/954990?v=4&amp;s=144" width="72" height="72" alt="Jeff Green" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Jeff Green</span>
+            </a>
+            <a href="https://github.com/benjaminbelaga" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/33546317?v=4&amp;s=144" width="72" height="72" alt="Benjamin Belaga" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Benjamin Belaga</span>
+            </a>
+            <a href="https://github.com/romanvalent" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/14106124?v=4&amp;s=144" width="72" height="72" alt="romanvalent" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">romanvalent</span>
+            </a>
+            <a href="http://aakshintala.com" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/748697?v=4&amp;s=144" width="72" height="72" alt="Amogh Akshintala" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Amogh Akshintala</span>
+            </a>
+            <a href="https://www.portfolio.isnakolah.me" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/47239024?v=4&amp;s=144" width="72" height="72" alt="Daniel Nakolah" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Daniel Nakolah</span>
+            </a>
+            <a href="https://github.com/Mitsi-ag" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/141203898?v=4&amp;s=144" width="72" height="72" alt="Mitsi-ag" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Mitsi-ag</span>
+            </a>
+            <a href="https://www.josecancinolinares.com/en/portfolio" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/65030646?v=4&amp;s=144" width="72" height="72" alt="José Cancino Linares" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">José Cancino Linares</span>
             </a>
             <a href="https://github.com/logancox" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/logancox.png?size=144" width="72" height="72" alt="logancox" class="contributor-avatar"/>
+                <img src="https://avatars.githubusercontent.com/u/28828028?v=4&amp;s=144" width="72" height="72" alt="logancox" loading="lazy" class="contributor-avatar"/>
                 <span class="contributor-name">logancox</span>
             </a>
-            <a href="https://github.com/hansonkim" target="_blank" rel="noopener" class="contributor-card">
-                <img src="https://github.com/hansonkim.png?size=144" width="72" height="72" alt="hansonkim" class="contributor-avatar"/>
-                <span class="contributor-name">hansonkim</span>
+            <a href="http://ywmei.ca/index.php" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/5897309?v=4&amp;s=144" width="72" height="72" alt="y5mei" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">y5mei</span>
             </a>
-        </div>
-    </section>
-
-    <section class="download" id="download">
-        <div class="download-card">
-            <h2>Ready to stay in control?</h2>
-            <p>Download ClaudeBar and never hit unexpected quota limits again.</p>
-            <a href="https://github.com/tddworks/claudebar/releases" class="btn-primary">
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                Download Latest Release
+            <a href="https://hansonkim.github.io" target="_blank" rel="noopener" class="contributor-card">
+                <img src="https://avatars.githubusercontent.com/u/1308073?v=4&amp;s=144" width="72" height="72" alt="Hanson Kim" loading="lazy" class="contributor-avatar"/>
+                <span class="contributor-name">Hanson Kim</span>
             </a>
-            <div class="system-req">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                Requires macOS 15.0+
+            <!-- CONTRIBUTORS:END -->
             </div>
         </div>
     </section>
 
+    <!-- ─── Closing CTA ─── -->
+    <section class="cta" id="download">
+        <div class="wrap">
+            <p class="kicker rise">Get ClaudeBar</p>
+            <h2 class="rise">One line, and it's in your menu bar.</h2>
+            <div class="rise">
+                <div class="term">
+                    <span class="prompt" aria-hidden="true">$</span>
+                    <code>brew install --cask claudebar</code>
+                    <button class="copy" data-copy="brew install --cask claudebar">Copy</button>
+                </div>
+                <div class="actions">
+                    <a href="https://github.com/tddworks/claudebar/releases/latest" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11.5m0 0l-4.2-4.2M12 15l4.2-4.2"/><path d="M4.2 17.6v1.4a1.5 1.5 0 001.5 1.5h12.6a1.5 1.5 0 001.5-1.5v-1.4"/></svg>
+                        Download the .dmg
+                    </a>
+                    <a href="https://github.com/tddworks/claudebar/issues" class="btn btn-ghost">Report an issue</a>
+                </div>
+                <p class="req">macOS 15 or later · free forever · auto-updates via Sparkle</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Footer ─── -->
     <footer>
-        <div class="footer-content">
-            <div class="footer-links">
-                <a href="https://github.com/tddworks/claudebar">GitHub</a>
-                <a href="https://github.com/tddworks/claudebar/releases">Releases</a>
-                <a href="https://github.com/tddworks/claudebar/issues">Issues</a>
+        <div class="wrap">
+            <div class="foot-top">
+                <div class="foot-brand">
+                    <img src="app-icon.png" alt="" aria-hidden="true">
+                    ClaudeBar
+                </div>
+                <nav class="foot-links" aria-label="Footer">
+                    <a href="https://github.com/tddworks/claudebar">Source</a>
+                    <a href="https://github.com/tddworks/claudebar/releases">Releases</a>
+                    <a href="https://github.com/tddworks/claudebar/issues">Issues</a>
+                    <a href="https://github.com/tddworks/claudebar/blob/main/docs/architecture/ARCHITECTURE.md">Architecture</a>
+                    <a href="https://github.com/sponsors/hanrw">Sponsor</a>
+                </nav>
             </div>
-            <div class="appcast-info">
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Sparkle Appcast:</span>
+
+            <div class="appcast">
+                <span>Sparkle appcast</span>
                 <code>https://tddworks.github.io/ClaudeBar/appcast.xml</code>
+                <button class="copy" data-copy="https://tddworks.github.io/ClaudeBar/appcast.xml">Copy</button>
             </div>
-            <p class="copyright">
-                Made with care for developers who code with AI
-            </p>
+
+            <div class="foot-fine">
+                <span>MIT licensed · made for developers who code with AI</span>
+                <span>Not affiliated with Anthropic, OpenAI, Google, GitHub or any provider listed above.</span>
+            </div>
         </div>
     </footer>
+
+    <script>
+    (() => {
+        'use strict';
+
+        /* ── Appearance: Auto → Light → Dark, mirroring the app's own System theme.
+              Auto stores nothing and lets prefers-color-scheme decide. ── */
+        const root = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const MODES = ['auto', 'light', 'dark'];
+        const LABELS = { auto: 'Auto, following your system', light: 'Light', dark: 'Dark' };
+
+        const apply = (mode) => {
+            if (mode === 'auto') root.removeAttribute('data-theme');
+            else root.setAttribute('data-theme', mode);
+            toggle.dataset.mode = mode;
+            toggle.title = 'Appearance: ' + LABELS[mode];
+            toggle.setAttribute('aria-label', 'Appearance: ' + LABELS[mode] + '. Click to change.');
+        };
+
+        let mode = root.getAttribute('data-theme') || 'auto';
+        apply(mode);
+
+        toggle.addEventListener('click', () => {
+            mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+            apply(mode);
+            try {
+                if (mode === 'auto') localStorage.removeItem('claudebar-appearance');
+                else localStorage.setItem('claudebar-appearance', mode);
+            } catch (e) { /* private browsing — the choice just won't persist */ }
+        });
+
+        /* ── Menu bar clock, the way macOS writes it ── */
+        const clock = document.getElementById('clock');
+        const tickClock = () => {
+            clock.textContent = new Date().toLocaleString(undefined, {
+                weekday: 'short', day: 'numeric', month: 'short',
+                hour: 'numeric', minute: '2-digit'
+            });
+        };
+        tickClock();
+        setInterval(tickClock, 20000);
+
+        /* ── The illustrative countdown in the menu bar extra ── */
+        const secs = document.getElementById('cd-secs');
+        let left = 59;
+        setInterval(() => {
+            left = left === 0 ? 59 : left - 1;
+            secs.textContent = String(left).padStart(2, '0');
+        }, 1000);
+
+        /* ── Copy buttons ── */
+        document.querySelectorAll('.copy').forEach((btn) => {
+            const label = btn.textContent;
+            btn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(btn.dataset.copy);
+                } catch (e) {
+                    return; /* clipboard denied — leave the text selectable instead */
+                }
+                btn.textContent = 'Copied';
+                btn.dataset.copied = '1';
+                setTimeout(() => { btn.textContent = label; delete btn.dataset.copied; }, 1600);
+            });
+        });
+
+        /* ── Theme preview segmented control ── */
+        const seg = document.querySelector('.seg');
+        const shots = document.querySelectorAll('.theme-stage img');
+        seg.addEventListener('click', (event) => {
+            const btn = event.target.closest('button[data-shot]');
+            if (!btn) return;
+            seg.querySelectorAll('button').forEach((b) => {
+                b.setAttribute('aria-pressed', String(b === btn));
+            });
+            shots.forEach((img) => {
+                if (img.dataset.shot === btn.dataset.shot) img.dataset.active = '1';
+                else delete img.dataset.active;
+            });
+        });
+
+        /* ── Reveal on scroll, meters included. Hero elements animate on load
+              instead, so they're excluded here. ── */
+        const risers = [...document.querySelectorAll('.rise')]
+            .filter((el) => !el.closest('.hero'));
+
+        if (!('IntersectionObserver' in window)) {
+            risers.forEach((el) => el.classList.add('in-view'));
+            return;
+        }
+
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('in-view');
+                io.unobserve(entry.target);
+            });
+        }, { threshold: 0.08 });
+
+        risers.forEach((el) => io.observe(el));
+    })();
+    </script>
 </body>
 </html>

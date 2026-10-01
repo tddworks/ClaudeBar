@@ -17,6 +17,7 @@ struct ActionBarSpec {
     // MARK: - #24: Dashboard URLs
 
     @Suite("Scenario: Dashboard opens correct URL per provider")
+    @MainActor
     struct DashboardURLs {
 
         private static func makeSettings() -> MockProviderSettingsRepository {
@@ -76,18 +77,78 @@ struct ActionBarSpec {
     // MARK: - #25: Claude guest passes
 
     @Suite("Scenario: Share Claude Code guest passes")
+    @MainActor
     struct GuestPasses {
 
-        @Test
-        func `Claude supports guest passes when pass probe is provided`() {
+        private static func makeSettings() -> MockProviderSettingsRepository {
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            return settings
+        }
 
+        private static func makeUsageProbe(tier: AccountTier?) -> MockUsageProbe {
+            let probe = MockUsageProbe()
+            given(probe).probe().willReturn(
+                UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: tier)
+            )
+            given(probe).isAvailable().willReturn(true)
+            return probe
+        }
+
+        @Test
+        func `Claude supports guest passes when pass probe is provided`() {
             // Without pass probe
-            let withoutPass = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let withoutPass = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
             #expect(withoutPass.supportsGuestPasses == false)
+        }
+
+        @Test
+        func `Max account sees the Share button`() async throws {
+            let claude = ClaudeProvider(
+                probe: Self.makeUsageProbe(tier: .claudeMax),
+                passProbe: MockClaudePassProbing(),
+                settingsRepository: Self.makeSettings()
+            )
+
+            try await claude.refresh()
+
+            #expect(claude.supportsGuestPasses == true)
+        }
+
+        @Test
+        func `Pro account does not see the Share button`() async throws {
+            // Issue #243: Anthropic issues invitation links to Max plans only.
+            let claude = ClaudeProvider(
+                probe: Self.makeUsageProbe(tier: .claudePro),
+                passProbe: MockClaudePassProbing(),
+                settingsRepository: Self.makeSettings()
+            )
+
+            try await claude.refresh()
+
+            #expect(claude.supportsGuestPasses == false)
+        }
+
+        @Test
+        func `failed pass fetch is reported instead of failing silently`() async {
+            let passProbe = MockClaudePassProbing()
+            given(passProbe).probe().willThrow(ProbeError.parseFailed("Could not find referral URL"))
+            let claude = ClaudeProvider(
+                probe: Self.makeUsageProbe(tier: .claudeMax),
+                passProbe: passProbe,
+                settingsRepository: Self.makeSettings()
+            )
+
+            do {
+                _ = try await claude.fetchPasses()
+            } catch {
+                // Expected to throw
+            }
+
+            #expect(claude.passError != nil)
+            #expect(claude.guestPass == nil)
         }
     }
 }

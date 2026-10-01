@@ -7,6 +7,319 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Z.ai: paste your GLM API key in Settings → Providers → Z.ai → API KEY. It wins over the settings.json token and env vars, and works even when no Z.ai URL is in settings.json (quota then comes from api.z.ai).
+- Codex: the GPT-5.3-Codex-Spark research preview has its own 5h and weekly windows, separate from your main limits. Those Spark windows now show as extra rows after your session and weekly gauges. ([#178](https://github.com/tddworks/ClaudeBar/issues/178))
+- Popover keyboard shortcuts: Escape closes the popover (or an open share overlay first), and ⌘1–⌘9 switch between the provider pills. Tooltips on the pills and action buttons now show each shortcut (⌘D, ⌘R, ⌘S, ⌘, and ⌘Q already worked).
+
+### Fixed
+- ClaudeBar no longer grows in memory the longer it runs. It could reach several GB after a day or two and then peg the CPU and freeze the menu bar panel. [#313](https://github.com/tddworks/ClaudeBar/issues/313)
+- Z.ai: the auth env var is now also read through your login shell, so a key exported in `~/.zshrc` or `~/.bash_profile` is found even when ClaudeBar starts from Finder or Login Items. [#170](https://github.com/tddworks/ClaudeBar/issues/170)
+- Cost Usage no longer counts dollars for models you run locally. With Claude Code pointed at ollama or LM Studio the card kept adding Anthropic Sonnet prices; it now shows $0.00, while Token Usage keeps counting. ([#190](https://github.com/tddworks/ClaudeBar/issues/190))
+- Claude no longer shows as "Unavailable" while you're working in it. The `/usage` probe accepted the CLI's boot screen as finished, so slow SessionStart hooks produced a capture with nothing to read. It now waits for the Usage screen. ([#317](https://github.com/tddworks/ClaudeBar/issues/317))
+- Claude's cost fallback is fast again and no longer invents a $0.00. The `/cost` capture waited out the full 20s timeout, and a screen that reported a failure was read as a cost of nothing. ([#317](https://github.com/tddworks/ClaudeBar/issues/317))
+- Claude now always falls back between its two probe modes when one fails. A pre-check could report the other probe unusable and skip the rescue, silently, leaving "Claude Unavailable" on screen — in both directions. ([#317](https://github.com/tddworks/ClaudeBar/issues/317))
+- `claudebar://open` now opens the popover and `claudebar://refresh` refreshes, instead of both opening the Settings window. Also fixes tapping the Touch Bar widget. https://github.com/tddworks/ClaudeBar/pull/310
+- Cursor now shows Auto and API cards when those fields are in the usage response, next to Monthly. The menu bar still defaults to Monthly; set the secondary quota to API to see both. ([#303](https://github.com/tddworks/ClaudeBar/issues/303))
+- Touch Bar gauges now colour by their quota's status. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.
+
+---
+
+## [0.4.93] - 2026-09-24
+
+### Added
+- Custom status colors. Settings → Appearance → Status Colors has a color well for each level (healthy, warning, critical, depleted). A custom color overrides the theme in the menu bar label, the popover, the notch, and Settings. "Reset to defaults" restores the theme. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
+- High Contrast switch in the same card: a built-in palette that clears 4.5:1 on both light and dark menu bars and follows the bar's appearance. The stock theme greens and ambers measured under 2:1 on a light menu bar. Custom colors win over High Contrast for the levels you set. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
+
+### Fixed
+- Antigravity now shows your quota with the app closed. With no language server running, the probe reported "Command did not complete within the timeout" on every refresh and never reached the Cloud Code fallback that reads your stored sign-in. ([#301](https://github.com/tddworks/ClaudeBar/issues/301))
+- Codex: the menu bar countdown now ticks and matches the other providers ("2:33", "2d"), and pace-aware colors work for Codex. ([#298](https://github.com/tddworks/ClaudeBar/issues/298))
+- Extensions: providers now show the SF Symbol from their manifest's `icon` in the menu bar, popover, Touch Bar and Settings, instead of a question mark. An unknown symbol still falls back to the question mark. ([#302](https://github.com/tddworks/ClaudeBar/issues/302))
+
+---
+
+## [0.4.92] - 2026-09-12
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.91] - 2026-09-09
+
+### Added
+- The Notify! quota tile can now live on the iPhone Home Screen as well as the Lock Screen. Notify! added Home Screen widgets in its September 2026 update, and a screen widget carries exactly the content a Live Activity does, so the same tile ClaudeBar already builds (up to six quota windows, a progress bar and the reset countdown) can sit there permanently instead of appearing and vanishing with a job. It has its own switch in Settings then Notify!, is on once you link a device, and is placed through iOS's own widget picker after adding it under Settings then Home Screen Widgets in Notify!. If your copy of Notify! is not serving Home Screen widgets yet, ClaudeBar treats that as "not yet" rather than an error and quietly tries again later.
+
+---
+
+## [0.4.90] - 2026-09-05
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.89] - 2026-09-04
+
+### Added
+- Quota state can now be published to an iPhone Lock Screen through [Notify!](https://getnotifyapp.com), so the number the app exists for is readable without opening the laptop. ClaudeBar keeps two things on the phone: a Live Activity showing up to six quota windows with a progress bar, and a Lock Screen widget whose gauge is one quota you pick (or whichever needs attention most). Percentages are remaining, the same as everywhere else in the app, so a full ring means a full quota. To set it up, get Notify! (https://getnotifyapp.com), open it once on the phone so Live Activities are allowed to start, then copy the device ID and token out of the app into Settings → Notify!. The Live Activity needs an iPhone or iPad ID. A Mac or browser ID keeps the widget gauge perfectly well, but Notify! cannot start a Live Activity on one, so ClaudeBar disables that switch and says why instead of publishing into nothing; a group ID owns no Lock Screen at all and gets neither. Either surface can be switched off on its own. This is off by default and sends provider names, window labels and remaining percentages to a third-party service; the device token is stored in the Keychain, never in `settings.json`, falling back to ClaudeBar's app credentials on a self-built copy whose ad-hoc signature the Keychain will not accept.
+- `JSONSettingsRepository` now conforms to `MultiAccountSettingsRepository`, persisting per-provider accounts under `providers.{id}.accounts` and the active account under `providers.{id}.activeAccountId`. Nothing changes for existing installs: a provider with no `accounts` key reads back an empty list, which is the single-account path, so no migration runs. Removing the active account clears the active pointer rather than leaving it dangling at an account that is gone. (#164)
+
+---
+
+## [0.4.88] - 2026-09-02
+
+### Fixed
+- Claude no longer reports a $0.00 cost card instead of quota on a subscription the CLI could not see. A Max plan billed through Apple renders `/usage` as the API-billing cost panel, and ClaudeBar answered it with `/cost` — which succeeds, so the app never tried the usage API that can still read the real quota. `~/.claude.json` knows the account is a subscription (`billingType`), and that now vetoes the `/cost` route: genuine pay-as-you-go accounts still get their cost card, subscriptions fall through to the API probe. (#271)
+- A failed Keychain read no longer passes for "no credentials". On macOS `claude login` writes only the Keychain, so a denied read surfaced as "Authentication required. Please log in." to someone already logged in, with nothing in the log to say why. The `security` exit status and its error are now logged, along with which places were searched. (#271)
+
+---
+
+## [0.4.87] - 2026-09-02
+
+### Fixed
+- Quota cards no longer draw their text mirrored. After a refresh, the fields whose value had just changed could come back upside down — a different set each time. The rolling digit animation on card headline numbers, which renders them through a separate morphing text layer, is gone; the numbers now update in place. Card rows also get ids that stay unique when a provider reports two cards of the same quota type, so no row can borrow another's drawing. (#272)
+
+---
+
+## [0.4.86] - 2026-09-01
+
+### Added
+- Claude Code's session and quota state can now be shown in the notch. With nothing running it reports the selected provider's most depleted quota, so the number the app exists for is readable without opening anything. A running session takes the notch over — repository, elapsed time, and how many subagents are fanned out — then hands it back when the turn ends. Hovering expands it into the session list, quota cards and today's usage, with buttons to refresh that provider or snooze the notch for 30 minutes. Off by default: turn it on in Settings → General → Notch Live Activity. Displays without a physical notch, including every external monitor, get a virtual one sized to the menu bar. (#274)
+- ClaudeBar now registers Claude Code's `Notification` hook alongside the session hooks it already installed, so it can tell that Claude is blocked waiting on a permission prompt instead of showing the session as merely active. That state outranks everything else in the notch and stays put until it is answered. (#274)
+
+### Fixed
+- Claude no longer reports "Failed to parse output: Could not find session usage" when the CLI is simply slow to answer. `claude /usage` paints its cost panel and a "Loading usage data…" placeholder immediately, then fills the quota bars in from a separate request; the probe stopped at the first 3-second lull and captured the placeholder. It now waits for the screen to settle — quota bars, or the error that replaced them. A capture that still ends on the placeholder says the usage endpoint may be rate limited instead of blaming the parser, and a `/usage` screen that renders an API-billing cost panel with no quota at all falls back to `/cost`. (#271, #253)
+- The quota bar no longer contradicts the number above it. In "Remaining" mode an 87% card drew a 13% bar, because the bar tracked usage while the headline tracked what was left. The bar again shares the headline's scale: it starts full and drains as quota is consumed, inverting only in "Used" mode. The pace tick moves back onto the same scale. (#268)
+
+---
+
+## [0.4.85] - 2026-08-25
+
+### Fixed
+- Refreshing the Claude OAuth token no longer strips fields ClaudeBar does not model (notably `scopes`) from `claudeAiOauth`. The credential is shared with Claude Code, so a write-back handed it back an incomplete record. (#256)
+- Claude credentials stored in the Keychain could not be read back on macOS 26, leaving the API probe reporting "No credentials found" until the next `claude` login. `security -w` returns any password holding a non-printable-ASCII byte as hex, and the pretty-printed JSON ClaudeBar wrote contained newlines. Payloads are now written compact, and hex-encoded items left behind by earlier builds are decoded on read. (#255)
+
+---
+
+## [0.4.84] - 2026-08-25
+
+### Fixed
+- Codex usage could not be retrieved at all ("Could not find usage limits in Codex output"). The Codex CLI dropped `untrusted` from `--ask-for-approval`, so both the app-server and the TTY fallback exited at argument parsing. (#259)
+- The header badge no longer shows a green "HEALTHY" for a provider that failed to probe; it now reads "UNAVAILABLE", or "NO DATA" before the first refresh. (#259)
+
+---
+
+## [0.4.83] - 2026-08-25
+
+### Fixed
+- OpenCode Go usage now comes from the official `/zen/go/v1/usage` endpoint, so the numbers match the opencode.ai dashboard instead of a local-DB estimate that only saw this machine's messages (#249). The API key is read from `OPENCODE_API_KEY` or opencode's `auth.json`; the local-DB probe remains as a fallback when no key is configured.
+
+---
+
+## [0.4.82] - 2026-08-24
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.81] - 2026-08-21
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.80] - 2026-08-19
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.79] - 2026-08-13
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.78] - 2026-08-13
+
+### Fixed
+- The menu bar reset countdown now shows hours with minutes in "H:MM" form
+  (e.g. "3:58") instead of truncating to whole hours ("3h"), which could
+  understate the remaining time by up to 59 minutes compared with the panel's
+  "3h 58m" detail. Day-level ("2d") and minute-level ("45m") labels are
+  unchanged. (#246)
+
+---
+
+## [0.4.77] - 2026-08-12
+
+### Fixed
+- The "Share Claude Code" button no longer appears on Claude Pro, API, or
+  not-yet-identified accounts. Anthropic issues invitation links to Max
+  subscribers only, so on other plans the button could do nothing but fail
+  silently. When a Max account's link fetch does fail, the popover now
+  explains why instead of ignoring the click, and the failure no longer marks
+  Claude's usage data as unavailable. (#243)
+
+---
+
+## [0.4.76] - 2026-08-09
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
+## [0.4.75] - 2026-08-04
+
+### Added
+- Grok Build (xAI) provider: monitors weekly credit usage and per-product
+  limits (Grok Build, Grok Imagine, Grok Voice) via the same billing endpoint
+  the `grok` CLI uses. Reads OAuth credentials from `~/.grok/auth.json`,
+  refreshing expired tokens against the recorded OIDC issuer, and shows the
+  period reset countdown plus on-demand overflow usage once a cap is
+  configured. (#234)
+
+### Fixed
+- Popover scrolling no longer trembles or snaps back while dragging upward.
+  The card grids were `LazyVGrid`s inside the popover's vertical `ScrollView`,
+  so lazy height estimation kept correcting the scroll offset mid-gesture as
+  cells materialized. Cards now lay out eagerly — the popover shows a few
+  dozen at most, so laziness bought nothing — and the scroll view knows exact
+  content heights up front.
+- Long account discriminators no longer flood the menu bar. Oh My Pi quota
+  labels embed an account token to keep multi-account quota keys unique
+  (e.g. "Claude 7d · jkjk987654321012"), and the dual-window menu bar label
+  rendered the whole thing. Aggregated quotas now carry a condensed menu-bar
+  title that truncates tokens longer than 8 characters to a 7-character
+  prefix plus an ellipsis ("Claude 7d · jkjk987…"); the menu bar and the
+  quota picker chips in Settings prefer it, while the full label — and
+  therefore every persisted quota key — stays unchanged. Condensed titles
+  that collide across accounts sharing a prefix get a numeric suffix
+  ("jkjk987… (2)") so the chips stay distinguishable.
+
+---
+
+## [0.4.73] - 2026-07-19
+
+### Fixed
+- Cursor no longer shows "EMPTY" for Pro/paid accounts that have bonus credits.
+  The probe derived remaining usage from the `used`/`limit` fields, which cover
+  only the *included* base allotment; once that base is consumed (`used == limit`)
+  it reported 0% remaining even when plenty of bonus capacity was left. It now
+  uses Cursor's authoritative `totalPercentUsed` and the full `breakdown.total`
+  capacity (included + bonus), matching the "You've used X%" figure in Cursor's
+  own UI.
+- The pace tick under quota progress bars now explains itself: hovering the
+  bar shows a mode-aware tooltip ("steady usage would leave ~N% remaining by
+  now"), so the marker no longer reads as a misaligned rendering glitch.
+
+### Added
+- Claude Extra Usage now reads the current OAuth `spend` payload (with the
+  legacy `extra_usage` shape as a tolerant fallback), converts minor units with
+  exponent-aware decimal math, and renders spend as a distinct "EXTRA USAGE"
+  card with capped remaining budget or an explicit "No monthly cap" state.
+- Oh My Pi (`omp`) USD limits now render as monetary spend meters: capped rows
+  show "$X of $Y" while preserving their percentage-driven status and progress,
+  and uncapped rows become account notes such as "$X spent · no cap" instead of
+  being dropped or assigned a fabricated percentage.
+
+### Fixed
+- Grouped provider notes now accumulate in source order rather than overwriting
+  one another, so spend notes and other account notes remain visible together.
+- Claude's configured API budget now applies only to API-cost cards; it no
+  longer supplies a misleading cap for uncapped Extra Usage.
+- Oh My Pi quota cards no longer show raw machine window ids. For Kimi,
+  the 5-hour rate-limit card now reads "5h" (derived from the reported
+  window duration) instead of "300TIME_UNIT_MINUTE", and the total-quota
+  card shows Kimi's own "Total quota" label instead of "DEFAULT".
+  Label-derived card titles also drop a duplicated provider prefix
+  (Gemini) and redundant shared-window meter words (Copilot). Card
+  titles only: full quota labels and persisted quota keys are unchanged,
+  so existing menu-bar selections keep working.
+
+---
+
+## [0.4.72] - 2026-07-15
+
+### Fixed
+- Oh My Pi no longer shows duplicate "No usage reported" account rows when
+  org-less stale credentials share an email with an account that already
+  reported usage; organization-scoped failures remain visible.
+
+---
+
+## [0.4.71] - 2026-07-13
+
+### Added
+- Oh My Pi (`omp`) provider: shows the rate-limit windows of every account the
+  harness is signed into (Claude, Codex, Z.ai, ...) via `omp usage --json`. Each
+  window appears as its own quota with reset countdown; pace math uses the
+  window duration reported by the CLI, multiple accounts on the same upstream
+  provider are disambiguated per account, and accounts without usable quota
+  data — fetch failures (`accountsWithoutUsage`) or providers that report
+  zero limits by design (e.g. Ollama) — are listed as explicit
+  "No usage reported" rows instead of being dropped.
+- Aggregated provider cards (Oh My Pi) group their quotas into one
+  collapsible section per upstream account — with compact card titles,
+  a worst-status badge per section, and an inline "No usage reported"
+  line for accounts without quota data — and the popover's content area
+  now caps at the screen height and scrolls, so the action bar can no
+  longer be pushed off-screen.
+- CLI probes now run with a PATH that includes the common install directories
+  and the resolved binary's own directory, and `~/.bun/bin` is searched when
+  locating tools — bun/node-shebang CLIs (like `omp`) now work from the
+  menu bar (launchd) context where the login-shell PATH is unavailable.
+
+### Fixed
+- Time-limit quota labels are no longer force-capitalized in the UI
+  ("MCP" was displayed as "Mcp").
+
+---
+
+## [0.4.70] - 2026-07-02
+
+### Added
+- Claude Fable 5 weekly limit is now parsed from both the CLI `/usage` output
+  ("Current week (Fable)") and the OAuth usage API's new `limits` array, shown as a
+  quota card in the window and selectable as a menu-bar metric. The API-side parsing
+  is generic over model-scoped limits, so future scoped models appear automatically.
+
+### Fixed
+- Claude CLI probe no longer fails on every tick with recent Claude CLI versions.
+  The `/usage` screen grew taller than the probe's 50-row terminal (usage-contribution
+  report), scrolling the quota sections off the visible screen; the terminal renderer
+  now includes scrollback, so all sections are parsed again.
+
+---
+
+## [0.4.69] - 2026-06-25
+
+### Fixed
+- Menu-bar usage text no longer freezes or disappears after system sleep. SwiftUI's
+  `MenuBarExtra` label hosting can permanently stop receiving updates after wake (the
+  dropdown kept working while the label — and the refresh-loop restarts attached to it —
+  went dead until relaunch). The menu-bar pixels and the background-refresh lifecycle are
+  now driven imperatively (AppKit `NSStatusItem` via MenuBarExtraAccess + observation
+  tracking), independent of SwiftUI view invalidation. (#192)
+- Menu-bar status item no longer sticks on a lone colored session glyph with no usage
+  number after long idle. Even with the imperative driver, the label only repainted when
+  SwiftUI observation fired, which can go quiet after idle while probes keep succeeding.
+  The status item is now repainted on every background-refresh tick, the Claude Code
+  session glyph is shown only while a session is actively working (not on the end-of-turn
+  "stopped" state, which previously stuck forever), and the last-known number is kept when
+  a quota window is briefly unavailable. Claude Code sessions also recover from "stopped"
+  on the next prompt via a new `UserPromptSubmit` hook so the indicator tracks real activity.
+
+---
+
+## [0.4.68] - 2026-06-10
+
 ### Fixed
 - Daily Usage cost & token cards no longer overcount. Claude Code writes the same usage
   multiple times (streamed content blocks, parallel tool calls, resumed/branched sessions);
@@ -778,7 +1091,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.67...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.93...HEAD
+[0.4.93]: https://github.com/tddworks/ClaudeBar/compare/v0.4.92...v0.4.93
+[0.4.92]: https://github.com/tddworks/ClaudeBar/compare/v0.4.91...v0.4.92
+[0.4.91]: https://github.com/tddworks/ClaudeBar/compare/v0.4.90...v0.4.91
+[0.4.90]: https://github.com/tddworks/ClaudeBar/compare/v0.4.89...v0.4.90
+[0.4.89]: https://github.com/tddworks/ClaudeBar/compare/v0.4.88...v0.4.89
+[0.4.88]: https://github.com/tddworks/ClaudeBar/compare/v0.4.87...v0.4.88
+[0.4.87]: https://github.com/tddworks/ClaudeBar/compare/v0.4.86...v0.4.87
+[0.4.86]: https://github.com/tddworks/ClaudeBar/compare/v0.4.85...v0.4.86
+[0.4.85]: https://github.com/tddworks/ClaudeBar/compare/v0.4.84...v0.4.85
+[0.4.84]: https://github.com/tddworks/ClaudeBar/compare/v0.4.83...v0.4.84
+[0.4.83]: https://github.com/tddworks/ClaudeBar/compare/v0.4.82...v0.4.83
+[0.4.82]: https://github.com/tddworks/ClaudeBar/compare/v0.4.81...v0.4.82
+[0.4.81]: https://github.com/tddworks/ClaudeBar/compare/v0.4.80...v0.4.81
+[0.4.80]: https://github.com/tddworks/ClaudeBar/compare/v0.4.79...v0.4.80
+[0.4.79]: https://github.com/tddworks/ClaudeBar/compare/v0.4.78...v0.4.79
+[0.4.78]: https://github.com/tddworks/ClaudeBar/compare/v0.4.77...v0.4.78
+[0.4.77]: https://github.com/tddworks/ClaudeBar/compare/v0.4.76...v0.4.77
+[0.4.76]: https://github.com/tddworks/ClaudeBar/compare/v0.4.75...v0.4.76
+[0.4.75]: https://github.com/tddworks/ClaudeBar/compare/v0.4.73...v0.4.75
+[0.4.73]: https://github.com/tddworks/ClaudeBar/compare/v0.4.72...v0.4.73
+[0.4.72]: https://github.com/tddworks/ClaudeBar/compare/v0.4.71...v0.4.72
+[0.4.71]: https://github.com/tddworks/ClaudeBar/compare/v0.4.70...v0.4.71
+[0.4.70]: https://github.com/tddworks/ClaudeBar/compare/v0.4.69...v0.4.70
+[0.4.69]: https://github.com/tddworks/ClaudeBar/compare/v0.4.68...v0.4.69
+[0.4.68]: https://github.com/tddworks/ClaudeBar/compare/v0.4.67...v0.4.68
 [0.4.67]: https://github.com/tddworks/ClaudeBar/compare/v0.4.66...v0.4.67
 [0.4.66]: https://github.com/tddworks/ClaudeBar/compare/v0.4.65...v0.4.66
 [0.4.65]: https://github.com/tddworks/ClaudeBar/compare/v0.4.64...v0.4.65

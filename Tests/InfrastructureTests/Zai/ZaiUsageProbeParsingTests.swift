@@ -354,4 +354,91 @@ struct ZaiUsageProbeParsingTests {
         #expect(snapshot.quotas[0].percentRemaining >= 0 && snapshot.quotas[0].percentRemaining <= 100)
         #expect(snapshot.quotas[1].percentRemaining >= 0 && snapshot.quotas[1].percentRemaining <= 100)
     }
+
+    // MARK: - CREDIT_LIMIT Tests
+    //
+    // Credit-based plan tiers (e.g. GLM Coding Lite) report quota entries with
+    // type CREDIT_LIMIT instead of TOKENS_LIMIT, using the same `unit` semantics.
+    // Because the switch only matched TOKENS_LIMIT/TIME_LIMIT tuples, every entry
+    // fell through to `continue` and the probe failed outright with
+    // "No recognized quota types found".
+
+    static let sampleQuotaLimitResponseCreditPlan = """
+    {
+      "data": {
+        "limits": [
+          { "type": "CREDIT_LIMIT", "unit": 3, "number": 5, "usage": 2000,
+            "currentValue": 0, "remaining": 2000, "percentage": 0 },
+          { "type": "CREDIT_LIMIT", "unit": 6, "number": 1, "usage": 10000,
+            "currentValue": 2004, "remaining": 7995, "percentage": 20,
+            "nextResetTime": 1786112351998 }
+        ],
+        "level": "lite"
+      }
+    }
+    """
+
+    @Test
+    func `parses credit-based plan response instead of failing`() throws {
+        let data = Data(Self.sampleQuotaLimitResponseCreditPlan.utf8)
+        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+
+        #expect(snapshot.quotas.count == 2)
+        #expect(snapshot.quotas.contains { $0.quotaType == .session })
+        #expect(snapshot.quotas.contains { $0.quotaType == .weekly })
+    }
+
+    @Test
+    func `maps CREDIT_LIMIT unit=3 to session`() throws {
+        let json = """
+        { "data": { "limits": [
+          { "type": "CREDIT_LIMIT", "unit": 3, "percentage": 13 }
+        ] } }
+        """
+        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas.first?.quotaType == .session)
+        #expect(snapshot.quotas.first?.percentRemaining == 87.0)
+    }
+
+    @Test
+    func `maps CREDIT_LIMIT unit=6 to weekly`() throws {
+        let json = """
+        { "data": { "limits": [
+          { "type": "CREDIT_LIMIT", "unit": 6, "percentage": 20 }
+        ] } }
+        """
+        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas.first?.quotaType == .weekly)
+        #expect(snapshot.quotas.first?.percentRemaining == 80.0)
+    }
+
+    @Test
+    func `preserves CREDIT_LIMIT with unknown unit rather than dropping it`() throws {
+        let json = """
+        { "data": { "limits": [
+          { "type": "CREDIT_LIMIT", "unit": 99, "percentage": 5 }
+        ] } }
+        """
+        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas.first?.quotaType == .modelSpecific("Credits (unit 99)"))
+    }
+
+    @Test
+    func `handles mixed TOKENS_LIMIT and CREDIT_LIMIT entries`() throws {
+        let json = """
+        { "data": { "limits": [
+          { "type": "TOKENS_LIMIT", "unit": 3, "percentage": 13 },
+          { "type": "CREDIT_LIMIT", "unit": 6, "percentage": 20 },
+          { "type": "TIME_LIMIT", "unit": 5, "percentage": 1 }
+        ] } }
+        """
+        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        #expect(snapshot.quotas.count == 3)
+        #expect(snapshot.quotas.contains { $0.quotaType == .session })
+        #expect(snapshot.quotas.contains { $0.quotaType == .weekly })
+        #expect(snapshot.quotas.contains { $0.quotaType == .timeLimit("MCP") })
+    }
 }

@@ -93,6 +93,46 @@ public struct UsageSnapshot: Sendable, Equatable {
         }
     }
 
+    /// Whether any quota or metric carries group metadata (aggregating
+    /// providers like Oh My Pi tag rows with their upstream account).
+    public var hasQuotaGroups: Bool {
+        quotas.contains { $0.group != nil }
+            || (extensionMetrics ?? []).contains { $0.group != nil }
+    }
+
+    /// Quotas bucketed by their group, preserving first-appearance order.
+    /// Ungrouped quotas form one leading unnamed group. Grouped extension
+    /// metrics (accounts without usable quota data) become note-only
+    /// sections after the quota sections, or attach to a matching section.
+    public var quotaGroups: [QuotaGroup] {
+        var order: [String] = []
+        var buckets: [String: [UsageQuota]] = [:]
+        for quota in quotas {
+            let key = quota.group ?? ""
+            if buckets[key] == nil { order.append(key) }
+            buckets[key, default: []].append(quota)
+        }
+
+        var notes: [String: String] = [:]
+        for metric in extensionMetrics ?? [] {
+            guard let group = metric.group else { continue }
+            if buckets[group] == nil, notes[group] == nil { order.append(group) }
+            if let existing = notes[group] {
+                notes[group] = "\(existing)\n\(metric.value)"
+            } else {
+                notes[group] = metric.value
+            }
+        }
+
+        return order.map { key in
+            QuotaGroup(
+                title: key.isEmpty ? nil : key,
+                quotas: buckets[key] ?? [],
+                note: notes[key]
+            )
+        }
+    }
+
     /// The overall status is the worst status among all quotas.
     /// This is a domain rule: overall health reflects the most critical issue.
     public var overallStatus: QuotaStatus {
@@ -140,5 +180,51 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// Creates an empty snapshot for when no data is available
     public static func empty(for providerId: String) -> UsageSnapshot {
         UsageSnapshot(providerId: providerId, quotas: [], capturedAt: Date())
+    }
+}
+
+/// One section of quotas belonging to a single upstream account, produced
+/// by aggregating providers (e.g. Oh My Pi). `title` is nil for the
+/// unnamed bucket of ungrouped quotas.
+public struct QuotaGroup: Sendable, Equatable, Identifiable {
+    public let title: String?
+    public let quotas: [UsageQuota]
+
+    /// Inline annotation for sections without usable quota data
+    /// (e.g. "No usage reported"). See `notePlacement` for where it
+    /// renders.
+    public let note: String?
+
+    public var id: String { title ?? "" }
+
+    /// The most critical status within this group — shown while collapsed.
+    public var worstStatus: QuotaStatus {
+        quotas.map(\.status).max() ?? .healthy
+    }
+
+    /// The quota with the least headroom — summarized while collapsed.
+    public var lowestQuota: UsageQuota? {
+        quotas.min(by: { $0.percentRemaining < $1.percentRemaining })
+    }
+
+    /// Where a group's note renders. Note-only sections have no cards
+    /// to collapse, so the note doubles as the header summary; sections
+    /// that also carry quotas show the note as its own row above the
+    /// cards — it must never be silently dropped.
+    public enum NotePlacement: Sendable, Equatable {
+        case headerInline(String)
+        case row(String)
+    }
+
+    /// The presentation decision for `note`, nil when there is none.
+    public var notePlacement: NotePlacement? {
+        guard let note else { return nil }
+        return quotas.isEmpty ? .headerInline(note) : .row(note)
+    }
+
+    public init(title: String?, quotas: [UsageQuota], note: String? = nil) {
+        self.title = title
+        self.quotas = quotas
+        self.note = note
     }
 }

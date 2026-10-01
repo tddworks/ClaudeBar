@@ -1,0 +1,596 @@
+<title>ClaudeBar Notch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* ClaudeBar Notch — deliberately single-theme.
+   The subject is a black display cutout on a dark desktop; a light variant
+   would misrepresent it. Every colour is painted explicitly. */
+:root{
+  --void:#000000;
+  --desk-deep:#120C24;
+  --desk-mid:#241340;
+  --desk-glow:#3A1C5C;
+  --chrome:#0C0814;
+  --chrome-2:#15101F;
+  --rule:rgba(255,255,255,.09);
+  --rule-2:rgba(255,255,255,.16);
+  --ink:#EDE9F6;
+  --ink-2:#A79BC2;
+  --ink-3:#6D6386;
+  --live:#34D399;
+  --agents:#60A5FA;
+  --attention:#FBBF24;
+  --critical:#F87171;
+  --accent:#C084FC;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sf:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--chrome);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+
+.stage{max-width:1120px;margin:0 auto;padding:56px 28px 88px;display:flex;flex-direction:column;gap:40px}
+
+/* ---------- masthead ---------- */
+.masthead{display:flex;flex-direction:column;gap:14px;max-width:62ch}
+.eyebrow{
+  font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;
+}
+.eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--rule-2),transparent)}
+h1{
+  margin:0;font-size:clamp(30px,4.4vw,46px);line-height:1.06;font-weight:600;
+  letter-spacing:-.025em;text-wrap:balance;
+}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{margin:0;color:var(--ink-2);font-size:16.5px;max-width:60ch}
+
+/* ---------- the display ---------- */
+.display{
+  position:relative;border-radius:20px;overflow:hidden;
+  background:radial-gradient(120% 130% at 50% -10%,var(--desk-glow) 0%,var(--desk-mid) 42%,var(--desk-deep) 100%);
+  border:1px solid var(--rule-2);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.06);
+  min-height:430px;
+  isolation:isolate;
+}
+.wallpaper{position:absolute;inset:0;pointer-events:none;opacity:.55}
+.wallpaper svg{width:100%;height:100%;display:block}
+
+/* menu bar — black, as it is on a notched Mac */
+.menubar{
+  position:relative;z-index:3;height:32px;background:var(--void);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;font-family:var(--sf);font-size:12.5px;color:rgba(255,255,255,.82);
+}
+.menubar .apps{display:flex;gap:17px;align-items:center}
+.menubar .apps b{font-weight:600}
+.menubar .status{display:flex;gap:14px;align-items:center;font-variant-numeric:tabular-nums}
+.menubar .status .cb{
+  display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:5px;
+  background:rgba(192,132,252,.18);color:#DDC8FF;font-size:11px;font-weight:600;
+}
+.dot-mini{width:6px;height:6px;border-radius:50%;background:var(--live)}
+
+/* ---------- notch ---------- */
+.notch-mount{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:4;
+  display:flex;justify-content:center;
+}
+.notch{
+  --w:200px; --h:32px; --fillet:11px; --accent-c:var(--ink-3);
+  position:relative;width:var(--w);height:var(--h);
+  background:var(--void);
+  border-radius:0 0 var(--radius,14px) var(--radius,14px);
+  transition:width .52s var(--ease),height .52s var(--ease),border-radius .52s var(--ease);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+/* concave fillets, mirroring NotchShape's animatable topCornerRadius */
+.notch::before,.notch::after{
+  content:"";position:absolute;top:0;width:var(--fillet);height:var(--fillet);
+  transition:width .52s var(--ease),height .52s var(--ease);
+  pointer-events:none;
+}
+.notch::before{left:calc(-1 * var(--fillet));background:radial-gradient(circle at 0 100%,transparent 0 var(--fillet),var(--void) var(--fillet))}
+.notch::after{right:calc(-1 * var(--fillet));background:radial-gradient(circle at 100% 100%,transparent 0 var(--fillet),var(--void) var(--fillet))}
+
+/* soft coloured bloom for attention states */
+.notch-glow{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:var(--gw,260px);height:var(--gh,60px);z-index:3;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,var(--glow,transparent) 0%,transparent 70%);
+  opacity:0;transition:opacity .4s ease;
+}
+.notch-glow.on{opacity:.85}
+
+/* collapsed lanes: content flanking the pill, Dynamic-Island style */
+.lanes{
+  flex:0 0 auto;height:var(--h);display:flex;align-items:center;justify-content:space-between;
+  padding:0 13px;gap:12px;font-family:var(--sf);
+  opacity:1;transition:opacity .3s ease;
+}
+.notch[data-open="1"] .lanes{height:34px;flex:0 0 34px;padding:0 16px}
+.lane{display:flex;align-items:center;gap:7px;min-width:0}
+.lane-r{justify-content:flex-end}
+.lane .label{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.92);white-space:nowrap}
+.lane .meta{font-size:11px;font-weight:500;color:rgba(255,255,255,.62);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lane .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:-.01em}
+
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--accent-c);position:relative;flex:none}
+.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:var(--accent-c);opacity:.28;animation:breathe 1.9s var(--ease) infinite}
+@keyframes breathe{0%,100%{transform:scale(.7);opacity:.32}50%{transform:scale(1.15);opacity:.08}}
+
+.orbit{display:flex;gap:3px;flex:none}
+.orbit i{width:5px;height:5px;border-radius:50%;background:var(--agents);animation:bob 1.1s var(--ease) infinite}
+.orbit i:nth-child(2){animation-delay:.15s}
+.orbit i:nth-child(3){animation-delay:.3s}
+@keyframes bob{0%,100%{transform:translateY(1.5px);opacity:.45}50%{transform:translateY(-1.5px);opacity:1}}
+
+.glyph{width:15px;height:15px;flex:none;display:grid;place-items:center;color:var(--accent-c);font-size:12px}
+.chip-live{
+  font-family:var(--sf);font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:1.5px 5px;border-radius:4px;background:color-mix(in srgb,var(--accent-c) 22%,transparent);
+  color:var(--accent-c);flex:none;
+}
+
+/* mini quota bar inside the collapsed notch */
+.minibar{width:52px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;flex:none}
+.minibar i{display:block;height:100%;border-radius:2px;background:var(--accent-c);transition:width .5s var(--ease)}
+
+/* ---------- refreshing ---------- */
+
+/* the dot-matrix loader standing in for Matrix's DotmSquare3 */
+.dotgrid{display:grid;grid-template-columns:repeat(3,3px);gap:2px;flex:none}
+.dotgrid i{width:3px;height:3px;border-radius:1px;background:var(--accent-c);opacity:.25;animation:dotpulse 1.1s steps(1) infinite}
+.dotgrid i:nth-child(1){animation-delay:0s}
+.dotgrid i:nth-child(2){animation-delay:.12s}
+.dotgrid i:nth-child(3){animation-delay:.24s}
+.dotgrid i:nth-child(6){animation-delay:.36s}
+.dotgrid i:nth-child(9){animation-delay:.48s}
+.dotgrid i:nth-child(8){animation-delay:.60s}
+.dotgrid i:nth-child(7){animation-delay:.72s}
+.dotgrid i:nth-child(4){animation-delay:.84s}
+.dotgrid i:nth-child(5){animation-delay:.96s}
+@keyframes dotpulse{0%,30%{opacity:1}31%,100%{opacity:.22}}
+
+/* ---------- expanded panel ---------- */
+.panel{
+  flex:1;min-height:0;padding:4px 18px 18px;font-family:var(--sf);
+  opacity:0;transform:translateY(-6px);pointer-events:none;
+  transition:opacity .26s ease .06s,transform .34s var(--ease) .06s;
+  display:flex;flex-direction:column;gap:12px;
+}
+.notch[data-open="1"] .panel{opacity:1;transform:none;pointer-events:auto}
+
+.p-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.p-title{display:flex;align-items:center;gap:9px}
+.p-title .name{font-size:13px;font-weight:600;color:#fff}
+.p-title .phase{
+  font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 6px;border-radius:5px;
+}
+.p-head .elapsed{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
+
+.sessions{display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.07);border-radius:9px;overflow:hidden}
+.srow{
+  display:grid;grid-template-columns:14px 1fr auto auto;align-items:center;gap:10px;
+  padding:7px 11px;background:#0A0710;
+}
+.srow:hover{background:#120C1C}
+.srow .rdot{width:7px;height:7px;border-radius:50%}
+.srow .repo{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .st{font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap}
+.srow .tm{font-family:var(--mono);font-size:10.5px;color:rgba(255,255,255,.38);font-variant-numeric:tabular-nums}
+
+.quotas{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.q{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.q .qt{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.q .qn{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.72)}
+.q .qv{font-family:var(--mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.q .track{height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.q .track i{display:block;height:100%;border-radius:2px}
+.q .qr{font-size:9.5px;color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums}
+
+.p-foot{display:flex;gap:7px;align-items:center}
+.act{
+  font-family:var(--sf);font-size:10.5px;font-weight:600;color:rgba(255,255,255,.78);
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+  padding:4.5px 10px;border-radius:7px;cursor:default;
+}
+.act.primary{background:rgba(192,132,252,.22);border-color:rgba(192,132,252,.4);color:#E6D2FF}
+.act.danger{background:rgba(248,113,113,.18);border-color:rgba(248,113,113,.35);color:#FFD5D5}
+
+/* prompt block for the attention state */
+.prompt{
+  background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;
+  padding:9px 11px;display:flex;flex-direction:column;gap:5px;
+}
+.prompt .pq{font-size:11.5px;color:#FFE9B8;font-weight:500}
+.prompt .pc{font-family:var(--mono);font-size:11px;color:#FFF3D6;background:rgba(0,0,0,.42);padding:5px 8px;border-radius:6px;overflow-x:auto;white-space:nowrap}
+
+/* faux terminal peeking below, to give the notch context */
+.desk-window{
+  position:absolute;left:50%;transform:translateX(-50%);top:118px;width:min(620px,84%);
+  background:rgba(10,7,16,.82);border:1px solid rgba(255,255,255,.1);border-radius:12px;
+  padding:11px 14px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.75;
+  color:rgba(255,255,255,.45);z-index:1;
+  box-shadow:0 24px 60px -20px rgba(0,0,0,.8);
+}
+.desk-window .tb{display:flex;gap:6px;margin-bottom:9px}
+.desk-window .tb i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16)}
+.desk-window .p{color:var(--accent);opacity:.75}
+.desk-window .dim{color:rgba(255,255,255,.26)}
+.caret{display:inline-block;width:7px;height:13px;background:rgba(255,255,255,.35);vertical-align:-2px;animation:blink 1.15s steps(1) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* ---------- scenario rail ---------- */
+.rail-wrap{display:flex;flex-direction:column;gap:14px}
+.rail-label{font-family:var(--cond);font-size:11.5px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3)}
+.rail{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.rail button{
+  font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-2);
+  background:var(--chrome-2);border:1px solid var(--rule);border-radius:9px;
+  padding:8px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:border-color .18s ease,color .18s ease,background .18s ease,transform .18s var(--ease);
+}
+.rail button:hover{border-color:var(--rule-2);color:var(--ink);transform:translateY(-1px)}
+.rail button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rail button[aria-pressed="true"]{background:#1D1430;border-color:var(--accent);color:#fff}
+.rail button .sw{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.8;flex:none}
+
+/* ---------- readout ---------- */
+.readout{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0;
+  background:var(--chrome-2);border:1px solid var(--rule);border-radius:14px;overflow:hidden;
+}
+.cell{padding:18px 20px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:7px;min-width:0}
+.cell:last-child{border-right:none}
+.cell h3{
+  margin:0;font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.cell p{margin:0;font-size:13.5px;color:var(--ink);line-height:1.5}
+.cell code{
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  background:rgba(192,132,252,.1);padding:1px 5px;border-radius:4px;white-space:nowrap;
+}
+.cell .stack{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.cell .new{
+  font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:#FFD79A;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.3);
+  padding:2px 7px;border-radius:20px;
+}
+
+.foot{color:var(--ink-3);font-size:13px;max-width:66ch}
+.foot a{color:var(--accent)}
+
+@media (max-width:720px){
+  .stage{padding:36px 16px 60px}
+  .quotas{grid-template-columns:1fr}
+  .desk-window{display:none}
+  .cell{border-right:none;border-bottom:1px solid var(--rule)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+
+<div class="stage">
+
+  <header class="masthead">
+    <div class="eyebrow">ClaudeBar · Prototype</div>
+    <h1>The notch, wired to <em>Claude Code</em></h1>
+    <p class="lede">ClaudeBar already knows when a session starts, when subagents fan out, when a turn ends, and how much quota is left. All of it lives behind a 16&nbsp;px menu bar icon. This moves it to the one piece of screen you are already looking at.</p>
+  </header>
+
+  <div class="display">
+    <div class="wallpaper" aria-hidden="true">
+      <svg viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="w1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7C3AED" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#1E1B4B" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="w2" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stop-color="#DB2777" stop-opacity=".32"/>
+            <stop offset="1" stop-color="#4C1D95" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0 250 C 220 130 360 330 560 210 S 860 120 1000 200 L1000 430 L0 430Z" fill="url(#w1)"/>
+        <path d="M0 330 C 260 240 420 400 640 300 S 900 250 1000 300 L1000 430 L0 430Z" fill="url(#w2)"/>
+      </svg>
+    </div>
+
+    <div class="desk-window" aria-hidden="true">
+      <div class="tb"><i></i><i></i><i></i></div>
+      <div><span class="p">~/github/tddworks/claudebar</span> <span class="dim">on</span> main</div>
+      <div>$ claude</div>
+      <div class="dim">› refactor the quota alerter to debounce…<span class="caret"></span></div>
+    </div>
+
+    <div class="notch-glow" id="glow"></div>
+
+    <div class="menubar">
+      <div class="apps"><b>Terminal</b><span>Shell</span><span>Edit</span><span>View</span><span>Window</span></div>
+      <div class="status">
+        <span class="cb"><span class="dot-mini" id="mbdot"></span> 68%</span>
+        <span>􀙇</span><span>􀉬</span><span>Wed 14:26</span>
+      </div>
+    </div>
+
+    <div class="notch-mount">
+      <div class="notch" id="notch" data-open="0">
+        <div class="lanes">
+          <div class="lane lane-l" id="laneL"></div>
+          <div class="lane lane-r" id="laneR"></div>
+        </div>
+        <div class="panel" id="panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rail-wrap">
+    <div class="rail-label">Scenarios — click to play the transition</div>
+    <ul class="rail" id="rail"></ul>
+  </div>
+
+  <section class="readout" id="readout"></section>
+
+  <p class="foot">Everything above except the badged state reads from state ClaudeBar already tracks — <code style="font-family:var(--mono);font-size:12px;color:var(--accent)">SessionMonitor</code> for the hook stream, <code style="font-family:var(--mono);font-size:12px;color:var(--accent)">QuotaMonitor</code> for provider quotas. The notch is a second view onto them, not a second source of truth.</p>
+
+</div>
+
+<script>
+const S = {
+  idle: {
+    chip:"Idle", sw:"#6D6386",
+    w:200, h:32, r:14, fillet:11, accent:"var(--ink-3)", glow:null, open:0,
+    left:"", right:"",
+    read:{
+      state:"Nothing running",
+      trigger:"No active session",
+      source:"<code>SessionMonitor.activeSession == nil</code>",
+      does:"The notch stays the notch. ClaudeBar draws nothing until it has something to say."
+    }
+  },
+
+  working: {
+    chip:"Claude is working", sw:"#34D399",
+    w:352, h:40, r:16, fillet:12, accent:"var(--live)", glow:null, open:0,
+    left:'<span class="pulse"></span><span class="label">claudebar</span>',
+    right:'<span class="meta mono">1:34</span>',
+    read:{
+      state:"Working",
+      trigger:"<code>UserPromptSubmit</code>",
+      source:"<code>ClaudeSession.Phase.active</code>",
+      does:"You alt-tabbed away. The pill tells you it is still going without switching windows."
+    }
+  },
+
+  agents: {
+    chip:"Subagents fanned out", sw:"#60A5FA",
+    w:382, h:40, r:16, fillet:12, accent:"var(--agents)", glow:null, open:0,
+    left:'<span class="orbit"><i></i><i></i><i></i></span><span class="label">claudebar</span>',
+    right:'<span class="meta">3 agents</span><span class="meta mono">2:08</span>',
+    read:{
+      state:"Agents working",
+      trigger:"<code>SubagentStart</code> ×3",
+      source:"<code>activeSubagentCount</code>",
+      does:"Parallel work is visible as parallel work. Three dots, three agents."
+    }
+  },
+
+  attention: {
+    chip:"Waiting on you", sw:"#FBBF24", badge:true,
+    w:430, h:44, r:17, fillet:13, accent:"var(--attention)", glow:"rgba(251,191,36,.35)", open:0,
+    left:'<span class="glyph">􀇾</span><span class="label">Needs you</span>',
+    right:'<span class="meta mono">Bash · rm&nbsp;-rf&nbsp;build/</span>',
+    read:{
+      state:"Blocked on a permission prompt",
+      trigger:"<code>Notification</code> hook",
+      source:"New — one string in <code>HookInstaller.hookEvents</code>",
+      does:"The real dead time is not Claude working, it is Claude waiting. This state does not time out."
+    }
+  },
+
+  done: {
+    chip:"Turn finished", sw:"#34D399",
+    w:346, h:40, r:16, fillet:12, accent:"var(--live)", glow:"rgba(52,211,153,.28)", open:0,
+    left:'<span class="glyph">􀆅</span><span class="label">claudebar</span>',
+    right:'<span class="meta">7 tasks</span><span class="meta mono">4:12</span>',
+    read:{
+      state:"Done",
+      trigger:"<code>Stop</code> / <code>SessionEnd</code>",
+      source:"<code>completedTaskCount</code>",
+      does:"Flashes for four seconds, then retracts on its own. A notification you cannot miss and never have to dismiss."
+    }
+  },
+
+  quota: {
+    chip:"Quota threshold", sw:"#F87171",
+    w:404, h:44, r:17, fillet:13, accent:"var(--critical)", glow:"rgba(248,113,113,.32)", open:0,
+    left:'<span class="chip-live">Claude 5h</span><span class="label">95%</span>',
+    right:'<span class="minibar"><i style="width:95%"></i></span><span class="meta mono">42m</span>',
+    read:{
+      state:"Approaching the cap",
+      trigger:"<code>QuotaAlerter</code> crossing 95%",
+      source:"<code>QuotaMonitor</code>",
+      does:"Today this is a banner that Focus mode eats. Here it is on screen until the window resets."
+    }
+  },
+
+  multi: {
+    chip:"Three repos at once", sw:"#A79BC2",
+    w:400, h:40, r:16, fillet:12, accent:"var(--agents)", glow:null, open:0,
+    left:'<span class="orbit"><i></i><i style="background:#34D399"></i><i style="background:#FBBF24"></i></span><span class="label">3 sessions</span>',
+    right:'<span class="meta">1 needs you</span>',
+    read:{
+      state:"Multiple sessions",
+      trigger:"Concurrent <code>SessionStart</code>",
+      source:"<code>SessionMonitor</code> keyed by cwd",
+      does:"The menu bar can only show one number. The notch shows the worst state across all of them."
+    }
+  },
+
+
+  refreshing: {
+    chip:"Refreshing", sw:"#C084FC",
+    w:404, h:44, r:17, fillet:13, accent:"var(--accent)", glow:null, open:0,
+    left:'<span class="chip-live">Claude 5h</span><span class="label">84%</span>',
+    right:'<span class="dotgrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="meta mono">2:49</span>',
+    read:{
+      state:"Refetching the headline quota",
+      trigger:"The provider behind the number on screen is syncing",
+      source:"<code>provider.isSyncing</code>, not <code>QuotaMonitor.isRefreshing</code>",
+      does:"The bar is replaced by a dot-matrix loader in place, so the reading is visibly being refetched rather than silently swapped. No glow: an animated outline needs a clock that does not run in a panel which never takes focus."
+    }
+  },
+
+  expanded: {
+    chip:"Hover to expand", sw:"#C084FC",
+    w:624, h:264, r:22, fillet:16, accent:"var(--accent)", glow:null, open:1,
+    left:'<span class="pulse"></span><span class="label">3 sessions</span>',
+    right:'<span class="meta mono">14:26</span>',
+    panel:`
+      <div class="p-head">
+        <div class="p-title">
+          <span class="name">Claude Code</span>
+          <span class="phase" style="background:rgba(251,191,36,.18);color:#FFD79A">1 needs you</span>
+        </div>
+        <span class="elapsed">Today · 4h 51m · $12.40</span>
+      </div>
+
+      <div class="sessions">
+        <div class="srow">
+          <span class="rdot" style="background:#FBBF24"></span>
+          <span class="repo">~/github/tddworks/claudebar</span>
+          <span class="st">Permission · Bash</span>
+          <span class="tm">2:08</span>
+        </div>
+        <div class="srow">
+          <span class="rdot" style="background:#60A5FA"></span>
+          <span class="repo">~/github/tddworks/asc</span>
+          <span class="st">3 agents working</span>
+          <span class="tm">11:42</span>
+        </div>
+        <div class="srow">
+          <span class="rdot" style="background:#34D399"></span>
+          <span class="repo">~/work/billfold-api</span>
+          <span class="st">Active · 12 tasks</span>
+          <span class="tm">38:05</span>
+        </div>
+      </div>
+
+      <div class="quotas">
+        <div class="q">
+          <div class="qt"><span class="qn">Claude 5h</span><span class="qv" style="color:#F87171">95%</span></div>
+          <div class="track"><i style="width:95%;background:#F87171"></i></div>
+          <div class="qr">resets in 42m</div>
+        </div>
+        <div class="q">
+          <div class="qt"><span class="qn">Claude weekly</span><span class="qv" style="color:#FBBF24">61%</span></div>
+          <div class="track"><i style="width:61%;background:#FBBF24"></i></div>
+          <div class="qr">resets Sun</div>
+        </div>
+        <div class="q">
+          <div class="qt"><span class="qn">Copilot</span><span class="qv" style="color:#34D399">18%</span></div>
+          <div class="track"><i style="width:18%;background:#34D399"></i></div>
+          <div class="qr">resets in 9d</div>
+        </div>
+      </div>
+
+      <div class="p-foot">
+        <span class="act primary">Focus claudebar</span>
+        <span class="act">Open ClaudeBar</span>
+        <span class="act">Snooze alerts</span>
+      </div>`,
+    read:{
+      state:"Expanded",
+      trigger:"Hover, or click the collapsed pill",
+      source:"Same data as the popover",
+      does:"A 200 px target at the top of the screen you can hit without aiming, instead of a 16 px status item."
+    }
+  }
+};
+
+const order = ["idle","working","agents","attention","done","quota","multi","refreshing","expanded"];
+const notch = document.getElementById("notch");
+const laneL = document.getElementById("laneL");
+const laneR = document.getElementById("laneR");
+const panel = document.getElementById("panel");
+const glow  = document.getElementById("glow");
+const rail  = document.getElementById("rail");
+const readout = document.getElementById("readout");
+const mbdot = document.getElementById("mbdot");
+
+order.forEach(k => {
+  const s = S[k];
+  const li = document.createElement("li");
+  const b = document.createElement("button");
+  b.type = "button";
+  b.setAttribute("aria-pressed", k === "idle" ? "true" : "false");
+  b.dataset.key = k;
+  b.innerHTML = '<span class="sw" style="background:' + s.sw + '"></span>' + s.chip;
+  b.addEventListener("click", () => apply(k));
+  li.appendChild(b);
+  rail.appendChild(li);
+});
+
+function apply(key){
+  const s = S[key];
+
+  notch.style.setProperty("--w", s.w + "px");
+  notch.style.setProperty("--h", s.h + "px");
+  notch.style.setProperty("--radius", s.r + "px");
+  notch.style.setProperty("--fillet", s.fillet + "px");
+  notch.style.setProperty("--accent-c", s.accent);
+  notch.dataset.open = s.open;
+  notch.classList.remove("underglow");
+
+  laneL.innerHTML = s.left || "";
+  laneR.innerHTML = s.right || "";
+  panel.innerHTML = s.panel || "";
+
+  if (s.glow){
+    glow.style.setProperty("--glow", s.glow);
+    glow.style.setProperty("--gw", (s.w + 140) + "px");
+    glow.style.setProperty("--gh", (s.h + 46) + "px");
+    glow.classList.add("on");
+  } else {
+    glow.classList.remove("on");
+  }
+
+  mbdot.style.background = key === "idle" ? "#6D6386" : s.accent;
+
+  readout.innerHTML =
+    cell("State", "<p>" + s.read.state + "</p>") +
+    cell("Fires on", "<p>" + s.read.trigger + "</p>") +
+    cell("Source of truth", "<div class=\"stack\"><p>" + s.read.source + "</p>" +
+      (s.badge ? '<span class="new">Needs new plumbing</span>' : "") + "</div>") +
+    cell("Why it earns the space", "<p>" + s.read.does + "</p>");
+
+  document.querySelectorAll("#rail button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.key === key));
+  });
+}
+
+function cell(h, body){
+  return '<div class="cell"><h3>' + h + "</h3>" + body + "</div>";
+}
+
+apply("idle");
+</script>

@@ -109,6 +109,7 @@ struct BedrockConfigSpec {
     // MARK: - Provider defaults to disabled
 
     @Suite("Scenario: Bedrock provider defaults")
+    @MainActor
     struct ProviderDefaults {
 
         @Test

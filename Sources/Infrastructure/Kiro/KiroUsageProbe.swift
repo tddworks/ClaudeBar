@@ -45,7 +45,7 @@ public struct KiroUsageProbe: UsageProbe {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: kiroBinary,
                 args: [],
                 input: "/usage\n/quit\n",

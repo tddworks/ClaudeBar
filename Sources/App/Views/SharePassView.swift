@@ -155,6 +155,78 @@ struct SharePassOverlay: View {
     }
 }
 
+// MARK: - Error Overlay
+
+/// Shown when fetching the invitation link fails, so a tapped Share button
+/// never does nothing at all (issue #243).
+struct SharePassErrorOverlay: View {
+    let message: String
+    let onDismiss: () -> Void
+
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onDismiss()
+                }
+
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(theme.statusCritical)
+
+                    Text("Couldn't Get Invitation Link")
+                        .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+
+                    Spacer()
+
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Text(message)
+                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Invitation links are only available on Claude Max plans.")
+                    .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(theme.glassBackground)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.95))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(theme.glassBorder, lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.4), radius: 20, y: 10)
+            )
+            .padding(.horizontal, 24)
+        }
+        .transition(.opacity)
+    }
+}
+
 // MARK: - Preview
 
 #Preview("SharePassOverlay") {

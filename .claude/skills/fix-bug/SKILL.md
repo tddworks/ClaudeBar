@@ -53,7 +53,7 @@ Fix bugs using Chicago School TDD, root cause analysis, and rich domain design.
 
 ### Locate in Architecture
 
-> **Reference:** [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+> **Reference:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
 
 | Layer | Location | What to look for |
 |-------|----------|------------------|

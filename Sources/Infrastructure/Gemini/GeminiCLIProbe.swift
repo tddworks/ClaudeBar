@@ -24,7 +24,7 @@ internal struct GeminiCLIProbe {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: "gemini",
                 args: [],
                 input: "/stats\n",

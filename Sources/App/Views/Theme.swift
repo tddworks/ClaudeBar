@@ -634,6 +634,11 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 0.91, green: 0.27, blue: 0.42)
                 : Color(red: 0.82, green: 0.20, blue: 0.35)
+        case "deepseek":
+            // DeepSeek brand blue
+            return scheme == .dark
+                ? Color(red: 0.42, green: 0.52, blue: 1.0)
+                : Color(red: 0.23, green: 0.35, blue: 0.92)
         case "alibaba":
             // Alibaba Cloud orange
             return scheme == .dark
@@ -643,6 +648,23 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 0.52, green: 0.36, blue: 1.0)
                 : Color(red: 0.42, green: 0.28, blue: 1.0)
+        case "omp":
+            return scheme == .dark
+                ? Color(red: 0.30, green: 0.85, blue: 0.55)
+                : Color(red: 0.16, green: 0.62, blue: 0.38)
+        case "grok":
+            return scheme == .dark
+                ? Color(white: 0.92)
+                : Color(white: 0.12)
+        case "commandcode":
+            return scheme == .dark
+                ? Color(red: 0.83, green: 1.0, blue: 0.29)
+                : Color(red: 0.07, green: 0.07, blue: 0.07)
+        case "vercel-gateway":
+            // Vercel brand black/white monochrome
+            return scheme == .dark
+                ? Color(white: 0.92)
+                : Color(white: 0.08)
         default:
             return purpleVibrant(for: scheme)
         }
@@ -686,6 +708,11 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.96, green: 0.53, blue: 0.24)
                 : Color(red: 0.86, green: 0.43, blue: 0.14)
+        case "deepseek":
+            // DeepSeek blue gradient
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.22, green: 0.28, blue: 0.85)
+                : Color(red: 0.15, green: 0.20, blue: 0.75)
         case "alibaba":
             // Alibaba orange-to-red gradient
             secondaryColor = scheme == .dark
@@ -695,6 +722,22 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.36, green: 0.20, blue: 0.90)
                 : Color(red: 0.30, green: 0.15, blue: 0.80)
+        case "omp":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.16, green: 0.62, blue: 0.42)
+                : Color(red: 0.10, green: 0.48, blue: 0.30)
+        case "grok":
+            secondaryColor = scheme == .dark
+                ? Color(white: 0.60)
+                : Color(white: 0.40)
+        case "commandcode":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.55, green: 0.75, blue: 0.12)
+                : Color(red: 0.25, green: 0.25, blue: 0.25)
+        case "vercel-gateway":
+            secondaryColor = scheme == .dark
+                ? Color(white: 0.55)
+                : Color(white: 0.45)
         default:
             return accentGradient(for: scheme)
         }
@@ -717,8 +760,13 @@ extension AppTheme {
         case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
         case "minimax": return "MiniMaxIcon"
+        case "deepseek": return "DeepSeekIcon"
         case "alibaba": return "AlibabaIcon"
         case "opencode-go": return "OpenCodeIcon"
+        case "omp": return "OmpIcon"
+        case "grok": return "GrokIcon"
+        case "commandcode": return "CommandCodeIcon"
+        case "vercel-gateway": return "VercelIcon"
         default: return "QuestionIcon"
         }
     }
@@ -734,8 +782,13 @@ extension AppTheme {
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
         case "minimax": return "MiniMax"
+        case "deepseek": return "DeepSeek"
         case "alibaba": return "Alibaba"
         case "opencode-go": return "OpenCode Go"
+        case "omp": return "Oh My Pi"
+        case "grok": return "Grok"
+        case "commandcode": return "Command Code"
+        case "vercel-gateway": return "Vercel Gateway"
         default: return providerId.capitalized
         }
     }
@@ -751,8 +804,13 @@ extension AppTheme {
         case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill" // AWS cloud icon
         case "minimax": return "waveform"
+        case "deepseek": return "d.square.fill"
         case "alibaba": return "cloud.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
+        case "omp": return "terminal.fill"
+        case "grok": return "line.diagonal"
+        case "commandcode": return "command"
+        case "vercel-gateway": return "triangle.fill"
         default: return "questionmark.circle.fill"
         }
     }
@@ -803,6 +861,31 @@ extension QuotaStatus {
         case .healthy: .green
         case .warning: .orange
         case .critical, .depleted: .red
+        }
+    }
+}
+
+// MARK: - ProviderBadgeState Theme Extension
+
+extension ProviderBadgeState {
+    /// Text for the header pill. States without data say so rather than
+    /// borrowing "HEALTHY" from a snapshot that does not exist (#259).
+    var badgeText: String {
+        switch self {
+        case .syncing: "Syncing..."
+        case .unavailable: "UNAVAILABLE"
+        case .awaitingData: "NO DATA"
+        case .quota(let status): status.badgeText
+        }
+    }
+
+    /// Pill accent color, resolved against the active theme.
+    func badgeColor(_ theme: any AppThemeProvider) -> Color {
+        switch self {
+        case .syncing, .awaitingData: theme.textTertiary
+        // Matches the warning triangle on the "Unavailable" card below it.
+        case .unavailable: theme.statusWarning
+        case .quota(let status): theme.statusColor(for: status)
         }
     }
 }

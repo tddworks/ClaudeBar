@@ -5,6 +5,7 @@ import Mockable
 @testable import Domain
 
 @Suite
+@MainActor
 struct AlibabaProviderTests {
 
     private func makeSettingsRepository() -> UserDefaultsProviderSettingsRepository {

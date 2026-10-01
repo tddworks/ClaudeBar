@@ -4,12 +4,20 @@ import Domain
 /// Infrastructure adapter that probes the Kimi CLI to fetch usage quotas.
 /// Starts the interactive `kimi` CLI, sends `/usage`, and parses the output.
 ///
-/// Sample CLI output:
+/// Sample CLI output (kimi CLI < 0.36):
 /// ```
 /// ╭─────────────────────────────── API Usage ───────────────────────────────╮
 /// │  Weekly limit  ━━━━━━━━━━━━━━━━━━━━  100% left  (resets in 6d 23h 22m)  │
 /// │  5h limit      ━━━━━━━━━━━━━━━━━━━━  100% left  (resets in 4h 22m)      │
 /// ╰─────────────────────────────────────────────────────────────────────────╯
+/// ```
+///
+/// Sample CLI output (kimi CLI >= 0.36):
+/// ```
+///   ╭ Usage ───────────────────────────────────────────────────────────╮
+///   │   Weekly limit  ██████████████████░░  90% used  resets in 35m    │
+///   │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 3h 35m │
+///   ╰──────────────────────────────────────────────────────────────────╯
 /// ```
 public struct KimiCLIUsageProbe: UsageProbe {
     private let kimiBinary: String
@@ -43,14 +51,18 @@ public struct KimiCLIUsageProbe: UsageProbe {
 
         let result: CLIResult
         do {
-            result = try cliExecutor.execute(
+            result = try await cliExecutor.execute(
                 binary: kimiBinary,
                 args: [],
                 input: nil,
                 timeout: timeout,
                 workingDirectory: nil,
                 autoResponses: [
+                    // kimi CLI < 0.36 shows a 💫 prompt when ready for input.
                     "💫": "/usage\r",
+                    // kimi CLI >= 0.36 dropped the 💫 prompt; its status footer
+                    // ("context: N% ...") signals the TUI is ready instead.
+                    "context:": "/usage\r",
                 ]
             )
         } catch {
@@ -74,23 +86,21 @@ public struct KimiCLIUsageProbe: UsageProbe {
 
     /// Parses the Kimi CLI `/usage` output into a UsageSnapshot.
     ///
-    /// Looks for lines containing known quota labels ("Weekly limit", "5h limit")
-    /// with `N% left` and `(resets in ...)`. Strips ANSI escape codes first
-    /// so colored progress bars in release builds don't interfere.
+    /// Looks for lines containing known quota labels ("Weekly limit", "5h limit").
+    /// Two output formats are supported:
+    /// - kimi CLI < 0.36: `N% left  (resets in ...)`
+    /// - kimi CLI >= 0.36: `N% used  resets in ...` (remaining = 100 - used)
     ///
     /// Expected format per quota line (with or without progress bars):
     /// ```
     /// Weekly limit  ━━━━━━━━━━━━━━━━━━━━  100% left  (resets in 6d 23h 22m)
-    /// 5h limit                            75% left   (resets in 4h 22m)
+    /// Weekly limit  ██████████████████░░   90% used  resets in 35m
     /// ```
     public static func parse(_ text: String) throws -> UsageSnapshot {
         var quotas: [UsageQuota] = []
 
         for line in text.components(separatedBy: .newlines) {
             let lower = line.lowercased()
-
-            // Only process lines that contain "% left"
-            guard lower.contains("% left") else { continue }
 
             // Determine quota type from known labels
             let quotaType: QuotaType
@@ -102,22 +112,46 @@ public struct KimiCLIUsageProbe: UsageProbe {
                 continue
             }
 
-            // Extract percent: look for "N% left"
-            guard let percentMatch = line.range(of: #"(\d+)%\s+left"#, options: .regularExpression),
-                  let percent = Double(line[percentMatch].prefix(while: { $0.isNumber })) else {
+            // The TUI redraws the panel on resize/refresh; keep the first occurrence.
+            if quotas.contains(where: { $0.quotaType == quotaType }) { continue }
+
+            // Extract percent and reset text from either output format.
+            let percent: Double
+            var resetRaw: String?
+            if lower.contains("% left") {
+                // kimi CLI < 0.36: "100% left  (resets in 6d 23h 22m)"
+                guard let percentMatch = line.range(of: #"(\d+)%\s+left"#, options: .regularExpression),
+                      let remaining = Double(line[percentMatch].prefix(while: { $0.isNumber })) else {
+                    continue
+                }
+                percent = remaining
+                if let resetMatch = lower.range(of: #"\(resets\s+in\s+(.+?)\)"#, options: .regularExpression) {
+                    resetRaw = String(lower[resetMatch])
+                        .replacingOccurrences(of: "(resets in ", with: "")
+                        .replacingOccurrences(of: ")", with: "")
+                        .trimmingCharacters(in: .whitespaces)
+                }
+            } else if lower.contains("% used") {
+                // kimi CLI >= 0.36: "90% used  resets in 35m"
+                guard let percentMatch = line.range(of: #"(\d+)\s*%\s*used"#, options: .regularExpression),
+                      let used = Double(line[percentMatch].prefix(while: { $0.isNumber })) else {
+                    continue
+                }
+                percent = max(0, 100 - used)
+                if let resetMatch = lower.range(of: #"resets\s+in\s+[0-9dhms ]+"#, options: .regularExpression) {
+                    resetRaw = String(lower[resetMatch])
+                        .replacingOccurrences(of: #"^resets\s+in\s+"#, with: "", options: .regularExpression)
+                        .trimmingCharacters(in: .whitespaces)
+                }
+            } else {
                 continue
             }
 
-            // Extract reset text: look for "(resets in ...)"
             var resetText: String?
             var resetsAt: Date?
-            if let resetMatch = line.range(of: #"\(resets\s+in\s+(.+?)\)"#, options: .regularExpression) {
-                let raw = String(line[resetMatch])
-                    .replacingOccurrences(of: "(resets in ", with: "")
-                    .replacingOccurrences(of: ")", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                resetText = "Resets in \(raw)"
-                resetsAt = parseResetDuration(raw)
+            if let resetRaw, !resetRaw.isEmpty {
+                resetText = "Resets in \(resetRaw)"
+                resetsAt = parseResetDuration(resetRaw)
             }
 
             quotas.append(UsageQuota(
@@ -167,6 +201,14 @@ public struct KimiCLIUsageProbe: UsageProbe {
             let minStr = String(text[minMatch])
             if let minutes = Int(minStr.filter { $0.isNumber }) {
                 totalSeconds += Double(minutes) * 60
+            }
+        }
+
+        // Extract seconds
+        if let secMatch = text.range(of: #"(\d+)\s*s"#, options: .regularExpression) {
+            let secStr = String(text[secMatch])
+            if let seconds = Int(secStr.filter { $0.isNumber }) {
+                totalSeconds += Double(seconds)
             }
         }
 

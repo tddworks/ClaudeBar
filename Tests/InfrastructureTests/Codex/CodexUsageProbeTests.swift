@@ -210,6 +210,36 @@ struct CodexRateLimitsToSnapshotMappingTests {
     }
 
     @Test
+    func `carries reset dates through to quotas`() throws {
+        let sessionReset = Date().addingTimeInterval(2 * 3600)
+        let weeklyReset = Date().addingTimeInterval(3 * 86400)
+        let response = CodexRateLimitsResponse(
+            primary: CodexRateLimitWindow(usedPercent: 30, resetDescription: "Resets in 2h", resetsAt: sessionReset),
+            secondary: CodexRateLimitWindow(usedPercent: 60, resetDescription: "Resets in 3d", resetsAt: weeklyReset)
+        )
+
+        let snapshot = try CodexUsageProbe.mapRateLimitsToSnapshot(response)
+
+        #expect(snapshot.sessionQuota?.resetsAt == sessionReset)
+        #expect(snapshot.weeklyQuota?.resetsAt == weeklyReset)
+        #expect(snapshot.sessionQuota?.resetText == "Resets in 2h")
+        #expect(snapshot.sessionQuota?.compactResetTime != nil)
+        #expect(snapshot.weeklyQuota?.compactResetTime != nil)
+    }
+
+    @Test
+    func `carries window duration through to quotas`() throws {
+        let response = CodexRateLimitsResponse(
+            primary: CodexRateLimitWindow(usedPercent: 94, resetDescription: nil, resetsAt: nil, windowDuration: 7 * 24 * 3600),
+            secondary: nil
+        )
+
+        let snapshot = try CodexUsageProbe.mapRateLimitsToSnapshot(response)
+
+        #expect(snapshot.sessionQuota?.windowDuration == TimeInterval(7 * 24 * 3600))
+    }
+
+    @Test
     func `throws when no rate limits found`() throws {
         let response = CodexRateLimitsResponse(primary: nil, secondary: nil)
 

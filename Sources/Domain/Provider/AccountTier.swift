@@ -33,6 +33,18 @@ public enum AccountTier: Sendable, Equatable, Hashable {
         case .custom(let badge): return badge
         }
     }
+
+    // MARK: - Entitlements
+
+    /// Whether the tier can issue Claude Code guest passes (invitation links).
+    /// Anthropic only hands these out to Max subscribers, so surfacing the
+    /// feature anywhere else offers an action that can only fail (issue #243).
+    public var supportsGuestPasses: Bool {
+        switch self {
+        case .claudeMax: return true
+        case .claudePro, .claudeApi, .custom: return false
+        }
+    }
 }
 
 // MARK: - Legacy Type Alias

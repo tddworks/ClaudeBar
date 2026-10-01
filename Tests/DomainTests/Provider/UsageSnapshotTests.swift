@@ -375,4 +375,120 @@ struct UsageSnapshotTests {
         // Then
         #expect(snapshot.weeklyQuota?.percentRemaining == 70)
     }
+
+    // MARK: - Quota Groups
+
+    @Test
+    func `ungrouped snapshot has no quota groups and one unnamed bucket`() {
+        let quotas = [
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
+        ]
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
+
+        #expect(snapshot.hasQuotaGroups == false)
+        let groups = snapshot.quotaGroups
+        #expect(groups.count == 1)
+        #expect(groups[0].title == nil)
+        #expect(groups[0].quotas.count == 2)
+    }
+
+    @Test
+    func `grouped quotas bucket by group in first-appearance order`() {
+        let quotas = [
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "omp", group: "Codex"),
+            UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "omp", group: "Codex"),
+            UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+        ]
+        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date())
+
+        #expect(snapshot.hasQuotaGroups == true)
+        let groups = snapshot.quotaGroups
+        #expect(groups.map(\.title) == ["Codex", "Claude"])
+        #expect(groups[0].quotas.count == 2)
+        #expect(groups[0].worstStatus == .warning) // 40% remaining
+        #expect(groups[0].lowestQuota?.percentRemaining == 40)
+        #expect(groups[1].quotas.count == 1)
+    }
+
+    @Test
+    func `grouped metrics become note-only sections after quota sections`() {
+        let quotas = [
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+        ]
+        let metrics = [
+            ExtensionMetric(label: "Copilot · work@example.com", value: "No usage reported", unit: "", group: "Copilot · work"),
+        ]
+        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
+
+        let groups = snapshot.quotaGroups
+        #expect(groups.map(\.title) == ["Claude", "Copilot · work"])
+        #expect(groups[1].quotas.isEmpty)
+        #expect(groups[1].note == "No usage reported")
+        #expect(groups[0].note == nil)
+    }
+
+    @Test
+    func `note on a quota-bearing group renders as its own row`() {
+        // A metric whose group title collides with a quota group attaches
+        // its note to that section - the presentation policy must surface
+        // it as a row, never drop it (note-only sections keep the note in
+        // the header instead, where it doubles as the summary).
+        let quotas = [
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+        ]
+        let metrics = [
+            ExtensionMetric(label: "Claude · solo@example.com", value: "No usage reported", unit: "", group: "Claude"),
+        ]
+        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
+
+        let groups = snapshot.quotaGroups
+        #expect(groups.count == 1)
+        #expect(groups[0].note == "No usage reported")
+        #expect(groups[0].notePlacement == .row("No usage reported"))
+    }
+
+    @Test
+    func `group notes accumulate in first appearance order`() {
+        let quotas = [
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+        ]
+        let metrics = [
+            ExtensionMetric(label: "Claude Extra Usage", value: "Extra usage $1,234.56 spent · no cap", unit: "", group: "Claude"),
+            ExtensionMetric(label: "Claude account", value: "No usage reported", unit: "", group: "Claude"),
+        ]
+        let snapshot = UsageSnapshot(
+            providerId: "omp",
+            quotas: quotas,
+            capturedAt: Date(),
+            extensionMetrics: metrics
+        )
+
+        #expect(snapshot.quotaGroups.first?.note == """
+        Extra usage $1,234.56 spent · no cap
+        No usage reported
+        """)
+    }
+
+    @Test
+    func `note placement is header-inline for note-only groups and nil without a note`() {
+        let noteOnly = QuotaGroup(title: "Copilot", quotas: [], note: "No usage reported")
+        #expect(noteOnly.notePlacement == .headerInline("No usage reported"))
+
+        let plain = QuotaGroup(title: "Claude", quotas: [
+            UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "omp", group: "Claude"),
+        ])
+        #expect(plain.notePlacement == nil)
+    }
+
+    @Test
+    func `ungrouped metrics do not create sections`() {
+        let metrics = [
+            ExtensionMetric(label: "Health", value: "OK", unit: ""),
+        ]
+        let snapshot = UsageSnapshot(providerId: "ext", quotas: [], capturedAt: Date(), extensionMetrics: metrics)
+
+        #expect(snapshot.hasQuotaGroups == false)
+        #expect(snapshot.quotaGroups.isEmpty)
+    }
 }

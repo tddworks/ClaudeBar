@@ -230,14 +230,50 @@ public final class QuotaMonitor {
         )
     }
 
+    /// Additional providers use their first quota and include a name so adjacent
+    /// readouts remain distinguishable. Enabled providers awaiting data keep a placeholder.
+    public func additionalMenuBarLabels(
+        providerIds: [String],
+        configurations: [String: MenuBarProviderSettings] = [:],
+        showPercentage: Bool,
+        showDuration: Bool,
+        mode: UsageDisplayMode,
+        burnRateWarningEnabled: Bool = false,
+        burnRateThreshold: Double = 1.5
+    ) -> [MenuBarProviderLabel] {
+        guard showPercentage || showDuration else { return [] }
+        var seen = Set<String>()
+        return providerIds.filter { seen.insert($0).inserted }.prefix(2).compactMap { id in
+            guard let provider = enabledProviders.first(where: { $0.id == id }) else { return nil }
+            let config = configurations[id] ?? MenuBarProviderSettings()
+            let key = config.primaryQuotaKey.isEmpty
+                ? provider.snapshot?.quotas.first?.quotaType.quotaKey : config.primaryQuotaKey
+            guard let key,
+                  let label = menuBarLabel(
+                    providerId: id, primaryQuotaKey: key, secondaryQuotaKey: config.secondaryQuotaKey,
+                    showPercentage: showPercentage, showDuration: showDuration,
+                    mode: mode, burnRateWarningEnabled: burnRateWarningEnabled,
+                    burnRateThreshold: burnRateThreshold
+                  ) else {
+                return MenuBarProviderLabel(providerId: id, providerName: provider.name,
+                                            label: MenuBarLabel(text: "—", status: .healthy))
+            }
+            return MenuBarProviderLabel(providerId: id, providerName: provider.name, label: label,
+                                        stacked: config.stacked, stackedSize: MenuBarStackedSize(storedRawValue: config.stackedSize))
+        }
+    }
+
     /// Builds the fully composed menu bar label for one or two quota windows.
     ///
     /// The primary window renders exactly as the single-window label always has
     /// (percentage and/or duration joined by " · "). When `secondaryQuotaKey` is
     /// non-empty and differs from the primary, a second window is appended: each
-    /// window is prefixed with its `QuotaType.shortLabel` and the two are joined
-    /// by " | ", e.g. "5h 12% | 7d 34%". The status is the most severe of the
-    /// shown windows.
+    /// window is prefixed with the quota's `menuBarTitle` when the probe set one
+    /// (a condensed form of labels too wide for the menu bar), otherwise its
+    /// `QuotaType.shortLabel`, and the two are joined by " | ", e.g.
+    /// "5h 12% | 7d 34%". The status is the most severe of the
+    /// shown windows, and each window is also exposed individually via
+    /// `MenuBarLabel.segments` for renderers that draw them on separate lines.
     ///
     /// Returns nil when neither percentage nor duration is enabled, or when no
     /// quota data is available for the requested windows.
@@ -251,6 +287,9 @@ public final class QuotaMonitor {
         burnRateWarningEnabled: Bool = false,
         burnRateThreshold: Double = 1.5
     ) -> MenuBarLabel? {
+        let primaryQuotaKey = primaryQuotaKey.isEmpty
+            ? (enabledProviders.first { $0.id == providerId }?.snapshot?.quotas.first?.quotaType.quotaKey ?? "")
+            : primaryQuotaKey
         func segment(forQuotaKey quotaKey: String) -> (text: String, status: QuotaStatus)? {
             let percentage = showPercentage
                 ? menuBarPercentageDisplay(
@@ -289,11 +328,33 @@ public final class QuotaMonitor {
 
         switch (primary, secondary) {
         case let (.some(primary), .some(secondary)):
-            let primaryLabel = QuotaType(quotaKey: primaryQuotaKey)?.shortLabel ?? primaryQuotaKey
-            let secondaryLabel = QuotaType(quotaKey: secondaryQuotaKey)?.shortLabel ?? secondaryQuotaKey
+            // Window prefix: the quota's own condensed menu-bar title wins
+            // (probes set it when the full label is too wide, e.g. a long
+            // account discriminator), then the type's short label.
+            func windowPrefix(forQuotaKey quotaKey: String) -> String {
+                if let title = quota(providerId: providerId, quotaKey: quotaKey)?.menuBarTitle {
+                    return title
+                }
+                return QuotaType(quotaKey: quotaKey)?.shortLabel ?? quotaKey
+            }
+            let primaryLabel = windowPrefix(forQuotaKey: primaryQuotaKey)
+            let secondaryLabel = windowPrefix(forQuotaKey: secondaryQuotaKey)
+            // Each window becomes its own segment (prefixed text + that
+            // window's status) so stacked rendering can draw and tint them
+            // independently; the joined text stays the canonical single-line
+            // form and doubles as the tooltip.
+            let primarySegment = MenuBarLabel.Segment(
+                text: "\(primaryLabel) \(primary.text)",
+                status: primary.status
+            )
+            let secondarySegment = MenuBarLabel.Segment(
+                text: "\(secondaryLabel) \(secondary.text)",
+                status: secondary.status
+            )
             return MenuBarLabel(
-                text: "\(primaryLabel) \(primary.text) | \(secondaryLabel) \(secondary.text)",
-                status: max(primary.status, secondary.status)
+                text: "\(primarySegment.text) | \(secondarySegment.text)",
+                status: max(primary.status, secondary.status),
+                segments: [primarySegment, secondarySegment]
             )
         case let (.some(primary), .none):
             return MenuBarLabel(text: primary.text, status: primary.status)
@@ -333,6 +394,15 @@ public final class QuotaMonitor {
         if providers.enabled.contains(where: { $0.id == id }) {
             selectedProviderId = id
         }
+    }
+
+    /// Selects the enabled provider in the given 1-based slot, counted the way
+    /// the popover lists them (⌘1 is the first pill). A slot with no provider
+    /// leaves the selection alone.
+    public func selectProvider(atPosition position: Int) {
+        let enabled = providers.enabled
+        guard enabled.indices.contains(position - 1) else { return }
+        selectedProviderId = enabled[position - 1].id
     }
 
     /// Sets a provider's enabled state.

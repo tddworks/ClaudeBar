@@ -1,9 +1,11 @@
 import Foundation
 import Observation
 
-/// OpenCode Go — monitors 5h ($12), weekly ($30), monthly ($60) usage from local opencode DB.
+/// OpenCode Go — monitors rolling (5h), weekly, and monthly usage via the
+/// opencode.ai usage API, falling back to the local opencode DB when no API key is configured.
+@MainActor
 @Observable
-public final class OpenCodeProvider: AIProvider, @unchecked Sendable {
+public final class OpenCodeProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String = "opencode-go"

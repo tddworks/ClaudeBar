@@ -5,6 +5,7 @@ import Mockable
 
 /// Cross-provider tests that verify the AIProvider protocol contract across all providers.
 @Suite("AIProvider Cross-Provider Tests")
+@MainActor
 struct AIProviderProtocolTests {
 
     private func makeSettingsRepository() -> MockProviderSettingsRepository {

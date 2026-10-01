@@ -5,6 +5,7 @@ import Mockable
 @testable import Infrastructure
 
 @Suite("CopilotProvider Tests")
+@MainActor
 struct CopilotProviderTests {
 
     // MARK: - Test Helper

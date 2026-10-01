@@ -522,3 +522,21 @@ brew cat claudebar
 - [App Store Connect API Keys](https://appstoreconnect.apple.com/access/api)
 - [Apple Notarization Documentation](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
 - [Homebrew Cask claudebar](https://formulae.brew.sh/cask/claudebar)
+
+## Versioning
+
+`Sources/App/Info.plist` is the source of truth for `CFBundleShortVersionString` and `CFBundleVersion`; `Project.swift` points Tuist at it. The release workflow sets both with PlistBuddy **before** `tuist generate`, so the built app and the Sparkle appcast carry the tagged version:
+
+```
+tag vX.Y.Z (or workflow_dispatch) → PlistBuddy updates Info.plist → tuist generate → xcodebuild → sign & notarize → GitHub Release → appcast
+```
+
+To set a version locally:
+
+```bash
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" Sources/App/Info.plist
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 1" Sources/App/Info.plist
+tuist generate
+```
+
+The workflow also promotes `## [Unreleased]` in `CHANGELOG.md` to the new version and uses that section as the release notes and the Sparkle "What's new" text (`scripts/extract-changelog.sh`, `scripts/promote-changelog.sh`).

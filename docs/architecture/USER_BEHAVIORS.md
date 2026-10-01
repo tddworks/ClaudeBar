@@ -302,7 +302,7 @@ Scenario: Disabled provider does not affect overall status
 | # | Behavior |
 |---|----------|
 | 24 | User clicks Dashboard → opens provider's web dashboard in browser |
-| 25 | User clicks Share (Claude only) → shows referral link overlay with pass count |
+| 25 | User clicks Share (Claude Max only) → shows referral link overlay with pass count |
 | 26 | Settings button shows red badge when app update available |
 | 27 | User clicks Quit → app terminates |
 
@@ -324,16 +324,36 @@ Scenario: Provider with no dashboard
 **#25 — Share Claude Code guest passes**
 ```
 Scenario: Share referral link
-  Given Claude is selected
+  Given Claude is selected on a Max account
     And `claude /passes` returns a referral URL with 3 passes left
   When the user clicks Share
   Then the overlay shows the referral link
     And shows "3 passes left"
+
+Scenario: Pro account has no Share button
+  Given Claude is selected on a Pro account
+  When the user views the action bar
+  Then the Share button is hidden
+    # Anthropic issues invitation links to Max plans only
+
+Scenario: Unknown account tier has no Share button
+  Given Claude is selected
+    And the account tier has not been determined yet
+  When the user views the action bar
+  Then the Share button is hidden
+
+Scenario: Fetching the referral link fails
+  Given Claude is selected on a Max account
+    And `claude /passes` fails
+  When the user clicks Share
+  Then an error overlay explains why the link could not be fetched
+    And the provider's usage data is still shown as available
 ```
 
 ### Inner TDD Tests (existing)
 - `ClaudePassProbeTests.*`
-- `ClaudeProviderTests.fetchPasses stores guest pass data`
+- `ClaudeProviderPassTests.*`
+- `AccountTierTests.claude* is (not) eligible for guest passes`
 
 ---
 

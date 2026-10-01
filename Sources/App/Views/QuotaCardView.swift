@@ -90,6 +90,7 @@ struct QuotaCardView: View {
                     .frame(height: 5)
                 }
             }
+            .help(quota.paceTickHelp(mode: effectiveDisplayMode) ?? "")
         }
         .padding(12)
         .background(Color.primary.opacity(0.05))

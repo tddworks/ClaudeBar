@@ -110,5 +110,27 @@ struct SessionEventTests {
         #expect(SessionEvent.EventName.subagentStart.rawValue == "SubagentStart")
         #expect(SessionEvent.EventName.subagentStop.rawValue == "SubagentStop")
         #expect(SessionEvent.EventName.stop.rawValue == "Stop")
+        #expect(SessionEvent.EventName.userPromptSubmit.rawValue == "UserPromptSubmit")
+        #expect(SessionEvent.EventName.notification.rawValue == "Notification")
+    }
+
+    @Test
+    func `message defaults to nil`() {
+        let event = SessionEvent(sessionId: "s", eventName: .sessionStart, cwd: "/tmp")
+
+        #expect(event.message == nil)
+    }
+
+    @Test
+    func `a notification event carries the prompt Claude Code is blocked on`() {
+        let event = SessionEvent(
+            sessionId: "s",
+            eventName: .notification,
+            cwd: "/tmp",
+            message: "Claude needs your permission to use Bash"
+        )
+
+        #expect(event.eventName == .notification)
+        #expect(event.message == "Claude needs your permission to use Bash")
     }
 }

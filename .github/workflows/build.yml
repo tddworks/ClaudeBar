@@ -7,9 +7,6 @@ on:
     branches: [main, develop]
 
 
-env:
-  SWIFT_VERSION: "6.2"
-
 jobs:
   build:
     name: Build and Verify
@@ -19,10 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Swift
-        uses: SwiftyLab/setup-swift@latest
-        with:
-          swift-version: ${{ env.SWIFT_VERSION }}
+      # No explicit Swift toolchain setup: use the runner's bundled Xcode, the
+      # same toolchain Tuist builds its macro prebuilts (SwiftSyntax) against.
+      # Installing a separate toolchain via SwiftyLab/setup-swift drifted out of
+      # sync with those prebuilts and broke the Release build ("SwiftSyntax was
+      # created for incompatible target"). Mirrors the passing tests.yml.
 
       - name: Install Tuist
         run: brew install --cask tuist

@@ -6,6 +6,7 @@ Package.resolved
 *.xcodeproj
 *.xcworkspace
 Derived/
+DerivedData/
 
 # Xcode user data
 xcuserdata/

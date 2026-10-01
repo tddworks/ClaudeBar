@@ -36,7 +36,6 @@ struct ExtensionMetricCardView: View {
                 Text(metric.value)
                     .font(.system(size: 24, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
 

@@ -41,6 +41,7 @@ struct ZaiConfigSpec {
     // MARK: - #42: Environment variable fallback
 
     @Suite("Scenario: Environment variable fallback")
+    @MainActor
     struct EnvVarFallback {
 
         @Test

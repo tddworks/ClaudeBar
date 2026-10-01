@@ -3,8 +3,9 @@ import Observation
 
 /// Alibaba Coding Plan AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
+@MainActor
 @Observable
-public final class AlibabaProvider: AIProvider, @unchecked Sendable {
+public final class AlibabaProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String = "alibaba"

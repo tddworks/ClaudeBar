@@ -274,6 +274,35 @@ Create a new parser in `Sources/Infrastructure/TerminalImport/` that produces a 
 | `statusCritical` | <20% remaining | Red |
 | `statusDepleted` | 0% remaining | Dark Red/Gray |
 
+### User status color overrides and High Contrast
+
+Users can replace the four status colors without switching themes (Settings → Appearance → Status Colors). Two settings drive it:
+
+| Key | Type | Meaning |
+|-----|------|---------|
+| `app.statusColorOverrides` | object of `#RRGGBB` per status | The user's own colors; absent statuses defer |
+| `app.highContrastEnabled` | Bool | Swap in the built-in appearance-aware palette |
+
+Precedence per status: **user override → High Contrast palette → theme**.
+
+**Where it lives:**
+- `Sources/Domain/Settings/StatusColorPolicy.swift` — `RGBColorValue` (sRGB, WCAG contrast math), `StatusPalette.highContrastLight/Dark`, `StatusColorOverrides`, and `StatusColorPolicy.color(for:appearance:)`. SwiftUI-free and unit-tested.
+- `Sources/App/Theme/StatusColorOverridingTheme.swift` — a decorator that forwards every `AppThemeProvider` member to the wrapped theme and substitutes the four status colors.
+- `ThemeRegistry.resolveTheme(for:systemColorScheme:statusColors:)` — wraps the resolved theme **at resolve time** when the policy is active. Stored themes stay concrete, so `isImported(id:)` and `removeImportedTheme(id:)` keep working.
+
+**Callers must read the policy inside their own observation scope.** `AppThemeProviderModifier` and `NotchRootView` read `AppSettings.shared.statusColorPolicy` in `body`; `StatusItemLabelDriver` carries it (and the current appearance) in `LabelContent` so the menu bar repaints on change.
+
+**Tradeoff:** the decorator does not forward `statusColor(for:)` or `progressGradient(for:)`, so the protocol defaults synthesize them from the overridden colors. A theme with a bespoke `progressGradient` (CLI's flat bar) shows the standard two-stop gradient while overrides or High Contrast are active.
+
+**High Contrast palette** (WCAG ratio against a typical light bar `#ECECEE` / dark bar `#1F1F22`; a Domain test locks every value at ≥ 4.5:1):
+
+| Status | Light appearance | Dark appearance |
+|--------|------------------|-----------------|
+| healthy | `#17703A` (5.2) | `#00D959` (8.7) |
+| warning | `#8A5A00` (5.0) | `#F2BF33` (9.6) |
+| critical | `#B81F1F` (5.5) | `#FF5C5C` (5.4) |
+| depleted | `#7A1414` (9.2) | `#FF8FA3` (7.6) |
+
 ### Accents
 
 | Property | Type | Description |

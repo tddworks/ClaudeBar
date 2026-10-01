@@ -15,6 +15,7 @@ public struct ZaiUsageProbe: UsageProbe {
     private let cliExecutor: any CLIExecutor
     private let networkClient: any NetworkClient
     private let settingsRepository: any ZaiSettingsRepository
+    private let loginShellEnvironment: LoginShellEnvironment
     private let timeout: TimeInterval
 
     // Claude config file location
@@ -34,9 +35,11 @@ public struct ZaiUsageProbe: UsageProbe {
         settingsRepository: any ZaiSettingsRepository,
         timeout: TimeInterval = 10.0
     ) {
-        self.cliExecutor = cliExecutor ?? DefaultCLIExecutor()
+        let executor = cliExecutor ?? DefaultCLIExecutor()
+        self.cliExecutor = executor
         self.networkClient = networkClient ?? URLSession.shared
         self.settingsRepository = settingsRepository
+        self.loginShellEnvironment = LoginShellEnvironment(cliExecutor: executor, timeout: timeout)
         self.timeout = timeout
     }
 
@@ -44,6 +47,13 @@ public struct ZaiUsageProbe: UsageProbe {
 
     /// Checks if Z.ai is available by looking for Claude CLI and z.ai configuration
     public func isAvailable() async -> Bool {
+        // An API key saved in ClaudeBar settings works without Claude Code or
+        // any endpoint in the config
+        if settingsApiKey() != nil {
+            AppLog.probes.debug("Zai: Available via API key saved in settings")
+            return true
+        }
+
         // Check if Claude CLI is installed
         guard cliExecutor.locate("claude") != nil else {
             let env = ProcessInfo.processInfo.environment
@@ -65,27 +75,41 @@ public struct ZaiUsageProbe: UsageProbe {
 
     /// Fetches the current usage quota from Z.ai API
     public func probe() async throws -> UsageSnapshot {
-        guard cliExecutor.locate("claude") != nil else {
-            AppLog.probes.error("Zai probe failed: Claude CLI not found")
-            throw ProbeError.cliNotFound("Claude")
+        let settingsKey = settingsApiKey()
+
+        // The quota API never needs the claude CLI; only the config-file path does
+        if settingsKey == nil {
+            guard cliExecutor.locate("claude") != nil else {
+                AppLog.probes.error("Zai probe failed: Claude CLI not found")
+                throw ProbeError.cliNotFound("Claude")
+            }
         }
 
         let (config, configPath): (String, String)
         do {
             (config, configPath) = try await readClaudeConfig()
         } catch {
+            if let settingsKey {
+                AppLog.probes.debug("Zai: Could not read Claude config, using settings API key: \(error.localizedDescription)")
+                return try await probe(platform: .zai, apiKey: settingsKey)
+            }
             AppLog.probes.error("Zai probe failed: Could not read Claude config: \(error.localizedDescription)")
             throw ProbeError.executionFailed("Could not read Claude config")
         }
 
-        guard let platform = Self.detectPlatform(from: config) else {
+        guard let platform = Self.detectPlatform(from: config) ?? (settingsKey != nil ? .zai : nil) else {
             AppLog.probes.error("Zai probe failed: No z.ai endpoint found in Claude config (path: \(configPath))")
             throw ProbeError.authenticationRequired
         }
 
-        let apiKey = try extractAPIKeyWithFallback(from: config, configPath: configPath)
+        let apiKey = try await extractAPIKeyWithFallback(from: config, configPath: configPath)
         AppLog.probes.debug("Zai: Detected platform: \(platform.rawValue)")
 
+        return try await probe(platform: platform, apiKey: apiKey)
+    }
+
+    /// Performs the quota request against the given platform with the given key.
+    private func probe(platform: ZaiPlatform, apiKey: String) async throws -> UsageSnapshot {
         let baseURL = platform.rawValue
         guard let url = URL(string: "\(baseURL)/api/monitor/usage/quota/limit") else {
             AppLog.probes.error("Zai probe failed: Invalid API URL")
@@ -145,7 +169,7 @@ public struct ZaiUsageProbe: UsageProbe {
         }
         AppLog.probes.debug("Using Z.ai config path: \(configPath.path)")
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: "cat",
             args: [configPath.path],
             input: nil,
@@ -157,7 +181,20 @@ public struct ZaiUsageProbe: UsageProbe {
         return (result.output, configPath.path)
     }
 
-    private func extractAPIKeyWithFallback(from config: String, configPath: String) throws -> String {
+    private func settingsApiKey() -> String? {
+        guard let key = settingsRepository.getZaiApiKey(),
+              !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return key
+    }
+
+    private func extractAPIKeyWithFallback(from config: String, configPath: String) async throws -> String {
+        if let settingsKey = settingsApiKey() {
+            AppLog.probes.debug("Zai: Using API key saved in ClaudeBar settings")
+            return settingsKey
+        }
+
         if let configApiKey = Self.extractAPIKey(from: config) {
             AppLog.probes.debug("Zai: Using API key from config file")
             return configApiKey
@@ -169,13 +206,18 @@ public struct ZaiUsageProbe: UsageProbe {
             throw ProbeError.authenticationRequired
         }
 
-        guard let envValue = ProcessInfo.processInfo.environment[envVarName], !envValue.isEmpty else {
-            AppLog.probes.error("Zai probe failed: No API key found (config file: \(configPath), env var: \(envVarName) not set)")
-            throw ProbeError.authenticationRequired
+        if let envValue = ProcessInfo.processInfo.environment[envVarName], !envValue.isEmpty {
+            AppLog.probes.debug("Zai: Using env var '\(envVarName)' from process environment")
+            return envValue
         }
 
-        AppLog.probes.debug("Zai: API key not in config, using env var '\(envVarName)'")
-        return envValue
+        if let shellValue = await loginShellEnvironment.value(ofEnvVar: envVarName) {
+            AppLog.probes.debug("Zai: Using env var '\(envVarName)' resolved via login shell")
+            return shellValue
+        }
+
+        AppLog.probes.error("Zai probe failed: No API key found (config file: \(configPath), env var: \(envVarName) not set)")
+        throw ProbeError.authenticationRequired
     }
 
     // MARK: - Static Parsing Helpers
@@ -311,18 +353,22 @@ public struct ZaiUsageProbe: UsageProbe {
             switch (limit.type, limit.unit) {
             case ("TIME_LIMIT", _):
                 quotaType = .timeLimit("MCP")
-            case ("TOKENS_LIMIT", 3):
+            case ("TOKENS_LIMIT", 3), ("CREDIT_LIMIT", 3):
                 quotaType = .session
-            case ("TOKENS_LIMIT", 6):
+            case ("TOKENS_LIMIT", 6), ("CREDIT_LIMIT", 6):
                 quotaType = .weekly
-            case ("TOKENS_LIMIT", 7):
+            case ("TOKENS_LIMIT", 7), ("CREDIT_LIMIT", 7):
                 quotaType = .modelSpecific("Monthly")
-            case ("TOKENS_LIMIT", nil):
+            case ("TOKENS_LIMIT", nil), ("CREDIT_LIMIT", nil):
                 // Backward-compat: legacy responses with no `unit` field default to session.
                 quotaType = .session
             case ("TOKENS_LIMIT", let unit?):
                 // Unknown unit — preserve via modelSpecific so it isn't dropped/collapsed.
                 quotaType = .modelSpecific("Tokens (unit \(unit))")
+            case ("CREDIT_LIMIT", let unit?):
+                // Credit-based plan tiers (e.g. GLM Coding Lite) report CREDIT_LIMIT
+                // with the same `unit` semantics as TOKENS_LIMIT.
+                quotaType = .modelSpecific("Credits (unit \(unit))")
             default:
                 // Skip unknown limit types
                 continue

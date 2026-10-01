@@ -26,6 +26,17 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
         self.transport = transport
     }
 
+    /// Arguments every Codex invocation gets, for both the app-server and the
+    /// TTY fallback.
+    ///
+    /// `--ask-for-approval` must stay a value the CLI still knows: Codex dropped
+    /// `untrusted` (leaving `on-request` and `never`), and an unknown value makes
+    /// the CLI exit at argument parsing — which took out the RPC path *and* the
+    /// TTY fallback at once (#259). `never` is accepted by old and new builds
+    /// alike, and cannot stall a non-interactive pipe on an approval prompt.
+    /// The read-only sandbox still keeps anything Codex might run boxed in.
+    static let baseArguments = ["-s", "read-only", "-a", "never"]
+
     public func isAvailable() -> Bool {
         let binaryName = executable
         if cliExecutor.locate(binaryName) != nil {
@@ -62,7 +73,7 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
             let factory = transportFactory ?? { exec, args in
                 try ProcessRPCTransport(executable: exec, arguments: args)
             }
-            activeTransport = try factory(executable, ["-s", "read-only", "-a", "untrusted", "app-server"])
+            activeTransport = try factory(executable, Self.baseArguments + ["app-server"])
             ownsTransport = true
         }
         defer {
@@ -101,9 +112,10 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
 
         let primary = parseWindow(rateLimits["primary"])
         let secondary = parseWindow(rateLimits["secondary"])
+        let additional = parseAdditionalLimits(result["rateLimitsByLimitId"])
 
         // If plan is free and no limits, create default "unlimited" quotas
-        if primary == nil && secondary == nil {
+        if primary == nil && secondary == nil && additional.isEmpty {
             if planType == "free" {
                 AppLog.probes.info("Codex free plan - returning unlimited quotas")
                 return CodexRateLimitsResponse(
@@ -116,7 +128,7 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
             throw ProbeError.parseFailed("No rate limits available yet - make some API calls first")
         }
 
-        return CodexRateLimitsResponse(primary: primary, secondary: secondary, planType: planType)
+        return CodexRateLimitsResponse(primary: primary, secondary: secondary, planType: planType, additional: additional)
     }
 
     // MARK: - TTY Fallback
@@ -124,9 +136,9 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
     private func fetchViaTTY() async throws -> CodexRateLimitsResponse {
         AppLog.probes.info("Starting Codex TTY fallback...")
 
-        let result = try cliExecutor.execute(
+        let result = try await cliExecutor.execute(
             binary: executable,
-            args: ["-s", "read-only", "-a", "untrusted"],
+            args: Self.baseArguments,
             input: "/status\n",
             timeout: 20.0,
             workingDirectory: nil,
@@ -204,6 +216,32 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
 
     // MARK: - Parsing Helpers
 
+    /// The `rateLimitsByLimitId` key that mirrors the top-level `rateLimits`
+    /// payload; every other key is an extra bucket (e.g. Codex Spark).
+    static let mainLimitId = "codex"
+
+    /// Parses the multi-bucket `rateLimitsByLimitId` map, skipping the main
+    /// `codex` bucket (already surfaced via `rateLimits`) and any entry whose
+    /// windows cannot be parsed.
+    internal func parseAdditionalLimits(_ value: Any?) -> [CodexAdditionalLimit] {
+        guard let map = value as? [String: Any] else { return [] }
+
+        var limits: [CodexAdditionalLimit] = []
+        for key in map.keys.sorted() {
+            guard key != Self.mainLimitId, let entry = map[key] as? [String: Any] else { continue }
+
+            let name = (entry["limitName"] as? String)
+                ?? (entry["limitId"] as? String)
+                ?? key
+            let primary = parseWindow(entry["primary"])
+            let secondary = parseWindow(entry["secondary"])
+            guard primary != nil || secondary != nil else { continue }
+
+            limits.append(CodexAdditionalLimit(name: name, primary: primary, secondary: secondary))
+        }
+        return limits
+    }
+
     internal func parseWindow(_ value: Any?) -> CodexRateLimitWindow? {
         guard let dict = value as? [String: Any] else {
             AppLog.probes.debug("parseWindow: value is not a dict: \(String(describing: value))")
@@ -217,13 +255,22 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
             return nil
         }
 
+        var resetsAt: Date?
         var resetDescription: String?
-        if let resetsAt = dict["resetsAt"] as? Int {
-            let date = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        if let seconds = dict["resetsAt"] as? Int {
+            let date = Date(timeIntervalSince1970: TimeInterval(seconds))
+            resetsAt = date
             resetDescription = formatResetTime(date)
         }
 
-        return CodexRateLimitWindow(usedPercent: usedPercent, resetDescription: resetDescription)
+        let windowDuration = (dict["windowDurationMins"] as? Int).map { TimeInterval($0) * 60 }
+
+        return CodexRateLimitWindow(
+            usedPercent: usedPercent,
+            resetDescription: resetDescription,
+            resetsAt: resetsAt,
+            windowDuration: windowDuration
+        )
     }
 
     internal func formatResetTime(_ date: Date) -> String {

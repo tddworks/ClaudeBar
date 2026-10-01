@@ -44,9 +44,15 @@ public struct AppThemeProviderModifier: ViewModifier {
         self.themeModeId = themeModeId
     }
 
+    /// Reads the policy here rather than via a parameter: touching the
+    /// observable inside `body` is what registers tracking.
     @MainActor
     private var resolvedTheme: any AppThemeProvider {
-        ThemeRegistry.shared.resolveTheme(for: themeModeId, systemColorScheme: systemColorScheme)
+        ThemeRegistry.shared.resolveTheme(
+            for: themeModeId,
+            systemColorScheme: systemColorScheme,
+            statusColors: AppSettings.shared.statusColorPolicy
+        )
     }
 
     private var effectiveColorScheme: ColorScheme {

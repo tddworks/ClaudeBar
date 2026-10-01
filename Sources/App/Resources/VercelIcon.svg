@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Rounded rectangle background (Vercel black) -->
+  <rect fill="#000000" width="256" height="256" rx="52" ry="52"/>
+
+  <!-- Vercel triangle logo, white, centered ~75% -->
+  <path fill="#FFFFFF" d="M128 40 L216 208 H40 Z"/>
+</svg>

@@ -269,6 +269,44 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             }
         }
 
+        // Additional rate limits (e.g. GPT-5.3-Codex-Spark), appended after
+        // the main session/weekly quotas so `quotas.first` stays primary.
+        // `rate_limit` is a RateLimitStatusDetails object holding nested
+        // `primary_window` / `secondary_window` windows.
+        if let additionalLimits = responseDict["additional_rate_limits"] as? [[String: Any]] {
+            for entry in additionalLimits {
+                guard let rateLimit = entry["rate_limit"] as? [String: Any] else {
+                    continue
+                }
+                guard let rawName = [entry["limit_name"], entry["metered_feature"]]
+                    .compactMap({ $0 as? String })
+                    .first(where: { !$0.isEmpty }) else {
+                    continue
+                }
+                let label = CodexUsageProbe.menuLabel(for: rawName)
+                guard !label.isEmpty else { continue }
+
+                let windows = [
+                    (rateLimit["primary_window"] as? [String: Any], label),
+                    (rateLimit["secondary_window"] as? [String: Any], label + " 7d")
+                ]
+                for (window, quotaLabel) in windows {
+                    guard let window, let usedPercent = window["used_percent"] as? Double else {
+                        continue
+                    }
+                    let reset = resetsAtDate(nowSeconds: nowSeconds, window: window)
+                    quotas.append(UsageQuota(
+                        percentRemaining: max(0, 100 - usedPercent),
+                        quotaType: .timeLimit(quotaLabel),
+                        providerId: "codex",
+                        resetsAt: reset,
+                        resetText: formatResetText(reset),
+                        windowDuration: (window["limit_window_seconds"] as? Double)
+                    ))
+                }
+            }
+        }
+
         // Parse credits
         var costUsage: CostUsage?
         let creditsHeader = readHeaderDouble(httpResponse, key: "x-codex-credits-balance")

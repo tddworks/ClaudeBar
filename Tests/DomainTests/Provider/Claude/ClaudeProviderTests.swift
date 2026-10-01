@@ -4,6 +4,7 @@ import Mockable
 @testable import Domain
 
 @Suite("ClaudeProvider Tests")
+@MainActor
 struct ClaudeProviderTests {
 
     private func makeSettingsRepository() -> MockProviderSettingsRepository {
@@ -250,6 +251,125 @@ struct ClaudeProviderTests {
         }
     }
 
+    // MARK: - Fallback Gate (issue #317)
+
+    @Test
+    func `refresh falls back to the API probe even when its isAvailable says no`() async throws {
+        // `isAvailable()` is a second, independently implemented answer to "can
+        // this probe work?", asked before every fallback. When it said no the
+        // rescue was skipped and nothing said so — 115 refreshes in the log
+        // attached to #317 where only the broken CLI probe ever ran, and the user
+        // saw "Claude Unavailable" throughout. The API probe decides for itself
+        // inside `probe()`, and its error is discarded in favour of the primary
+        // one, so the pre-check bought nothing but silent skips.
+        let settings = FakeClaudeSettings(probeMode: .cli)
+
+        let cliProbe = MockUsageProbe()
+        given(cliProbe).isAvailable().willReturn(true)
+        given(cliProbe).probe().willThrow(ProbeError.parseFailed("Could not find session usage"))
+
+        let apiSnapshot = UsageSnapshot(
+            providerId: "claude",
+            quotas: [],
+            capturedAt: Date(),
+            accountTier: .claudeMax
+        )
+        let apiProbe = MockUsageProbe()
+        given(apiProbe).isAvailable().willReturn(false)
+        given(apiProbe).probe().willReturn(apiSnapshot)
+
+        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
+
+        let snapshot = try await claude.refresh()
+        #expect(snapshot.accountTier == .claudeMax)
+    }
+
+    @Test
+    func `refresh surfaces the CLI error when the API fallback also fails`() async throws {
+        // Dropping the availability pre-check must not change which error wins:
+        // the primary failure is still the one the user is shown.
+        let settings = FakeClaudeSettings(probeMode: .cli)
+
+        let cliProbe = MockUsageProbe()
+        given(cliProbe).isAvailable().willReturn(true)
+        given(cliProbe).probe().willThrow(ProbeError.parseFailed("Could not find session usage"))
+
+        let apiProbe = MockUsageProbe()
+        given(apiProbe).isAvailable().willReturn(false)
+        given(apiProbe).probe().willThrow(ProbeError.authenticationRequired)
+
+        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
+
+        await #expect(throws: ProbeError.parseFailed("Could not find session usage")) {
+            try await claude.refresh()
+        }
+    }
+
+    @Test
+    func `refresh does not fall back to the CLI when cliFallbackEnabled is false`() async throws {
+        // #317 removed the `isAvailable()` pre-check from *both* directions, so
+        // the one gate left has to carry its own weight: `claude.cliFallbackEnabled`
+        // is the user's switch for running the CLI in the background, and with it
+        // off the API probe's failure must stand alone — no CLI subprocess, and the
+        // API's own error is what the user sees.
+        let settings = FakeClaudeSettings(probeMode: .api, cliFallbackEnabled: false)
+
+        let apiProbe = MockUsageProbe()
+        given(apiProbe).isAvailable().willReturn(true)
+        given(apiProbe).probe().willThrow(ProbeError.parseFailed("Could not read usage"))
+
+        let cliProbe = MockUsageProbe()
+        given(cliProbe).isAvailable().willReturn(true)
+
+        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
+
+        await #expect(throws: ProbeError.parseFailed("Could not read usage")) {
+            try await claude.refresh()
+        }
+        // The API probe is primary here, so its error is the one the user is
+        // shown and the one `lastError` holds — the CLI's error never happens,
+        // because the CLI is never launched.
+        #expect(claude.lastError as? ProbeError == .parseFailed("Could not read usage"))
+        // The switch is the whole point: the CLI must never be launched.
+        verify(cliProbe).probe().called(0)
+    }
+
+    @Test
+    func `a failed fallback probe is reported so the rescue is not invisible`() async {
+        // #317 made this path run on every failed probe, and the fallback's
+        // error used to be swallowed by a bare `catch { }`. The user still sees
+        // the primary error, but "the rescue ran and failed" and "the rescue
+        // never ran" then looked identical in the log — which is the same
+        // complaint the removed isAvailable() gate drew.
+        let settings = FakeClaudeSettings(probeMode: .cli)
+
+        let cliProbe = MockUsageProbe()
+        given(cliProbe).isAvailable().willReturn(true)
+        given(cliProbe).probe().willThrow(ProbeError.parseFailed("Could not find session usage"))
+
+        let apiProbe = MockUsageProbe()
+        given(apiProbe).isAvailable().willReturn(false)
+        given(apiProbe).probe().willThrow(ProbeError.authenticationRequired)
+
+        let recorder = DiagnosticRecorder()
+        let claude = ClaudeProvider(
+            cliProbe: cliProbe,
+            apiProbe: apiProbe,
+            settingsRepository: settings,
+            diagnose: { recorder.record($0) }
+        )
+
+        _ = try? await claude.refresh()
+
+        // One line, naming the fallback probe and its error, and never any
+        // credential value. `ProbeError`'s own wording is capitalised
+        // ("Authentication required…"), so the kind is matched case-insensitively.
+        #expect(recorder.messages.count == 1)
+        let message = recorder.messages.first ?? ""
+        #expect(message.contains("API"))
+        #expect(message.lowercased().contains("authentication"))
+    }
+
     // MARK: - Background Refresh Floor (issue #204)
 
     @Test
@@ -280,6 +400,13 @@ struct ClaudeProviderTests {
 }
 
 // MARK: - Test Helpers
+
+/// Collects what the provider reports through its `diagnose` sink.
+@MainActor
+private final class DiagnosticRecorder {
+    private(set) var messages: [String] = []
+    func record(_ message: String) { messages.append(message) }
+}
 
 private final class FakeClaudeSettings: ClaudeSettingsRepository, @unchecked Sendable {
     var probeMode: ClaudeProbeMode

@@ -42,6 +42,7 @@ struct CopilotConfigSpec {
     // MARK: - #35: Authentication and credential management
 
     @Suite("Scenario: Copilot authentication")
+    @MainActor
     struct Authentication {
 
         @Test

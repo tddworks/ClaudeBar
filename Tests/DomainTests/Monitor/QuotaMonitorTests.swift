@@ -197,7 +197,7 @@ struct QuotaMonitorTests {
 
     @Test
     func `menu bar duration display returns compact reset time for selected quota`() async {
-        // Given - claude session quota with reset ~3h away
+        // Given - claude session quota with reset ~3h 58m away
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
@@ -208,7 +208,7 @@ struct QuotaMonitorTests {
                     percentRemaining: 75,
                     quotaType: .session,
                     providerId: "claude",
-                    resetsAt: Date().addingTimeInterval(3.0 * 3600 + 30)
+                    resetsAt: Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30)
                 ),
             ],
             capturedAt: Date()
@@ -224,7 +224,7 @@ struct QuotaMonitorTests {
         )
 
         // Then
-        #expect(display?.text == "3h")
+        #expect(display?.text == "3:58")
         #expect(display?.status == .healthy)
     }
 
@@ -243,6 +243,74 @@ struct QuotaMonitorTests {
 
         // Then
         #expect(display == nil)
+    }
+
+    @Test
+    func `additional menu bar labels use first quota and identify provider`() async {
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+        let labels = monitor.additionalMenuBarLabels(
+            providerIds: ["claude", "missing"], showPercentage: true,
+            showDuration: false, mode: .remaining
+        )
+        #expect(labels.map(\.text) == ["Claude 35%"])
+        #expect(labels.first?.providerId == "claude")
+        #expect(labels.first?.label.text == "35%")
+        #expect(labels.first?.status == .warning)
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["claude"], showPercentage: false,
+            showDuration: false, mode: .remaining
+        ).isEmpty)
+    }
+
+    @Test
+    func `additional labels keep selection order and omit disabled providers`() async {
+        let settings = makeSettingsRepository()
+        let claude = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let codex = CodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        await monitor.refresh(providerId: "claude")
+        await monitor.refresh(providerId: "codex")
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["codex", "codex", "claude"], showPercentage: true,
+            showDuration: false, mode: .used
+        ).map(\.text) == ["Codex 1%", "Claude 1%"])
+        codex.isEnabled = false
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["codex", "claude"], showPercentage: true,
+            showDuration: false, mode: .remaining
+        ).map(\.text) == ["Claude 99%"])
+    }
+
+    @Test
+    func `additional provider awaiting first snapshot has a named placeholder`() {
+        let provider = ClaudeProvider(
+            probe: CountingUsageProbe(providerId: "claude"), settingsRepository: makeSettingsRepository()
+        )
+        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["claude"], showPercentage: true, showDuration: false, mode: .remaining
+        ).map(\.text) == ["Claude —"])
+    }
+
+    @Test
+    func `additional providers honor their own primary secondary and stacked choices`() async {
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+        let labels = monitor.additionalMenuBarLabels(
+            providerIds: ["claude"],
+            configurations: ["claude": MenuBarProviderSettings(primaryQuotaKey: "weekly", secondaryQuotaKey: "session", stacked: true, stackedSize: "large")],
+            showPercentage: true, showDuration: false, mode: .remaining
+        )
+        #expect(labels.first?.label.text == "7d 35% | 5h 75%")
+        #expect(labels.first?.label.segments.count == 2)
+        #expect(labels.first?.stacked == true)
+        #expect(labels.first?.stackedSize == .large)
+        #expect(monitor.menuBarLabel(providerId: "claude", primaryQuotaKey: "", showPercentage: true,
+                                    showDuration: false, mode: .remaining)?.text == "75%")
     }
 
     // MARK: - Menu Bar Label (single + dual window)
@@ -371,6 +439,160 @@ struct QuotaMonitorTests {
 
         // Then
         #expect(label == nil)
+    }
+
+    @Test
+    func `menu bar label carries a single segment when secondary empty`() async {
+        // Given
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then: one segment mirroring the joined text, so segment-based
+        // renderers read the same source as the single-line label
+        #expect(label?.segments == [
+            MenuBarLabel.Segment(text: "75%", status: .healthy),
+        ])
+    }
+
+    @Test
+    func `menu bar label carries both windows as separate segments`() async {
+        // Given: session 75% (healthy), weekly 35% (warning)
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "weekly",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then: joined text stays byte-identical (it doubles as the tooltip),
+        // while each segment keeps its own prefixed text and per-window status
+        // so a stacked renderer can tint the two lines independently
+        #expect(label?.text == "5h 75% | 7d 35%")
+        #expect(label?.status == .warning)
+        #expect(label?.segments == [
+            MenuBarLabel.Segment(text: "5h 75%", status: .healthy),
+            MenuBarLabel.Segment(text: "7d 35%", status: .warning),
+        ])
+    }
+
+    @Test
+    func `menu bar label prefers the quota's menuBarTitle for window prefixes`() async {
+        // Given: an aggregated quota whose full label carries a long account
+        // discriminator, condensed by the probe into `menuBarTitle`; the
+        // weekly window carries no override
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(
+                percentRemaining: 69,
+                quotaType: .timeLimit("Claude 7d · jkjk987654321012"),
+                providerId: "claude",
+                menuBarTitle: "Claude 7d · jkjk987…"
+            ),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+
+        // When
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "time:Claude 7d · jkjk987654321012",
+            secondaryQuotaKey: "weekly",
+            showPercentage: true,
+            showDuration: false,
+            mode: .remaining
+        )
+
+        // Then: the condensed title replaces the full label in the joined
+        // text and the segment; windows without an override keep shortLabel
+        #expect(label?.text == "Claude 7d · jkjk987… 69% | 7d 35%")
+        #expect(label?.segments == [
+            MenuBarLabel.Segment(text: "Claude 7d · jkjk987… 69%", status: .healthy),
+            MenuBarLabel.Segment(text: "7d 35%", status: .warning),
+        ])
+    }
+
+    @Test
+    func `menu bar label segments cover the duration-only variant`() async {
+        // Given: session quota with reset ~3h 58m away
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(
+                percentRemaining: 75,
+                quotaType: .session,
+                providerId: "claude",
+                resetsAt: Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30)
+            ),
+        ])
+
+        // When: duration only, no percentage
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "",
+            showPercentage: false,
+            showDuration: true,
+            mode: .remaining
+        )
+
+        // Then
+        #expect(label?.text == "3:58")
+        #expect(label?.segments == [
+            MenuBarLabel.Segment(text: "3:58", status: .healthy),
+        ])
+    }
+
+    @Test
+    func `menu bar label segments cover percentage plus duration windows`() async {
+        // Given: both windows carry reset times
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(
+                percentRemaining: 75,
+                quotaType: .session,
+                providerId: "claude",
+                resetsAt: Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30)
+            ),
+            UsageQuota(
+                percentRemaining: 35,
+                quotaType: .weekly,
+                providerId: "claude",
+                resetsAt: Date().addingTimeInterval(6.0 * 86400 + 30)
+            ),
+        ])
+
+        // When: percentage and duration together
+        let label = monitor.menuBarLabel(
+            providerId: "claude",
+            primaryQuotaKey: "session",
+            secondaryQuotaKey: "weekly",
+            showPercentage: true,
+            showDuration: true,
+            mode: .remaining
+        )
+
+        // Then: segments carry the full "percentage · duration" window texts,
+        // each with its own per-window status (matching the dual-window test)
+        #expect(label?.text == "5h 75% · 3:58 | 7d 35% · 6d")
+        #expect(label?.status == .warning)
+        #expect(label?.segments == [
+            MenuBarLabel.Segment(text: "5h 75% · 3:58", status: .healthy),
+            MenuBarLabel.Segment(text: "7d 35% · 6d", status: .warning),
+        ])
     }
 
     @Test
@@ -1157,6 +1379,40 @@ struct QuotaMonitorTests {
         monitor.selectProvider(id: "codex")
 
         // Then - still claude because codex is disabled
+        #expect(monitor.selectedProviderId == "claude")
+    }
+
+    @Test
+    func `selectProvider at position selects the enabled provider shown in that slot`() {
+        // Given - gemini sits between two enabled providers but is disabled,
+        // so the pills read: 1 Claude, 2 Codex
+        let settings = makeSettingsRepository()
+        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        gemini.isEnabled = false
+        let monitor = makeMonitor(providers: AIProviders(providers: [claude, gemini, codex]))
+
+        // When
+        monitor.selectProvider(atPosition: 2)
+
+        // Then
+        #expect(monitor.selectedProviderId == "codex")
+    }
+
+    @Test
+    func `selectProvider at position ignores a slot with no provider`() {
+        // Given
+        let settings = makeSettingsRepository()
+        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+
+        // When
+        monitor.selectProvider(atPosition: 3)
+        monitor.selectProvider(atPosition: 0)
+
+        // Then
         #expect(monitor.selectedProviderId == "claude")
     }
 

@@ -20,14 +20,33 @@ public struct AccountInfo: Sendable, Equatable {
     public let organization: String?
     public let loginMethod: String?
 
+    /// How the account pays, verbatim from the provider's own config
+    /// (Claude's `~/.claude.json` reports `apple_subscription`,
+    /// `stripe_subscription`, and so on). Nil when the source does not say.
+    public let billingType: String?
+
     public init(
         email: String? = nil,
         organization: String? = nil,
-        loginMethod: String? = nil
+        loginMethod: String? = nil,
+        billingType: String? = nil
     ) {
         self.email = email
         self.organization = organization
         self.loginMethod = loginMethod
+        self.billingType = billingType
+    }
+
+    /// Whether the account pays through a subscription rather than per-token
+    /// API billing.
+    ///
+    /// Worth knowing because a CLI can misreport it: a Max plan billed through
+    /// Apple renders the API-billing cost panel when the CLI cannot read its
+    /// subscription credentials, and only the config file still knows better
+    /// (#271). The suffix match covers every `*_subscription` form Anthropic
+    /// uses without pinning this to the two seen so far.
+    public var isSubscriptionBilled: Bool {
+        billingType?.hasSuffix("_subscription") == true
     }
 
     /// The best available name for display: email first, then organization.

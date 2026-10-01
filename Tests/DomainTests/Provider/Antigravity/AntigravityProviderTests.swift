@@ -5,6 +5,7 @@ import Mockable
 @testable import Infrastructure
 
 @Suite("AntigravityProvider Tests")
+@MainActor
 struct AntigravityProviderTests {
 
     /// Creates a mock settings repository that returns true for all providers

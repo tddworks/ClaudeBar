@@ -29,7 +29,6 @@ permissions:
 env:
   APP_NAME: ClaudeBar
   BUNDLE_ID: com.tddworks.claudebar
-  SWIFT_VERSION: "6.2"
 
 jobs:
   release:
@@ -42,10 +41,11 @@ jobs:
         with:
           fetch-depth: 0  # Full history for accurate build number
 
-      - name: Setup Swift
-        uses: SwiftyLab/setup-swift@latest
-        with:
-          swift-version: ${{ env.SWIFT_VERSION }}
+      # No explicit Swift toolchain setup: use the runner's bundled Xcode, the
+      # same toolchain Tuist builds its macro prebuilts (SwiftSyntax) against.
+      # Installing a separate toolchain via SwiftyLab/setup-swift drifted out of
+      # sync with those prebuilts and broke the build ("SwiftSyntax was created
+      # for incompatible target").
 
       - name: Install Tuist
         run: brew install tuist

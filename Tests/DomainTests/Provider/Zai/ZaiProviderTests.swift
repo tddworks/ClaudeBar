@@ -5,6 +5,7 @@ import Mockable
 @testable import Infrastructure
 
 @Suite("ZaiProvider Tests")
+@MainActor
 struct ZaiProviderTests {
 
     // MARK: - Identity Tests

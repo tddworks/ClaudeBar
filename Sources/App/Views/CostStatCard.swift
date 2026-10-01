@@ -19,10 +19,32 @@ struct CostStatCard: View {
         self.delay = delay
     }
 
-    /// The effective budget - prefer built-in budget from CostUsage (Pro Extra usage),
-    /// fall back to external budget (API account settings)
+    /// Extra usage uses only its server-provided monthly cap. API cost can
+    /// fall back to the budget configured in settings.
     private var effectiveBudget: Decimal? {
-        costUsage.budget ?? externalBudget
+        switch costUsage.kind {
+        case .extraUsage:
+            costUsage.budget
+        case .apiCost:
+            costUsage.budget ?? externalBudget
+        }
+    }
+
+    private var effectiveBudgetRemaining: Decimal? {
+        if let remaining = costUsage.budgetRemaining {
+            return remaining
+        }
+        guard let externalBudget else { return nil }
+        return max(0, externalBudget - costUsage.totalCost)
+    }
+
+    private var headerTitle: String {
+        switch costUsage.kind {
+        case .apiCost:
+            "API COST"
+        case .extraUsage:
+            "EXTRA USAGE"
+        }
     }
 
     private var budgetStatus: BudgetStatus? {
@@ -45,7 +67,7 @@ struct CostStatCard: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(budgetStatusColor)
 
-                    Text("API COST")
+                    Text(headerTitle)
                         .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
@@ -65,12 +87,21 @@ struct CostStatCard: View {
                 Text(costUsage.formattedCost)
                     .font(.system(size: 28, weight: .heavy, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
+
+                if let budget = effectiveBudget {
+                    Text("of \(formatBudget(budget))")
+                        .font(.system(size: 12, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                }
             }
 
             // Budget progress bar (if budget is set)
             if let budget = effectiveBudget, budget > 0 {
                 budgetProgressBar(budget: budget)
+            } else if costUsage.kind == .extraUsage, effectiveBudget == nil {
+                Text("No monthly cap")
+                    .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
             }
 
             // Show API Duration if > 0, or reset time for Pro Extra usage
@@ -143,12 +174,14 @@ struct CostStatCard: View {
             .frame(height: 5)
 
             // Budget label
-            HStack {
-                Text("\(Int(budgetPercentUsed))% of \(formatBudget(budget)) budget")
-                    .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
+            if let remaining = effectiveBudgetRemaining {
+                HStack {
+                    Text("\(Int(budgetPercentUsed))% used · \(formatBudget(remaining)) left")
+                        .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
 
-                Spacer()
+                    Spacer()
+                }
             }
         }
     }
@@ -188,6 +221,7 @@ struct CostStatCard: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
         return formatter.string(from: budget as NSDecimalNumber) ?? "$\(budget)"
@@ -196,41 +230,38 @@ struct CostStatCard: View {
 
 // MARK: - Preview
 
-#Preview("Cost Card - Dark") {
+#Preview("Extra Usage - Capped Zero") {
     ZStack {
         DarkTheme().backgroundGradient
 
         CostStatCard(
             costUsage: CostUsage(
-                totalCost: 0.55,
-                apiDuration: 379.7,
-                wallDuration: 23590.2,
-                linesAdded: 150,
-                linesRemoved: 42,
-                providerId: "claude"
-            ),
-            budget: 10.00
+                totalCost: 0,
+                budget: 500,
+                apiDuration: 0,
+                providerId: "claude",
+                kind: .extraUsage
+            )
         )
         .padding()
     }
-    .frame(width: 380, height: 200)
+    .frame(width: 380, height: 180)
     .preferredColorScheme(.dark)
 }
 
-#Preview("Cost Card - Light") {
+#Preview("Extra Usage - Capped Partial") {
     ZStack {
         LightTheme().backgroundGradient
 
         CostStatCard(
             costUsage: CostUsage(
-                totalCost: 8.50,
-                apiDuration: 3600,
-                wallDuration: 7200,
-                linesAdded: 500,
-                linesRemoved: 200,
-                providerId: "claude"
-            ),
-            budget: 10.00
+                totalCost: 5.41,
+                budget: 20,
+                apiDuration: 0,
+                providerId: "claude",
+                kind: .extraUsage,
+                resetText: "Resets Jan 1, 2026"
+            )
         )
         .padding()
     }
@@ -238,22 +269,38 @@ struct CostStatCard: View {
     .preferredColorScheme(.light)
 }
 
-#Preview("Cost Card - No Budget") {
+#Preview("Extra Usage - Uncapped Spent") {
     ZStack {
         DarkTheme().backgroundGradient
 
         CostStatCard(
             costUsage: CostUsage(
-                totalCost: 2.35,
-                apiDuration: 600,
-                wallDuration: 1800,
-                linesAdded: 50,
-                linesRemoved: 10,
-                providerId: "claude"
+                totalCost: Decimal(string: "1234.56")!,
+                apiDuration: 0,
+                providerId: "claude",
+                kind: .extraUsage
             )
         )
         .padding()
     }
-    .frame(width: 380, height: 180)
+    .frame(width: 380, height: 160)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("API Cost") {
+    ZStack {
+        DarkTheme().backgroundGradient
+
+        CostStatCard(
+            costUsage: CostUsage(
+                totalCost: 0.55,
+                apiDuration: 379.7,
+                providerId: "claude"
+            ),
+            budget: 10
+        )
+        .padding()
+    }
+    .frame(width: 380, height: 200)
     .preferredColorScheme(.dark)
 }

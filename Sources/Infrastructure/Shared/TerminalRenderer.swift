@@ -25,6 +25,11 @@ public final class TerminalRenderer {
     private let cols: Int
     private let rows: Int
 
+    /// Scrollback capacity in lines. Output longer than `rows + scrollback`
+    /// loses its OLDEST lines — for `claude /usage` that's the quota sections
+    /// at the top, so keep this comfortably above the tallest known screen.
+    private let scrollback = 2000
+
     /// Creates a terminal renderer with the specified dimensions.
     /// - Parameters:
     ///   - cols: Number of columns (default: 160)
@@ -41,7 +46,7 @@ public final class TerminalRenderer {
     public func render(_ raw: String) -> String {
         let delegate = RenderDelegate()
         // Enable convertEol to handle \n as \r\n (newline + carriage return)
-        let options = TerminalOptions(cols: cols, rows: rows, convertEol: true)
+        let options = TerminalOptions(cols: cols, rows: rows, convertEol: true, scrollback: scrollback)
         let terminal = Terminal(delegate: delegate, options: options)
 
         // Feed the raw output to the terminal emulator
@@ -51,14 +56,19 @@ public final class TerminalRenderer {
         return extractScreenText(from: terminal)
     }
 
-    /// Extracts text content from the terminal buffer.
+    /// Extracts text content from the terminal buffer, including scrollback.
+    ///
+    /// Output taller than the terminal (e.g. `claude /usage`'s usage-contribution
+    /// report) scrolls its earlier lines off the visible screen into scrollback;
+    /// reading only the visible rows would silently drop them.
     private func extractScreenText(from terminal: Terminal) -> String {
         var lines: [String] = []
 
-        // Iterate through all lines in the terminal buffer
-        for row in 0..<rows {
-            guard let line = terminal.getLine(row: row) else {
-                lines.append("")
+        // Iterate the whole buffer (scrollback + visible screen).
+        // getScrollInvariantLine returns nil past the end of the buffer, and
+        // for rows trimmed off the front when scrollback overflows.
+        for row in 0..<(rows + scrollback) {
+            guard let line = terminal.getScrollInvariantLine(row: row) else {
                 continue
             }
 

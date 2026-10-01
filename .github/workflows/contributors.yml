@@ -1,0 +1,42 @@
+name: Sync Contributors
+
+# The all-contributors bot updates .all-contributorsrc and the README table when
+# you comment "@all-contributors please add @user for code" on an issue or PR.
+# It can't render the card grid on the landing page, so this workflow does that
+# from the same source of truth, right after the bot's PR merges.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.all-contributorsrc'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-contributors
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render landing-page grid
+        run: python3 scripts/sync-contributors.py
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- docs/index.html; then
+            echo "Landing page already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git commit -m "docs: sync contributors to landing page [skip ci]"
+          git push

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaudeBar Settings — Spatial Glass Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void-1: #0b0714;
+    --void-2: #150c26;
+    --void-3: #1f1230;
+    --glass: rgba(255,255,255,0.06);
+    --glass-hover: rgba(255,255,255,0.10);
+    --glass-active: rgba(255,255,255,0.14);
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.22);
+    --text-1: rgba(255,255,255,0.95);
+    --text-2: rgba(255,255,255,0.68);
+    --text-3: rgba(255,255,255,0.45);
+    --pink: #ff2d92;
+    --purple: #a855f7;
+    --violet: #7c3aed;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --accent-grad: linear-gradient(135deg, #ff2d92, #a855f7);
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #050308;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Ambient desktop orbs behind the window */
+  .orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.35; pointer-events: none; }
+  .orb-1 { width: 560px; height: 560px; background: #7c3aed; top: -180px; left: -120px; }
+  .orb-2 { width: 480px; height: 480px; background: #ff2d92; bottom: -200px; right: -100px; opacity: 0.22; }
+  .orb-3 { width: 340px; height: 340px; background: #2563eb; bottom: 10%; left: 20%; opacity: 0.15; }
+
+  .concept-badge {
+    position: fixed; top: 14px; right: 16px; z-index: 99;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+    color: var(--text-3); text-transform: uppercase;
+    border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px;
+    background: rgba(255,255,255,0.03); backdrop-filter: blur(10px);
+  }
+
+  /* ============ WINDOW ============ */
+  .window {
+    width: 980px; height: 660px; max-width: 96vw; max-height: 92vh;
+    border-radius: 20px;
+    background: linear-gradient(160deg, var(--void-2) 0%, var(--void-1) 55%, var(--void-3) 100%);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 40px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    position: relative; z-index: 2;
+  }
+
+  /* Seamless chrome — no titlebar strip, no divider. The sidebar runs the full
+     window height and hosts the traffic lights; content flows to the top edge
+     with the search field riding level with them (Murmur RootView pattern). */
+  .traffic { display: flex; gap: 8px; }
+  .traffic span { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .t-close { background: #ff5f57; } .t-min { background: #febc2e; } .t-zoom { background: #28c840; }
+
+  .sidebar-chrome {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 12px 14px;
+    -webkit-user-select: none; user-select: none;
+  }
+  .sidebar-title { font-size: 13px; font-weight: 600; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+  .sidebar-title .logo {
+    width: 20px; height: 20px; border-radius: 6px; background: var(--accent-grad);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: white;
+  }
+
+  .content-top {
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 12px 18px 0;
+    -webkit-user-select: none; user-select: none;
+  }
+  .titlebar-search {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; width: 220px;
+    color: var(--text-3); font-size: 12px;
+  }
+  .titlebar-search input { background: none; border: none; outline: none; color: var(--text-1); font-size: 12px; width: 100%; font-family: inherit; }
+  .titlebar-search input::placeholder { color: var(--text-3); }
+
+  .body-row { flex: 1; display: flex; min-height: 0; }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 224px; flex-shrink: 0;
+    padding: 0 10px 14px;
+    display: flex; flex-direction: column; gap: 2px;
+    background: rgba(0,0,0,0.18);
+    overflow-y: auto;
+  }
+  .content-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .side-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--text-3);
+    padding: 14px 12px 6px;
+  }
+  .side-label:first-child { padding-top: 4px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    cursor: pointer; border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+  .nav-item:hover { background: var(--glass-hover); color: var(--text-1); }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(255,45,146,0.16), rgba(168,85,247,0.16));
+    border-color: rgba(255,45,146,0.35);
+    color: var(--text-1);
+  }
+  .nav-icon {
+    width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+    background: rgba(255,255,255,0.08);
+  }
+  .nav-item.active .nav-icon { background: var(--accent-grad); }
+  .nav-count {
+    margin-left: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-3);
+    background: rgba(255,255,255,0.07); border-radius: 10px; padding: 2px 7px;
+  }
+  .sidebar-footer {
+    margin-top: auto; padding: 12px;
+    font-size: 11px; color: var(--text-3);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .version-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  /* ============ CONTENT ============ */
+  .content { flex: 1; overflow-y: auto; padding: 16px 30px 40px; scroll-behavior: smooth; }
+  .content::-webkit-scrollbar { width: 8px; }
+  .content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+  .content::-webkit-scrollbar-track { background: transparent; }
+
+  .pane { display: none; animation: fadeUp 0.25s ease; }
+  .pane.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .pane-title { font-size: 21px; font-weight: 700; letter-spacing: -0.4px; }
+  .pane-sub { font-size: 13px; color: var(--text-2); margin: 5px 0 22px; }
+
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(20px);
+  }
+  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .card-desc { font-size: 12px; color: var(--text-3); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .row + .row { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+  /* Toggle */
+  .toggle {
+    width: 40px; height: 24px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(255,255,255,0.14); cursor: pointer; position: relative;
+    transition: background 0.2s ease; border: 1px solid var(--border);
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%; background: white;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .toggle.on { background: var(--accent-grad); border-color: transparent; }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* Segmented control */
+  .segment {
+    display: inline-flex; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .segment button {
+    border: none; background: none; color: var(--text-2);
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    padding: 6px 14px; border-radius: 7px; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .segment button.sel { background: var(--glass-active); color: var(--text-1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+
+  select, .text-field {
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    color: var(--text-1); font-family: inherit; font-size: 12px;
+    border-radius: 8px; padding: 7px 12px; outline: none;
+  }
+  .text-field { font-family: 'JetBrains Mono', monospace; width: 300px; }
+  .text-field::placeholder { color: var(--text-3); }
+
+  .btn {
+    background: var(--glass-hover); border: 1px solid var(--border-strong);
+    color: var(--text-1); font-family: inherit; font-size: 12px; font-weight: 600;
+    border-radius: 8px; padding: 7px 16px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .btn:hover { background: var(--glass-active); }
+  .btn.primary { background: var(--accent-grad); border: none; box-shadow: 0 4px 18px rgba(255,45,146,0.35); }
+  .btn.ghost { background: transparent; border-color: var(--border); color: var(--text-2); }
+
+  /* Theme picker */
+  .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px; }
+  .theme-tile {
+    border-radius: 12px; border: 2px solid var(--border);
+    overflow: hidden; cursor: pointer; transition: all 0.15s ease;
+  }
+  .theme-tile:hover { transform: translateY(-2px); }
+  .theme-tile.sel { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,45,146,0.25); }
+  .theme-swatch { height: 58px; position: relative; }
+  .theme-swatch .mini-bar { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 5px; border-radius: 3px; }
+  .theme-name { font-size: 11px; font-weight: 600; padding: 7px 10px; background: rgba(0,0,0,0.25); display: flex; justify-content: space-between; align-items: center; }
+  .theme-name .check { color: var(--pink); opacity: 0; }
+  .theme-tile.sel .theme-name .check { opacity: 1; }
+  .sw-dark { background: linear-gradient(135deg, #1f1230, #3b1d54); }
+  .sw-light { background: linear-gradient(135deg, #f1e8ff, #ffe3f1); }
+  .sw-cli { background: #0a0f0a; }
+  .sw-xmas { background: linear-gradient(135deg, #16341f, #58141c); }
+
+  /* Provider list */
+  .provider-list { display: flex; flex-direction: column; gap: 8px; }
+  .provider-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--glass); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .provider-row:hover { background: var(--glass-hover); border-color: var(--border-strong); }
+  .provider-row.disabled { opacity: 0.45; }
+  .p-icon {
+    width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: white;
+  }
+  .p-meta { flex: 1; min-width: 0; }
+  .p-name { font-size: 13px; font-weight: 600; }
+  .p-status { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .p-quota { text-align: right; margin-right: 6px; }
+  .p-quota-pct { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+  .p-quota-bar { width: 90px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); margin-top: 5px; overflow: hidden; }
+  .p-quota-fill { height: 100%; border-radius: 2px; }
+  .chev { color: var(--text-3); font-size: 14px; }
+  .cfg-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.8px;
+    color: var(--purple); border: 1px solid rgba(168,85,247,0.4);
+    padding: 2px 7px; border-radius: 8px; text-transform: uppercase;
+  }
+
+  /* Provider detail */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--text-2); cursor: pointer;
+    margin-bottom: 16px; padding: 5px 10px; border-radius: 7px;
+  }
+  .back-link:hover { background: var(--glass-hover); color: var(--text-1); }
+  .detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .detail-head .p-icon { width: 46px; height: 46px; border-radius: 12px; font-size: 19px; }
+  .detail-head h2 { font-size: 19px; font-weight: 700; }
+  .detail-head .p-status { margin-top: 3px; }
+
+  .field-label { font-size: 12px; font-weight: 600; margin-bottom: 6px; display: block; }
+  .field-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  .status-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+  }
+  .chip-ok { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .chip-warn { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+
+  /* About */
+  .about-hero { text-align: center; padding: 30px 0 24px; }
+  .about-logo {
+    width: 76px; height: 76px; border-radius: 20px; background: var(--accent-grad);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 34px; font-weight: 800; color: white;
+    box-shadow: 0 12px 40px rgba(255,45,146,0.4);
+    margin-bottom: 14px;
+  }
+  .about-hero h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .about-hero .mono { color: var(--text-3); font-size: 12px; margin-top: 5px; }
+  .link-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+
+  .toast {
+    position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: rgba(20,12,36,0.92); border: 1px solid var(--border-strong);
+    backdrop-filter: blur(20px); border-radius: 12px; padding: 11px 20px;
+    font-size: 13px; font-weight: 500; z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); pointer-events: none;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast .accent { color: var(--pink); font-weight: 700; }
+
+  @media (max-width: 800px) {
+    .window { width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; }
+    .sidebar { width: 64px; }
+    .nav-item span.nav-text, .nav-count, .side-label, .sidebar-footer, .titlebar-search { display: none; }
+    .theme-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+<div class="concept-badge">Concept · Spatial Glass</div>
+
+<div class="window">
+  <div class="body-row">
+    <!-- SIDEBAR (full height, hosts window chrome) -->
+    <nav class="sidebar">
+      <div class="sidebar-chrome">
+        <div class="traffic"><span class="t-close"></span><span class="t-min"></span><span class="t-zoom"></span></div>
+      </div>
+      <div class="sidebar-title" style="padding: 0 12px 10px;"><span class="logo">C</span> ClaudeBar</div>
+      <div class="side-label">App</div>
+      <div class="nav-item active" data-pane="general" onclick="go('general', this)"><span class="nav-icon">⚙︎</span><span class="nav-text">General</span></div>
+      <div class="nav-item" data-pane="appearance" onclick="go('appearance', this)"><span class="nav-icon">◐</span><span class="nav-text">Appearance</span></div>
+      <div class="nav-item" data-pane="menubar" onclick="go('menubar', this)"><span class="nav-icon">▤</span><span class="nav-text">Menu Bar</span></div>
+
+      <div class="side-label">Monitoring</div>
+      <div class="nav-item" data-pane="providers" onclick="go('providers', this)"><span class="nav-icon">⬡</span><span class="nav-text">Providers</span><span class="nav-count">6/12</span></div>
+      <div class="nav-item" data-pane="sync" onclick="go('sync', this)"><span class="nav-icon">↻</span><span class="nav-text">Sync &amp; Alerts</span></div>
+      <div class="nav-item" data-pane="hooks" onclick="go('hooks', this)"><span class="nav-icon">⚓︎</span><span class="nav-text">Hooks</span></div>
+
+      <div class="side-label">System</div>
+      <div class="nav-item" data-pane="updates" onclick="go('updates', this)"><span class="nav-icon">↑</span><span class="nav-text">Updates</span></div>
+      <div class="nav-item" data-pane="logs" onclick="go('logs', this)"><span class="nav-icon">≣</span><span class="nav-text">Logs</span></div>
+      <div class="nav-item" data-pane="about" onclick="go('about', this)"><span class="nav-icon">ⓘ</span><span class="nav-text">About</span></div>
+
+      <div class="sidebar-footer"><span class="version-dot"></span> v0.4.80 · up to date</div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="content-col">
+      <div class="content-top">
+        <div class="titlebar-search">⌕ <input placeholder="Search settings…" oninput="toast('Search filters sections as you type')"></div>
+      </div>
+      <main class="content" id="content">
+
+      <!-- GENERAL -->
+      <section class="pane active" id="pane-general">
+        <h1 class="pane-title">General</h1>
+        <p class="pane-sub">Startup behavior and core app preferences.</p>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Launch at Login</div><div class="card-desc">Start ClaudeBar automatically when you sign in to your Mac.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Overview Mode</div><div class="card-desc">How the popover summarizes providers at a glance.</div></div>
+            <div class="segment">
+              <button class="sel" onclick="seg(this)">Compact</button><button onclick="seg(this)">Cards</button><button onclick="seg(this)">Detailed</button>
+            </div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Daily Usage Cards</div><div class="card-desc">Show per-day usage summaries in the popover.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Burn Rate</div><div class="card-desc">Project quota depletion time from recent consumption velocity.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Sample Window</div><div class="card-desc">Time span used to compute burn rate.</div></div>
+            <div class="segment"><button onclick="seg(this)">30 min</button><button class="sel" onclick="seg(this)">1 hour</button><button onclick="seg(this)">3 hours</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- APPEARANCE -->
+      <section class="pane" id="pane-appearance">
+        <h1 class="pane-title">Appearance</h1>
+        <p class="pane-sub">Themes are live-previewed across the popover and this window.</p>
+        <div class="card">
+          <div class="card-title">Theme</div>
+          <div class="card-desc">Pick a built-in theme, or import a custom one.</div>
+          <div class="theme-grid">
+            <div class="theme-tile sel" onclick="pickTheme(this,'Dark')">
+              <div class="theme-swatch sw-dark"><div class="mini-bar" style="background:linear-gradient(90deg,#ff2d92,#a855f7)"></div></div>
+              <div class="theme-name">Dark <span class="check">✓</span></div>
+            </div>
+            <div class="theme-tile" onclick="pickTheme(this,'Light')">
+              <div class="theme-swatch sw-light"><div class="mini-bar" style="background:linear-gradient(90deg,#d946ef,#8b5cf6)"></div></div>
+              <div class="theme-name" style="color:var(--text-1)">Light <span class="check">✓</span></div>
+            </div>
+            <div class="theme-tile" onclick="pickTheme(this,'CLI')">
+              <div class="theme-swatch sw-cli"><div class="mini-bar" style="background:#22c55e"></div><div style="position:absolute;top:8px;left:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:#22c55e">$ claude /usage_</div></div>
+              <div class="theme-name">CLI <span class="check">✓</span></div>
+            </div>
+            <div class="theme-tile" onclick="pickTheme(this,'Christmas')">
+              <div class="theme-swatch sw-xmas"><div class="mini-bar" style="background:linear-gradient(90deg,#ef4444,#22c55e)"></div><div style="position:absolute;top:6px;right:8px;font-size:11px">❄️</div></div>
+              <div class="theme-name">Christmas <span class="check">✓</span></div>
+            </div>
+          </div>
+          <div style="margin-top:16px; display:flex; gap:10px;">
+            <button class="btn ghost" onclick="toast('Import a <span class=accent>.claudebartheme</span> file')">Import Theme…</button>
+            <button class="btn ghost" onclick="toast('Theme docs opened')">Create Your Own</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MENU BAR -->
+      <section class="pane" id="pane-menubar">
+        <h1 class="pane-title">Menu Bar</h1>
+        <p class="pane-sub">What ClaudeBar shows in the macOS status bar.</p>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Display Mode</div><div class="card-desc">Icon only, or icon with a live quota readout.</div></div>
+            <div class="segment"><button onclick="seg(this)">Icon</button><button class="sel" onclick="seg(this)">Percentage</button><button onclick="seg(this)">Bar</button></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Tracked Provider</div><div class="card-desc">Which provider's quota appears in the menu bar.</div></div>
+            <select onchange="toast('Menu bar now tracks <span class=accent>'+this.value+'</span>')">
+              <option>Claude</option><option>Codex</option><option>Gemini</option><option>Copilot</option><option>Z.ai</option><option>Kimi</option>
+            </select>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Tracked Quota</div><div class="card-desc">Session, weekly, or the lowest remaining quota.</div></div>
+            <div class="segment"><button onclick="seg(this)">Session</button><button onclick="seg(this)">Weekly</button><button class="sel" onclick="seg(this)">Lowest</button></div>
+          </div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:16px;">
+          <div style="flex:1"><div class="card-title">Live Preview</div><div class="card-desc">Your menu bar, right now.</div></div>
+          <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border); border-radius:8px; padding:6px 14px; display:flex; align-items:center; gap:10px; font-size:12px;">
+            <span style="color:var(--text-3)">◐ ⌥ 🔋</span>
+            <span style="background:var(--accent-grad); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700" class="mono">C 62%</span>
+            <span style="color:var(--text-3)" class="mono">Thu 21:34</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROVIDERS -->
+      <section class="pane" id="pane-providers">
+        <div id="provider-list-view">
+          <h1 class="pane-title">Providers</h1>
+          <p class="pane-sub">Enable the assistants you use. Click a provider to configure probes and credentials.</p>
+          <div class="provider-list">
+            <div class="provider-row" onclick="openDetail()">
+              <div class="p-icon" style="background:#d97706">C</div>
+              <div class="p-meta"><div class="p-name">Claude</div><div class="p-status">CLI probe · last sync 2 min ago</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--green)">62%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:62%;background:var(--green)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row" onclick="toast('Codex configuration')">
+              <div class="p-icon" style="background:#0ea5e9">⌘</div>
+              <div class="p-meta"><div class="p-name">Codex</div><div class="p-status">RPC probe · last sync 5 min ago</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--amber)">31%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:31%;background:var(--amber)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row" onclick="toast('Gemini has no extra configuration')">
+              <div class="p-icon" style="background:linear-gradient(135deg,#4285f4,#9b72cb)">G</div>
+              <div class="p-meta"><div class="p-name">Gemini</div><div class="p-status">CLI probe · last sync 12 min ago</div></div>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--green)">88%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:88%;background:var(--green)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row" onclick="toast('Copilot configuration')">
+              <div class="p-icon" style="background:#333">🐙</div>
+              <div class="p-meta"><div class="p-name">GitHub Copilot</div><div class="p-status">API probe · token OK</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--red)">9%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:9%;background:var(--red)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row" onclick="toast('Z.ai configuration')">
+              <div class="p-icon" style="background:#6d28d9">Z</div>
+              <div class="p-meta"><div class="p-name">Z.ai</div><div class="p-status">API probe · env GLM_AUTH</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--green)">74%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:74%;background:var(--green)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row" onclick="toast('Kimi configuration')">
+              <div class="p-icon" style="background:#0f766e">K</div>
+              <div class="p-meta"><div class="p-name">Kimi</div><div class="p-status">API probe · cookie auth</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="p-quota"><div class="p-quota-pct" style="color:var(--green)">95%</div><div class="p-quota-bar"><div class="p-quota-fill" style="width:95%;background:var(--green)"></div></div></div>
+              <div class="toggle on" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row disabled" onclick="toast('Enable Bedrock to configure AWS profiles')">
+              <div class="p-icon" style="background:#f59e0b">▲</div>
+              <div class="p-meta"><div class="p-name">AWS Bedrock</div><div class="p-status">disabled</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="toggle" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row disabled" onclick="toast('Enable MiniMax to configure its API key')">
+              <div class="p-icon" style="background:#e11d48">M</div>
+              <div class="p-meta"><div class="p-name">MiniMax</div><div class="p-status">disabled</div></div>
+              <span class="cfg-badge">config</span>
+              <div class="toggle" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row disabled" onclick="toast('Antigravity requires the app running locally')">
+              <div class="p-icon" style="background:#1e40af">A</div>
+              <div class="p-meta"><div class="p-name">Antigravity</div><div class="p-status">disabled</div></div>
+              <div class="toggle" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="provider-row disabled" onclick="toast('Grok probe uses the grok CLI')">
+              <div class="p-icon" style="background:#111">𝕏</div>
+              <div class="p-meta"><div class="p-name">Grok</div><div class="p-status">disabled</div></div>
+              <div class="toggle" onclick="event.stopPropagation();flip(this)"></div>
+              <span class="chev">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROVIDER DETAIL (Claude) -->
+        <div id="provider-detail-view" style="display:none">
+          <div class="back-link" onclick="closeDetail()">‹ All Providers</div>
+          <div class="detail-head">
+            <div class="p-icon" style="background:#d97706">C</div>
+            <div>
+              <h2>Claude</h2>
+              <div class="p-status">probing <span class="mono">claude /usage</span> every 5 min</div>
+            </div>
+            <div style="margin-left:auto"><span class="status-chip chip-ok"><span class="chip-dot"></span> Connected</span></div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div><div class="card-title">Probe Mode</div><div class="card-desc">CLI shells out to <span class="mono">claude /usage</span>; API reads OAuth usage endpoints.</div></div>
+              <div class="segment"><button class="sel" onclick="seg(this)">CLI</button><button onclick="seg(this)">API</button></div>
+            </div>
+            <div class="row">
+              <div><div class="card-title">CLI Path</div><div class="card-desc">Auto-detected. Override if you use a custom install.</div></div>
+              <input class="text-field" value="~/.local/bin/claude" onchange="toast('CLI path saved')">
+            </div>
+            <div class="row">
+              <div><div class="card-title">Accounts</div><div class="card-desc">Monitor multiple Claude accounts and switch between them.</div></div>
+              <button class="btn ghost" onclick="toast('Account manager opened')">Manage 2 Accounts</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div><div class="card-title">Test Probe</div><div class="card-desc">Run the probe once and show the raw result.</div></div>
+              <button class="btn primary" onclick="toast('Probe OK · session <span class=accent>62%</span> · weekly <span class=accent>41%</span>')">Run Test</button>
+            </div>
+          </div>
+          <div class="card" style="border-color:rgba(251,191,36,0.25)">
+            <div class="row">
+              <div><div class="card-title" style="color:var(--amber)">Troubleshooting</div><div class="card-desc">Common failures: expired token → re-login · folder trust → trust in Claude CLI.</div></div>
+              <button class="btn ghost" onclick="toast('Opened probe logs filtered to Claude')">View Probe Logs</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SYNC -->
+      <section class="pane" id="pane-sync">
+        <h1 class="pane-title">Sync &amp; Alerts</h1>
+        <p class="pane-sub">Background refresh cadence and status notifications.</p>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Background Sync</div><div class="card-desc">Refresh quotas even while the popover is closed.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Refresh Interval</div><div class="card-desc">More frequent syncs use more battery.</div></div>
+            <div class="segment"><button onclick="seg(this)">1 min</button><button class="sel" onclick="seg(this)">5 min</button><button onclick="seg(this)">15 min</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Status Change Notifications</div><div class="card-desc">Notify when a provider crosses healthy → warning → critical.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Quota Reset Notifications</div><div class="card-desc">Notify when a session or weekly window resets.</div></div>
+            <div class="toggle" onclick="flip(this)"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOOKS -->
+      <section class="pane" id="pane-hooks">
+        <h1 class="pane-title">Hooks</h1>
+        <p class="pane-sub">Let Claude Code push live session events into ClaudeBar.</p>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Enable Hook Server</div><div class="card-desc">Local HTTP listener receiving Claude Code hook events.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Port</div><div class="card-desc mono">http://127.0.0.1:8737/hook</div></div>
+            <input class="text-field" style="width:100px" value="8737" onchange="toast('Hook port updated — restart the server to apply')">
+          </div>
+          <div class="row">
+            <div><div class="card-title">Install into Claude Code</div><div class="card-desc">Writes the hook entry into <span class="mono">~/.claude/settings.json</span>.</div></div>
+            <span class="status-chip chip-ok"><span class="chip-dot"></span> Installed</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- UPDATES -->
+      <section class="pane" id="pane-updates">
+        <h1 class="pane-title">Updates</h1>
+        <p class="pane-sub">Powered by Sparkle. You're on v0.4.80.</p>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">Automatically Check for Updates</div><div class="card-desc">Checks daily in the background.</div></div>
+            <div class="toggle on" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Automatically Download</div><div class="card-desc">Install silently on next launch.</div></div>
+            <div class="toggle" onclick="flip(this)"></div>
+          </div>
+          <div class="row">
+            <div><div class="card-title">Channel</div><div class="card-desc">Beta gets features earlier, with more rough edges.</div></div>
+            <div class="segment"><button class="sel" onclick="seg(this)">Stable</button><button onclick="seg(this)">Beta</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div><div class="card-title">You're up to date</div><div class="card-desc">Last checked today at 20:12.</div></div>
+            <button class="btn" onclick="toast('Checking for updates… <span class=accent>v0.4.80 is the latest</span>')">Check Now</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGS -->
+      <section class="pane" id="pane-logs">
+        <h1 class="pane-title">Logs</h1>
+        <p class="pane-sub mono" style="font-size:11px">~/Library/Logs/ClaudeBar/ClaudeBar.log · rotates at 5 MB</p>
+        <div class="card" style="background:rgba(0,0,0,0.45); font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.9; color:var(--text-2)">
+          <div><span style="color:var(--text-3)">[2026-08-21 21:29:02]</span> <span style="color:var(--green)">[INFO]</span> [monitor] refresh cycle complete · 6 providers · 1.2s</div>
+          <div><span style="color:var(--text-3)">[2026-08-21 21:29:01]</span> <span style="color:var(--green)">[INFO]</span> [probes] claude /usage → session 62% weekly 41%</div>
+          <div><span style="color:var(--text-3)">[2026-08-21 21:29:01]</span> <span style="color:var(--amber)">[WARN]</span> [probes] copilot quota below 10% — status → critical</div>
+          <div><span style="color:var(--text-3)">[2026-08-21 21:29:00]</span> <span style="color:var(--green)">[INFO]</span> [network] GET z.ai/usage → 200 (312ms)</div>
+          <div><span style="color:var(--text-3)">[2026-08-21 21:24:02]</span> <span style="color:var(--green)">[INFO]</span> [notifications] posted: Copilot entered critical</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" onclick="toast('Logs folder opened in Finder')">Open Logs Folder</button>
+          <button class="btn ghost" onclick="toast('Log copied — attach it to a GitHub issue')">Copy for Bug Report</button>
+        </div>
+      </section>
+
+      <!-- ABOUT -->
+      <section class="pane" id="pane-about">
+        <div class="about-hero">
+          <div class="about-logo">C</div>
+          <h2>ClaudeBar</h2>
+          <div class="mono">v0.4.80 (480) · macOS 15+</div>
+          <p style="font-size:13px; color:var(--text-2); max-width:400px; margin:14px auto 0;">
+            One menu bar for every AI coding assistant quota — Claude, Codex, Gemini, Copilot and nine more.
+          </p>
+          <div class="link-row">
+            <button class="btn" onclick="toast('github.com/tddworks/claudebar')">GitHub</button>
+            <button class="btn ghost" onclick="toast('Release notes opened')">Release Notes</button>
+            <button class="btn primary" onclick="toast('Thank you! ♥')">Sponsor ♥</button>
+          </div>
+        </div>
+        <div class="card" style="text-align:center; font-size:12px; color:var(--text-3)">
+          Made with 🧡 by tddworks · MIT License
+        </div>
+      </section>
+
+    </main>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function go(pane, el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + pane).classList.add('active');
+    document.getElementById('content').scrollTop = 0;
+    closeDetail(true);
+  }
+  function flip(el) {
+    el.classList.toggle('on');
+    toast(el.classList.contains('on') ? 'Enabled' : 'Disabled');
+  }
+  function seg(btn) {
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+    toast('Set to <span class="accent">' + btn.textContent + '</span>');
+  }
+  function pickTheme(tile, name) {
+    document.querySelectorAll('.theme-tile').forEach(t => t.classList.remove('sel'));
+    tile.classList.add('sel');
+    toast('Theme: <span class="accent">' + name + '</span>');
+  }
+  function openDetail() {
+    document.getElementById('provider-list-view').style.display = 'none';
+    document.getElementById('provider-detail-view').style.display = 'block';
+    document.getElementById('content').scrollTop = 0;
+  }
+  function closeDetail(silent) {
+    document.getElementById('provider-list-view').style.display = '';
+    document.getElementById('provider-detail-view').style.display = 'none';
+  }
+  let toastTimer;
+  function toast(html) {
+    const t = document.getElementById('toast');
+    t.innerHTML = html;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>

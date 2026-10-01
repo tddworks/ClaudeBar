@@ -20,6 +20,30 @@ struct JSONSettingsRepositoryAppTests {
         try? FileManager.default.removeItem(at: dir)
     }
 
+    @Test
+    func `additional menu bar providers preserve legacy selection and survive reload`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        repo.setMenuBarPercentageProviderId("codex")
+        #expect(repo.menuBarAdditionalProviderIds().isEmpty)
+        repo.setMenuBarAdditionalProviderIds(["claude", "gemini"])
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")
+        ))
+        #expect(reloaded.menuBarPercentageProviderId() == "codex")
+        #expect(reloaded.menuBarAdditionalProviderIds() == ["claude", "gemini"])
+    }
+
+    @Test
+    func `menu bar providers remove duplicates and cap the total at three`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        repo.setMenuBarAdditionalProviderIds(["claude", "codex", "codex", "", "gemini", "copilot"])
+        #expect(repo.menuBarAdditionalProviderIds() == ["codex", "gemini"])
+        repo.setMenuBarPercentageProviderId("codex")
+        #expect(repo.menuBarAdditionalProviderIds() == ["gemini"])
+    }
+
     // MARK: - Theme
 
     @Test
@@ -153,6 +177,52 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `menuBarStackedEnabled defaults to false`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarStackedEnabled() == false)
+    }
+
+    @Test
+    func `setMenuBarStackedEnabled persists value`() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+        let fileURL = tempDir.appendingPathComponent("settings.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = JSONSettingsStore(fileURL: fileURL)
+        let repo1 = JSONSettingsRepository(store: store)
+        repo1.setMenuBarStackedEnabled(true)
+
+        let repo2 = JSONSettingsRepository(store: store)
+        #expect(repo2.menuBarStackedEnabled() == true)
+    }
+
+    @Test
+    func `menuBarStackedSize defaults to small`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarStackedSize() == "small")
+    }
+
+    @Test
+    func `setMenuBarStackedSize persists value`() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+        let fileURL = tempDir.appendingPathComponent("settings.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = JSONSettingsStore(fileURL: fileURL)
+        let repo1 = JSONSettingsRepository(store: store)
+        repo1.setMenuBarStackedSize("large")
+
+        let repo2 = JSONSettingsRepository(store: store)
+        #expect(repo2.menuBarStackedSize() == "large")
+    }
+
+    @Test
     func `showDailyUsageCards defaults to true`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
@@ -167,6 +237,25 @@ struct JSONSettingsRepositoryAppTests {
 
         repo.setShowDailyUsageCards(false)
         #expect(repo.showDailyUsageCards() == false)
+    }
+
+    // MARK: - Touch Bar
+
+    @Test
+    func `touchBarEnabled defaults to true`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.touchBarEnabled() == true)
+    }
+
+    @Test
+    func `setTouchBarEnabled persists value`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setTouchBarEnabled(false)
+        #expect(repo.touchBarEnabled() == false)
     }
 
     // MARK: - Overview
@@ -275,6 +364,7 @@ struct JSONSettingsRepositoryAppTests {
         let repo1 = JSONSettingsRepository(store: store)
         repo1.setThemeMode("cli")
         repo1.setShowDailyUsageCards(false)
+        repo1.setTouchBarEnabled(false)
         repo1.setOverviewModeEnabled(true)
         repo1.setMenuBarPercentageEnabled(true)
         repo1.setMenuBarPercentageProviderId("codex")
@@ -284,9 +374,54 @@ struct JSONSettingsRepositoryAppTests {
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
         #expect(repo2.showDailyUsageCards() == false)
+        #expect(repo2.touchBarEnabled() == false)
         #expect(repo2.overviewModeEnabled() == true)
         #expect(repo2.menuBarPercentageEnabled() == true)
         #expect(repo2.menuBarPercentageProviderId() == "codex")
         #expect(repo2.menuBarPercentageQuotaKey() == "model:gpt-5")
+    }
+
+    // MARK: - Status Colors
+
+    @Test
+    func `status colors default to no overrides and high contrast off`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.statusColorOverrides().isEmpty)
+        #expect(repo.highContrastEnabled() == false)
+    }
+
+    @Test
+    func `status color overrides and high contrast survive reload`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        var overrides = StatusColorOverrides.none
+        overrides[.critical] = RGBColorValue(hex: "#B81F1F")
+        overrides[.healthy] = RGBColorValue(hex: "#17703A")
+        repo.setStatusColorOverrides(overrides)
+        repo.setHighContrastEnabled(true)
+
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")))
+        #expect(reloaded.statusColorOverrides() == overrides)
+        #expect(reloaded.statusColorOverrides()[.warning] == nil)
+        #expect(reloaded.statusColorOverrides()[.depleted] == nil)
+        #expect(reloaded.highContrastEnabled() == true)
+    }
+
+    @Test
+    func `clearing all status color overrides removes the key`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        var overrides = StatusColorOverrides.none
+        overrides[.warning] = RGBColorValue(hex: "#8A5A00")
+        repo.setStatusColorOverrides(overrides)
+        repo.setStatusColorOverrides(.none)
+
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")))
+        #expect(reloaded.statusColorOverrides().isEmpty)
+        let raw = try? String(contentsOf: dir.appendingPathComponent("settings.json"), encoding: .utf8)
+        #expect(raw?.contains("statusColorOverrides") == false)
     }
 }

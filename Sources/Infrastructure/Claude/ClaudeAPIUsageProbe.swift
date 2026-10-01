@@ -193,7 +193,12 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         // 仅在从文件加载时更新缓存，避免滑动续期导致 TTL 永不过期
         let fromCache = cache.get()
         guard var credentials = fromCache ?? credentialLoader.loadCredentials() else {
-            AppLog.probes.error("Claude API: No credentials found")
+            // Name both places we looked. On macOS `claude login` writes only
+            // the Keychain, so "no credentials" almost always means the
+            // Keychain read failed — and `loadFromKeychain` logs why (#271).
+            AppLog.probes.error(
+                "Claude API: no credentials in \(credentialLoader.credentialsFilePath) or the 'Claude Code-credentials' Keychain item"
+            )
             throw ProbeError.authenticationRequired
         }
         if fromCache == nil {
@@ -471,21 +476,66 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             ))
         }
 
-        // Parse extra usage
-        // API returns used_credits and monthly_limit in cents, convert to dollars
-        var costUsage: CostUsage?
-        if let extra = response.extraUsage, extra.isEnabled == true {
-            if let used = extra.usedCredits {
-                costUsage = CostUsage(
-                    totalCost: Decimal(used) / 100,
-                    budget: extra.monthlyLimit.map { Decimal($0) / 100 },
-                    apiDuration: 0,
-                    providerId: "claude",
-                    capturedAt: Date(),
-                    resetsAt: nil,
-                    resetText: nil
-                )
+        // Parse model-scoped limits from the generic `limits` array (e.g. Fable).
+        // Session/weekly entries there mirror `five_hour`/`seven_day` and are
+        // skipped; a model already covered by a legacy field is not duplicated.
+        // If the legacy `five_hour`/`seven_day` fields ever go null (as
+        // `seven_day_opus`/`seven_day_sonnet` did), extend this loop to the
+        // `session`/`weekly_all` kinds.
+        for entry in response.limits ?? [] {
+            guard entry.kind == "weekly_scoped",
+                  // Key on the first word of the display name ("Fable 5" -> "fable")
+                  // — must stay in sync with the key the CLI probe hardcodes so a
+                  // persisted "model:<name>" menu-bar selection survives switching
+                  // probe modes.
+                  let modelName = entry.scope?.model?.displayName?
+                      .split(separator: " ").first.map({ $0.lowercased() }),
+                  !modelName.isEmpty,
+                  let percent = entry.percent else {
+                continue
             }
+            let quotaType = QuotaType.modelSpecific(modelName)
+            guard !quotas.contains(where: { $0.quotaType == quotaType }) else {
+                continue
+            }
+            let resetsAt = parseISODate(entry.resetsAt)
+            quotas.append(UsageQuota(
+                percentRemaining: 100.0 - percent,
+                quotaType: quotaType,
+                providerId: "claude",
+                resetsAt: resetsAt,
+                resetText: formatResetText(resetsAt)
+            ))
+        }
+
+        // Prefer the current spend payload, then fall back to legacy
+        // extra_usage. A shape with a present-but-invalid cap is dropped
+        // (falls through) rather than reclassified as uncapped.
+        let costUsage: CostUsage?
+        if let pair = response.spend?.costPair {
+            costUsage = CostUsage(
+                totalCost: pair.used,
+                budget: pair.cap,
+                apiDuration: 0,
+                providerId: "claude",
+                kind: .extraUsage,
+                capturedAt: Date(),
+                resetsAt: nil,
+                resetText: nil
+            )
+        } else if let pair = response.extraUsage?.costPair {
+            costUsage = CostUsage(
+                totalCost: pair.used,
+                budget: pair.cap,
+                apiDuration: 0,
+                providerId: "claude",
+                kind: .extraUsage,
+                capturedAt: Date(),
+                resetsAt: nil,
+                resetText: nil
+            )
+        } else {
+            costUsage = nil
         }
 
         // Determine account tier from subscription type
@@ -586,6 +636,8 @@ private struct UsageResponse: Decodable {
     let sevenDaySonnet: UsageQuotaData?
     let sevenDayOpus: UsageQuotaData?
     let extraUsage: ExtraUsageData?
+    let spend: SpendData?
+    let limits: [LimitEntry]?
 
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
@@ -593,6 +645,37 @@ private struct UsageResponse: Decodable {
         case sevenDaySonnet = "seven_day_sonnet"
         case sevenDayOpus = "seven_day_opus"
         case extraUsage = "extra_usage"
+        case spend
+        case limits
+    }
+}
+
+/// Entry in the newer generic `limits` array. Model-scoped limits (e.g. Fable)
+/// are reported here as `kind: "weekly_scoped"` with the model in `scope`,
+/// instead of dedicated `seven_day_<model>` fields.
+private struct LimitEntry: Decodable {
+    let kind: String?
+    let percent: Double?
+    let resetsAt: String?
+    let scope: LimitScope?
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case percent
+        case resetsAt = "resets_at"
+        case scope
+    }
+}
+
+private struct LimitScope: Decodable {
+    let model: LimitScopeModel?
+}
+
+private struct LimitScopeModel: Decodable {
+    let displayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
     }
 }
 
@@ -606,15 +689,77 @@ private struct UsageQuotaData: Decodable {
     }
 }
 
+private struct SpendData: Decodable {
+    let used: MoneyData?
+    let limit: MoneyData?
+    let enabled: Bool?
+
+    /// The decoded (used, cap) pair, or `nil` when the shape is disabled or
+    /// invalid. A `nil` cap inside the pair means genuinely uncapped
+    /// (`limit` absent or JSON null). A present-but-invalid `limit` poisons
+    /// the whole shape instead of silently reading as "no monthly cap".
+    var costPair: (used: Decimal, cap: Decimal?)? {
+        guard enabled == true, let used = used?.amount else { return nil }
+        guard let limit else { return (used, nil) }
+        guard let cap = limit.amount else { return nil }
+        return (used, cap)
+    }
+}
+
+private struct MoneyData: Decodable {
+    let amountMinor: Decimal?
+    let currency: String?
+    let exponent: Int?
+
+    /// Negative spend is not a valid payload state; reject the row rather
+    /// than silently flipping the sign.
+    var amount: Decimal? {
+        guard let amountMinor, amountMinor >= 0, let exponent, exponent >= 0 else { return nil }
+        return Decimal(sign: .plus, exponent: -exponent, significand: amountMinor)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case amountMinor = "amount_minor"
+        case currency
+        case exponent
+    }
+}
+
 private struct ExtraUsageData: Decodable {
     let isEnabled: Bool?
-    let usedCredits: Double?
-    let monthlyLimit: Double?
+    let usedCredits: Decimal?
+    let monthlyLimit: Decimal?
+    let decimalPlaces: Int?
+
+    /// Same cap semantics as `SpendData.costPair`: absent/null limit means
+    /// uncapped; a present-but-invalid limit invalidates the shape.
+    var costPair: (used: Decimal, cap: Decimal?)? {
+        guard isEnabled == true, let used = usedAmount else { return nil }
+        guard monthlyLimit != nil else { return (used, nil) }
+        guard let cap = monthlyLimitAmount else { return nil }
+        return (used, cap)
+    }
+
+    var usedAmount: Decimal? {
+        scaledAmount(usedCredits)
+    }
+
+    var monthlyLimitAmount: Decimal? {
+        scaledAmount(monthlyLimit)
+    }
+
+    private func scaledAmount(_ amount: Decimal?) -> Decimal? {
+        guard let amount, amount >= 0 else { return nil }
+        let places = decimalPlaces ?? 2
+        guard places >= 0 else { return nil }
+        return Decimal(sign: .plus, exponent: -places, significand: amount)
+    }
 
     enum CodingKeys: String, CodingKey {
         case isEnabled = "is_enabled"
         case usedCredits = "used_credits"
         case monthlyLimit = "monthly_limit"
+        case decimalPlaces = "decimal_places"
     }
 }
 

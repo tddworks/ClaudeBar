@@ -49,6 +49,22 @@ struct ClaudeUsageProbeParsingTests {
     ████████████░░░░░░░░ 60% used
     """
 
+    static let fableQuotaOutput = """
+    Claude Code v2.1.198
+
+    Current session
+    ██████████░░░░░░░░░░ 23% used
+    Resets 1:09am (America/Chicago)
+
+    Current week (all models)
+    ██░░░░░░░░░░░░░░░░░░ 10% used
+    Resets Jul 2 at 4:59am (America/Chicago)
+
+    Current week (Fable)
+    ████░░░░░░░░░░░░░░░░ 17% used
+    Resets Jul 2 at 5:59am (America/Chicago)
+    """
+
     // MARK: - Parsing Percentages
 
     @Test
@@ -89,6 +105,60 @@ struct ClaudeUsageProbeParsingTests {
         let opusQuota = snapshot.quota(for: .modelSpecific("opus"))
         #expect(opusQuota?.percentRemaining == 80)
         #expect(opusQuota?.status == .healthy)
+    }
+
+    @Test
+    func `parses fable weekly quota with its own reset time`() throws {
+        // Given
+        let output = Self.fableQuotaOutput
+
+        // When
+        let snapshot = try simulateParse(text: output)
+
+        // Then - 17% used = 83% remaining, reset from the Fable section (not all-models)
+        let fableQuota = snapshot.quota(for: .modelSpecific("fable"))
+        #expect(fableQuota?.percentRemaining == 83)
+        #expect(fableQuota?.status == .healthy)
+        #expect(fableQuota?.resetText?.contains("5:59am") == true)
+    }
+
+    static let fableQuotaWithoutOwnResetOutput = """
+    Current session
+    ██████████░░░░░░░░░░ 23% used
+    Resets 1:09am (America/Chicago)
+
+    Current week (all models)
+    ██░░░░░░░░░░░░░░░░░░ 10% used
+    Resets Jul 2 at 4:59am (America/Chicago)
+
+    Current week (Fable)
+    ████░░░░░░░░░░░░░░░░ 17% used
+    """
+
+    @Test
+    func `fable quota falls back to weekly reset when its section has none`() throws {
+        // Given
+        let output = Self.fableQuotaWithoutOwnResetOutput
+
+        // When
+        let snapshot = try simulateParse(text: output)
+
+        // Then - inherits the all-models weekly reset
+        let fableQuota = snapshot.quota(for: .modelSpecific("fable"))
+        #expect(fableQuota?.percentRemaining == 83)
+        #expect(fableQuota?.resetText?.contains("4:59am") == true)
+    }
+
+    @Test
+    func `no fable quota when section absent`() throws {
+        // Given
+        let output = Self.sampleClaudeOutput
+
+        // When
+        let snapshot = try simulateParse(text: output)
+
+        // Then
+        #expect(snapshot.quota(for: .modelSpecific("fable")) == nil)
     }
 
     @Test
@@ -543,6 +613,7 @@ struct ClaudeUsageProbeParsingTests {
         #expect(costUsage != nil)
         #expect(costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(costUsage?.budget == Decimal(string: "20.00"))
+        #expect(costUsage?.kind == .extraUsage)
     }
 
     @Test
@@ -792,6 +863,7 @@ struct ClaudeUsageProbeParsingTests {
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "0.55"))
         #expect(snapshot.costUsage?.budget == nil)
+        #expect(snapshot.costUsage?.kind == .apiCost)
         #expect(snapshot.quotas.isEmpty)
     }
 
@@ -883,6 +955,52 @@ struct ClaudeUsageProbeParsingTests {
     }
 
     @Test
+    func `TerminalRenderer includes content scrolled into scrollback`() throws {
+        // Given - more lines than the terminal is tall (50 rows), so early
+        // lines scroll out of the visible screen into scrollback
+        let renderer = TerminalRenderer()
+        let input = (1...80).map { "line \($0)" }.joined(separator: "\n")
+
+        // When
+        let rendered = renderer.render(input)
+
+        // Then - both the scrolled-off top and the visible bottom survive
+        #expect(rendered.contains("line 1\n"))
+        #expect(rendered.contains("line 80"))
+    }
+
+    @Test
+    func `parses usage sections that scrolled off the visible screen`() throws {
+        // Given - the CLI /usage screen grew past 50 rows (usage-contribution
+        // report), pushing the quota sections above the visible screen
+        let filler = (1...60).map { "contributing insight line \($0)" }.joined(separator: "\n")
+        let output = """
+        Current session
+        ██████████████████████████████▌                    61% used
+        Resets 1:09am (America/Chicago)
+
+        Current week (all models)
+        █████████                                          18% used
+        Resets Jul 2 at 4:59am (America/Chicago)
+
+        Current week (Fable)
+        ████████████████                                   32% used
+        Resets Jul 2 at 5:59am (America/Chicago)
+
+        What's contributing to your limits usage?
+        \(filler)
+        """
+
+        // When
+        let snapshot = try simulateParse(text: output)
+
+        // Then
+        #expect(snapshot.sessionQuota?.percentRemaining == 39)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 82)
+        #expect(snapshot.quota(for: .modelSpecific("fable"))?.percentRemaining == 68)
+    }
+
+    @Test
     func `parses clean terminal output with proper structure`() throws {
         // Given - clean terminal output as rendered by SwiftTerm
         let output = """
@@ -958,6 +1076,217 @@ struct ClaudeUsageProbeParsingTests {
         let unwrapped = try #require(result)
         let resetsCount = unwrapped.components(separatedBy: "Resets").count - 1
         #expect(resetsCount == 1, "Should contain 'Resets' exactly once, got \(resetsCount) in: \(unwrapped)")
+    }
+
+    // MARK: - Unfinished / API-billing Screens (issue #271)
+
+    /// The Usage tab as it looks before the quota request comes back.
+    static let stillLoadingOutput = """
+    Claude Code v2.1.251
+    Opus 5 (1M context) · Claude Max
+
+      Settings  Status  Config  Usage  Stats
+
+      Session
+        Total cost:            $0.0000
+        Total duration (API):  0s
+        Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+        Loading usage data…
+
+      Esc to cancel
+    """
+
+    /// The Usage tab for a session the CLI resolved to API billing: a cost panel,
+    /// no quota bars, and nothing left to wait for.
+    static let apiBillingCostPanelOutput = """
+    Claude Code v2.1.251
+    Opus 5 (1M context) · API Usage Billing
+
+      Settings  Status  Config  Usage  Stats
+
+      Session
+        Total cost:            $0.0000
+        Total duration (API):  0s
+        Total duration (wall): 0s
+        Total code changes:    0 lines added, 0 lines removed
+        Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+      Esc to cancel
+    """
+
+    @Test
+    func `still-loading output reports that usage data never arrived`() {
+        #expect(throws: ProbeError.executionFailed(
+            "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment."
+        )) {
+            try simulateParse(text: Self.stillLoadingOutput)
+        }
+    }
+
+    @Test
+    func `API billing cost panel routes to the cost fallback instead of a parse error`() {
+        #expect(throws: ProbeError.subscriptionRequired) {
+            try simulateParse(text: Self.apiBillingCostPanelOutput)
+        }
+    }
+
+    @Test
+    func `API billing cost panel on a subscription account refuses the cost fallback`() {
+        // A Max plan billed through Apple still renders the API-billing cost
+        // panel when the CLI cannot see the subscription (#271). Answering with
+        // `/cost` would report $0.00 and no quota, and — because it succeeds —
+        // would stop ClaudeProvider from trying the usage API, which can still
+        // read the real quota. Fail instead, so that fallback runs.
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(
+            AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+        )
+
+        #expect(throws: ProbeError.executionFailed(ClaudeUsageProbe.subscriptionMisreadAsApiBilling)) {
+            try ClaudeUsageProbe.parse(Self.apiBillingCostPanelOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    @Test
+    func `API billing cost panel on a pay-as-you-go account still routes to cost`() {
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(AccountInfo(email: "user@example.com", billingType: "api"))
+
+        #expect(throws: ProbeError.subscriptionRequired) {
+            try ClaudeUsageProbe.parse(Self.apiBillingCostPanelOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    // MARK: - /cost Screens That Are Not Cost Readings (issue #317)
+
+    /// The other route into `/cost`, and the one #317's veto did not cover.
+    /// `extractUsageError` returns `.subscriptionRequired` for this message, and
+    /// `probe()` turns that into a `/cost` run. A subscription that reaches it
+    /// gets the probe session's own $0.00 — and because that parse *succeeds*,
+    /// the usage API that can read its real quota never runs.
+    static let subscriptionOnlyMessageOutput = """
+    Claude Code v2.1.274
+    Opus 5 (1M context) · API Usage Billing
+
+      Session
+        Total cost:            $0.0000
+        Total duration (API):  0s
+        Total duration (wall): 1s
+        Total code changes:    0 lines added, 0 lines removed
+        Usage: 0 input, 0 output, 0 cache read, 0 cache write
+
+    /usage is only available for subscription plans. /cost shows session cost.
+    """
+
+    @Test
+    func `subscription-only message on a subscription account refuses the cost fallback`() {
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(
+            AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+        )
+
+        #expect(throws: ProbeError.executionFailed(ClaudeUsageProbe.subscriptionMisreadAsApiBilling)) {
+            try ClaudeUsageProbe.parse(Self.subscriptionOnlyMessageOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    @Test
+    func `subscription-only message on a pay-as-you-go account still routes to cost`() {
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(AccountInfo(email: "user@example.com", billingType: "api"))
+
+        #expect(throws: ProbeError.subscriptionRequired) {
+            try ClaudeUsageProbe.parse(Self.subscriptionOnlyMessageOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    /// A `/cost` screen that reports a failure is not a cost of zero. The rate
+    /// limit case is the one that matters: a throttled CLI still paints the
+    /// panel, `extractCostValue` reads `$0.0000` off it, and the probe *succeeds*
+    /// with a cost of nothing — which is both wrong and final, since a successful
+    /// probe ends the refresh (#317).
+    @Test
+    func `a rate-limited cost screen is an error rather than a cost of zero`() {
+        let rateLimited = Self.costCommandOutput + "\nError: Usage endpoint is rate limited. Please try again in a moment."
+
+        #expect(throws: ProbeError.executionFailed("Rate limited - too many requests")) {
+            try ClaudeUsageProbe.parseCost(rateLimited)
+        }
+    }
+
+    @Test
+    func `a logged-out cost screen is an error rather than a cost of zero`() {
+        let loggedOut = Self.costCommandOutput + "\nInvalid API key · Please log in with /login"
+
+        #expect(throws: ProbeError.authenticationRequired) {
+            try ClaudeUsageProbe.parseCost(loggedOut)
+        }
+    }
+
+    /// A capture that ended before the cost panel was painted at all has no
+    /// `Total cost` row, and says so instead of answering `$0.00`. This is the
+    /// shape an early `/cost` capture takes when the CLI is still booting: the
+    /// panel is the last thing it draws, and a screen without it is not a
+    /// reading of anything.
+    @Test
+    func `a capture with no cost panel is a parse failure rather than a cost of zero`() {
+        let beforeThePanel = """
+        Claude Code v2.1.274
+        Opus 5 (1M context) with high effort · API Usage Billing
+        ~/Library/Application Support/ClaudeBar/Probe
+         Esc to cancel
+        """
+
+        #expect(throws: ProbeError.parseFailed("Could not find total cost")) {
+            try ClaudeUsageProbe.parseCost(beforeThePanel)
+        }
+    }
+
+    /// The panel itself is not evidence that the command ran. It is painted in
+    /// full during boot, before `/cost` is submitted — all five rows are present
+    /// in 114 of the 114 boot captures in the log attached to #317, exactly as
+    /// in the 316 that reached the Usage tab. So `$0.0000` off this screen is the
+    /// probe session's own spend, not a misread, and the fix is upstream: a
+    /// subscription must not be routed here at all.
+    @Test
+    func `a fully painted cost panel of an empty session reads as zero`() throws {
+        let panelOnly = """
+        Claude Code v2.1.274
+        Opus 5 (1M context) with high effort · API Usage Billing
+          Session
+            Total cost:            $0.0000
+            Total duration (API):  0s
+            Total duration (wall): 1s
+            Total code changes:  0 lines added, 0 lines removed
+            Usage: 0 input, 0 output, 0 cache read, 0 cache write
+          Esc to cancel
+        """
+
+        let snapshot = try ClaudeUsageProbe.parseCost(panelOnly)
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "0.0000"))
+        #expect(snapshot.accountTier == .claudeApi)
+    }
+
+    @Test
+    func `subscription output that mentions API usage billing alongside quotas still parses`() throws {
+        // Extra Usage credits put "API Usage Billing" in a subscription header —
+        // the quota bars are what decide, not the header.
+        let output = """
+        Claude Code v2.1.251
+        Opus 5 (1M context) · API Usage Billing
+
+        Current session
+        ████ 25% used
+
+        Current week (all models)
+        ████ 60% used
+        """
+
+        let snapshot = try simulateParse(text: output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 75)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 40)
     }
 
     // MARK: - Helper

@@ -7,21 +7,34 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
     private let claudeDir: URL
     private let calendar: Calendar
     private let now: @Sendable () -> Date
+    /// Whether Claude Code is pointed at a loopback endpoint, i.e. inference
+    /// nobody bills per token (#190). Resolved per scan, not at init, so routing
+    /// the CLI at a local server takes effect on the next scan. Applies to today's
+    /// records only — it describes the current route, and the window reaches back a day.
+    private let isLocallyServed: @Sendable () -> Bool
 
+    /// - Parameter isLocallyServed: defaults to `false` so tests never read the
+    ///   real `~/.claude.json`; the app injects `ClaudeLocalInferenceDetector`.
     public init(
         claudeDir: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude"),
         calendar: Calendar = .current,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        isLocallyServed: @escaping @Sendable () -> Bool = { false }
     ) {
         self.claudeDir = claudeDir
         self.calendar = calendar
         self.now = now
+        self.isLocallyServed = isLocallyServed
     }
 
     public func analyzeToday() async throws -> DailyUsageReport {
         let currentDate = now()
         let todayStart = calendar.startOfDay(for: currentDate)
         let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
+        let servedLocally = isLocallyServed()
+        if servedLocally {
+            AppLog.probes.debug("DailyUsage: routed at a local endpoint — unpriced models cost nothing")
+        }
 
         // Only scan files modified in the last 2 days for performance
         let projectsDir = claudeDir.appendingPathComponent("projects")
@@ -42,7 +55,7 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
         // parallel tool calls, and resumed/branched session files. Collapse duplicates by
         // (message.id, requestId) — keeping the last/most-complete entry — before summing,
         // so cost/token totals match `claude /cost` instead of inflating several-fold.
-        // See docs/plans/2026-06-09-daily-usage-dedup-design.md and issue #207.
+        // See docs/features/daily-usage/design.md and issue #207.
         let allRecords = deduplicateLastWins(parsedRecords)
 
         AppLog.probes.info("DailyUsage: \(parsedRecords.count) raw records, \(allRecords.count) after dedup")
@@ -55,9 +68,16 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
             record.timestamp >= yesterdayStart && record.timestamp < todayStart
         }
 
-        // Aggregate stats
-        let todayStat = aggregate(records: todayRecords, date: todayStart)
-        let yesterdayStat = aggregate(records: yesterdayRecords, date: yesterdayStart)
+        // Aggregate stats.
+        //
+        // `servedLocally` is a *current* setting, so it prices today only. Applying it
+        // to the whole two-day window would retroactively zero yesterday's estimate for
+        // unpriced names — the same erasure rule 1 exists to prevent, just one day
+        // earlier. Yesterday therefore keeps its Sonnet-rate estimate, which over-reports
+        // local spend if the CLI was routed locally all day; over-reporting is the safe
+        // direction, since the alternative is a cost that silently disappears.
+        let todayStat = aggregate(records: todayRecords, date: todayStart, servedLocally: servedLocally)
+        let yesterdayStat = aggregate(records: yesterdayRecords, date: yesterdayStart, servedLocally: false)
 
         AppLog.probes.info("DailyUsage: today=\(todayStat.formattedCost)/\(todayStat.formattedTokens), yesterday=\(yesterdayStat.formattedCost)/\(yesterdayStat.formattedTokens)")
 
@@ -120,7 +140,7 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
         return files
     }
 
-    private func aggregate(records: [TokenUsageRecord], date: Date) -> DailyUsageStat {
+    private func aggregate(records: [TokenUsageRecord], date: Date, servedLocally: Bool) -> DailyUsageStat {
         guard !records.isEmpty else { return .empty(for: date) }
 
         var totalCost: Decimal = 0
@@ -132,13 +152,13 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
         var cachedSavings: Decimal = 0
 
         for record in records {
-            totalCost += ModelPricing.cost(for: record)
+            totalCost += ModelPricing.cost(for: record, servedLocally: servedLocally)
             totalTokens += record.totalTokens
             inputTokens += record.inputTokens
             outputTokens += record.outputTokens
             cacheCreationTokens += record.cacheCreationTokens
             cacheReadTokens += record.cacheReadTokens
-            cachedSavings += ModelPricing.savings(for: record)
+            cachedSavings += ModelPricing.savings(for: record, servedLocally: servedLocally)
         }
 
         // Estimate working time from session timestamps (first to last message per session)

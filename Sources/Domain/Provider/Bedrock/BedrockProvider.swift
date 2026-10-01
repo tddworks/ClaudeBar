@@ -4,8 +4,9 @@ import Observation
 /// AWS Bedrock AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Monitors Bedrock usage via CloudWatch metrics and calculates costs.
+@MainActor
 @Observable
-public final class BedrockProvider: AIProvider, @unchecked Sendable {
+public final class BedrockProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "bedrock"

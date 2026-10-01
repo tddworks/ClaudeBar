@@ -4,6 +4,7 @@ import Mockable
 @testable import Domain
 
 @Suite
+@MainActor
 struct ClaudeProviderDailyUsageTests {
 
     private func makeSettingsRepository() -> MockProviderSettingsRepository {

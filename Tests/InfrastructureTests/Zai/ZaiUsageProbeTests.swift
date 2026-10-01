@@ -9,12 +9,34 @@ struct ZaiUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func makeSettingsRepository() -> UserDefaultsProviderSettingsRepository {
+    private func makeSettingsRepository(
+        apiKey: String? = nil,
+        glmEnvVar: String = ""
+    ) -> UserDefaultsProviderSettingsRepository {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let repo = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+        let secureDefaults = UserDefaults(suiteName: suiteName + ".secure")!
+        let repo = UserDefaultsProviderSettingsRepository(
+            userDefaults: defaults,
+            secureCredentials: UserDefaultsCredentialRepository(defaults: secureDefaults)
+        )
         repo.setEnabled(true, forProvider: "zai")
+        if let apiKey {
+            repo.saveZaiApiKey(apiKey)
+        }
+        if !glmEnvVar.isEmpty {
+            repo.setGlmAuthEnvVar(glmEnvVar)
+        }
         return repo
+    }
+
+    private static func makeOKResponse() -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: URL(string: "https://api.z.ai/api/monitor/usage/quota/limit")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
     }
 
     // MARK: - Sample Data
@@ -456,7 +478,8 @@ struct ZaiUsageProbeTests {
         let timestamp: Int64 = 1767195236777
         let date = ZaiUsageProbe.parseResetDate(.timestamp(timestamp))
         #expect(date != nil)
-        #expect(Calendar.current.component(.year, from: date!) == 2025 || Calendar.current.component(.year, from: date!) == 2026)
+        let calendar = Calendar(identifier: .gregorian)
+        #expect(calendar.component(.year, from: date!) == 2025 || calendar.component(.year, from: date!) == 2026)
     }
 
     @Test
@@ -464,5 +487,192 @@ struct ZaiUsageProbeTests {
         let text = "invalid-date"
         let date = ZaiUsageProbe.parseResetDate(.string(text))
         #expect(date == nil)
+    }
+
+    // MARK: - Settings API Key Tests
+
+    @Test
+    func `probe prefers API key saved in settings over config file key`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithZai, exitCode: 0))
+
+        given(mockNetwork).request(.matching { request in
+            request.value(forHTTPHeaderField: "Authorization") == "Bearer settings-api-key"
+        }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
+
+        let settings = makeSettingsRepository(apiKey: "settings-api-key", glmEnvVar: "GLM_TOKEN")
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork,
+            settingsRepository: settings
+        )
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "zai")
+        #expect(!snapshot.quotas.isEmpty)
+    }
+
+    @Test
+    func `probe uses settings API key with default zai platform when config has no zai endpoint`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
+
+        given(mockNetwork).request(.matching { request in
+            request.url?.absoluteString.contains("api.z.ai") == true &&
+            request.value(forHTTPHeaderField: "Authorization") == "Bearer settings-api-key"
+        }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
+
+        let settings = makeSettingsRepository(apiKey: "settings-api-key")
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork,
+            settingsRepository: settings
+        )
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "zai")
+        #expect(!snapshot.quotas.isEmpty)
+    }
+
+    @Test
+    func `isAvailable returns true when only a settings API key is configured`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
+
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: MockNetworkClient(),
+            settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
+        )
+
+        // When & Then
+        #expect(await probe.isAvailable() == true)
+    }
+
+    @Test
+    func `isAvailable returns true with settings key even when claude CLI is missing`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.any).willReturn(nil)
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
+
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: MockNetworkClient(),
+            settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
+        )
+
+        // When & Then
+        #expect(await probe.isAvailable() == true)
+    }
+
+    @Test
+    func `probe succeeds with settings key even when claude CLI is missing`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        given(mockExecutor).locate(.any).willReturn(nil)
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
+
+        given(mockNetwork).request(.matching { request in
+            request.value(forHTTPHeaderField: "Authorization") == "Bearer settings-api-key"
+        }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
+
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork,
+            settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
+        )
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "zai")
+        #expect(!snapshot.quotas.isEmpty)
+    }
+
+    @Test
+    func `probe throws authenticationRequired when settings API key is blank and no other source`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
+
+        let probe = ZaiUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: MockNetworkClient(),
+            settingsRepository: makeSettingsRepository(apiKey: "   ")
+        )
+
+        // When & Then
+        await #expect(throws: ProbeError.authenticationRequired) {
+            try await probe.probe()
+        }
     }
 }

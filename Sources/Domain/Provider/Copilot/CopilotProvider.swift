@@ -5,8 +5,9 @@ import Observation
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Supports dual probe modes: Billing API (default) and Copilot Internal API.
 /// Owns its probe, credentials, and manages its own data lifecycle.
+@MainActor
 @Observable
-public final class CopilotProvider: AIProvider, @unchecked Sendable {
+public final class CopilotProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "copilot"

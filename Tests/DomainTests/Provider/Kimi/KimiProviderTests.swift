@@ -5,6 +5,7 @@ import Mockable
 @testable import Infrastructure
 
 @Suite("KimiProvider Tests")
+@MainActor
 struct KimiProviderTests {
 
     /// Creates a mock settings repository that returns true for all providers

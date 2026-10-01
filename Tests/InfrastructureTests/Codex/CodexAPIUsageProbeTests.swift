@@ -188,6 +188,110 @@ struct CodexAPIUsageProbeTests {
         #expect(weeklyQuota?.percentRemaining == 40.0) // 100 - 60
     }
 
+    // MARK: - Additional Rate Limits Tests (#178)
+
+    @Test
+    func `probe appends additional rate limits after session and weekly`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try createAuthFile(at: tempDir)
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "rate_limit": {
+            "primary_window": { "used_percent": 30.0, "reset_at": 1705312800 },
+            "secondary_window": { "used_percent": 60.0 }
+          },
+          "additional_rate_limits": [
+            {
+              "limit_name": "Codex Spark",
+              "metered_feature": "codex_spark",
+              "rate_limit": {
+                "allowed": true,
+                "limit_reached": false,
+                "primary_window": { "used_percent": 15.0, "reset_after_seconds": 7200, "limit_window_seconds": 18000 },
+                "secondary_window": { "used_percent": 80.0, "reset_after_seconds": 86400 }
+              }
+            },
+            {
+              "metered_feature": "codex_research",
+              "rate_limit": { "allowed": true, "primary_window": { "used_percent": 5.0 } }
+            },
+            { "limit_name": "No Data", "metered_feature": "x", "rate_limit": null },
+            { "metered_feature": "empty" }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://chatgpt.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
+        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.quotas.count == 5)
+        #expect(snapshot.quotas[0].quotaType == .session)
+        #expect(snapshot.quotas[0].percentRemaining == 70.0)
+        #expect(snapshot.quotas[1].quotaType == .weekly)
+        #expect(snapshot.quotas[1].percentRemaining == 40.0)
+
+        #expect(snapshot.quotas[2].quotaType == .timeLimit("Spark"))
+        #expect(snapshot.quotas[2].percentRemaining == 85.0)
+        let sparkReset = try #require(snapshot.quotas[2].resetsAt)
+        #expect(abs(sparkReset.timeIntervalSinceNow - 7200) < 5)
+        #expect(snapshot.quotas[2].windowDuration == 18000)
+
+        #expect(snapshot.quotas[3].quotaType == .timeLimit("Spark 7d"))
+        #expect(snapshot.quotas[3].percentRemaining == 20.0)
+
+        #expect(snapshot.quotas[4].quotaType == .timeLimit("Research"))
+        #expect(snapshot.quotas[4].percentRemaining == 95.0)
+    }
+
+    @Test
+    func `probe keeps snapshot unchanged when additional_rate_limits absent`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try createAuthFile(at: tempDir)
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "rate_limit": {
+            "primary_window": { "used_percent": 30.0 }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://chatgpt.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
+        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas[0].quotaType == .session)
+    }
+
     // MARK: - Plan Type Tests
 
     @Test

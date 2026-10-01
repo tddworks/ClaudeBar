@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Grok (xAI) - black tile with the white slash mark -->
+  <rect fill="#000000" width="256" height="256" rx="52" ry="52"/>
+  <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" fill="none">
+    <line x1="158" y1="54" x2="98" y2="202"/>
+    <line x1="106" y1="54" x2="84" y2="108"/>
+  </g>
+</svg>

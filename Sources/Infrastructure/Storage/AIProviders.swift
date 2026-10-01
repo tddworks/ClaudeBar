@@ -4,8 +4,14 @@ import Domain
 
 /// Repository of AI providers.
 /// Observable class that provides access to all providers and filters by enabled state.
+///
+/// `@MainActor`-isolated to match the now main-actor-isolated `AIProviderRepository` /
+/// `AIProvider`: `enabled` reads each provider's `isEnabled` and `provider(id:)`/`add`
+/// read `id`. Every call site (`QuotaMonitor`, `App.init`, SwiftUI previews) is already on
+/// the main actor, so this adds no hops. A `@MainActor` class is implicitly `Sendable`.
+@MainActor
 @Observable
-public final class AIProviders: AIProviderRepository, @unchecked Sendable {
+public final class AIProviders: AIProviderRepository {
     // MARK: - All Providers
 
     /// All registered providers

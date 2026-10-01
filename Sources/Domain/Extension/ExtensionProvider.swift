@@ -2,8 +2,9 @@ import Foundation
 
 /// An AIProvider backed by an extension manifest and script-based probes.
 /// Each section has its own probe; refresh runs all probes and merges results.
+@MainActor
 @Observable
-public final class ExtensionProvider: AIProvider, @unchecked Sendable {
+public final class ExtensionProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String

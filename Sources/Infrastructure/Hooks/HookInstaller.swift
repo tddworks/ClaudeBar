@@ -26,6 +26,7 @@ public enum HookInstaller {
         "SubagentStart",
         "SubagentStop",
         "Stop",
+        "UserPromptSubmit",
     ]
 
     /// Installs hooks into the Claude settings file.

@@ -58,11 +58,86 @@ public final class AppSettings {
         }
     }
 
+    /// Whether a dual-window menu bar label should render as two stacked
+    /// smaller lines (one per quota window) instead of one long "A | B" line,
+    /// roughly halving the menu bar width it occupies. Opt-in, default off;
+    /// has no effect while only a single quota window is shown.
+    public var menuBarStackedEnabled: Bool {
+        didSet {
+            repository.setMenuBarStackedEnabled(menuBarStackedEnabled)
+        }
+    }
+
+    /// Text size for the stacked menu bar lines. Small is the original 9pt
+    /// rendering and the default; Medium (10pt) and Large (11pt) trade some of
+    /// the inter-line breathing room for legibility. Only consulted while
+    /// `menuBarStackedEnabled` is actually rendering two lines.
+    public var menuBarStackedSize: MenuBarStackedSize {
+        didSet {
+            repository.setMenuBarStackedSize(menuBarStackedSize.rawValue)
+        }
+    }
+
     /// Provider used for the menu bar percentage label.
     public var menuBarPercentageProviderId: String {
         didSet {
             repository.setMenuBarPercentageProviderId(menuBarPercentageProviderId)
+            menuBarAdditionalProviderIds = repository.menuBarAdditionalProviderIds()
         }
+    }
+
+    /// Up to two extra providers; the primary keeps its existing quota settings.
+    public var menuBarAdditionalProviderIds: [String] {
+        didSet {
+            repository.setMenuBarAdditionalProviderIds(menuBarAdditionalProviderIds)
+            let normalized = repository.menuBarAdditionalProviderIds()
+            if menuBarAdditionalProviderIds != normalized {
+                menuBarAdditionalProviderIds = normalized
+            }
+        }
+    }
+
+    public var menuBarProviderSettings: [String: MenuBarProviderSettings] {
+        didSet { repository.setMenuBarProviderSettings(menuBarProviderSettings) }
+    }
+
+    public var menuBarProviderIds: [String] {
+        [menuBarPercentageProviderId] + menuBarAdditionalProviderIds
+    }
+
+    public func menuBarConfiguration(for providerId: String) -> MenuBarProviderSettings {
+        if providerId == menuBarPercentageProviderId {
+            return MenuBarProviderSettings(
+                primaryQuotaKey: menuBarPercentageQuotaKey, secondaryQuotaKey: menuBarSecondaryQuotaKey,
+                stacked: menuBarStackedEnabled, stackedSize: menuBarStackedSize.rawValue
+            )
+        }
+        return menuBarProviderSettings[providerId] ?? MenuBarProviderSettings()
+    }
+
+    public func setMenuBarConfiguration(_ config: MenuBarProviderSettings, for providerId: String) {
+        menuBarProviderSettings[providerId] = config
+        if providerId == menuBarPercentageProviderId {
+            menuBarPercentageQuotaKey = config.primaryQuotaKey
+            menuBarSecondaryQuotaKey = config.secondaryQuotaKey
+            menuBarStackedEnabled = config.stacked
+            menuBarStackedSize = MenuBarStackedSize(storedRawValue: config.stackedSize)
+        }
+    }
+
+    public func setMenuBarProviderIds(_ providerIds: [String]) {
+        var seen: Set<String> = [""]
+        let ids = Array(providerIds.filter { seen.insert($0).inserted }.prefix(3))
+        guard let first = ids.first else { return }
+        if first != menuBarPercentageProviderId {
+            // Keep the legacy fields in sync for Touch Bar and status export while
+            // remembering each provider's choices when its position changes.
+            menuBarProviderSettings[menuBarPercentageProviderId] = menuBarConfiguration(for: menuBarPercentageProviderId)
+            let config = menuBarConfiguration(for: first)
+            menuBarPercentageProviderId = first
+            setMenuBarConfiguration(config, for: first)
+        }
+        menuBarAdditionalProviderIds = Array(ids.dropFirst())
     }
 
     /// Quota key used for the menu bar percentage label.
@@ -84,6 +159,74 @@ public final class AppSettings {
     public var showDailyUsageCards: Bool {
         didSet {
             repository.setShowDailyUsageCards(showDailyUsageCards)
+        }
+    }
+
+    // MARK: - Notch Settings
+
+    /// Whether Claude Code session and quota state is drawn into the notch
+    /// (default: false).
+    public var notchEnabled: Bool {
+        didSet {
+            repository.setNotchEnabled(notchEnabled)
+        }
+    }
+
+    // MARK: - Touch Bar Settings
+
+    /// Whether Touch Bar status integration is enabled (default: true).
+    public var touchBarEnabled: Bool {
+        didSet {
+            repository.setTouchBarEnabled(touchBarEnabled)
+        }
+    }
+
+    // MARK: - Notify Settings
+
+    /// Whether quota state is published to a linked Notify! device
+    /// (default: false). The feature sends data to a third party service, so it
+    /// can never come up switched on.
+    public var notifyEnabled: Bool {
+        didSet {
+            repository.setNotifyEnabled(notifyEnabled)
+        }
+    }
+
+    /// Whether the Lock Screen Live Activity is one of the surfaces published.
+    public var notifyLiveActivityEnabled: Bool {
+        didSet {
+            repository.setNotifyLiveActivityEnabled(notifyLiveActivityEnabled)
+        }
+    }
+
+    /// Whether the Lock Screen widget gauge is one of the surfaces published.
+    public var notifyWidgetEnabled: Bool {
+        didSet {
+            repository.setNotifyWidgetEnabled(notifyWidgetEnabled)
+        }
+    }
+
+    /// Whether the Home Screen widget is one of the surfaces published. It
+    /// carries the same content as the Live Activity, and unlike it, it stays.
+    public var notifyScreenWidgetEnabled: Bool {
+        didSet {
+            repository.setNotifyScreenWidgetEnabled(notifyScreenWidgetEnabled)
+        }
+    }
+
+    /// Provider whose quota the widget gauge shows. Empty means "whichever
+    /// quota needs attention most", which is what a glance wants before the
+    /// user has picked anything.
+    public var notifyGaugeProviderId: String {
+        didSet {
+            repository.setNotifyGaugeProviderId(notifyGaugeProviderId)
+        }
+    }
+
+    /// Quota window the widget gauge shows. Empty is automatic, as above.
+    public var notifyGaugeQuotaKey: String {
+        didSet {
+            repository.setNotifyGaugeQuotaKey(notifyGaugeQuotaKey)
         }
     }
 
@@ -166,6 +309,38 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Status Color Settings
+
+    /// Per-status user colors; nil defers to High Contrast, then the theme.
+    public var statusColorOverrides: StatusColorOverrides {
+        didSet {
+            repository.setStatusColorOverrides(statusColorOverrides)
+        }
+    }
+
+    /// Whether the built-in appearance-aware palette replaces the theme's status colors (default: false)
+    public var highContrastEnabled: Bool {
+        didSet {
+            repository.setHighContrastEnabled(highContrastEnabled)
+        }
+    }
+
+    /// Reading this inside a view body or a sync's `read` tracks both settings.
+    public var statusColorPolicy: StatusColorPolicy {
+        StatusColorPolicy(overrides: statusColorOverrides, highContrastEnabled: highContrastEnabled)
+    }
+
+    public func setStatusColorOverride(_ color: RGBColorValue?, for status: QuotaStatus) {
+        var updated = statusColorOverrides
+        updated[status] = color
+        statusColorOverrides = updated
+    }
+
+    /// Clears custom colors only; High Contrast is untouched.
+    public func resetStatusColors() {
+        statusColorOverrides = .none
+    }
+
     // MARK: - Update Settings
 
     /// Whether to receive beta updates (default: false)
@@ -200,7 +375,7 @@ public final class AppSettings {
 
     // MARK: - Initialization
 
-    private init(repository: JSONSettingsRepository = .shared) {
+    init(repository: JSONSettingsRepository = .shared) {
         self.repository = repository
 
         // Load all values from repository
@@ -211,13 +386,30 @@ public final class AppSettings {
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
+        self.statusColorOverrides = repository.statusColorOverrides()
+        self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
+        self.notchEnabled = repository.notchEnabled()
+        self.touchBarEnabled = repository.touchBarEnabled()
+        self.notifyEnabled = repository.isNotifyEnabled()
+        self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()
+        self.notifyWidgetEnabled = repository.isNotifyWidgetEnabled()
+        self.notifyScreenWidgetEnabled = repository.isNotifyScreenWidgetEnabled()
+        self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
+        self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.menuBarPercentageEnabled = repository.menuBarPercentageEnabled()
         self.menuBarDurationEnabled = repository.menuBarDurationEnabled()
+        self.menuBarStackedEnabled = repository.menuBarStackedEnabled()
+        // The stored size decodes through the Domain fallback so an unknown
+        // raw value (from a newer build's settings file) renders small
+        // instead of crashing or dropping the label.
+        self.menuBarStackedSize = MenuBarStackedSize(storedRawValue: repository.menuBarStackedSize())
         self.menuBarPercentageProviderId = repository.menuBarPercentageProviderId()
+        self.menuBarAdditionalProviderIds = repository.menuBarAdditionalProviderIds()
+        self.menuBarProviderSettings = repository.menuBarProviderSettings()
         self.menuBarPercentageQuotaKey = repository.menuBarPercentageQuotaKey()
         self.menuBarSecondaryQuotaKey = repository.menuBarSecondaryQuotaKey()
 
@@ -269,9 +461,12 @@ public final class AppSettings {
     public var zai: ZaiSettingsRepository { repository }
     public var bedrock: BedrockSettingsRepository { repository }
     public var minimax: MiniMaxSettingsRepository { repository }
+    public var deepseek: DeepSeekSettingsRepository { repository }
     public var alibaba: AlibabaSettingsRepository { repository }
     public var mistral: MistralSettingsRepository { repository }
+    public var vercel: VercelSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
+    public var notify: NotifySettingsRepository { repository }
 
     /// Extension config repository for dynamic extension provider settings.
     public let extensionConfig: any ExtensionConfigRepository = JSONExtensionConfigRepository(

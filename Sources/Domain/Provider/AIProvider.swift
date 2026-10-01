@@ -14,7 +14,13 @@ public enum RefreshKind: Sendable {
 /// Protocol defining what an AI provider is.
 /// Each provider (Claude, Codex, Gemini) is a rich domain model implementing this protocol.
 /// Providers are @Observable classes with their own state (isSyncing, snapshot, error).
-/// Providers must be Sendable (use @unchecked Sendable for @Observable classes).
+///
+/// `@MainActor` isolates the observable state (isSyncing/snapshot/lastError) to the main
+/// actor so its cheap writes land on the same thread the readers (QuotaMonitor, SwiftUI)
+/// run on. The heavy probe work stays off-main: `refresh()` suspends at the non-isolated
+/// `await probe.probe()`, which runs on the global executor. A `@MainActor` class is
+/// implicitly Sendable, so conformers no longer need `@unchecked Sendable`.
+@MainActor
 public protocol AIProvider: AnyObject, Sendable, Identifiable where ID == String {
     // MARK: - Identity
 

@@ -35,7 +35,6 @@ struct DailyUsageCardView: View {
                 Text(primaryValue)
                     .font(.system(size: 24, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
 
                 Spacer()
 

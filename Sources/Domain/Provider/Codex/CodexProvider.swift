@@ -4,8 +4,9 @@ import Observation
 /// Codex AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Supports dual probe modes: RPC (default) and API.
+@MainActor
 @Observable
-public final class CodexProvider: AIProvider, @unchecked Sendable {
+public final class CodexProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String = "codex"

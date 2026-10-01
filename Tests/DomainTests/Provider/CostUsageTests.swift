@@ -28,6 +28,29 @@ struct CostUsageTests {
         #expect(cost.providerId == "claude")
     }
 
+    @Test
+    func `defaults kind to API cost`() {
+        let cost = CostUsage(
+            totalCost: 1,
+            apiDuration: 0,
+            providerId: "claude"
+        )
+
+        #expect(cost.kind == .apiCost)
+    }
+
+    @Test
+    func `creates extra usage kind`() {
+        let cost = CostUsage(
+            totalCost: 1,
+            apiDuration: 0,
+            providerId: "claude",
+            kind: .extraUsage
+        )
+
+        #expect(cost.kind == .extraUsage)
+    }
+
     // MARK: - Formatting
 
     @Test
@@ -122,6 +145,41 @@ struct CostUsageTests {
     }
 
     // MARK: - Budget Calculation
+
+    @Test
+    func `calculates budget remaining`() {
+        let cost = CostUsage(
+            totalCost: 5,
+            budget: 20,
+            apiDuration: 0,
+            providerId: "claude"
+        )
+
+        #expect(cost.budgetRemaining == 15)
+    }
+
+    @Test
+    func `floors budget remaining at zero when overspent`() {
+        let cost = CostUsage(
+            totalCost: 25,
+            budget: 20,
+            apiDuration: 0,
+            providerId: "claude"
+        )
+
+        #expect(cost.budgetRemaining == 0)
+    }
+
+    @Test
+    func `budget remaining is nil without a budget`() {
+        let cost = CostUsage(
+            totalCost: 5,
+            apiDuration: 0,
+            providerId: "claude"
+        )
+
+        #expect(cost.budgetRemaining == nil)
+    }
 
     @Test
     func `calculates budget status within budget`() {

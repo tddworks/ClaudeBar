@@ -287,7 +287,101 @@ struct ClaudeUsageProbeTests {
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(snapshot.costUsage?.budget == Decimal(string: "20.00"))
+        #expect(snapshot.costUsage?.kind == .extraUsage)
         #expect(snapshot.quotas.count >= 1)
+    }
+
+    @Test
+    func `probe falls back to cost when usage renders the API billing panel`() async throws {
+        // Given — issue #271: the Usage tab paints a cost panel with no quota bars
+        let mockExecutor = MockCLIExecutor()
+
+        let usageOutput = """
+        Opus 5 (1M context) · API Usage Billing
+
+          Session
+            Total cost:            $0.0000
+            Total duration (API):  0s
+            Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+        """
+
+        let costOutput = """
+        Total cost:            $1.25
+        Total duration (API):  6m 19.7s
+        Total duration (wall): 1h 2m
+        """
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/usage" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/cost" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: costOutput, exitCode: 0))
+
+        // A genuine pay-as-you-go account: nothing in the config claims a
+        // subscription, so the cost panel is the truth and /cost answers it.
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(AccountInfo(email: "user@example.com", billingType: "api"))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: resolver)
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
+        #expect(snapshot.accountTier == .claudeApi)
+    }
+
+    @Test
+    func `probe fails instead of costing out a subscription the CLI could not see`() async throws {
+        // Given — issue #271: a Max plan billed through Apple renders the same
+        // cost panel, but the config still says it is a subscription. /cost
+        // would answer $0.00 with no quota, and its success would keep
+        // ClaudeProvider from trying the usage API, which can still read the
+        // real numbers. So the probe fails and lets that fallback run.
+        let mockExecutor = MockCLIExecutor()
+
+        let usageOutput = """
+        Opus 5 (1M context) · API Usage Billing
+
+          Session
+            Total cost:            $0.0000
+            Total duration (API):  0s
+            Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+        """
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(
+            AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+        )
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: resolver)
+
+        // When / Then
+        await #expect(throws: ProbeError.executionFailed(ClaudeUsageProbe.subscriptionMisreadAsApiBilling)) {
+            try await probe.probe()
+        }
     }
 
     // MARK: - Account Info from ClaudeAccountInfoResolver
@@ -356,5 +450,26 @@ struct ClaudeUsageProbeTests {
         // We verify this indirectly by checking the static envExclusions constant.
         let exclusions = ClaudeUsageProbe.envExclusions
         #expect(exclusions == ["CLAUDE_CODE_OAUTH_TOKEN"])
+    }
+
+    // MARK: - Completion Rule Pairing (issue #317)
+
+    @Test
+    func `the cost fallback runs with no completion rule so it ends on idle`() {
+        // The regression #317 introduced: both commands shared one executor
+        // carrying `.claudeUsage`. Its markers are quota-bar markers, and an
+        // API-billed account never paints a quota bar, so `isPending` stayed true
+        // for the whole run, the idle break could never fire, and every `/cost`
+        // capture burned the full 20s timeout instead of the ~3.7s it takes with
+        // no rule (measured against the real InteractiveRunner).
+        //
+        // The pairing is the point, not just the values: a rule is not "the
+        // right markers", it is "markers this screen can actually reach".
+        let probe = ClaudeUsageProbe()
+
+        let usageRule = (probe.cliExecutor as? DefaultCLIExecutor)?.completionRule
+        let costRule = (probe.costExecutor as? DefaultCLIExecutor)?.completionRule
+        #expect(usageRule == CLICompletionRule.claudeUsage)
+        #expect(costRule == nil)
     }
 }

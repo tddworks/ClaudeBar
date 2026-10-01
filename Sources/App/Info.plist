@@ -42,5 +42,18 @@
     <true/>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLName</key>
+            <string>com.tddworks.claudebar</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>claudebar</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

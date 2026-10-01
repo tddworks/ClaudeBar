@@ -41,7 +41,7 @@ public struct OpenCodeUsageProbe: UsageProbe {
         let weekEnd = Self.endOfWeekUTC(from: now)
 
         let primary = try Self.parsePrimaryWindow(
-            try runDBQuery(
+            try await runDBQuery(
                 opencodePath: opencodePath,
                 sql: Self.primarySQL(
                     fiveHourMs: fiveHourMs,
@@ -58,7 +58,7 @@ public struct OpenCodeUsageProbe: UsageProbe {
             let bounds = Self.anchoredMonthBounds(now: now, anchor: anchor)
             monthEnd = bounds.end
             monthlyCost = try Self.parseMonthlyCost(
-                try runDBQuery(
+                try await runDBQuery(
                     opencodePath: opencodePath,
                     sql: Self.monthlySQL(
                         monthStartMs: Self.millisSinceEpoch(bounds.start),
@@ -139,8 +139,8 @@ public struct OpenCodeUsageProbe: UsageProbe {
         """
     }
 
-    private func runDBQuery(opencodePath: String, sql: String) throws -> Data {
-        let result = try cliExecutor.execute(
+    private func runDBQuery(opencodePath: String, sql: String) async throws -> Data {
+        let result = try await cliExecutor.execute(
             binary: opencodePath,
             args: ["db", sql, "--format", "json"],
             input: nil,

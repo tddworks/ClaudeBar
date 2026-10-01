@@ -11,6 +11,12 @@ public struct ExtensionMetric: Sendable, Equatable, Codable {
     public let delta: MetricDelta?
     public let progress: Double?
 
+    /// Section this metric belongs to when produced by an aggregating
+    /// provider (e.g. Oh My Pi account rows). nil for extension-script
+    /// metrics, which render in the flat metrics grid. Optional and absent
+    /// from older payloads, so extension JSON stays backward compatible.
+    public let group: String?
+
     public init(
         label: String,
         value: String,
@@ -18,7 +24,8 @@ public struct ExtensionMetric: Sendable, Equatable, Codable {
         icon: String? = nil,
         color: String? = nil,
         delta: MetricDelta? = nil,
-        progress: Double? = nil
+        progress: Double? = nil,
+        group: String? = nil
     ) {
         self.label = label
         self.value = value
@@ -27,6 +34,7 @@ public struct ExtensionMetric: Sendable, Equatable, Codable {
         self.color = color
         self.delta = delta
         self.progress = progress
+        self.group = group
     }
 }
 

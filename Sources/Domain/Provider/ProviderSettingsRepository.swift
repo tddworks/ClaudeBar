@@ -37,6 +37,18 @@ public protocol ZaiSettingsRepository: ProviderSettingsRepository {
 
     /// Sets the environment variable name for GLM auth token
     func setGlmAuthEnvVar(_ envVar: String)
+
+    /// Saves the Z.ai GLM API key (for Settings UI input)
+    func saveZaiApiKey(_ key: String)
+
+    /// Retrieves the Z.ai GLM API key
+    func getZaiApiKey() -> String?
+
+    /// Deletes the Z.ai GLM API key
+    func deleteZaiApiKey()
+
+    /// Checks if a Z.ai GLM API key is saved
+    func hasZaiApiKey() -> Bool
 }
 
 /// Copilot-specific settings repository, extending base ProviderSettingsRepository.
@@ -264,6 +276,28 @@ public protocol MiniMaxSettingsRepository: ProviderSettingsRepository {
     func hasMinimaxApiKey() -> Bool
 }
 
+/// DeepSeek-specific settings repository, extending base ProviderSettingsRepository.
+/// Stores the API key and env-var name for DeepSeek balance monitoring.
+public protocol DeepSeekSettingsRepository: ProviderSettingsRepository {
+    /// Gets the environment variable name for DeepSeek API key (empty = use default DEEPSEEK_API_KEY)
+    func deepseekAuthEnvVar() -> String
+
+    /// Sets the environment variable name for DeepSeek API key
+    func setDeepSeekAuthEnvVar(_ envVar: String)
+
+    /// Saves the DeepSeek API key (for Settings UI input)
+    func saveDeepSeekApiKey(_ key: String)
+
+    /// Retrieves the DeepSeek API key
+    func getDeepSeekApiKey() -> String?
+
+    /// Deletes the DeepSeek API key
+    func deleteDeepSeekApiKey()
+
+    /// Checks if a DeepSeek API key is saved
+    func hasDeepSeekApiKey() -> Bool
+}
+
 /// Alibaba Coding Plan-specific settings repository, extending base ProviderSettingsRepository.
 /// Stores region, cookie source, manual cookie, and API key for Alibaba Coding Plan quota monitoring.
 public protocol AlibabaSettingsRepository: ProviderSettingsRepository {
@@ -296,6 +330,31 @@ public protocol AlibabaSettingsRepository: ProviderSettingsRepository {
 
     /// Checks if an Alibaba API key is saved
     func hasAlibabaApiKey() -> Bool
+}
+
+/// Vercel AI Gateway-specific settings repository, extending base ProviderSettingsRepository.
+/// Production settings use `JSONSettingsRepository`; the UserDefaults implementation
+/// remains available as a legacy migration adapter and isolated test repository.
+public protocol VercelSettingsRepository: ProviderSettingsRepository {
+    /// Gets the environment variable name for the AI Gateway API key (empty = use default AI_GATEWAY_API_KEY)
+    func vercelAuthEnvVar() -> String
+
+    /// Sets the environment variable name for the AI Gateway API key
+    func setVercelAuthEnvVar(_ envVar: String)
+
+    /// Saves the AI Gateway API key (for Settings UI input)
+    func saveVercelApiKey(_ key: String)
+
+    /// Retrieves the AI Gateway API key
+    func getVercelApiKey() -> String?
+
+    /// Deletes the AI Gateway API key.
+    /// - Returns: `true` when the credential is absent after the operation.
+    @discardableResult
+    func deleteVercelApiKey() -> Bool
+
+    /// Checks if an AI Gateway API key is saved
+    func hasVercelApiKey() -> Bool
 }
 
 // MARK: - Default Implementation

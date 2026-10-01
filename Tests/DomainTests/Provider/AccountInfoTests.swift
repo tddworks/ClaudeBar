@@ -81,4 +81,42 @@ struct AccountInfoTests {
 
         #expect(a == b)
     }
+    // MARK: - Billing Type (#271)
+
+    @Test
+    func `recognizes an Apple-billed subscription`() {
+        let info = AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+
+        #expect(info.isSubscriptionBilled)
+    }
+
+    @Test
+    func `recognizes a Stripe-billed subscription`() {
+        let info = AccountInfo(email: "user@example.com", billingType: "stripe_subscription")
+
+        #expect(info.isSubscriptionBilled)
+    }
+
+    @Test
+    func `does not claim a subscription for a pay-as-you-go account`() {
+        let info = AccountInfo(email: "user@example.com", billingType: "api")
+
+        #expect(!info.isSubscriptionBilled)
+    }
+
+    @Test
+    func `does not claim a subscription when the billing type is unknown`() {
+        let info = AccountInfo(email: "user@example.com")
+
+        #expect(!info.isSubscriptionBilled)
+    }
+
+    @Test
+    func `billing type alone does not make the account displayable`() {
+        // `isEmpty` drives the account chip in the UI: a billing type is not a
+        // name, so an account that carries nothing else still reads as empty.
+        let info = AccountInfo(billingType: "apple_subscription")
+
+        #expect(info.isEmpty)
+    }
 }

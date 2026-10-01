@@ -90,7 +90,7 @@ Enable verbose output via **manual dispatch → debug: true**. This prints:
 - All identities in the signing keychain
 - Certificate subject and expiry dates
 
-For detailed troubleshooting: [troubleshooting.md](references/troubleshooting.md)
+For detailed troubleshooting: [release-workflow.md → Troubleshooting](references/release-workflow.md#troubleshooting)
 
 ## Beta Channel
 

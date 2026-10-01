@@ -36,6 +36,22 @@ struct KimiCLIUsageProbeParsingTests {
     ╰─────────────────────────────────────────────────────────────────────────╯
     """
 
+    /// kimi CLI >= 0.36 reports "% used" without parentheses around the reset text
+    private static let usedFormatOutput = """
+      ╭ Usage ───────────────────────────────────────────────────────────╮
+      │   Weekly limit  ██████████████████░░  90% used  resets in 35m    │
+      │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 3h 35m │
+      ╰──────────────────────────────────────────────────────────────────╯
+    """
+
+    /// The TUI redraws the usage panel, emitting each quota line more than once
+    private static let redrawnOutput = """
+    │   Weekly limit  ██████████████████░░  90% used  resets in 35m    │
+    │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 3h 35m │
+    │   Weekly limit  ██████████████████░░  90% used  resets in 35m    │
+    │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 3h 35m │
+    """
+
     // MARK: - Full Output Parsing
 
     @Test
@@ -104,6 +120,61 @@ struct KimiCLIUsageProbeParsingTests {
         #expect(snapshot.quotas.count == 2)
         #expect(snapshot.quota(for: .weekly)?.percentRemaining == 100.0)
         #expect(snapshot.quota(for: .session)?.percentRemaining == 100.0)
+    }
+
+    // MARK: - Used Format (kimi CLI >= 0.36)
+
+    @Test
+    func `parse used format converts used percent to remaining`() throws {
+        let snapshot = try KimiCLIUsageProbe.parse(Self.usedFormatOutput)
+
+        #expect(snapshot.quotas.count == 2)
+        #expect(snapshot.quota(for: .weekly)?.percentRemaining == 10.0)
+        #expect(snapshot.quota(for: .session)?.percentRemaining == 88.0)
+    }
+
+    @Test
+    func `parse used format extracts reset text without parentheses`() throws {
+        let snapshot = try KimiCLIUsageProbe.parse(Self.usedFormatOutput)
+
+        #expect(snapshot.quota(for: .weekly)?.resetText == "Resets in 35m")
+        #expect(snapshot.quota(for: .session)?.resetText == "Resets in 3h 35m")
+    }
+
+    @Test
+    func `parse used format extracts session reset date`() throws {
+        let now = Date()
+        let snapshot = try KimiCLIUsageProbe.parse(Self.usedFormatOutput)
+        let session = snapshot.quota(for: .session)
+
+        #expect(session?.resetsAt != nil)
+        if let resetsAt = session?.resetsAt {
+            let diff = resetsAt.timeIntervalSince(now)
+            // 3h 35m = 12900s — allow 60s tolerance
+            #expect(diff > 12840)
+            #expect(diff < 12960)
+        }
+    }
+
+    @Test
+    func `parse used format at 100 percent used reports zero remaining`() throws {
+        let depleted = """
+        │   Weekly limit  ████████████████████  100% used  resets in 35m    │
+        """
+        let snapshot = try KimiCLIUsageProbe.parse(depleted)
+
+        #expect(snapshot.quota(for: .weekly)?.percentRemaining == 0.0)
+    }
+
+    // MARK: - Redrawn Panels
+
+    @Test
+    func `parse redrawn output keeps first occurrence of each quota`() throws {
+        let snapshot = try KimiCLIUsageProbe.parse(Self.redrawnOutput)
+
+        #expect(snapshot.quotas.count == 2)
+        #expect(snapshot.quota(for: .weekly)?.percentRemaining == 10.0)
+        #expect(snapshot.quota(for: .session)?.percentRemaining == 88.0)
     }
 
     // MARK: - Reset Time Parsing
@@ -184,6 +255,31 @@ struct KimiCLIUsageProbeParsingTests {
             let diff = date.timeIntervalSince(now)
             #expect(abs(diff - 1800) < 2)
         }
+    }
+
+    @Test
+    func `parseResetDuration handles seconds only`() {
+        let now = Date()
+        let date = KimiCLIUsageProbe.parseResetDuration("45s")
+
+        #expect(date != nil)
+        if let date {
+            let diff = date.timeIntervalSince(now)
+            #expect(abs(diff - 45) < 2)
+        }
+    }
+
+    @Test
+    func `parse used format with seconds reset sets resetsAt`() throws {
+        let secondsReset = """
+        │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 45s │
+        """
+        let snapshot = try KimiCLIUsageProbe.parse(secondsReset)
+        let session = snapshot.quota(for: .session)
+
+        #expect(session?.percentRemaining == 88.0)
+        #expect(session?.resetText == "Resets in 45s")
+        #expect(session?.resetsAt != nil)
     }
 
     @Test

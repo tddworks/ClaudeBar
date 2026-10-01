@@ -78,7 +78,7 @@ public struct CursorUsageProbe: UsageProbe {
 
         AppLog.probes.info("Cursor: Reading auth token from database...")
 
-        let accessToken = try readAccessToken(from: dbPath)
+        let accessToken = try await readAccessToken(from: dbPath)
         let userId = try Self.extractUserIdFromJWT(accessToken)
         let cookie = "WorkosCursorSessionToken=\(userId)::\(accessToken)"
 
@@ -94,30 +94,25 @@ public struct CursorUsageProbe: UsageProbe {
     // MARK: - Token Extraction
 
     /// Reads the access token from Cursor's SQLite database using the sqlite3 CLI.
-    private func readAccessToken(from dbPath: String) throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [dbPath, "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
+    private func readAccessToken(from dbPath: String) async throws -> String {
+        let result: SubprocessSupport.Output
         do {
-            try process.run()
-            process.waitUntilExit()
+            result = try await SubprocessSupport.run(
+                executablePath: "/usr/bin/sqlite3",
+                arguments: [dbPath, "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"],
+                outputLimit: 64 * 1024
+            )
         } catch {
             AppLog.probes.error("Cursor: Failed to run sqlite3 - \(error.localizedDescription)")
             throw ProbeError.executionFailed("Failed to read Cursor database: \(error.localizedDescription)")
         }
 
-        guard process.terminationStatus == 0 else {
-            AppLog.probes.error("Cursor: sqlite3 exited with status \(process.terminationStatus)")
-            throw ProbeError.executionFailed("sqlite3 exited with status \(process.terminationStatus)")
+        guard result.isSuccess else {
+            AppLog.probes.error("Cursor: sqlite3 exited with status \(result.exitCode)")
+            throw ProbeError.executionFailed("sqlite3 exited with status \(result.exitCode)")
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let token = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let token = result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !token.isEmpty else {
             AppLog.probes.error("Cursor: No access token found in database (not logged in?)")
@@ -216,19 +211,13 @@ public struct CursorUsageProbe: UsageProbe {
         let membershipType = json["membershipType"] as? String ?? "unknown"
         let limitType = json["limitType"] as? String ?? ""
 
-        // Parse billing cycle dates for reset time
-        var resetsAt: Date?
-        if let cycleEnd = json["billingCycleEnd"] as? String {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: cycleEnd) {
-                resetsAt = date
-            } else {
-                // Try without fractional seconds
-                formatter.formatOptions = [.withInternetDateTime]
-                resetsAt = formatter.date(from: cycleEnd)
-            }
-        }
+        // Parse billing cycle dates for reset time and Auto/API window length.
+        let resetsAt = (json["billingCycleEnd"] as? String).flatMap(Self.parseISO8601)
+        let billingCycleStart = (json["billingCycleStart"] as? String).flatMap(Self.parseISO8601)
+        let billingWindowDuration: TimeInterval? = {
+            guard let start = billingCycleStart, let end = resetsAt, end > start else { return nil }
+            return end.timeIntervalSince(start)
+        }()
 
         // The API nests usage under "individualUsage" with "plan" and "onDemand" sub-objects
         let individualUsage = json["individualUsage"] as? [String: Any]
@@ -239,21 +228,28 @@ public struct CursorUsageProbe: UsageProbe {
             let used = Self.intValue(from: planUsage, key: "used") ?? 0
             let limit = Self.intValue(from: planUsage, key: "limit") ?? 0
 
-            // Enterprise plans have limit == 0; fall back to breakdown.total
+            // The `used`/`limit` fields describe only the *included* base allotment. Users
+            // with bonus credits have `limit` maxed (used == limit) while real capacity is
+            // `breakdown.total` (included + bonus). Enterprise plans report `limit == 0` and
+            // carry everything in the breakdown. Use the larger of the two as the true
+            // capacity so bonus credits aren't ignored.
             let breakdown = planUsage["breakdown"] as? [String: Any]
             let breakdownTotal = breakdown.flatMap { Self.intValue(from: $0, key: "total") } ?? 0
-            let effectiveLimit = limit > 0 ? limit : breakdownTotal
+            let effectiveLimit = max(limit, breakdownTotal)
 
             if effectiveLimit > 0 {
-                // When limit field is 0, derive used from totalPercentUsed (enterprise API quirk)
+                // `totalPercentUsed` is Cursor's authoritative usage figure across the full
+                // capacity (matches the "You've used X%" message in Cursor's own UI). Prefer
+                // it; fall back to used/limit only when the API doesn't provide it.
+                let percentRemaining: Double
                 let effectiveUsed: Int
-                if limit == 0, let totalPercentUsed = planUsage["totalPercentUsed"] as? Double {
+                if let totalPercentUsed = Self.doubleValue(from: planUsage, key: "totalPercentUsed") {
+                    percentRemaining = 100 - totalPercentUsed
                     effectiveUsed = Int((totalPercentUsed * Double(effectiveLimit) / 100).rounded())
                 } else {
                     effectiveUsed = used
+                    percentRemaining = Double(effectiveLimit - used) / Double(effectiveLimit) * 100
                 }
-
-                let percentRemaining = Double(effectiveLimit - effectiveUsed) / Double(effectiveLimit) * 100
 
                 quotas.append(UsageQuota(
                     percentRemaining: max(0, percentRemaining),
@@ -262,6 +258,29 @@ public struct CursorUsageProbe: UsageProbe {
                     resetsAt: resetsAt,
                     resetText: "\(effectiveUsed)/\(effectiveLimit) requests"
                 ))
+
+                // Auto / API are separate fields on the same plan object. Only
+                // emit a card when the API sent a usable non-negative number.
+                // Pace uses the billing-cycle length; if that cannot be
+                // computed, omit resetsAt so speed does not fall back to 7 days.
+                if let autoPercentUsed = Self.nonNegativePercent(from: planUsage, key: "autoPercentUsed") {
+                    quotas.append(UsageQuota(
+                        percentRemaining: max(0, 100 - autoPercentUsed),
+                        quotaType: .timeLimit("Auto"),
+                        providerId: "cursor",
+                        resetsAt: billingWindowDuration == nil ? nil : resetsAt,
+                        windowDuration: billingWindowDuration
+                    ))
+                }
+                if let apiPercentUsed = Self.nonNegativePercent(from: planUsage, key: "apiPercentUsed") {
+                    quotas.append(UsageQuota(
+                        percentRemaining: max(0, 100 - apiPercentUsed),
+                        quotaType: .timeLimit("API"),
+                        providerId: "cursor",
+                        resetsAt: billingWindowDuration == nil ? nil : resetsAt,
+                        windowDuration: billingWindowDuration
+                    ))
+                }
             }
         }
 
@@ -345,5 +364,40 @@ public struct CursorUsageProbe: UsageProbe {
             return Int(doubleVal)
         }
         return nil
+    }
+
+    /// Safely extracts a Double from a JSON dictionary value that could be Double or Int.
+    /// JSON `true`/`false` are CFBoolean; they must not be read as 1.0 / 0.0.
+    /// Do not use `is Bool` — NSNumber(0) and NSNumber(1) also satisfy that check.
+    private static func doubleValue(from dict: [String: Any], key: String) -> Double? {
+        if let value = dict[key], CFGetTypeID(value as CFTypeRef) == CFBooleanGetTypeID() {
+            return nil
+        }
+        if let doubleVal = dict[key] as? Double {
+            return doubleVal
+        }
+        if let intVal = dict[key] as? Int {
+            return Double(intVal)
+        }
+        return nil
+    }
+
+    /// Plan usage percent. Missing, null, boolean, non-numeric and negative values are
+    /// ignored so a bad field cannot surface as a full remaining bar.
+    private static func nonNegativePercent(from dict: [String: Any], key: String) -> Double? {
+        guard let value = doubleValue(from: dict, key: key), value.isFinite, value >= 0 else {
+            return nil
+        }
+        return value
+    }
+
+    private static func parseISO8601(_ string: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: string) {
+            return date
+        }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: string)
     }
 }

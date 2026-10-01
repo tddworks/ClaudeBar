@@ -224,6 +224,98 @@ struct ClaudeCredentialLoaderTests {
         #expect(reloaded?.oauth.refreshToken == "new-refresh")
     }
 
+    @Test
+    func `saveCredentials preserves claudeAiOauth fields it does not model`() throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let claudeDir = tempDir.appendingPathComponent(".claude", isDirectory: true)
+        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+        let credentials: [String: Any] = [
+            "claudeAiOauth": [
+                "accessToken": "old-token",
+                "refreshToken": "old-refresh",
+                "expiresAt": 1_748_276_587_173,
+                "scopes": ["user:inference", "user:profile"]
+            ]
+        ]
+        let filePath = claudeDir.appendingPathComponent(".credentials.json")
+        try JSONSerialization.data(withJSONObject: credentials, options: []).write(to: filePath)
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        var result = loader.loadCredentials()!
+        result.oauth.accessToken = "new-token"
+
+        loader.saveCredentials(result)
+
+        let data = try Data(contentsOf: filePath)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let oauth = json?["claudeAiOauth"] as? [String: Any]
+        #expect(oauth?["accessToken"] as? String == "new-token")
+        #expect(oauth?["scopes"] as? [String] == ["user:inference", "user:profile"])
+    }
+
+    @Test
+    func `keychain payload is compact so security does not hex-encode it`() throws {
+        let data: [String: Any] = [
+            "claudeAiOauth": [
+                "accessToken": "token",
+                "scopes": ["user:inference", "user:profile"]
+            ]
+        ]
+
+        let payload = try #require(ClaudeCredentialLoader.keychainPayload(from: data))
+
+        // `security find-generic-password -w` hex-encodes any password holding a
+        // byte outside printable ASCII, so the payload must stay printable.
+        #expect(payload.allSatisfy { $0.isASCII && $0.asciiValue.map { (0x20...0x7e).contains($0) } == true })
+        #expect(!payload.contains("\n"))
+    }
+
+    @Test
+    func `loadCredentials decodes hex-encoded keychain payload from an older build`() throws {
+        let json = #"{"claudeAiOauth":{"accessToken":"hex-token"}}"#
+        let hex = json.utf8.map { String(format: "%02x", $0) }.joined()
+
+        let decoded = try #require(ClaudeCredentialLoader.decodeKeychainPayload(hex))
+
+        #expect(String(data: decoded, encoding: .utf8) == json)
+    }
+
+    @Test
+    func `keychain payload that is already plain JSON is passed through unchanged`() throws {
+        let json = #"{"claudeAiOauth":{"accessToken":"plain-token"}}"#
+
+        let decoded = try #require(ClaudeCredentialLoader.decodeKeychainPayload(json))
+
+        #expect(String(data: decoded, encoding: .utf8) == json)
+    }
+
+    @Test
+    func `keychain save arguments update existing item for account`() {
+        let password = """
+        {
+          "claudeAiOauth": {
+            "accessToken": "refreshed-token"
+          }
+        }
+        """
+
+        let arguments = ClaudeCredentialLoader.keychainSaveArguments(
+            service: "Claude Code-credentials",
+            account: "test-user",
+            password: password
+        )
+
+        #expect(arguments == [
+            "add-generic-password",
+            "-U",
+            "-s", "Claude Code-credentials",
+            "-a", "test-user",
+            "-w", password
+        ])
+    }
+
     // MARK: - Environment Variable Tests
 
     @Test

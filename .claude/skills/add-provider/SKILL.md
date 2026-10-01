@@ -14,7 +14,7 @@ Add new AI providers following established TDD patterns and architecture.
 
 ## Architecture Overview
 
-> **Full architecture:** [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+> **Full architecture:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
 
 | Component | Location | Purpose |
 |-----------|----------|---------|

@@ -105,6 +105,59 @@ struct ClaudeAccountInfoResolverTests {
         #expect(result == nil)
     }
 
+    @Test
+    func `resolves the account's billing type`() {
+        let resolver = makeResolverWithConfig("""
+        {
+            "oauthAccount": {
+                "emailAddress": "user@example.com",
+                "billingType": "apple_subscription"
+            }
+        }
+        """)
+
+        let result = resolver.resolve()
+
+        #expect(result?.billingType == "apple_subscription")
+        #expect(result?.isSubscriptionBilled == true)
+    }
+
+    @Test
+    func `resolves a billing type even when the account has no name`() {
+        // The billing type decides whether a `/usage` cost panel means "this is
+        // an API account" or "the CLI could not see the subscription" (#271),
+        // so it is worth resolving on its own.
+        let resolver = makeResolverWithConfig("""
+        {
+            "oauthAccount": {
+                "accountUuid": "abc-123",
+                "billingType": "stripe_subscription"
+            }
+        }
+        """)
+
+        let result = resolver.resolve()
+
+        #expect(result?.isSubscriptionBilled == true)
+        #expect(result?.isEmpty == true)
+    }
+
+    @Test
+    func `leaves the billing type nil when the account does not carry one`() {
+        let resolver = makeResolverWithConfig("""
+        {
+            "oauthAccount": {
+                "emailAddress": "user@example.com"
+            }
+        }
+        """)
+
+        let result = resolver.resolve()
+
+        #expect(result?.billingType == nil)
+        #expect(result?.isSubscriptionBilled == false)
+    }
+
     // MARK: - Helpers
 
     private func makeResolverWithConfig(_ json: String) -> ClaudeAccountInfoResolver {

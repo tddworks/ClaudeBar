@@ -32,8 +32,11 @@ public final class UserDefaultsCredentialRepository: CredentialRepository, @unch
         defaults.string(forKey: prefixedKey(key))
     }
 
-    public func delete(forKey key: String) {
-        defaults.removeObject(forKey: prefixedKey(key))
+    @discardableResult
+    public func delete(forKey key: String) -> Bool {
+        let key = prefixedKey(key)
+        defaults.removeObject(forKey: key)
+        return defaults.object(forKey: key) == nil
     }
 
     public func exists(forKey key: String) -> Bool {

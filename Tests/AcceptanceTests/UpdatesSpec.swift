@@ -23,6 +23,7 @@ struct UpdatesSpec {
     // MARK: - Placeholder for App-layer update tests
 
     @Suite("Scenario: Update infrastructure")
+    @MainActor
     struct UpdateInfrastructure {
 
         @Test

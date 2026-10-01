@@ -3,8 +3,9 @@ import Observation
 
 /// Gemini AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
+@MainActor
 @Observable
-public final class GeminiProvider: AIProvider, @unchecked Sendable {
+public final class GeminiProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String = "gemini"

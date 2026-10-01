@@ -4,8 +4,9 @@ import Observation
 /// Antigravity AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
 /// Owns its probe and manages its own data lifecycle.
+@MainActor
 @Observable
-public final class AntigravityProvider: AIProvider, @unchecked Sendable {
+public final class AntigravityProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "antigravity"

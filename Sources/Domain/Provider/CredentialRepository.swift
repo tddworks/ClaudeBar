@@ -12,7 +12,9 @@ public protocol CredentialRepository: Sendable {
     func get(forKey key: String) -> String?
 
     /// Deletes the credential for the given key.
-    func delete(forKey key: String)
+    /// - Returns: `true` when the credential is absent after the operation.
+    @discardableResult
+    func delete(forKey key: String) -> Bool
 
     /// Checks if a credential exists for the given key.
     func exists(forKey key: String) -> Bool
@@ -22,4 +24,7 @@ public protocol CredentialRepository: Sendable {
 public enum CredentialKey {
     public static let githubToken = "github-copilot-token"
     public static let githubUsername = "github-username"
+    public static let vercelApiKey = "vercel-ai-gateway-api-key"
+    public static let zaiApiKey = "zai-glm-api-key"
+    public static let notifyDeviceToken = "notify-device-token"
 }

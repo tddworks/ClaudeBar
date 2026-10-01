@@ -1,12 +1,18 @@
 import SwiftUI
 import Domain
 import Infrastructure
+import MenuBarExtraAccess
 #if ENABLE_SPARKLE
 import Sparkle
 #endif
 
 extension Notification.Name {
     static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
+
+    /// Posted by the Notify! pane when the device link or a stored surface
+    /// handle changes. Those live outside observable state, so nothing the
+    /// publish driver watches would otherwise tell it to try again.
+    static let notifySettingsChanged = Notification.Name("com.tddworks.claudebar.notifySettingsChanged")
 }
 
 @main
@@ -16,7 +22,32 @@ struct ClaudeBarApp: App {
     @State private var monitor: QuotaMonitor
 
     /// Monitors Claude Code sessions via hook events
-    @State private var sessionMonitor = SessionMonitor()
+    @State private var sessionMonitor: SessionMonitor
+
+    /// Drives the menu-bar pixels and the background-refresh lifecycle
+    /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
+    /// permanently stop re-evaluating after system sleep (issue #192).
+    private let statusItemDriver: StatusItemLabelDriver
+
+    /// Draws Claude Code session and quota state into the notch. Comes up and
+    /// goes down with `app.notchEnabled`; does nothing until it is turned on.
+    private let notchDriver: NotchWindowDriver
+
+    /// Exports quota and menu-bar status to ~/.claudebar/status.json for Touch Bar, BTT, and external scripts.
+    private let statusExportDriver: StatusExportDriver
+    /// Publishes quota state to a linked Notify! device. Comes up and goes down
+    /// with `notify.enabled`; does nothing until a device is linked.
+    private let notifyDriver: NotifyPublishDriver
+
+    /// Binding required by `.menuBarExtraAccess`; also enables programmatic
+    /// dropdown control if ever needed.
+    @State private var isMenuPresented = false
+
+    @Environment(\.openWindow) private var openWindow
+
+    /// Receives `claudebar://` URLs. Lives outside SwiftUI's scene routing,
+    /// which cannot reach a MenuBarExtra (see AppDelegate).
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// The hook HTTP server that receives events from Claude Code
     private let hookServer = HookHTTPServer()
@@ -56,7 +87,14 @@ struct ClaudeBarApp: App {
                 apiProbe: ClaudeAPIUsageProbe(),
                 passProbe: ClaudePassProbe(),
                 settingsRepository: settingsRepository,
-                dailyUsageAnalyzer: ClaudeDailyUsageAnalyzer()
+                dailyUsageAnalyzer: ClaudeDailyUsageAnalyzer(
+                    // Inference routed at a loopback endpoint costs nothing (#190).
+                    isLocallyServed: { ClaudeLocalInferenceDetector.isLocallyServed() }
+                ),
+                // The Domain layer holds no logger, so the provider reports
+                // what the UI cannot show — a fallback probe that ran and then
+                // failed — through here (#317). Never any credential value.
+                diagnose: { AppLog.probes.info($0) }
             ),
             CodexProvider(
                 rpcProbe: CodexUsageProbe(),
@@ -90,6 +128,14 @@ struct ClaudeBarApp: App {
                 probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
+            DeepSeekProvider(
+                probe: DeepSeekUsageProbe(settingsRepository: settingsRepository),
+                settingsRepository: settingsRepository
+            ),
+            VercelProvider(
+                probe: VercelUsageProbe(settingsRepository: settingsRepository),
+                settingsRepository: settingsRepository
+            ),
             AlibabaProvider(
                 probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
                 settingsRepository: settingsRepository
@@ -100,7 +146,19 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             OpenCodeProvider(
-                probe: OpenCodeUsageProbe(),
+                probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
+                settingsRepository: settingsRepository
+            ),
+            OmpProvider(
+                probe: OmpUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
+            GrokProvider(
+                probe: GrokUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
+            CommandCodeProvider(
+                probe: CommandCodeUsageProbe(),
                 settingsRepository: settingsRepository
             ),
         ])
@@ -108,11 +166,56 @@ struct ClaudeBarApp: App {
 
         // Initialize the domain service with quota alerter
         // QuotaMonitor automatically validates selected provider on init
-        monitor = QuotaMonitor(
+        let monitor = QuotaMonitor(
             providers: repository,
             alerter: quotaAlerter
         )
+        self.monitor = monitor
         AppLog.monitor.info("QuotaMonitor initialized")
+
+        let sessionMonitor = SessionMonitor()
+        self.sessionMonitor = sessionMonitor
+
+        // The driver owns the menu-bar pixels and the refresh-loop lifecycle
+        // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
+        // once `.menuBarExtraAccess` hands over the NSStatusItem.
+        statusItemDriver = StatusItemLabelDriver(
+            monitor: monitor,
+            settings: AppSettings.shared,
+            sessionMonitor: sessionMonitor
+        )
+        statusItemDriver.startMonitoringLifecycle()
+        statusItemDriver.startAttachLifecycle()
+
+        notchDriver = NotchWindowDriver(
+            monitor: monitor,
+            sessionMonitor: sessionMonitor,
+            settings: AppSettings.shared
+        )
+        notchDriver.startWhenLaunched()
+
+        statusExportDriver = StatusExportDriver(
+            monitor: monitor,
+            settings: AppSettings.shared
+        )
+        statusExportDriver.start()
+
+        NativeTouchBarDriver.shared.configure(monitor: monitor)
+
+        PersistentTouchBarDriver.shared.configure(
+            monitor: monitor,
+            settings: AppSettings.shared,
+            sessionMonitor: sessionMonitor
+        )
+        PersistentTouchBarDriver.shared.start()
+        // Started here rather than deferred to `didFinishLaunching` like the
+        // notch driver: the surface it drives is on the user's phone, so it
+        // touches no AppKit window and has nothing to wait for.
+        notifyDriver = NotifyPublishDriver(
+            monitor: monitor,
+            settings: AppSettings.shared
+        )
+        notifyDriver.start()
 
         // Load user extensions from ~/.claudebar/extensions/
         let extensionRegistry = ExtensionRegistry(
@@ -120,12 +223,21 @@ struct ClaudeBarApp: App {
             configRepository: AppSettings.shared.extensionConfig
         )
         let extensionProviders = extensionRegistry.loadExtensions(into: monitor)
+        ProviderVisualIdentityLookup.registerExtensionIcons(from: extensionProviders)
         if !extensionProviders.isEmpty {
             AppLog.providers.info("Loaded \(extensionProviders.count) extension provider(s): \(extensionProviders.map(\.name).joined(separator: ", "))")
         }
 
         // Start hook server if hooks are enabled
         if settingsRepository.isHookEnabled() {
+            // Reconcile installed hooks so newly-added events (e.g.
+            // UserPromptSubmit, which revives a stopped session) register for
+            // existing users without re-toggling the setting. install() is
+            // idempotent — it replaces only ClaudeBar's own matcher entries
+            // per event and preserves hooks from other tools.
+            if HookInstaller.isInstalled() {
+                try? HookInstaller.install()
+            }
             startHookServer()
         }
 
@@ -138,74 +250,9 @@ struct ClaudeBarApp: App {
     /// App settings for theme
     @State private var settings = AppSettings.shared
 
-    /// Status of selected provider, considering burn rate setting
-    private var effectiveSelectedProviderStatus: QuotaStatus {
-        guard let snapshot = monitor.selectedProvider?.snapshot else { return .healthy }
-        if settings.burnRateWarningEnabled {
-            return snapshot.paceAwareOverallStatus(burnRateThreshold: settings.burnRateThreshold)
-        }
-        return snapshot.overallStatus
-    }
-
-    /// The composed menu bar label (percentage and/or duration, for one or two
-    /// quota windows). Driven by the user's independent menu-bar toggles and the
-    /// primary/secondary quota selection. Recomputed on every body evaluation so
-    /// the duration countdown stays current.
-    private var menuBarLabel: MenuBarLabel? {
-        monitor.menuBarLabel(
-            providerId: settings.menuBarPercentageProviderId,
-            primaryQuotaKey: settings.menuBarPercentageQuotaKey,
-            secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
-            showPercentage: settings.menuBarPercentageEnabled,
-            showDuration: settings.menuBarDurationEnabled,
-            mode: settings.usageDisplayMode,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
-        )
-    }
-
     /// Current theme mode from settings
     private var currentThemeMode: ThemeMode {
         ThemeMode(rawValue: settings.themeMode) ?? .system
-    }
-
-    // MARK: - Background Refresh
-
-    /// Identity for the app-lifetime background-refresh loop. When any field
-    /// changes, the scene `.task(id:)` cancels the running loop and restarts it
-    /// with the new cadence/target — replacing the per-setting `.onChange`
-    /// restarts that used to live in `MenuContentView`.
-    private struct RefreshLoopKey: Hashable {
-        let isEnabled: Bool
-        let seconds: Int
-        let providerIds: [String]?
-    }
-
-    /// The current `RefreshLoopKey` derived from settings + monitor state. The
-    /// scene `.task(id:)` observes this, so any change here (cadence toggled,
-    /// selected or menu-bar provider switched) tears down and restarts the loop.
-    private var refreshLoopKey: RefreshLoopKey {
-        let interval = settings.refreshInterval
-        return RefreshLoopKey(
-            isEnabled: interval.isEnabled,
-            seconds: interval.seconds ?? 0,
-            providerIds: backgroundRefreshProviderIds
-        )
-    }
-
-    /// While the dropdown is closed we only need the menu-bar provider(s) fresh,
-    /// so narrow the periodic refresh to the selected + configured menu-bar
-    /// provider when a menu-bar readout is on; otherwise just the selected
-    /// provider. Disabled providers are dropped — their readouts never render,
-    /// so polling them would be wasted work. Keeps background work minimal for
-    /// energy (issue #67).
-    private var backgroundRefreshProviderIds: [String]? {
-        guard settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled else { return nil }
-        let enabledProviderIds = Set(monitor.enabledProviders.map(\.id))
-        return [
-            monitor.selectedProviderId,
-            settings.menuBarPercentageProviderId,
-        ].filter { enabledProviderIds.contains($0) }
     }
 
     private func startHookServer() {
@@ -267,58 +314,92 @@ struct ClaudeBarApp: App {
         }
     }
 
+    @MainActor
+    private func handle(_ action: URLSchemeAction) {
+        switch action {
+        case .refresh:
+            Task {
+                await monitor.refreshAll()
+            }
+        case .open:
+            isMenuPresented = true
+            NSApp.activate(ignoringOtherApps: true)
+        case .settings:
+            openWindow(id: "settings")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     var body: some Scene {
         MenuBarExtra {
-            #if ENABLE_SPARKLE
-            MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+            Group {
+                #if ENABLE_SPARKLE
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, onClose: { isMenuPresented = false }) { enabled in
+                        if enabled { startHookServer() } else { stopHookServer() }
+                    }
+                    .appThemeProvider(themeModeId: settings.themeMode)
+                    .environment(\.sparkleUpdater, sparkleUpdater)
+                #else
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, onClose: { isMenuPresented = false }) { enabled in
+                        if enabled { startHookServer() } else { stopHookServer() }
+                    }
+                    .appThemeProvider(themeModeId: settings.themeMode)
+                #endif
+            }
+            // Opening/closing the dropdown flips `isMenuPresented`, which makes
+            // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
+            // image. The dropdown's lifecycle maps 1:1 to those flips, so
+            // re-assert the menu-bar pixels on both edges.
+            .onAppear { statusItemDriver.reassertPresentation() }
+            .onDisappear { statusItemDriver.reassertPresentation() }
+        } label: {
+            // Deliberately static: the menu-bar pixels are drawn by
+            // StatusItemLabelDriver into the status item's button image,
+            // because this SwiftUI label hosting can permanently stop
+            // re-evaluating after system sleep (issue #192). The placeholder
+            // only gives the scene a label to anchor the dropdown to.
+            Color.clear.frame(width: 1, height: 1)
+                // The label is the one view hosted from launch, so this is
+                // where the URL handler meets the App's state (`isMenuPresented`,
+                // `openWindow`). The popover content would only be live while
+                // the dropdown is open. The handler keeps working even if this
+                // hosting later goes dead (issue #192): it captures the state
+                // wrappers, not the view.
+                .onAppear { appDelegate.onAction = handle }
+        }
+        // Must be the first scene modifier (extends MenuBarExtra, not Scene).
+        .menuBarExtraAccess(isPresented: $isMenuPresented) { statusItem in
+            statusItemDriver.attach(statusItem)
+        }
+        .menuBarExtraStyle(.window)
+
+        // Standalone Settings window (opened from the popover's gear button).
+        // Hidden title bar: the sidebar runs the full window height and the
+        // traffic lights overlay its top — see SettingsWindowView.
+        Window("ClaudeBar Settings", id: "settings") {
+            Group {
+                #if ENABLE_SPARKLE
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
-            #else
-            MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+                #else
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
-            #endif
-        } label: {
-            // Show overall status + active session indicator in menu bar.
-            //
-            // The background-refresh loop is attached here, to the always-present
-            // menu-bar label, so it runs for the app's lifetime independent of
-            // whether the dropdown is open — keeping the at-a-glance number fresh
-            // while the popover is closed. `.task(id:)` restarts the loop when the
-            // cadence or target provider changes and SwiftUI tears it down on exit.
-            Group {
-                if let label = menuBarLabel {
-                    StatusBarPercentageLabel(
-                        text: label.text,
-                        status: label.status,
-                        activeSession: sessionMonitor.activeSession
-                    )
-                    .appThemeProvider(themeModeId: settings.themeMode)
-                } else {
-                    StatusBarIcon(status: effectiveSelectedProviderStatus, activeSession: sessionMonitor.activeSession)
-                        .appThemeProvider(themeModeId: settings.themeMode)
-                }
-            }
-            .task(id: refreshLoopKey) {
-                guard refreshLoopKey.isEnabled else {
-                    monitor.stopMonitoring()
-                    return
-                }
-                AppLog.monitor.info("Background refresh starting (interval: \(refreshLoopKey.seconds)s, providers: \(refreshLoopKey.providerIds?.joined(separator: ",") ?? "selected"))")
-                let stream = monitor.startMonitoring(
-                    interval: .seconds(refreshLoopKey.seconds),
-                    providerIds: refreshLoopKey.providerIds
-                )
-                for await _ in stream {
-                    // QuotaMonitor updates provider snapshots; the menu-bar label
-                    // re-renders from observable state — nothing to do per event.
-                }
+                #endif
             }
         }
-        .menuBarExtraStyle(.window)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 980, height: 660)
+        .windowResizability(.contentMinSize)
+        // Without this, the Settings window is the only window scene and
+        // SwiftUI presents it to deliver *every* incoming URL, including
+        // claudebar://open. AppDelegate routes every URL, so this window
+        // claims none: an empty set matches nothing.
+        .handlesExternalEvents(matching: [])
     }
 
 }
@@ -372,60 +453,6 @@ struct StatusBarIcon: View {
 
     private var iconColor: Color {
         theme.statusColor(for: status)
-    }
-}
-
-/// The menu bar text label for an opt-in provider/quota selection.
-/// Renders one composed string (percentage, duration, or both joined by " · ")
-/// driven by the user's independent menu-bar toggles.
-struct StatusBarPercentageLabel: View {
-    let text: String
-    let status: QuotaStatus
-    var activeSession: ClaudeSession? = nil
-
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        let statusColor = theme.statusColor(for: status)
-
-        HStack(spacing: 3) {
-            if let session = activeSession {
-                Image(systemName: "terminal.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(sessionPhaseColor(session.phase))
-            }
-
-            Image(nsImage: StatusBarPercentageImageRenderer.image(
-                text: text,
-                color: statusColor
-            ))
-            .renderingMode(.original)
-            .accessibilityLabel(text)
-        }
-    }
-
-}
-
-/// Renders status text as an original-color image because macOS can ignore
-/// `Text.foregroundStyle` inside a `MenuBarExtra` label.
-private enum StatusBarPercentageImageRenderer {
-    @MainActor
-    static func image(text: String, color: Color) -> NSImage {
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor(color),
-        ]
-        let attributedText = NSAttributedString(string: text, attributes: attributes)
-        let textSize = attributedText.size()
-        let imageSize = NSSize(width: ceil(textSize.width), height: ceil(textSize.height))
-        let image = NSImage(size: imageSize, flipped: false) { _ in
-            attributedText.draw(at: .zero)
-            return true
-        }
-        image.isTemplate = false
-
-        return image
     }
 }
 

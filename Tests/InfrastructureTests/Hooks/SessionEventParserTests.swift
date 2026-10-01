@@ -75,6 +75,17 @@ struct SessionEventParserTests {
     }
 
     @Test
+    func `parses valid UserPromptSubmit event`() {
+        let json = """
+        {"session_id": "test", "hook_event_name": "UserPromptSubmit", "cwd": "/tmp"}
+        """
+
+        let event = SessionEventParser.parse(json.data(using: .utf8)!)
+
+        #expect(event?.eventName == .userPromptSubmit)
+    }
+
+    @Test
     func `returns nil for missing session_id`() {
         let json = """
         {"hook_event_name": "SessionStart", "cwd": "/tmp"}

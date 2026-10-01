@@ -11,6 +11,15 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     public private(set) var completedTaskCount: Int
     public private(set) var endedAt: Date?
 
+    /// When the current turn stopped, if it has. Cleared when work resumes.
+    /// Distinct from `endedAt`: a stopped session is still alive and will
+    /// revive on the next `UserPromptSubmit`.
+    public private(set) var stoppedAt: Date?
+
+    /// What Claude Code is blocked on, when the session is `.awaitingInput`
+    /// (e.g. "Claude needs your permission to use Bash"). Cleared when work resumes.
+    public private(set) var pendingPrompt: String?
+
     public init(
         id: String,
         cwd: String,
@@ -28,6 +37,8 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     public enum Phase: String, Sendable, Equatable {
         case active
         case subagentsWorking
+        /// Claude Code is blocked waiting on the user — typically a permission prompt.
+        case awaitingInput
         case stopped
         case ended
 
@@ -36,6 +47,7 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
             switch self {
             case .active: return "Active"
             case .subagentsWorking: return "Agents Working"
+            case .awaitingInput: return "Needs You"
             case .stopped: return "Stopped"
             case .ended: return "Ended"
             }
@@ -44,18 +56,37 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
 
     // MARK: - Mutations
 
-    /// Records a subagent starting work
+    /// Records a subagent starting work. Subagent activity also revives a
+    /// `.stopped` session: a new turn is clearly underway, so the indicator
+    /// should reflect work rather than staying stuck on the previous turn's stop.
     public mutating func subagentStarted() {
-        guard phase != .stopped, phase != .ended else { return }
+        guard phase != .ended else { return }
         activeSubagentCount += 1
         updatePhase()
     }
 
     /// Records a subagent stopping work
     public mutating func subagentStopped() {
-        guard phase != .stopped, phase != .ended else { return }
+        guard phase != .ended else { return }
         activeSubagentCount = max(0, activeSubagentCount - 1)
         updatePhase()
+    }
+
+    /// Revives a stopped/idle session when a new turn begins (UserPromptSubmit).
+    /// `Stop` fires at the end of every turn, so without this a session would be
+    /// stuck `.stopped` for the rest of its life. No-op once ended.
+    public mutating func resume() {
+        guard phase != .ended else { return }
+        updatePhase()
+    }
+
+    /// Records that Claude Code is blocked waiting on the user, carrying the
+    /// prompt it is blocked on. No-op once ended.
+    public mutating func awaitInput(_ prompt: String? = nil, at date: Date = Date()) {
+        guard phase != .ended else { return }
+        phase = .awaitingInput
+        pendingPrompt = prompt
+        stoppedAt = nil
     }
 
     /// Records a task completion
@@ -65,10 +96,12 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     }
 
     /// Marks the session as stopped (Claude Code stopped responding)
-    public mutating func stop() {
+    public mutating func stop(at date: Date = Date()) {
         guard phase != .ended else { return }
         phase = .stopped
         activeSubagentCount = 0
+        stoppedAt = date
+        pendingPrompt = nil
     }
 
     /// Marks the session as ended
@@ -76,6 +109,22 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
         phase = .ended
         activeSubagentCount = 0
         endedAt = date
+    }
+
+    /// When this session last finished doing something — the end of the session
+    /// if it has ended, otherwise the end of the last turn. nil while working.
+    ///
+    /// The notch uses this to time the "done" flash; `endedAt` wins because a
+    /// session that ended is finished for good, whereas a stop is provisional.
+    public var finishedAt: Date? {
+        endedAt ?? stoppedAt
+    }
+
+    /// The repository the session is running in — the last path component of
+    /// `cwd`. This is how users refer to a session ("the claudebar one"), so it
+    /// belongs here rather than being re-derived by each view.
+    public var repoName: String {
+        ((cwd as NSString).standardizingPath as NSString).lastPathComponent
     }
 
     /// Whether this session is still active (not ended)
@@ -108,6 +157,8 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     // MARK: - Private
 
     private mutating func updatePhase() {
+        pendingPrompt = nil
+        stoppedAt = nil
         if activeSubagentCount > 0 {
             phase = .subagentsWorking
         } else {

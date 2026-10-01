@@ -58,6 +58,7 @@ let project = Project(
                 .external(name: "AWSSSO"),
                 .external(name: "AWSSSOOIDC"),
                 .external(name: "SweetCookieKit"),
+                .external(name: "Subprocess"),
             ],
             settings: .settings(
                 base: [
@@ -83,6 +84,8 @@ let project = Project(
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
                 .external(name: "Sparkle"),
+                .external(name: "MenuBarExtraAccess"),
+                .external(name: "Matrix"),
             ],
             settings: .settings(
                 base: [
@@ -153,6 +156,21 @@ let project = Project(
             )
         ),
 
+        // MARK: - App Tests
+        .target(
+            name: "AppTests",
+            destinations: .macOS,
+            product: .unitTests,
+            bundleId: "com.tddworks.claudebar.app-tests",
+            deploymentTargets: .macOS("15.0"),
+            sources: ["Tests/AppTests/**"],
+            dependencies: [
+                .target(name: "ClaudeBar"),
+                .target(name: "Domain"),
+                .target(name: "Infrastructure"),
+            ]
+        ),
+
         // MARK: - Acceptance Tests (BDD - Outer Loop)
         .target(
             name: "AcceptanceTests",
@@ -189,6 +207,7 @@ let project = Project(
                     .testableTarget(target: .target("AcceptanceTests")),
                     .testableTarget(target: .target("DomainTests")),
                     .testableTarget(target: .target("InfrastructureTests")),
+                    .testableTarget(target: .target("AppTests")),
                 ],
                 configuration: .debug
             ),

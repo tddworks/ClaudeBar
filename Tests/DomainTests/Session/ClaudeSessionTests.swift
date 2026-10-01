@@ -146,14 +146,46 @@ struct ClaudeSessionTests {
     // MARK: - Phase Guards
 
     @Test
-    func `subagentStarted is ignored after stopped`() {
+    func `subagentStarted revives a stopped session`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.stop()
 
         session.subagentStarted()
 
-        #expect(session.phase == .stopped)
+        #expect(session.phase == .subagentsWorking)
+        #expect(session.activeSubagentCount == 1)
+    }
+
+    @Test
+    func `resume returns a stopped session to active`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.stop()
+
+        session.resume()
+
+        #expect(session.phase == .active)
         #expect(session.activeSubagentCount == 0)
+    }
+
+    @Test
+    func `resume keeps subagentsWorking when subagents are active`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.subagentStarted()
+
+        session.resume()
+
+        #expect(session.phase == .subagentsWorking)
+        #expect(session.activeSubagentCount == 1)
+    }
+
+    @Test
+    func `resume is ignored after ended`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.end()
+
+        session.resume()
+
+        #expect(session.phase == .ended)
     }
 
     @Test
@@ -198,10 +230,116 @@ struct ClaudeSessionTests {
         #expect(session.phase == .ended)
     }
 
+
+    // MARK: - Awaiting input
+
+    @Test
+    func `awaitInput moves the session to awaitingInput and records the prompt`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+
+        session.awaitInput("Bash · rm -rf build/")
+
+        #expect(session.phase == .awaitingInput)
+        #expect(session.pendingPrompt == "Bash · rm -rf build/")
+    }
+
+    @Test
+    func `awaitInput is ignored after ended`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.end()
+
+        session.awaitInput("Bash · ls")
+
+        #expect(session.phase == .ended)
+        #expect(session.pendingPrompt == nil)
+    }
+
+    @Test
+    func `resume clears the pending prompt`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.awaitInput("Bash · ls")
+
+        session.resume()
+
+        #expect(session.phase == .active)
+        #expect(session.pendingPrompt == nil)
+    }
+
+    @Test
+    func `subagent start clears the pending prompt`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.awaitInput("Bash · ls")
+
+        session.subagentStarted()
+
+        #expect(session.phase == .subagentsWorking)
+        #expect(session.pendingPrompt == nil)
+    }
+
+    // MARK: - Finishing
+
+    @Test
+    func `stop records when the session stopped`() {
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+
+        session.stop(at: when)
+
+        #expect(session.stoppedAt == when)
+        #expect(session.finishedAt == when)
+    }
+
+    @Test
+    func `finishedAt is nil while the session is running`() {
+        let session = ClaudeSession(id: "test", cwd: "/tmp")
+
+        #expect(session.finishedAt == nil)
+    }
+
+    @Test
+    func `finishedAt prefers endedAt over stoppedAt`() {
+        let stopped = Date(timeIntervalSince1970: 1_700_000_000)
+        let ended = stopped.addingTimeInterval(30)
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.stop(at: stopped)
+
+        session.end(at: ended)
+
+        #expect(session.finishedAt == ended)
+    }
+
+    @Test
+    func `resuming a stopped session clears the stop timestamp`() {
+        var session = ClaudeSession(id: "test", cwd: "/tmp")
+        session.stop()
+
+        session.resume()
+
+        #expect(session.stoppedAt == nil)
+        #expect(session.finishedAt == nil)
+    }
+
+    // MARK: - Identity
+
+    @Test
+    func `repoName is the last path component of the working directory`() {
+        let session = ClaudeSession(id: "test", cwd: "/Users/me/github/tddworks/claudebar")
+
+        #expect(session.repoName == "claudebar")
+    }
+
+    @Test
+    func `repoName tolerates a trailing slash`() {
+        let session = ClaudeSession(id: "test", cwd: "/Users/me/github/claudebar/")
+
+        #expect(session.repoName == "claudebar")
+    }
+
     @Test
     func `phase label returns correct strings`() {
         #expect(ClaudeSession.Phase.active.label == "Active")
         #expect(ClaudeSession.Phase.subagentsWorking.label == "Agents Working")
+        #expect(ClaudeSession.Phase.awaitingInput.label == "Needs You")
         #expect(ClaudeSession.Phase.stopped.label == "Stopped")
         #expect(ClaudeSession.Phase.ended.label == "Ended")
     }

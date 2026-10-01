@@ -28,12 +28,19 @@ public final class ClaudeAccountInfoResolver: AccountInfoResolving, Sendable {
 
         let email = oauthAccount["emailAddress"] as? String
         let displayName = oauthAccount["displayName"] as? String
+        // `billingType` tells a subscription (`apple_subscription`,
+        // `stripe_subscription`) from a pay-as-you-go API account, which is how
+        // the probe knows an API-billing `/usage` panel is the CLI misreading a
+        // subscription rather than the truth (#271). It stands on its own: an
+        // account with no cached name still has a billing type worth reporting.
+        let billingType = oauthAccount["billingType"] as? String
 
-        guard email != nil || displayName != nil else { return nil }
+        guard email != nil || displayName != nil || billingType != nil else { return nil }
 
         return AccountInfo(
             email: email,
-            organization: displayName
+            organization: displayName,
+            billingType: billingType
         )
     }
 }

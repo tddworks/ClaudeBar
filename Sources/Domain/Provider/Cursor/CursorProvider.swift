@@ -3,8 +3,9 @@ import Observation
 
 /// Cursor AI provider - a rich domain model.
 /// Observable class with its own state (isSyncing, snapshot, error).
+@MainActor
 @Observable
-public final class CursorProvider: AIProvider, @unchecked Sendable {
+public final class CursorProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "cursor"

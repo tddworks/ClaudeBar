@@ -46,6 +46,31 @@ struct ClaudeAPIUsageProbeTests {
         try data.write(to: filePath)
     }
 
+    private func probe(responseJSON: String, subscriptionType: String = "claude_pro") async throws -> UsageSnapshot {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(
+            at: tempDir,
+            expiresAt: futureExpiry,
+            subscriptionType: subscriptionType
+        )
+
+        let mockNetwork = MockNetworkClient()
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((Data(responseJSON.utf8), response))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        return try await probe.probe()
+    }
+
     // MARK: - isAvailable Tests
 
     @Test
@@ -426,6 +451,148 @@ struct ClaudeAPIUsageProbeTests {
     }
 
     @Test
+    func `probe parses fable quota from scoped limits array`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
+
+        let mockNetwork = MockNetworkClient()
+        // Newer API responses report model limits via a generic "limits" array
+        // (kind "weekly_scoped" + scope.model.display_name) instead of
+        // dedicated seven_day_<model> fields.
+        let responseJSON = """
+        {
+          "five_hour": { "utilization": 23.0, "resets_at": "2026-07-02T07:09:59Z" },
+          "seven_day": { "utilization": 10.0, "resets_at": "2026-07-02T10:59:59Z" },
+          "seven_day_opus": null,
+          "seven_day_sonnet": null,
+          "limits": [
+            { "kind": "session", "group": "session", "percent": 23, "resets_at": "2026-07-02T07:09:59Z", "scope": null },
+            { "kind": "weekly_all", "group": "weekly", "percent": 10, "resets_at": "2026-07-02T10:59:59Z", "scope": null },
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 17, "resets_at": "2026-07-02T11:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        let snapshot = try await probe.probe()
+
+        let fableQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("fable") }
+        #expect(fableQuota != nil)
+        #expect(fableQuota?.percentRemaining == 83.0)  // 100 - 17
+        #expect(fableQuota?.resetsAt != nil)
+
+        // Unscoped session/weekly entries in the limits array must not create duplicates
+        #expect(snapshot.quotas.filter { $0.quotaType == .session }.count == 1)
+        #expect(snapshot.quotas.filter { $0.quotaType == .weekly }.count == 1)
+    }
+
+    @Test
+    func `probe skips malformed limits entries and keeps over-quota negative remaining`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
+
+        let mockNetwork = MockNetworkClient()
+        // Malformed scoped entries (no scope, no model, empty name, no percent) are
+        // skipped; duplicate scoped entries yield one quota; a multi-word display
+        // name keys on its first word; 105% used stays negative (over-quota signal).
+        let responseJSON = """
+        {
+          "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
+          "limits": [
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 50, "resets_at": "2025-01-20T00:00:00Z", "scope": null },
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 50, "resets_at": "2025-01-20T00:00:00Z", "scope": { "model": null } },
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 50, "resets_at": "2025-01-20T00:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "" } } },
+            { "kind": "weekly_scoped", "group": "weekly", "resets_at": "2025-01-20T00:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Opus" } } },
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 105, "resets_at": "2025-01-20T00:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Fable 5" } } },
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 40, "resets_at": "2025-01-20T00:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Fable" } } }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        let snapshot = try await probe.probe()
+
+        let fableQuotas = snapshot.quotas.filter { $0.quotaType == .modelSpecific("fable") }
+        #expect(fableQuotas.count == 1)
+        #expect(fableQuotas.first?.percentRemaining == -5.0)  // 100 - 105, first entry wins
+
+        // Malformed entries produce no quotas: session (legacy) + fable only
+        #expect(snapshot.quotas.count == 2)
+    }
+
+    @Test
+    func `probe does not duplicate model quota reported in both legacy field and limits array`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
+          "seven_day_opus": { "utilization": 60.0, "resets_at": "2025-01-20T00:00:00Z" },
+          "limits": [
+            { "kind": "weekly_scoped", "group": "weekly", "percent": 60, "resets_at": "2025-01-20T00:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Opus" }, "surface": null } }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+
+        let snapshot = try await probe.probe()
+
+        let opusQuotas = snapshot.quotas.filter { $0.quotaType == .modelSpecific("opus") }
+        #expect(opusQuotas.count == 1)
+        #expect(opusQuotas.first?.percentRemaining == 40.0)  // 100 - 60
+    }
+
+    @Test
     func `probe parses extra usage correctly converting cents to dollars`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -466,6 +633,7 @@ struct ClaudeAPIUsageProbeTests {
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         // 2000 cents -> $20.00
         #expect(snapshot.costUsage?.budget == Decimal(string: "20"))
+        #expect(snapshot.costUsage?.kind == .extraUsage)
     }
 
     @Test
@@ -511,6 +679,249 @@ struct ClaudeAPIUsageProbeTests {
         #expect(snapshot.costUsage?.budget == Decimal(string: "50"))
         // Verify formatted output shows dollars, not cents
         #expect(snapshot.costUsage?.formattedCost.contains("26.72") == true)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe uses spend when spend and legacy extra usage agree`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 50000, "currency": "USD", "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 0,
+            "monthly_limit": 50000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == 0)
+        #expect(snapshot.costUsage?.budget == 500)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe prefers spend when legacy extra usage differs`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 125, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 1000, "currency": "USD", "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
+        #expect(snapshot.costUsage?.budget == 10)
+    }
+
+    @Test
+    func `probe rejects negative spend and falls back to legacy extra usage`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": -125, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 1000, "currency": "USD", "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        // A negative amount_minor is invalid; the spend row is dropped
+        // instead of silently flipping to +$1.25, and legacy takes over.
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
+        #expect(snapshot.costUsage?.budget == Decimal(string: "20"))
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe drops negative legacy credits instead of flipping sign`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": -541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
+    func `probe drops spend with invalid cap instead of reporting uncapped`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used":  { "amount_minor": 541, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": -2000, "currency": "USD", "exponent": 2 }
+          }
+        }
+        """)
+
+        // A present-but-invalid cap must not be reclassified as "no monthly
+        // cap"; the whole shape is dropped.
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
+    func `probe falls back to legacy when spend cap is invalid`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used":  { "amount_minor": 125, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 2000, "currency": "USD", "exponent": -1 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
+        #expect(snapshot.costUsage?.budget == Decimal(string: "20"))
+    }
+
+    @Test
+    func `probe drops legacy shape with invalid monthly limit`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": -2000,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
+    func `probe parses uncapped spend exactly`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 123456, "currency": "USD", "exponent": 2 },
+            "limit": null,
+            "percent": 0
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "monthly_limit": null,
+            "used_credits": 123456,
+            "decimal_places": 2,
+            "currency": "USD"
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1234.56"))
+        #expect(snapshot.costUsage?.budget == nil)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe respects spend money exponents`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": { "amount_minor": 12345, "exponent": 3 },
+            "limit": { "amount_minor": 2000, "exponent": 1 }
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "12.345"))
+        #expect(snapshot.costUsage?.budget == 200)
+    }
+
+    @Test
+    func `probe falls back to legacy when spend has no used amount`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": true,
+            "used": null,
+            "limit": { "amount_minor": 1000, "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
+        #expect(snapshot.costUsage?.budget == 20)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe respects legacy extra usage decimal places`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "extra_usage": {
+            "is_enabled": true,
+            "used_credits": 541,
+            "monthly_limit": 2000,
+            "decimal_places": 3
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "0.541"))
+        #expect(snapshot.costUsage?.budget == 2)
+        #expect(snapshot.costUsage?.kind == .extraUsage)
+    }
+
+    @Test
+    func `probe omits disabled spend and extra usage`() async throws {
+        let snapshot = try await probe(responseJSON: """
+        {
+          "spend": {
+            "enabled": false,
+            "used": { "amount_minor": 541, "exponent": 2 }
+          },
+          "extra_usage": {
+            "is_enabled": false,
+            "used_credits": 541,
+            "decimal_places": 2
+          }
+        }
+        """)
+
+        #expect(snapshot.costUsage == nil)
     }
 
     @Test
@@ -540,6 +951,7 @@ struct ClaudeAPIUsageProbeTests {
 
         // Should succeed but have no quotas
         #expect(snapshot.quotas.isEmpty)
+        #expect(snapshot.costUsage == nil)
     }
 
     // MARK: - Account Tier Detection Tests

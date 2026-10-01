@@ -152,7 +152,7 @@ swift test
 
 ## Architecture Reference
 
-> **Full documentation:** [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+> **Full documentation:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
 
 | Layer | Location | Improvement Examples |
 |-------|----------|---------------------|

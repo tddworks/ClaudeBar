@@ -28,6 +28,10 @@ public protocol CLIExecutor: Sendable {
     ///   - timeout: Maximum time to wait
     ///   - workingDirectory: Directory to run in (nil = inherited)
     ///   - autoResponses: Automatic responses to prompts (prompt text → response to send)
+    ///
+    /// Implementations must not block the calling task: CLI probes can take
+    /// tens of seconds, and blocking here starves the Swift cooperative pool
+    /// that every other provider's refresh runs on.
     func execute(
         binary: String,
         args: [String],
@@ -35,5 +39,5 @@ public protocol CLIExecutor: Sendable {
         timeout: TimeInterval,
         workingDirectory: URL?,
         autoResponses: [String: String]
-    ) throws -> CLIResult
+    ) async throws -> CLIResult
 }

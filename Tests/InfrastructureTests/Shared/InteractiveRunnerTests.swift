@@ -75,6 +75,96 @@ struct InteractiveRunnerTests {
 
         #expect(result.output.contains("CLAUDEBAR_TEST_PRESERVE_VAR=should_be_present"))
     }
+
+    // MARK: - Completion Rule (issue #271)
+
+    @Test
+    func `Options defaults completionRule to nil`() {
+        #expect(InteractiveRunner.Options().completionRule == nil)
+    }
+
+    @Test
+    func `Options stores completionRule`() {
+        let options = InteractiveRunner.Options(completionRule: .claudeUsage)
+        #expect(options.completionRule == .claudeUsage)
+    }
+
+    @Test
+    func `run keeps waiting while the output is still a pending placeholder`() throws {
+        let runner = InteractiveRunner()
+        // Paints a placeholder, then goes quiet for longer than the 3s idle
+        // cutoff before the real content arrives — exactly how `claude /usage`
+        // fills its quota bars in asynchronously.
+        let script = "printf 'Loading usage data...'; sleep 5; printf 'Current session 1%% used'"
+
+        let result = try runner.run(
+            binary: "/bin/sh",
+            input: "",
+            options: .init(
+                timeout: 20.0,
+                arguments: ["-c", script],
+                completionRule: .claudeUsage
+            )
+        )
+
+        #expect(result.output.contains("Current session"))
+    }
+
+    // MARK: - Completion Rule (issue #317)
+
+    @Test
+    func `run keeps waiting past a boot screen that never reached the Usage tab`() throws {
+        let runner = InteractiveRunner()
+        // The probe launches `claude /usage`, but the CLI only submits the command
+        // once it has finished booting. For a few seconds the screen is the boot
+        // screen — `/usage` still unsubmitted in the input box, SessionStart hooks
+        // running — and nothing on it is a Usage screen. Going idle there ended the
+        // capture with nothing to parse (#317).
+        let script = """
+        printf 'Opus 5 (1M context) with high effort · API Usage Billing\\n'
+        printf '~/Library/Application Support/ClaudeBar/Probe\\n'
+        printf '\\xe2\\x9d\\xaf /usage\\n'
+        printf '✢ Burrowing… (running SessionStart hooks… 2/5 · 0s)\\n'
+        printf ' Esc to cancel\\n'
+        sleep 5
+        printf 'Current session 1%% used\\n'
+        """
+
+        let result = try runner.run(
+            binary: "/bin/sh",
+            input: "",
+            options: .init(
+                timeout: 20.0,
+                arguments: ["-c", script],
+                completionRule: .claudeUsage
+            )
+        )
+
+        #expect(result.output.contains("Current session"))
+    }
+
+    @Test
+    func `a settled usage screen still ends the capture before the timeout`() throws {
+        let runner = InteractiveRunner()
+        // Over-waiting is its own failure: a finished screen must still stop the
+        // capture at the idle cutoff instead of blocking for the whole timeout.
+        // `exitCode` is -1 while the process is still running, so this proves the
+        // run returned early without depending on the wall clock.
+        let script = "printf 'Current session 1%% used'; sleep 15"
+
+        let result = try runner.run(
+            binary: "/bin/sh",
+            input: "",
+            options: .init(
+                timeout: 20.0,
+                arguments: ["-c", script],
+                completionRule: .claudeUsage
+            )
+        )
+
+        #expect(result.output.contains("Current session"))
+        #expect(result.exitCode == -1)
+    }
 }
 
 // MARK: - hasMeaningfulContent Tests

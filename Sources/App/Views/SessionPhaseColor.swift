@@ -8,6 +8,7 @@ extension ClaudeSession.Phase {
         switch self {
         case .active: return .green
         case .subagentsWorking: return .blue
+        case .awaitingInput: return .yellow
         case .stopped: return .orange
         case .ended: return .gray
         }

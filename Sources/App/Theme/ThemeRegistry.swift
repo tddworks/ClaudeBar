@@ -1,4 +1,5 @@
 import SwiftUI
+import Domain
 import Infrastructure
 
 // MARK: - Theme Registry
@@ -79,16 +80,34 @@ public final class ThemeRegistry {
         themes["dark"] ?? DarkTheme()
     }
 
-    /// Resolve a theme ID to a concrete theme, considering system theme
+    /// Resolve a theme ID to a concrete theme, considering system theme and
+    /// the user's status color policy.
+    ///
+    /// Wraps at resolve time, not registration: `isImported(id:)` and
+    /// `removeImportedTheme(id:)` type-check the stored theme.
+    ///
     /// - Parameters:
     ///   - id: The theme ID (may be "system")
     ///   - systemColorScheme: The current system color scheme
+    ///   - statusColors: `.default` returns the stored theme untouched
     /// - Returns: The resolved theme
-    public func resolveTheme(for id: String, systemColorScheme: ColorScheme) -> any AppThemeProvider {
+    public func resolveTheme(
+        for id: String,
+        systemColorScheme: ColorScheme,
+        statusColors: StatusColorPolicy = .default
+    ) -> any AppThemeProvider {
+        let base: any AppThemeProvider
         if id == "system" {
-            return systemColorScheme == .dark ? (themes["dark"] ?? DarkTheme()) : (themes["light"] ?? LightTheme())
+            base = systemColorScheme == .dark ? (themes["dark"] ?? DarkTheme()) : (themes["light"] ?? LightTheme())
+        } else {
+            base = themes[id] ?? defaultTheme
         }
-        return themes[id] ?? defaultTheme
+        guard statusColors.isActive else { return base }
+        return StatusColorOverridingTheme(
+            base: base,
+            policy: statusColors,
+            appearance: systemColorScheme == .dark ? .dark : .light
+        )
     }
 
     // MARK: - Imported Themes
