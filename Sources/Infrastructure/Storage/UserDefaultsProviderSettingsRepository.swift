@@ -4,7 +4,7 @@ import Domain
 /// Legacy/test UserDefaults implementation of provider settings protocols.
 /// Production app persistence uses `JSONSettingsRepository`; this implementation
 /// supports legacy migration and isolated tests with injected UserDefaults suites.
-public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, KimiSettingsRepository, MiniMaxSettingsRepository, DeepSeekSettingsRepository, AlibabaSettingsRepository, VercelSettingsRepository, HookSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository, CopilotSettingsRepository, BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, KimiSettingsRepository, MistralSettingsRepository, MiniMaxSettingsRepository, DeepSeekSettingsRepository, AlibabaSettingsRepository, VercelSettingsRepository, HookSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -278,6 +278,43 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         userDefaults.set(mode.rawValue, forKey: Keys.kimiProbeMode)
     }
 
+    // MARK: - MistralSettingsRepository
+
+    public func mistralProbeMode() -> MistralProbeMode {
+        guard let rawValue = userDefaults.string(forKey: Keys.mistralProbeMode) else {
+            return .localLogs
+        }
+        return MistralProbeMode(rawValue: rawValue) ?? .localLogs
+    }
+
+    public func setMistralProbeMode(_ mode: MistralProbeMode) {
+        userDefaults.set(mode.rawValue, forKey: Keys.mistralProbeMode)
+    }
+
+    public func mistralChatAuthEnvVar() -> String {
+        userDefaults.string(forKey: Keys.mistralChatAuthEnvVar) ?? ""
+    }
+
+    public func setMistralChatAuthEnvVar(_ envVar: String) {
+        userDefaults.set(envVar, forKey: Keys.mistralChatAuthEnvVar)
+    }
+
+    public func saveMistralChatCookie(_ cookie: String) {
+        userDefaults.set(cookie, forKey: Keys.mistralChatCookie)
+    }
+
+    public func getMistralChatCookie() -> String? {
+        userDefaults.string(forKey: Keys.mistralChatCookie)
+    }
+
+    public func deleteMistralChatCookie() {
+        userDefaults.removeObject(forKey: Keys.mistralChatCookie)
+    }
+
+    public func hasMistralChatCookie() -> Bool {
+        userDefaults.object(forKey: Keys.mistralChatCookie) != nil
+    }
+
     // MARK: - BedrockSettingsRepository
 
     public func awsProfileName() -> String {
@@ -486,6 +523,9 @@ public final class UserDefaultsProviderSettingsRepository: ZaiSettingsRepository
         static let codexProbeMode = "providerConfig.codexProbeMode"
         // Kimi settings
         static let kimiProbeMode = "providerConfig.kimiProbeMode"
+        static let mistralProbeMode = "providerConfig.mistralProbeMode"
+        static let mistralChatAuthEnvVar = "providerConfig.mistralChatAuthEnvVar"
+        static let mistralChatCookie = "com.claudebar.credentials.mistral-chat-cookie"
         static let zaiConfigPath = "providerConfig.zaiConfigPath"
         static let glmAuthEnvVar = "providerConfig.glmAuthEnvVar"
         static let zaiApiKey = "com.claudebar.credentials.zai-api-key"

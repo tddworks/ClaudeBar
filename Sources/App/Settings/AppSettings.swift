@@ -463,6 +463,7 @@ public final class AppSettings {
     public var minimax: MiniMaxSettingsRepository { repository }
     public var deepseek: DeepSeekSettingsRepository { repository }
     public var alibaba: AlibabaSettingsRepository { repository }
+    public var mistral: MistralSettingsRepository { repository }
     public var vercel: VercelSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
     public var notify: NotifySettingsRepository { repository }

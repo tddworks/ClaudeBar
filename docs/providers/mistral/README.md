@@ -4,7 +4,7 @@ description: Show today's and yesterday's Mistral Vibe cost and token totals, re
 
 # Mistral
 
-Shows how much you spent and how many tokens you used in **Mistral Vibe** today, next to yesterday. ClaudeBar has no source for Mistral's rate limits or plan quota, so there's no percentage or reset time, only daily spend and tokens.
+Shows how much you spent and how many tokens you used in **Mistral Vibe** today, next to yesterday. In the default Local Logs mode there's no percentage or reset time, only daily spend and tokens; Code API mode adds your Vibe plan usage.
 
 ## Setup
 
@@ -13,6 +13,21 @@ Shows how much you spent and how many tokens you used in **Mistral Vibe** today,
 3. Keep Settings → General → **Daily Usage Cards** on (the default). Mistral's numbers only appear in those cards.
 
 No key, no network access and no permission prompts: ClaudeBar only reads the local log files.
+
+## Code API mode (Vibe plan usage)
+
+Settings → Providers → Mistral → Probe Mode → **Code API** shows your Vibe Coding Plan usage percentage from `chat.mistral.ai`, using your browser session cookie. Local Logs (above) stays the default.
+
+1. Open [chat.mistral.ai](https://chat.mistral.ai) while logged in, then DevTools → **Network**.
+2. Trigger any request, select it, and copy the full `Cookie` request header (it contains `ory_session_*`, `csrftoken`, `csrf_token_*`).
+3. Export it as `MISTRAL_CHAT_COOKIE` (or the variable named in the Mistral config card) before launching ClaudeBar:
+   ```bash
+   # Session cookies are credentials. A leading space keeps this out of shell history.
+    export MISTRAL_CHAT_COOKIE='ory_session_...=...; csrftoken=...; ...'
+   open -a ClaudeBar
+   ```
+
+The cookie expires; when Code API mode stops working, log in again and copy a fresh one. A variable exported only in your shell profile is invisible when ClaudeBar starts from Finder or at login.
 
 ## Gotchas
 
@@ -25,4 +40,4 @@ No key, no network access and no permission prompts: ClaudeBar only reads the lo
 
 ## See also
 
-[troubleshooting](../../troubleshooting.md) · [#209](https://github.com/tddworks/ClaudeBar/pull/209), an open PR that would add Vibe plan usage from Mistral's web API with a chat.mistral.ai session cookie
+[troubleshooting](../../troubleshooting.md) · [#209](https://github.com/tddworks/ClaudeBar/pull/209)

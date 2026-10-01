@@ -238,6 +238,8 @@ private struct ProviderDetailView: View {
             DeepSeekConfigCard(monitor: monitor)
         case "alibaba":
             AlibabaConfigCard(monitor: monitor)
+        case "mistral":
+            MistralConfigCard(monitor: monitor)
         case "vercel-gateway":
             VercelConfigCard(monitor: monitor)
         case "copilot":
