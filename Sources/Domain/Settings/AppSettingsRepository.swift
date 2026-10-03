@@ -84,6 +84,10 @@ public protocol AppSettingsRepository: Sendable {
     func hideLeaderboardName() -> Bool
     func setHideLeaderboardName(_ hide: Bool)
 
+    /// Text size for the popover; one of `PopoverTextSize`'s raw values.
+    func popoverTextSize() -> String
+    func setPopoverTextSize(_ size: String)
+
     // MARK: - Notch
 
     /// Whether the notch live activity is shown (default: false).

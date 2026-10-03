@@ -217,6 +217,16 @@ public final class AppSettings {
         }
     }
 
+    /// Text size for the whole popover. Default is today's sizing; larger
+    /// values scale every label, countdown and comparison line in the popover
+    /// and widen it to match. Only the popover is affected — the settings
+    /// window and the notch keep their own sizes.
+    public var popoverTextSize: PopoverTextSize {
+        didSet {
+            repository.setPopoverTextSize(popoverTextSize.rawValue)
+        }
+    }
+
     // MARK: - Notch Settings
 
     /// Whether Claude Code session and quota state is drawn into the notch
@@ -460,6 +470,10 @@ public final class AppSettings {
         self.hideAccountEmail = repository.hideAccountEmail()
         self.hideLeaderboardCountry = repository.hideLeaderboardCountry()
         self.hideLeaderboardName = repository.hideLeaderboardName()
+        // The stored size decodes through the Domain fallback so an unknown raw
+        // value (from a newer build's settings file) renders default instead of
+        // leaving the popover at a size this build cannot draw.
+        self.popoverTextSize = PopoverTextSize(storedRawValue: repository.popoverTextSize())
         self.notchEnabled = repository.notchEnabled()
         self.touchBarEnabled = repository.touchBarEnabled()
         self.notifyEnabled = repository.isNotifyEnabled()

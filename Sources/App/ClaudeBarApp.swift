@@ -318,12 +318,14 @@ struct ClaudeBarApp: App {
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
+                    .environment(\.popoverTextSize, settings.popoverTextSize)
                     .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
                 MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
+                    .environment(\.popoverTextSize, settings.popoverTextSize)
                 #endif
             }
             .environment(newSessions)

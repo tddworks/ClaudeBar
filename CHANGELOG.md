@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Settings → Appearance → Popover Text Size makes the popover's card titles, reset countdowns and "Updated just now" up to 1.4× bigger, and widens the window so nothing truncates. ([#364](https://github.com/tddworks/ClaudeBar/issues/364))
+
 ---
 
 ## [0.5.8] - 2026-10-06

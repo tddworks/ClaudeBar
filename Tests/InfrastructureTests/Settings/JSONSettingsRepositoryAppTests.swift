@@ -334,6 +334,31 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.showDailyUsageCards() == false)
     }
 
+    // MARK: - Popover Text Size
+
+    @Test
+    func `popoverTextSize defaults to medium`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.popoverTextSize() == "medium")
+    }
+
+    @Test
+    func `setPopoverTextSize persists across reloads`() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+        let fileURL = tempDir.appendingPathComponent("settings.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = JSONSettingsStore(fileURL: fileURL)
+        let repo1 = JSONSettingsRepository(store: store)
+        repo1.setPopoverTextSize("extraLarge")
+
+        let repo2 = JSONSettingsRepository(store: store)
+        #expect(repo2.popoverTextSize() == "extraLarge")
+    }
+
     // MARK: - Touch Bar
 
     @Test

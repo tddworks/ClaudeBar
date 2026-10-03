@@ -213,6 +213,14 @@ public final class JSONSettingsRepository:
         store.write(value: hide, key: "app.hideLeaderboardName")
     }
 
+    public func popoverTextSize() -> String {
+        store.read(key: "app.popoverTextSize") ?? "medium"
+    }
+
+    public func setPopoverTextSize(_ size: String) {
+        store.write(value: size, key: "app.popoverTextSize")
+    }
+
     public func notchEnabled() -> Bool {
         store.read(key: "app.notchEnabled") ?? false
     }

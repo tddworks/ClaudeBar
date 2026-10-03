@@ -20,11 +20,11 @@ struct DailyUsageCardView: View {
             HStack(alignment: .top, spacing: 0) {
                 HStack(spacing: 5) {
                     Image(systemName: metric.iconName)
-                        .font(.system(size: 9, weight: .bold))
+                        .popoverFont(9, weight: .bold)
                         .foregroundStyle(metric.color)
 
                     Text((title.map { "\($0) · \(metric.label)" } ?? metric.label).uppercased())
-                        .font(theme.font(size: 8, weight: .medium))
+                        .popoverFont(8, weight: .medium)
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
                 }
@@ -35,20 +35,21 @@ struct DailyUsageCardView: View {
             // Large value display
             HStack(alignment: .firstTextBaseline) {
                 Text(primaryValue)
-                    .font(theme.displayFont(size: 24))
+                Text(primaryValue)
+                    .popoverDisplayFont(24)
                     .foregroundStyle(theme.textPrimary)
 
                 Spacer()
 
                 Text(metric.unitLabel)
-                    .font(theme.font(size: 11, weight: .medium))
+                    .popoverFont(11, weight: .medium)
                     .foregroundStyle(theme.textTertiary)
             }
 
             // Optional subtitle (e.g., cache breakdown for tokens card)
             if let subtitle = subtitleText {
                 Text(subtitle)
-                    .font(theme.font(size: 9, weight: .medium))
+                    .popoverFont(9, weight: .medium)
                     .foregroundStyle(theme.textTertiary)
                     .lineLimit(1)
             }
@@ -69,10 +70,10 @@ struct DailyUsageCardView: View {
             if let deltaText = formattedDelta {
                 HStack(spacing: 3) {
                     Image(systemName: "arrow.triangle.swap")
-                        .font(.system(size: 7))
+                        .popoverFont(7)
 
                     Text(deltaText)
-                        .font(theme.font(size: 8, weight: .medium))
+                        .popoverFont(8, weight: .medium)
                 }
                 .foregroundStyle(deltaColor)
                 .lineLimit(1)

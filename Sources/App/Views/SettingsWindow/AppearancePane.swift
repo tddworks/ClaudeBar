@@ -70,6 +70,19 @@ struct AppearancePane: View {
 
             SettingsCard {
                 SettingsRow(
+                    title: "Popover Text Size",
+                    subtitle: "Scale every label in the menu bar popover. The popover widens to fit."
+                ) {
+                    SettingsSegmentedControl(
+                        options: PopoverTextSize.allCases,
+                        label: { $0.displayLabel },
+                        selection: $settings.popoverTextSize
+                    )
+                }
+            }
+
+            SettingsCard {
+                SettingsRow(
                     title: "Native menu bar icons",
                     subtitle: "Monochrome provider icons adapt to light and dark menu bars. Usage colors stay the same."
                 ) {
