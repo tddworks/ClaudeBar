@@ -27,6 +27,14 @@ public final class QuotaMonitor {
     /// Optional alerter for quota changes (e.g., system notifications)
     private let alerter: (any QuotaAlerter)?
 
+    /// Optional source of the user's below-threshold alert thresholds
+    /// (issue #68). `nil` disables threshold alerting entirely.
+    private let alertThresholds: (any QuotaAlertSettingsRepository)?
+
+    /// Crossing state for the user's thresholds, per provider. Value type on
+    /// purpose: this monitor is `@MainActor`, so the state has one owner.
+    private var thresholdEvaluator = QuotaThresholdAlertEvaluator()
+
     /// Clock for scheduling intervals (injectable for tests)
     private let clock: any Clock
 
@@ -55,12 +63,14 @@ public final class QuotaMonitor {
         providers: any AIProviderRepository,
         alerter: (any QuotaAlerter)? = nil,
         clock: any Clock,
-        powerStateProvider: (any PowerStateProvider)? = nil
+        powerStateProvider: (any PowerStateProvider)? = nil,
+        alertThresholds: (any QuotaAlertSettingsRepository)? = nil
     ) {
         self.providers = providers
         self.alerter = alerter
         self.clock = clock
         self.powerStateProvider = powerStateProvider
+        self.alertThresholds = alertThresholds
         selectFirstEnabledIfNeeded()
     }
 
@@ -108,6 +118,30 @@ public final class QuotaMonitor {
                 providerId: provider.id,
                 previousStatus: previousStatus,
                 currentStatus: newStatus
+            )
+        }
+
+        await alertThresholdCrossings(provider: provider, snapshot: snapshot)
+    }
+
+    /// Evaluates the user's configured below-threshold alerts against the
+    /// refreshed snapshot (issue #68). The worst quota window drives the check:
+    /// if any window is under a threshold, the provider as a whole has crossed.
+    /// The evaluator's hysteresis keeps each threshold to one alert per crossing.
+    private func alertThresholdCrossings(provider: any AIProvider, snapshot: UsageSnapshot) async {
+        guard let alertThresholds, let alerter else { return }
+        let thresholds = alertThresholds.alertThresholds()
+        guard !thresholds.isEmpty, let percent = snapshot.lowestQuota?.percentRemaining else { return }
+
+        for threshold in thresholdEvaluator.crossings(
+            providerId: provider.id,
+            percentRemaining: percent,
+            thresholds: thresholds
+        ) {
+            await alerter.alertThresholdCrossed(
+                providerId: provider.id,
+                percentRemaining: percent,
+                threshold: threshold
             )
         }
     }

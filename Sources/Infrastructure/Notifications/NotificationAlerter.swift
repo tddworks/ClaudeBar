@@ -55,14 +55,34 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
             return
         }
 
+        await sendAlert(
+            providerId: providerId,
+            body: alertBody(for: currentStatus, providerName: providerDisplayName(for: providerId)),
+            categoryIdentifier: "QUOTA_ALERT"
+        )
+    }
+
+    public func alertThresholdCrossed(
+        providerId: String,
+        percentRemaining: Double,
+        threshold: QuotaAlertThreshold
+    ) async {
+        let providerName = providerDisplayName(for: providerId)
+        await sendAlert(
+            providerId: providerId,
+            body: "Your \(providerName) quota fell below \(threshold.displayLabel)% remaining (\(Int(percentRemaining.rounded()))% left).",
+            categoryIdentifier: "QUOTA_THRESHOLD"
+        )
+    }
+
+    private func sendAlert(providerId: String, body: String, categoryIdentifier: String) async {
         let providerName = providerDisplayName(for: providerId)
         let title = "\(providerName) Quota Alert"
-        let body = alertBody(for: currentStatus, providerName: providerName)
 
-        AppLog.notifications.notice("Sending quota alert for \(providerId): \(currentStatus)")
+        AppLog.notifications.notice("Sending quota alert for \(providerId): \(categoryIdentifier)")
 
         do {
-            try await alertSender.send(title: title, body: body, categoryIdentifier: "QUOTA_ALERT")
+            try await alertSender.send(title: title, body: body, categoryIdentifier: categoryIdentifier)
             AppLog.notifications.info("Alert sent successfully")
         } catch {
             AppLog.notifications.error("Failed to send alert: \(error.localizedDescription)")
