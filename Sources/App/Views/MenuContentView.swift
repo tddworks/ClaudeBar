@@ -37,12 +37,6 @@ struct MenuContentView: View {
     @State private var pillsContentWidth: CGFloat = 0
     @State private var pillsViewportWidth: CGFloat = 0
     /// Logins hidden by the account chips — the page's filter, never a pause.
-    /// The popover widens with its text size, so a line that fits at one size
-    /// still fits at the next instead of truncating — see `PopoverContentWidth`.
-    private var popoverWidth: CGFloat {
-        PopoverContentWidth.width(scale: settings.popoverTextSize.textScale)
-    }
-
     @State private var hiddenAccountIds: Set<String> = []
     /// The Leaderboard tab is open in place of a provider.
     @State private var showsLeaderboard = false

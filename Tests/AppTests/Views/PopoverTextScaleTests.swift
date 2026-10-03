@@ -99,4 +99,78 @@ struct PopoverTextScaleTests {
         injected.popoverTextSize = .large
         #expect(injected.popoverTextSize == .large)
     }
+
+    // MARK: - The Font The Modifier Actually Resolves
+
+    @Test
+    func `the modifier resolves 8pt at Default`() {
+        // `body` hands `pointSize(at:)` straight to `Font.system`, so this is
+        // the size the popover's 8pt card labels are drawn at when nobody has
+        // chosen a text size.
+        let modifier = PopoverFontModifier(size: 8, weight: .medium, design: .default)
+        #expect(isClose(modifier.pointSize(at: .medium), 8))
+    }
+
+    @Test
+    func `the modifier resolves the 8pt card label to 11.2pt at Extra Large`() {
+        // The reporter's own example (#364): the SESSION / WEEKLY label was 8pt
+        // and unreadable. This is the size that fixes it.
+        let modifier = PopoverFontModifier(size: 8, weight: .medium, design: .default)
+        #expect(isClose(modifier.pointSize(at: .extraLarge), 11.2))
+        #expect(isClose(modifier.pointSize(at: .large), 9.6))
+    }
+
+    @Test
+    func `the modifier passes the requested size through unscaled at Default`() {
+        // Every size the popover names, so a wrong default cannot quietly move
+        // the whole popover.
+        let sizes: [CGFloat] = [7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 26, 28, 36]
+        for size in sizes {
+            #expect(isClose(PopoverFontModifier(size: size, weight: nil, design: nil).pointSize(at: .medium), size))
+        }
+    }
+
+    // MARK: - What The Popover Actually Draws
+
+    @Test @MainActor
+    func `the rendered card label grows with the popover text size`() throws {
+        // The two assertions above are arithmetic on the Domain type; this one
+        // renders the real modifier. If `body` stopped reading the environment
+        // — the bug #364 reports, shipped as `size` instead of
+        // `pointSize(at:)` — both renders come out identical and this fails.
+        let normal = try #require(renderedSize(of: SessionLabelProbe(textSize: .medium)))
+        let large = try #require(renderedSize(of: SessionLabelProbe(textSize: .large)))
+        let extraLarge = try #require(renderedSize(of: SessionLabelProbe(textSize: .extraLarge)))
+
+        #expect(large.width > normal.width)
+        #expect(extraLarge.width > large.width)
+        #expect(extraLarge.height >= normal.height)
+        // 1.4x is the claim; glyph advances quantise, so ask for a quarter more
+        // rather than the exact factor. Unscaled text scores 1.0 here.
+        #expect(Double(extraLarge.width) > 1.25 * Double(normal.width))
+    }
+}
+
+// MARK: - Rendering Probe
+
+/// The reporter's own example, rendered the way the popover renders it: the
+/// 8pt SESSION card label with the popover's text size in the environment.
+private struct SessionLabelProbe: View {
+    let textSize: PopoverTextSize
+
+    var body: some View {
+        Text("SESSION")
+            .popoverFont(8, weight: .medium, design: .default)
+            .environment(\.popoverTextSize, textSize)
+    }
+}
+
+/// The drawn size of a view, in points at a 1:1 scale so the numbers do not
+/// depend on the machine's backing scale.
+@MainActor
+private func renderedSize<V: View>(of view: V) -> CGSize? {
+    let renderer = ImageRenderer(content: view)
+    renderer.scale = 1
+    guard let image = renderer.cgImage else { return nil }
+    return CGSize(width: image.width, height: image.height)
 }
