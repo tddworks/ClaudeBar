@@ -76,6 +76,7 @@ struct ClaudeBarApp: App {
         // - AppSettingsRepository (app-level display/sync settings)
         // - ProviderSettingsRepository + all provider sub-protocols
         // - HookSettingsRepository
+        // - QuotaAlertSettingsRepository (below-threshold alert thresholds)
         let settingsRepository = JSONSettingsRepository.shared
 
         // Create all providers with their probes (rich domain models)
@@ -157,10 +158,13 @@ struct ClaudeBarApp: App {
         AppLog.providers.info("Created \(repository.all.count) providers")
 
         // Initialize the domain service with quota alerter
-        // QuotaMonitor automatically validates selected provider on init
+        // QuotaMonitor automatically validates selected provider on init.
+        // The shared settings repository also supplies the user's configured
+        // below-threshold alert thresholds (issue #68).
         let monitor = QuotaMonitor(
             providers: repository,
-            alerter: quotaAlerter
+            alerter: quotaAlerter,
+            alertThresholds: settingsRepository
         )
         self.monitor = monitor
         AppLog.monitor.info("QuotaMonitor initialized")

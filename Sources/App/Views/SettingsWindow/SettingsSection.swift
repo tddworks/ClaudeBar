@@ -39,7 +39,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .appearance: ["theme", "dark", "light", "cli", "christmas", "import", "color", "contrast", "status", "high contrast"]
         case .menuBar: ["percentage", "duration", "quota display", "stacked", "status bar"]
         case .providers: ["claude", "codex", "gemini", "copilot", "zai", "bedrock", "kimi", "minimax", "enable"]
-        case .syncAlerts: ["background", "refresh", "interval", "notification"]
+        case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "threshold", "quota alert"]
         case .hooks: ["claude code", "session", "install"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
         case .updates: ["sparkle", "beta", "version", "check"]

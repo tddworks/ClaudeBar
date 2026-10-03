@@ -309,6 +309,17 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Quota Alert Threshold Settings
+
+    /// Remaining-percentage thresholds that fire a notification when the worst
+    /// quota window falls below them (issue #68). Empty by default: the fixed
+    /// status-level alerts (warning/critical/depleted) work regardless.
+    public var alertThresholds: [Double] {
+        didSet {
+            repository.setAlertThresholds(alertThresholds.map(QuotaAlertThreshold.init(percent:)))
+        }
+    }
+
     // MARK: - Status Color Settings
 
     /// Per-status user colors; nil defers to High Contrast, then the theme.
@@ -386,6 +397,7 @@ public final class AppSettings {
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
+        self.alertThresholds = repository.alertThresholds().map(\.percent)
         self.statusColorOverrides = repository.statusColorOverrides()
         self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
@@ -466,6 +478,7 @@ public final class AppSettings {
     public var vercel: VercelSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
     public var notify: NotifySettingsRepository { repository }
+    public var quotaAlerts: QuotaAlertSettingsRepository { repository }
 
     /// Extension config repository for dynamic extension provider settings.
     public let extensionConfig: any ExtensionConfigRepository = JSONExtensionConfigRepository(
