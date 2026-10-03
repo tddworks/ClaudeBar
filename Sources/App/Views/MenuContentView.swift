@@ -20,6 +20,10 @@ struct MenuContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(NewSessions.self) private var newSessions
+    /// The user's Text Size choice, injected where the popover is hosted. The
+    /// popover's fonts and its width both resolve against this value, so they
+    /// can never disagree about how big the popover is.
+    @Environment(\.popoverTextSize) private var popoverTextSize
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
@@ -220,8 +224,11 @@ struct MenuContentView: View {
     /// The popover widens with its text size, so a line that fits at one size
     /// still fits at the next instead of truncating — see
     /// `PopoverContentWidth`.
+    ///
+    /// Read from the environment, like every `popoverFont` in the popover: the
+    /// frame and the text must never resolve to different sizes.
     private var popoverWidth: CGFloat {
-        PopoverContentWidth.width(scale: settings.popoverTextSize.textScale)
+        popoverTextSize.popoverWidth
     }
 
     // MARK: - Keyboard Shortcuts

@@ -72,9 +72,20 @@ struct PopoverTextScaleTests {
     func `each size widens the popover in step with its text`() {
         // Text and width move together so nothing that fits today truncates at
         // a larger size.
-        #expect(PopoverContentWidth.width(scale: PopoverTextSize.medium.textScale) == 400)
-        #expect(PopoverContentWidth.width(scale: PopoverTextSize.large.textScale) == 480)
-        #expect(PopoverContentWidth.width(scale: PopoverTextSize.extraLarge.textScale) == 560)
+        #expect(PopoverTextSize.medium.popoverWidth == 400)
+        #expect(PopoverTextSize.large.popoverWidth == 480)
+        #expect(PopoverTextSize.extraLarge.popoverWidth == 560)
+    }
+
+    @Test
+    func `every size above Default is wider than the old fixed 400 points`() {
+        // The popover used to hardcode `.frame(width: 400)`. If the width ever
+        // stops following the policy again, the two larger sizes draw their
+        // 1.2x / 1.4x text inside a window sized for 1.0x and everything
+        // truncates.
+        #expect(PopoverContentWidth.base == 400)
+        #expect(PopoverTextSize.large.popoverWidth != PopoverContentWidth.base)
+        #expect(PopoverTextSize.extraLarge.popoverWidth != PopoverContentWidth.base)
     }
 
     // MARK: - The Environment Value

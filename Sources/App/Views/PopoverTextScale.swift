@@ -21,6 +21,15 @@ extension PopoverTextSize {
     func scaled(_ size: CGFloat) -> CGFloat {
         size * textScale
     }
+
+    /// The width the popover draws at: text and window in step, so a line that
+    /// fits at one size still fits at the next.
+    ///
+    /// Read from the same environment value as the fonts, so the frame can
+    /// never size the window for a different size than the one it draws in.
+    var popoverWidth: CGFloat {
+        PopoverContentWidth.width(scale: textScale)
+    }
 }
 
 // MARK: - Popover Text Size Environment Key
