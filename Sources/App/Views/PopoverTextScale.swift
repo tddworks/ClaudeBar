@@ -84,11 +84,16 @@ struct PopoverFontModifier: ViewModifier {
 extension View {
     /// Popover text at `size` points, scaled by the user's Text Size setting.
     ///
-    /// Every font drawn inside the popover goes through here, not just the quota
+    /// Every font carrying popover content goes through here, not just the quota
     /// cards: the header and provider pills, the session and cost cards, the
     /// embedded web card, and the share-pass overlays that cover the whole
-    /// popover. A font left behind here is a font that stays 8pt at Extra Large
-    /// and puts the setting half-applied.
+    /// popover. A content font left behind here stays 8pt at Extra Large and
+    /// leaves the setting half-applied.
+    ///
+    /// The one exception is `ProviderIconView`'s fallback glyph — the question
+    /// mark drawn when a provider has no icon asset. It does not scale, because
+    /// the circular badge it sits in is a fixed frame and a larger glyph would
+    /// overflow it. It is decoration, not text anyone reads.
     ///
     /// ## Usage
     /// ```swift
