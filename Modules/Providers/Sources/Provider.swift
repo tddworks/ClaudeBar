@@ -188,7 +188,7 @@ public final class Provider {
         let sources = (try? sources(for: [:], isDefault: true)) ?? running.dataSources
         return ProviderDefinition(profile: running.profile, cli: running.cli, enabledByDefault: running.enabledByDefault,
                                   dataSources: sources, defaultDataSource: running.defaultDataSource,
-                                  accounts: running.accounts, settings: running.settings)
+                                  accounts: running.accounts, settings: running.settings, usageHistory: running.usageHistory)
     }
 
     /// Every `{{setting.x}}` a login's data sources are filled with.

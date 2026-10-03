@@ -50,7 +50,7 @@ The key principle is **QuotaMonitor as Single Source of Truth** - all provider s
 
 INFRASTRUCTURE (implements the ports and repositories the app wires in):
   JSONSettingsRepository (+ compatibility tables), ProviderVault (Keychain),
-  NotificationAlerter, hooks, ClaudeDailyUsageAnalyzer, VibeSessionLogAnalyzer
+  NotificationAlerter, hooks, VibeSessionLogAnalyzer (until UH3)
 ```
 
 ## Key Design Principles

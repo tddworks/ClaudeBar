@@ -86,7 +86,10 @@ public enum Providers {
                                  environment: environment, cloudWatch: cloudWatch, priceCatalog: priceCatalog)
             },
             guestPasses: guestPasses,
-            usageHistory: usageHistory,
+            // The definition says how to read the default login's logs.
+            usageHistory: usageHistory ?? definition.usageHistory.map {
+                UsageHistory(log: DataSources.makeUsageLog($0, scripts: builtInScripts, environment: environment))
+            },
             vault: secrets
         )
     }

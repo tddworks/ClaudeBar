@@ -111,11 +111,6 @@ struct ClaudeBarApp: App {
             // Guest passes run the same Claude CLI, at its CLI location (#210).
             guestPasses: GuestPasses(source: ClaudeGuestPassSource(
                 claudeBinary: { settingsRepository.cliPath(forProvider: "claude") ?? "claude" }
-            )),
-            // Today's usage, from the default login's own session logs
-            // (#190 keeps loopback inference free).
-            usageHistory: UsageHistory(analyzer: ClaudeDailyUsageAnalyzer(
-                isLocallyServed: { ClaudeLocalInferenceDetector.isLocallyServed() }
             ))
         )
         // Codex is data: Modules/Providers/Resources/Providers/codex.json — the
