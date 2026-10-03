@@ -3,7 +3,8 @@ import Domain
 
 /// Unified JSON-backed settings repository.
 /// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols) + HookSettingsRepository + NotifySettingsRepository.
+/// (including all sub-protocols) + HookSettingsRepository + NotifySettingsRepository +
+/// QuotaAlertSettingsRepository.
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
 /// Vercel and Notify! credentials use the injected secure store; legacy provider
