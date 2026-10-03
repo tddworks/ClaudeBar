@@ -131,6 +131,17 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
+    func `setClaudeProbeMode persists localFile value`() {
+        // Issue #198: the Local File mode for Claude Desktop users persists
+        // like the other modes — the raw String storage needs no change.
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setClaudeProbeMode(.localFile)
+        #expect(repo.claudeProbeMode() == .localFile)
+    }
+
+    @Test
     func `claudeCliFallbackEnabled defaults to true`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

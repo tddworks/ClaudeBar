@@ -96,6 +96,65 @@ struct ClaudeConfigSpec {
         }
 
         @Test
+        func `probe mode persists across repository instances for localFile`() {
+            // Issue #198: Local File mode survives app restarts like the
+            // other modes.
+            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+
+            settings.setClaudeProbeMode(.localFile)
+            let reloaded = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+
+            #expect(reloaded.claudeProbeMode() == .localFile)
+        }
+
+        @Test
+        func `switching to localFile mode uses the file probe`() async throws {
+            // Given — Claude Desktop user with no CLI/API data; the Local
+            // File probe reads today's token count from buddy-tokens.json.
+            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+            settings.setEnabled(true, forProvider: "claude")
+            settings.setClaudeProbeMode(.localFile)
+
+            let cliProbe = MockUsageProbe()
+            given(cliProbe).probe().willReturn(UsageSnapshot(
+                providerId: "claude",
+                quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
+                capturedAt: Date()
+            ))
+
+            let fileSnapshot = UsageSnapshot(
+                providerId: "claude",
+                quotas: [],
+                capturedAt: Date(),
+                extensionMetrics: [ExtensionMetric(label: "Tokens Today", value: "74,422", unit: "tokens")]
+            )
+            let fileProbe = MockUsageProbe()
+            given(fileProbe).probe().willReturn(fileSnapshot)
+
+            let claude = ClaudeProvider(
+                cliProbe: cliProbe,
+                apiProbe: MockUsageProbe(),
+                fileProbe: fileProbe,
+                settingsRepository: settings
+            )
+
+            let monitor = QuotaMonitor(
+                providers: AIProviders(providers: [claude]),
+                clock: TestClock()
+            )
+            await monitor.refresh(providerId: "claude")
+
+            // Then — the file metric is shown, not a CLI quota percentage
+            #expect(claude.snapshot?.quotas.isEmpty == true)
+            #expect(claude.snapshot?.extensionMetrics?.first?.label == "Tokens Today")
+            #expect(claude.snapshot?.extensionMetrics?.first?.value == "74,422")
+        }
+
+        @Test
         func `api mode falls back to CLI when OAuth API is unavailable`() async throws {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!

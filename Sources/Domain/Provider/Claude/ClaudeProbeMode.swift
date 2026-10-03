@@ -1,7 +1,7 @@
 import Foundation
 
 /// The mode used by ClaudeProvider to fetch usage data.
-/// Users can switch between CLI (default) and API modes in Settings.
+/// Users can switch between CLI (default), API, and Local File modes in Settings.
 public enum ClaudeProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Use the Claude CLI (`claude /usage`) to fetch usage data.
     /// This is the default mode and works without additional configuration.
@@ -12,6 +12,14 @@ public enum ClaudeProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Faster than CLI mode as it doesn't spawn a subprocess.
     case api
 
+    /// Read the daily token counter that Claude Desktop maintains at
+    /// `~/Library/Application Support/Claude/buddy-tokens.json` (issue #198).
+    /// Best-effort by design: the file is an implementation detail of Claude
+    /// Desktop with no stability guarantee, and it only carries today's total
+    /// token count — no session/weekly windows or caps. Works for users who
+    /// have Claude Desktop but no Claude Code CLI.
+    case localFile
+
     /// Human-readable display name for the mode
     public var displayName: String {
         switch self {
@@ -19,6 +27,8 @@ public enum ClaudeProbeMode: String, Sendable, Equatable, CaseIterable {
             return "CLI"
         case .api:
             return "API"
+        case .localFile:
+            return "Local File"
         }
     }
 
@@ -29,6 +39,8 @@ public enum ClaudeProbeMode: String, Sendable, Equatable, CaseIterable {
             return "Uses claude /usage command"
         case .api:
             return "Calls Anthropic API directly"
+        case .localFile:
+            return "Reads Claude Desktop's buddy-tokens.json (best-effort)"
         }
     }
 }

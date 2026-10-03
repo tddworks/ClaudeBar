@@ -85,6 +85,7 @@ struct ClaudeBarApp: App {
             ClaudeProvider(
                 cliProbe: ClaudeUsageProbe(),
                 apiProbe: ClaudeAPIUsageProbe(),
+                fileProbe: ClaudeDesktopFileUsageProbe(),
                 passProbe: ClaudePassProbe(),
                 settingsRepository: settingsRepository,
                 dailyUsageAnalyzer: ClaudeDailyUsageAnalyzer()

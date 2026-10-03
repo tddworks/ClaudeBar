@@ -169,6 +169,23 @@ struct ClaudeConfigCard: View {
                             .foregroundStyle(theme.textTertiary)
                     }
                 }
+
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 10))
+                        .foregroundStyle(claudeProbeMode == .localFile ? theme.accentPrimary : theme.textTertiary)
+                        .frame(width: 16)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Local File Mode")
+                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(claudeProbeMode == .localFile ? theme.textPrimary : theme.textSecondary)
+
+                        Text("Best-effort: reads today's token count from Claude Desktop's buddy-tokens.json. Shows daily tokens only, no quota windows.")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
             }
 
             if claudeProbeMode == .api {

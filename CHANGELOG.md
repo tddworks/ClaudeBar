@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New **Local File** probe mode for Claude: reads today's token count from Claude Desktop's `buddy-tokens.json`, so you can track usage without the Claude Code CLI. Best-effort: daily tokens only, and data that isn't from today is never shown. ([#198](https://github.com/tddworks/ClaudeBar/issues/198))
+
 ### Fixed
 - `claudebar://open` now opens the popover and `claudebar://refresh` refreshes, instead of both opening the Settings window. Also fixes tapping the Touch Bar widget. https://github.com/tddworks/ClaudeBar/pull/310
 - Touch Bar gauges now colour by their quota's status. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.

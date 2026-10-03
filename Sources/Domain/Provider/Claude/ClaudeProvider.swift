@@ -72,11 +72,12 @@ public final class ClaudeProvider: AIProvider {
     /// floored at 15 min to match `ClaudeAPIUsageProbe`'s snapshot-cache TTL:
     /// polling faster only re-serves the cache (or, once expired, risks 429s),
     /// so there's no benefit to a tighter background cadence (issue #204). CLI
-    /// mode keeps the user's chosen interval (no floor).
+    /// mode keeps the user's chosen interval (no floor), and so does Local
+    /// File mode — reading buddy-tokens.json is a cheap local file read.
     public var backgroundRefreshFloor: Duration? {
         switch probeMode {
         case .api: return .seconds(900)
-        case .cli: return nil
+        case .cli, .localFile: return nil
         }
     }
 
@@ -87,6 +88,10 @@ public final class ClaudeProvider: AIProvider {
 
     /// The API probe for fetching usage data via HTTP API (optional)
     private let apiProbe: (any UsageProbe)?
+
+    /// The Local File probe for fetching Claude Desktop's daily token count
+    /// from buddy-tokens.json (optional, issue #198)
+    private let fileProbe: (any UsageProbe)?
 
     /// The probe used to fetch guest pass data
     private let passProbe: (any ClaudePassProbing)?
@@ -105,6 +110,10 @@ public final class ClaudeProvider: AIProvider {
         case .api:
             // Fall back to CLI if API probe not available
             return apiProbe ?? cliProbe
+        case .localFile:
+            // Fall back to CLI if the file probe was never injected (legacy
+            // initializer) so the provider stays functional.
+            return fileProbe ?? cliProbe
         }
     }
 
@@ -123,6 +132,7 @@ public final class ClaudeProvider: AIProvider {
     ) {
         self.cliProbe = probe
         self.apiProbe = nil
+        self.fileProbe = nil
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
         self.dailyUsageAnalyzer = dailyUsageAnalyzer
@@ -134,17 +144,21 @@ public final class ClaudeProvider: AIProvider {
     /// - Parameters:
     ///   - cliProbe: The CLI probe for fetching usage via `claude /usage`
     ///   - apiProbe: The API probe for fetching usage via HTTP API
+    ///   - fileProbe: The Local File probe for fetching Claude Desktop's daily
+    ///     token count from buddy-tokens.json (optional, issue #198)
     ///   - passProbe: The probe to use for fetching guest pass data (optional)
     ///   - settingsRepository: The repository for persisting settings (must be ClaudeSettingsRepository for mode switching)
     public init(
         cliProbe: any UsageProbe,
         apiProbe: any UsageProbe,
+        fileProbe: (any UsageProbe)? = nil,
         passProbe: (any ClaudePassProbing)? = nil,
         settingsRepository: any ClaudeSettingsRepository,
         dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil
     ) {
         self.cliProbe = cliProbe
         self.apiProbe = apiProbe
+        self.fileProbe = fileProbe
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
         self.dailyUsageAnalyzer = dailyUsageAnalyzer
@@ -170,6 +184,13 @@ public final class ClaudeProvider: AIProvider {
             }
             guard cliFallbackEnabled else { return false }
             return await cliProbe.isAvailable()
+        case .localFile:
+            // File mode answers for the file alone: it exists precisely for
+            // users without the CLI, so CLI availability is irrelevant here.
+            guard let fileProbe else {
+                return await cliProbe.isAvailable()
+            }
+            return await fileProbe.isAvailable()
         }
     }
 
@@ -275,6 +296,8 @@ public final class ClaudeProvider: AIProvider {
             return cliProbe
         case .api:
             return apiProbe ?? cliProbe
+        case .localFile:
+            return fileProbe ?? cliProbe
         }
     }
 
@@ -293,6 +316,13 @@ public final class ClaudeProvider: AIProvider {
         case .api:
             guard cliFallbackEnabled else { return nil }
             return await cliProbe.isAvailable() ? cliProbe : nil
+        case .localFile:
+            // No cross-fallback: the file reports daily token totals while
+            // CLI/API report five-hour/weekly windows. Substituting one for
+            // the other would present the wrong semantic as if it were the
+            // user's chosen data, so a failing file probe surfaces its error
+            // (issue #198).
+            return nil
         }
     }
 

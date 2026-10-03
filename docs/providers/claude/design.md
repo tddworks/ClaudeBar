@@ -13,6 +13,7 @@ Contributor notes for the Claude provider. For setup, see the [README](README.md
 | Account identity | `~/.claude.json` → `oauthAccount` (email, display name, `billingType`) | CLI v2.1.79+ moved account details to a separate Status tab |
 | Guest passes | `claude /passes`, which copies the link to the clipboard | Max only (#243) |
 | Daily usage | `~/.claude/projects/*/*.jsonl` | Deduplicated by `(message.id, requestId)`, because Claude Code writes the same usage more than once |
+| Local File mode | `~/Library/Application Support/Claude/buddy-tokens.json` → `{"tokens-today": {"date": "YYYY-MM-DD", "tokens": N}}` | Claude Desktop's daily token counter (#198). Injected as `ClaudeDesktopFileUsageProbe`; tests pass a temp `claudeDir`/`calendar`/`now`, never the real home path |
 
 ## Fallback chain
 
@@ -21,7 +22,15 @@ Contributor notes for the Claude provider. For setup, see the [README](README.md
 - **CLI → API**: when the API probe has credentials. This recovers from `/usage` parse failures and from subscriptions the CLI can't see.
 - **API → CLI**: only while `claude.cliFallbackEnabled` is on (the default). Users asked for an off switch because running the CLI in the background can cause prompts (e.g. SSH keys).
 - **Never after `ProbeError.rateLimited`.** The CLI uses the same backend, so falling back only makes the throttling worse.
+- **Local File → nothing.** buddy-tokens.json is a daily token total while CLI/API report five-hour/weekly windows; swapping probes would present the wrong semantic as the user's chosen data. A failing file probe surfaces its error, and `isAvailable` answers for the file alone — CLI/API availability is irrelevant in this mode (#198).
 - **Both fail**: report the *primary* error. The fallback's error is incidental and would send users after the wrong problem.
+
+## Local File mode (buddy-tokens.json)
+
+- `ClaudeProbeMode.localFile` persists as the raw value `"localFile"` through the existing String storage; unknown stored values still fall back to `.cli`.
+- The probe maps the daily total to an `ExtensionMetric` card ("Tokens Today"), not a `UsageQuota` — there is no cap, so a percentage would be a lie. `quotas` stays empty, which keeps the menu bar (percentage-based) honest; the popover renders the metric card.
+- Defensive parsing per the maintainer's requirements on #198: missing/unreadable file → `.noData`; invalid JSON, missing `tokens-today`/`tokens`/`date`, negative tokens, or an unparseable date → `.parseFailed` with a structural reason (never file contents); a `date` that isn't the user's **local** calendar day (via the injected `Calendar`) → `.noData`, so stale data never renders as today's usage. File contents are never logged — the file log has no redaction.
+- `backgroundRefreshFloor` is `nil` in Local File mode: reading a small local file is cheap.
 
 ## CLI screen parsing
 
