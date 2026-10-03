@@ -21,6 +21,7 @@ public final class JSONSettingsRepository:
     VercelSettingsRepository,
     HookSettingsRepository,
     NotifySettingsRepository,
+    QuotaAlertSettingsRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -571,6 +572,19 @@ public final class JSONSettingsRepository:
 
     public func setHookPort(_ port: Int) {
         store.write(value: port, key: "hook.port")
+    }
+
+    // MARK: - QuotaAlertSettingsRepository
+
+    /// Percentages only — the threshold type's clamping is the single place
+    /// boundaries are normalized, so the file stores plain doubles.
+    public func alertThresholds() -> [QuotaAlertThreshold] {
+        let stored: [Double] = store.read(key: "alerts.thresholds") ?? []
+        return stored.map(QuotaAlertThreshold.init(percent:))
+    }
+
+    public func setAlertThresholds(_ thresholds: [QuotaAlertThreshold]) {
+        store.write(value: thresholds.map(\.percent), key: "alerts.thresholds")
     }
 
     // MARK: - NotifySettingsRepository
