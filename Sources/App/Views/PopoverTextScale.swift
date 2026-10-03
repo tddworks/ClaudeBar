@@ -67,6 +67,12 @@ private struct PopoverFontModifier: ViewModifier {
 extension View {
     /// Popover text at `size` points, scaled by the user's Text Size setting.
     ///
+    /// Every font drawn inside the popover goes through here, not just the quota
+    /// cards: the header and provider pills, the session and cost cards, the
+    /// embedded web card, and the share-pass overlays that cover the whole
+    /// popover. A font left behind here is a font that stays 8pt at Extra Large
+    /// and puts the setting half-applied.
+    ///
     /// ## Usage
     /// ```swift
     /// Text("SESSION")

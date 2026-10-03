@@ -15,11 +15,11 @@ struct CustomWebCardView: View {
             // Header with link icon and domain
             HStack(spacing: 5) {
                 Image(systemName: "globe")
-                    .font(.system(size: 9, weight: .bold))
+                    .popoverFont(9, weight: .bold)
                     .foregroundStyle(theme.accentPrimary)
 
                 Text(url.host ?? url.absoluteString)
-                    .font(theme.font(size: 9, weight: .bold))
+                    .popoverFont(9, weight: .bold)
                     .foregroundStyle(theme.textSecondary)
                     .textCase(.uppercase)
                     .lineLimit(1)
@@ -31,7 +31,7 @@ struct CustomWebCardView: View {
                     NSWorkspace.shared.open(url)
                 } label: {
                     Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 10))
+                        .popoverFont(10)
                         .foregroundStyle(theme.textTertiary)
                 }
                 .buttonStyle(.plain)

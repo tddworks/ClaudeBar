@@ -24,11 +24,11 @@ struct SharePassOverlay: View {
                 // Header
                 HStack {
                     Image(systemName: "gift.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .popoverFont(16, weight: .semibold)
                         .foregroundStyle(theme.accentPrimary)
 
                     Text("Share Claude Code")
-                        .font(theme.font(size: 14, weight: .bold))
+                        .popoverFont(14, weight: .bold)
                         .foregroundStyle(theme.textPrimary)
 
                     Spacer()
@@ -37,7 +37,7 @@ struct SharePassOverlay: View {
                         onDismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
+                            .popoverFont(18)
                             .foregroundStyle(theme.textTertiary)
                     }
                     .buttonStyle(.plain)
@@ -46,7 +46,7 @@ struct SharePassOverlay: View {
                 // Referral Link
                 HStack(spacing: 8) {
                     Text(pass.referralURL.absoluteString)
-                        .font(theme.font(size: 11, weight: .medium))
+                        .popoverFont(11, weight: .medium)
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -57,7 +57,7 @@ struct SharePassOverlay: View {
                         copyToClipboard()
                     } label: {
                         Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc.fill")
-                            .font(.system(size: 14))
+                            .popoverFont(14)
                             .foregroundStyle(copied ? theme.statusHealthy : theme.accentPrimary)
                     }
                     .buttonStyle(.plain)
@@ -75,9 +75,9 @@ struct SharePassOverlay: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: 11, weight: .semibold))
+                                .popoverFont(11, weight: .semibold)
                             Text(copied ? "Copied!" : "Copy Link")
-                                .font(theme.font(size: 11, weight: .medium))
+                                .popoverFont(11, weight: .medium)
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
@@ -96,9 +96,9 @@ struct SharePassOverlay: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "safari")
-                                .font(.system(size: 11, weight: .semibold))
+                                .popoverFont(11, weight: .semibold)
                             Text("Open")
-                                .font(theme.font(size: 11, weight: .medium))
+                                .popoverFont(11, weight: .medium)
                         }
                         .foregroundStyle(theme.textPrimary)
                         .padding(.horizontal, 14)
@@ -117,7 +117,7 @@ struct SharePassOverlay: View {
 
                 // Help text
                 Text("Share a free week of Claude Code with friends")
-                    .font(theme.font(size: 10, weight: .semibold))
+                    .popoverFont(10, weight: .semibold)
                     .foregroundStyle(theme.textTertiary)
             }
             .padding(16)
@@ -177,11 +177,11 @@ struct SharePassErrorOverlay: View {
             VStack(spacing: 12) {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .popoverFont(16, weight: .semibold)
                         .foregroundStyle(theme.statusCritical)
 
                     Text("Couldn't Get Invitation Link")
-                        .font(theme.font(size: 14, weight: .bold))
+                        .popoverFont(14, weight: .bold)
                         .foregroundStyle(theme.textPrimary)
 
                     Spacer()
@@ -190,20 +190,20 @@ struct SharePassErrorOverlay: View {
                         onDismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
+                            .popoverFont(18)
                             .foregroundStyle(theme.textTertiary)
                     }
                     .buttonStyle(.plain)
                 }
 
                 Text(message)
-                    .font(theme.font(size: 11, weight: .medium))
+                    .popoverFont(11, weight: .medium)
                     .foregroundStyle(theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text("Invitation links are only available on Claude Max plans.")
-                    .font(theme.font(size: 10, weight: .semibold))
+                    .popoverFont(10, weight: .semibold)
                     .foregroundStyle(theme.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
