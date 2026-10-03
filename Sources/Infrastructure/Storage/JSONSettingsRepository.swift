@@ -172,6 +172,14 @@ public final class JSONSettingsRepository:
         store.write(value: show, key: "app.showDailyUsageCards")
     }
 
+    public func popoverTextSize() -> String {
+        store.read(key: "app.popoverTextSize") ?? "medium"
+    }
+
+    public func setPopoverTextSize(_ size: String) {
+        store.write(value: size, key: "app.popoverTextSize")
+    }
+
     public func hideAccountEmail() -> Bool {
         store.read(key: "app.hideAccountEmail") ?? false
     }

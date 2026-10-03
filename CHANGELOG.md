@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Settings → Appearance → Popover Text Size makes the popover's card titles, reset countdowns and "Updated just now" up to 1.4× bigger, and widens the window so nothing truncates. ([#364](https://github.com/tddworks/ClaudeBar/issues/364))
 - Show Provider Logo (Settings → Menu Bar) starts the menu bar readout with the provider's logo even when it's the only one. Off by default. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Pop theme: cream dotted paper, thick ink outlines, hard shadows, candy-coloured status and chunky numbers, with each menu-bar quota as a candy chip. Pick it in Settings → Appearance. ([#435](https://github.com/tddworks/ClaudeBar/pull/435))
 - Hide account emails: the eye beside the account in the popover, or Settings → Menu Bar → Hide Account Emails, masks emails as s•••@g•••.com in the popover and menu bar, and remembers it. ([#375](https://github.com/tddworks/ClaudeBar/issues/375))

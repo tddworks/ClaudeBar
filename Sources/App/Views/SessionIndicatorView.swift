@@ -23,11 +23,11 @@ struct SessionIndicatorView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text("Claude Code")
-                        .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                        .popoverFont(11, weight: .semibold, design: theme.fontDesign)
                         .foregroundStyle(theme.textPrimary)
 
                     Text(phaseLabel)
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(9, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(phaseLabelColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -40,25 +40,25 @@ struct SessionIndicatorView: View {
                 HStack(spacing: 8) {
                     if session.completedTaskCount > 0 {
                         Label("\(session.completedTaskCount) tasks", systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(9, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(theme.textSecondary)
                     }
 
                     if session.activeSubagentCount > 0 {
                         Label("\(session.activeSubagentCount) agents", systemImage: "person.2.fill")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(9, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(theme.textSecondary)
                     }
 
                     Text(session.durationDescription)
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(9, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textTertiary)
 
                     Spacer()
 
                     // Working directory (last path component)
                     Text(cwdShort)
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(9, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textTertiary)
                         .lineLimit(1)
                 }

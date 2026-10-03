@@ -18,12 +18,12 @@ struct ExtensionMetricCardView: View {
                 HStack(spacing: 5) {
                     if let iconName = metric.icon {
                         Image(systemName: iconName)
-                            .font(.system(size: 9, weight: .bold))
+                            .popoverFont(9, weight: .bold)
                             .foregroundStyle(accentColor)
                     }
 
                     Text(metric.label.uppercased())
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(8, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
                 }
@@ -34,7 +34,7 @@ struct ExtensionMetricCardView: View {
             // Large value display
             HStack(alignment: .firstTextBaseline) {
                 Text(metric.value)
-                    .font(theme.displayFont(size: 24))
+                    .popoverDisplayFont(size: 24, theme: theme)
                     .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -42,7 +42,7 @@ struct ExtensionMetricCardView: View {
                 Spacer()
 
                 Text(metric.unit)
-                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(11, weight: .medium, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -72,10 +72,10 @@ struct ExtensionMetricCardView: View {
             if let delta = metric.delta {
                 HStack(spacing: 3) {
                     Image(systemName: "arrow.triangle.swap")
-                        .font(.system(size: 7))
+                        .popoverFont(7)
 
                     Text(deltaText(delta))
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(8, weight: .medium, design: theme.fontDesign)
                 }
                 .foregroundStyle(theme.textTertiary)
                 .lineLimit(1)

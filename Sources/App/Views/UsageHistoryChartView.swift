@@ -73,20 +73,20 @@ struct UsageHistoryChartView: View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 5) {
                 Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 9, weight: .bold))
+                    .popoverFont(9, weight: .bold)
                     .foregroundStyle(colors[0])
                 Text("DAILY USAGE — LAST 30 DAYS")
-                    .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(8, weight: .medium, design: theme.fontDesign)
                     .foregroundStyle(theme.textSecondary)
                     .tracking(0.3)
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 1) {
                 Text(headline)
-                    .font(theme.displayFont(size: 13))
+                    .popoverDisplayFont(size: 13, theme: theme)
                     .foregroundStyle(theme.textPrimary)
                 Text(caption)
-                    .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(8, weight: .medium, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
             }
         }
@@ -98,7 +98,7 @@ struct UsageHistoryChartView: View {
             withAnimation(.easeInOut(duration: 0.2)) { measure = choice }
         } label: {
             Text(choice.rawValue)
-                .font(.system(size: 9, weight: isOn ? .bold : .medium, design: theme.fontDesign))
+                .popoverFont(9, weight: isOn ? .bold : .medium, design: theme.fontDesign)
                 .foregroundStyle(isOn ? theme.textPrimary : theme.textTertiary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -117,7 +117,7 @@ struct UsageHistoryChartView: View {
                     HStack(spacing: 3) {
                         Circle().fill(color).frame(width: 5, height: 5)
                         Text(kind)
-                            .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(8, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(theme.textTertiary)
                     }
                 }
@@ -200,7 +200,7 @@ struct UsageHistoryChartView: View {
         .chartXAxis {
             AxisMarks(values: .stride(by: .day, count: 7)) { _ in
                 AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
-                    .font(.system(size: 7, design: theme.fontDesign))
+                    .popoverFont(7, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
             }
         }
@@ -210,7 +210,7 @@ struct UsageHistoryChartView: View {
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
                         Text(measure == .cost ? Self.money(Decimal(amount), whole: true) : Self.count(Int(amount)))
-                            .font(.system(size: 7, design: theme.fontDesign))
+                            .popoverFont(7, design: theme.fontDesign)
                             .foregroundStyle(theme.textTertiary)
                     }
                 }

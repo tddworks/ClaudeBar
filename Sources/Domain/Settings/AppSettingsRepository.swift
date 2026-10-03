@@ -63,6 +63,9 @@ public protocol AppSettingsRepository: Sendable {
     func showDailyUsageCards() -> Bool
     func setShowDailyUsageCards(_ show: Bool)
 
+    /// Text size for the popover; one of `PopoverTextSize`'s raw values.
+    func popoverTextSize() -> String
+    func setPopoverTextSize(_ size: String)
     /// *Hide account email* (#375): emails show masked in the popover and menu bar.
     func hideAccountEmail() -> Bool
     func setHideAccountEmail(_ hide: Bool)

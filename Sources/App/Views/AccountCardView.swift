@@ -23,21 +23,21 @@ struct AccountCardView: View {
                     .frame(width: 32, height: 32)
 
                 Text(String(displayName.prefix(1)).uppercased())
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                    .popoverFont(14, weight: .bold, design: theme.fontDesign)
                     .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(settings.shown(displayName))
-                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(12, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(1)
 
                     // Account tier badge
                     if let accountTier = snapshot.accountTier {
                         Text(accountTier.badgeText)
-                            .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
+                            .popoverFont(8, weight: .semibold, design: theme.fontDesign)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -54,7 +54,7 @@ struct AccountCardView: View {
                 }
 
                 Text(freshness)
-                    .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                    .popoverFont(10, weight: .semibold, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
             }
 
@@ -63,7 +63,7 @@ struct AccountCardView: View {
             // Stale indicator
             if snapshot.isStale {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 12))
+                    .popoverFont(12)
                     .foregroundStyle(theme.statusWarning)
             }
         }
@@ -78,7 +78,7 @@ struct AccountCardView: View {
             settings.hideAccountEmail.toggle()
         } label: {
             Image(systemName: settings.hideAccountEmail ? "eye.slash.fill" : "eye.fill")
-                .font(.system(size: 8, weight: .semibold))
+                .popoverFont(8, weight: .semibold)
                 .foregroundStyle(settings.hideAccountEmail ? theme.textPrimary : theme.textTertiary)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)

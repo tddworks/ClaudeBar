@@ -18,6 +18,10 @@ struct MenuContentView: View {
 
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    /// The user's Text Size choice, injected where the popover is hosted. The
+    /// popover's fonts and its width both resolve against this value, so they
+    /// can never disagree about how big the popover is.
+    @Environment(\.popoverTextSize) private var popoverTextSize
     #if ENABLE_SPARKLE
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
@@ -125,7 +129,7 @@ struct MenuContentView: View {
                 }
             }
         }
-        .frame(width: 400)
+        .frame(width: popoverWidth)
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .background(TouchBarWindowAccessor())
@@ -185,6 +189,16 @@ struct MenuContentView: View {
             visibleScreenHeight: NSScreen.main?.visibleFrame.height ?? 800,
             overviewMode: settings.overviewModeEnabled
         )
+    }
+
+    /// The popover widens with its text size, so a line that fits at one size
+    /// still fits at the next instead of truncating — see
+    /// `PopoverContentWidth`.
+    ///
+    /// Read from the environment, like every `popoverFont` in the popover: the
+    /// frame and the text must never resolve to different sizes.
+    private var popoverWidth: CGFloat {
+        popoverTextSize.popoverWidth
     }
 
     // MARK: - Keyboard Shortcuts
@@ -293,7 +307,7 @@ struct MenuContentView: View {
                 // Christmas star sparkle overlay
                 if theme.id == "christmas" {
                     Image(systemName: "sparkle")
-                        .font(.system(size: 10))
+                        .popoverFont(10)
                         .foregroundStyle(theme.accentPrimary)
                         .offset(x: 14, y: -14)
                 }
@@ -302,19 +316,19 @@ struct MenuContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text("ClaudeBar")
-                        .font(theme.displayFont(size: 18))
+                        .popoverDisplayFont(size: 18, theme: theme)
                         .foregroundStyle(theme.textPrimary)
 
                     // Christmas gift icon
                     if theme.id == "christmas" {
                         Image(systemName: "gift.fill")
-                            .font(.system(size: 12))
+                            .popoverFont(12)
                             .foregroundStyle(theme.accentPrimary)
                     }
                 }
 
                 Text(headerSubtitle)
-                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(11, weight: .medium, design: theme.fontDesign)
                     .foregroundStyle(theme.id == "cli" ? theme.accentPrimary : theme.textSecondary)
             }
 
@@ -377,7 +391,7 @@ struct MenuContentView: View {
             )
 
             Text(statusText)
-                .font(.system(size: 11, weight: outlined ? .heavy : .medium, design: theme.fontDesign))
+                .popoverFont(11, weight: outlined ? .heavy : .medium, design: theme.fontDesign)
                 .foregroundStyle(outlined ? theme.textOnStatus : theme.textPrimary)
         }
         .padding(.horizontal, 12)
@@ -544,7 +558,7 @@ struct MenuContentView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 Text("ACCOUNTS")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .popoverFont(9, weight: .semibold, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
                 ForEach(tab.accounts, id: \.id) { account in
                     let hidden = hiddenAccountIds.contains(account.id)
@@ -558,7 +572,7 @@ struct MenuContentView: View {
                                       : theme.statusColor(for: monitor.usage(of: account)?.overallStatus(under: settings.statusPolicy) ?? .healthy))
                                 .frame(width: 6, height: 6)
                         }
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(11, weight: .medium, design: theme.fontDesign)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(hidden ? Color.clear : theme.glassBackground))
@@ -580,7 +594,7 @@ struct MenuContentView: View {
         return HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(theme.statusColor(for: status))
             Text("\(settings.shown(worst.displayName))\(detail) — causing \(status.badgeText.capitalized)")
-                .font(.system(size: 11, design: theme.fontDesign))
+                .popoverFont(11, design: theme.fontDesign)
                 .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -632,7 +646,7 @@ struct MenuContentView: View {
 
             Text(settings.shown(provider.name))
                 .fixedSize(horizontal: false, vertical: true)
-                .font(.system(size: 13, weight: .semibold, design: theme.fontDesign))
+                .popoverFont(13, weight: .semibold, design: theme.fontDesign)
                 .foregroundStyle(theme.textPrimary)
 
             Spacer()
@@ -648,7 +662,7 @@ struct MenuContentView: View {
     private func freshnessLine(_ text: String) -> some View {
         HStack {
             Text(text)
-                .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                .popoverFont(10, weight: .semibold, design: theme.fontDesign)
                 .foregroundStyle(theme.textTertiary)
             Spacer()
         }
@@ -659,18 +673,18 @@ struct MenuContentView: View {
     private func failureNotice(_ failure: RefreshReport.Failure) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12))
+                .popoverFont(12)
                 .foregroundStyle(theme.statusWarning)
 
             VStack(alignment: .leading, spacing: 2) {
                 if let headline = failure.headline {
                     Text(headline)
-                        .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                        .popoverFont(11, weight: .semibold, design: theme.fontDesign)
                         .foregroundStyle(theme.textPrimary)
                 }
                 Text(failure.detail)
                     .help(failure.detail)
-                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(11, weight: .medium, design: theme.fontDesign)
                     .foregroundStyle(theme.textTertiary)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -684,12 +698,12 @@ struct MenuContentView: View {
     private func compactErrorState(provider: any AIProvider) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12))
+                .popoverFont(12)
                 .foregroundStyle(theme.statusWarning)
 
             Text(provider.lastError?.localizedDescription ?? "Unavailable")
                 .help(provider.lastError?.localizedDescription ?? "Unavailable")
-                .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                .popoverFont(11, weight: .medium, design: theme.fontDesign)
                 .foregroundStyle(theme.textTertiary)
                 .lineLimit(1)
 
@@ -733,12 +747,12 @@ struct MenuContentView: View {
                 HStack(spacing: 6) {
                     if !isNoteOnly {
                         Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
+                            .popoverFont(8, weight: .bold)
                             .foregroundStyle(theme.textTertiary)
                     }
 
                     Text((group.title ?? "Other").uppercased())
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .popoverFont(9, weight: .semibold, design: theme.fontDesign)
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.5)
 
@@ -746,17 +760,17 @@ struct MenuContentView: View {
 
                     if case .headerInline(let note) = group.notePlacement {
                         Text(note)
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(9, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(theme.textTertiary)
                     } else if isNoteOnly {
                         Text("No usage data")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(9, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(theme.textTertiary)
                     } else {
                         // Collapsed sections keep their headline number visible.
                         if isCollapsed, let lowest = group.lowestQuota {
                             Text("\(Int(lowest.percentRemaining))% left")
-                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                                .popoverFont(9, weight: .semibold, design: theme.fontDesign)
                                 .foregroundStyle(theme.textTertiary)
                         }
 
@@ -775,7 +789,7 @@ struct MenuContentView: View {
                 // its own row - never silently dropped.
                 if case .row(let note) = group.notePlacement {
                     Text(note)
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(9, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textTertiary)
                 }
 
@@ -800,10 +814,10 @@ struct MenuContentView: View {
     private func sharedResetRow(_ text: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: "clock.fill")
-                .font(.system(size: 8))
+                .popoverFont(8)
 
             Text(text)
-                .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                .popoverFont(10, weight: .medium, design: theme.fontDesign)
 
             Spacer(minLength: 0)
         }
@@ -905,21 +919,21 @@ struct MenuContentView: View {
                     .frame(width: 60, height: 60)
 
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 28))
+                    .popoverFont(28)
                     .foregroundStyle(theme.statusWarning)
             }
 
             // A provider that is data names the step that failed first.
             let failure = selectedProvider.flatMap { RefreshReport.of($0)?.failure }
             Text(failure?.headline ?? "\(selectedProvider?.name ?? selectedProviderId) Unavailable")
-                .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                .popoverFont(14, weight: .bold, design: theme.fontDesign)
                 .foregroundStyle(theme.textPrimary)
 
             // Show actual error message if available, otherwise generic message
             Text(failure?.headline != nil
                  ? "\(selectedProvider?.name ?? selectedProviderId) Unavailable · \(failure?.detail ?? "")"
                  : selectedProvider?.lastError?.localizedDescription ?? "Install CLI or check configuration")
-                .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                .popoverFont(11, weight: .semibold, design: theme.fontDesign)
                 .foregroundStyle(theme.textTertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
@@ -991,7 +1005,7 @@ struct MenuContentView: View {
                                 .tint(theme.isOutlined ? theme.textPrimary : .white)
                         } else {
                             Image(systemName: "gift.fill")
-                                .font(.system(size: 12, weight: .bold))
+                                .popoverFont(12, weight: .bold)
                                 .foregroundStyle(theme.isOutlined ? theme.textPrimary : .white)
                         }
                     }
@@ -1016,7 +1030,7 @@ struct MenuContentView: View {
                         .frame(width: 32, height: 32)
 
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 12, weight: .bold))
+                        .popoverFont(12, weight: .bold)
                         .foregroundStyle(theme.textSecondary)
 
                     // Update available indicator
@@ -1044,7 +1058,7 @@ struct MenuContentView: View {
                         .frame(width: 32, height: 32)
 
                     Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .popoverFont(12, weight: .bold)
                         .foregroundStyle(theme.textSecondary)
                 }
             }
@@ -1141,11 +1155,11 @@ struct ProviderPill: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: providerIcon)
-                    .font(.system(size: 10, weight: .semibold))
+                    .popoverFont(10, weight: .semibold)
 
                 Text(providerName)
                     .help(providerName)
-                    .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(11, weight: .medium, design: theme.fontDesign)
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -1337,11 +1351,11 @@ struct WrappedStatCard: View {
                 // Left side: icon and type label
                 HStack(spacing: 5) {
                     Image(systemName: iconName)
-                        .font(.system(size: 9, weight: .bold))
+                        .popoverFont(9, weight: .bold)
                         .foregroundStyle(statusColor)
 
                     Text((quota.compactTitle ?? quota.quotaType.displayName).uppercased())
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(8, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
                 }
@@ -1371,11 +1385,11 @@ struct WrappedStatCard: View {
                    let dollarCap = quota.formattedDollarCap {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text(dollarUsed)
-                            .font(theme.displayFont(size: 20, weight: .heavy))
+                            .popoverDisplayFont(size: 20, weight: .heavy, theme: theme)
                             .foregroundStyle(theme.textPrimary)
 
                         Text("of \(dollarCap)")
-                            .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                            .popoverFont(9, weight: .semibold, design: theme.fontDesign)
                             .foregroundStyle(theme.textSecondary)
                     }
                     .lineLimit(1)
@@ -1383,16 +1397,16 @@ struct WrappedStatCard: View {
                     .layoutPriority(1)
                 } else if let dollarText = quota.formattedDollarRemaining {
                     Text(dollarText)
-                        .font(theme.displayFont(size: 18))
+                        .popoverDisplayFont(size: 18, theme: theme)
                         .foregroundStyle(theme.textPrimary)
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
                         Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))")
-                            .font(theme.displayFont(size: 26))
+                            .popoverDisplayFont(size: 26, theme: theme)
                             .foregroundStyle(effectiveDisplayMode == .pace ? paceColor : theme.textPrimary)
 
                         Text("%")
-                            .font(.system(size: 13, weight: .medium, design: theme.fontDesign))
+                            .popoverFont(13, weight: .medium, design: theme.fontDesign)
                             .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.7) : theme.textTertiary)
                     }
                 }
@@ -1400,7 +1414,7 @@ struct WrappedStatCard: View {
                 Spacer(minLength: 4)
 
                 Text(valueCaption)
-                    .font(.system(size: isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign))
+                    .popoverFont(isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign)
                     .fixedSize()
                     .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.8) : theme.textTertiary)
             }
@@ -1446,10 +1460,10 @@ struct WrappedStatCard: View {
             if showsReset, let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {
                 HStack(spacing: 3) {
                     Image(systemName: "clock.fill")
-                        .font(.system(size: 7))
+                        .popoverFont(7)
 
                     Text(resetText)
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                        .popoverFont(8, weight: .medium, design: theme.fontDesign)
                 }
                 .foregroundStyle(theme.textTertiary)
                 .lineLimit(1)
@@ -1516,7 +1530,7 @@ struct LoadingSpinnerView: View {
             }
 
             Text("Fetching usage data...")
-                .font(.system(size: 13, weight: .medium, design: theme.fontDesign))
+                .popoverFont(13, weight: .medium, design: theme.fontDesign)
                 .foregroundStyle(theme.textSecondary)
         }
         .frame(height: 140)
@@ -1550,11 +1564,11 @@ struct WrappedActionButton: View {
                         .tint(theme.textPrimary)
                 } else {
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .popoverFont(12, weight: .semibold)
                 }
 
                 Text(label)
-                    .font(.system(size: 12, weight: theme.isOutlined ? .bold : .medium, design: theme.fontDesign))
+                    .popoverFont(12, weight: theme.isOutlined ? .bold : .medium, design: theme.fontDesign)
                     .fixedSize()
             }
             .foregroundStyle(isHovering && !theme.isOutlined ? .white : theme.textPrimary)
@@ -1793,7 +1807,7 @@ struct UpdateBadge: View {
 
             // Arrow up icon
             Image(systemName: "arrow.up")
-                .font(.system(size: 7, weight: .black))
+                .popoverFont(7, weight: .black)
                 .foregroundStyle(.white)
         }
     }
