@@ -8,7 +8,6 @@ struct PopoverTextSizeTests {
 
     @Test
     func `each size has its own raw value`() {
-        #expect(PopoverTextSize.small.rawValue == "small")
         #expect(PopoverTextSize.medium.rawValue == "medium")
         #expect(PopoverTextSize.large.rawValue == "large")
         #expect(PopoverTextSize.extraLarge.rawValue == "extraLarge")
@@ -24,7 +23,6 @@ struct PopoverTextSizeTests {
 
     @Test
     func `known stored values decode to their case`() {
-        #expect(PopoverTextSize(storedRawValue: "small") == .small)
         #expect(PopoverTextSize(storedRawValue: "medium") == .medium)
         #expect(PopoverTextSize(storedRawValue: "large") == .large)
         #expect(PopoverTextSize(storedRawValue: "extraLarge") == .extraLarge)
@@ -41,8 +39,7 @@ struct PopoverTextSizeTests {
     // MARK: - Display Label
 
     @Test
-    func `display labels read Small Default Large Extra Large`() {
-        #expect(PopoverTextSize.small.displayLabel == "Small")
+    func `display labels read Default Large Extra Large`() {
         #expect(PopoverTextSize.medium.displayLabel == "Default")
         #expect(PopoverTextSize.large.displayLabel == "Large")
         #expect(PopoverTextSize.extraLarge.displayLabel == "Extra Large")
@@ -51,9 +48,17 @@ struct PopoverTextSizeTests {
     // MARK: - The Picker Is Complete
 
     @Test
-    func `all cases are the four offered sizes, smallest first`() {
+    func `all cases are the three offered sizes, smallest first`() {
         // The settings control renders `allCases`, so a case missing here is a
         // size the user can never pick.
-        #expect(PopoverTextSize.allCases == [.small, .medium, .large, .extraLarge])
+        #expect(PopoverTextSize.allCases == [.medium, .large, .extraLarge])
+    }
+
+    @Test
+    func `no size is offered below the current design`() {
+        // #364 asked for more readable text. A "Small" step would be the one
+        // setting that renders the 7pt clock glyphs and 8pt card labels smaller
+        // than they are today, so the enum offers no such case.
+        #expect(!PopoverTextSize.allCases.contains { $0.displayLabel == "Small" })
     }
 }

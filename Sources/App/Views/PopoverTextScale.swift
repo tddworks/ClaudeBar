@@ -11,7 +11,6 @@ extension PopoverTextSize {
     /// split `MenuBarStackedSize` has with the stacked menu bar's point sizes.
     var textScale: CGFloat {
         switch self {
-        case .small: 0.9
         case .medium: 1.0
         case .large: 1.2
         case .extraLarge: 1.4

@@ -21,8 +21,8 @@ struct AppSettingsPopoverTextSizeTests {
         settings.popoverTextSize = .extraLarge
         #expect(load().popoverTextSize == .extraLarge)
 
-        settings.popoverTextSize = .small
-        #expect(load().popoverTextSize == .small)
+        settings.popoverTextSize = .large
+        #expect(load().popoverTextSize == .large)
     }
 
     @Test func `an unknown stored size renders Default instead of failing`() {

@@ -48,9 +48,12 @@ struct PopoverTextScaleTests {
     }
 
     @Test
-    func `small shrinks every popover text`() {
-        #expect(PopoverTextSize.small.textScale < 1)
-        #expect(PopoverTextSize.small.scaled(8) < 8)
+    func `no size renders text smaller than today`() {
+        // #364 asked for more readable text, so every offered size is at least
+        // the current design: there is no step that shrinks the 7pt glyphs and
+        // 8pt card labels.
+        #expect(PopoverTextSize.allCases.allSatisfy { $0.textScale >= 1.0 })
+        #expect(PopoverTextSize.allCases.allSatisfy { $0.scaled(7) >= 7 })
     }
 
     @Test
@@ -68,8 +71,7 @@ struct PopoverTextScaleTests {
     @Test
     func `each size widens the popover in step with its text`() {
         // Text and width move together so nothing that fits today truncates at
-        // a larger size. Small keeps the design width: only the text shrinks.
-        #expect(PopoverContentWidth.width(scale: PopoverTextSize.small.textScale) == 400)
+        // a larger size.
         #expect(PopoverContentWidth.width(scale: PopoverTextSize.medium.textScale) == 400)
         #expect(PopoverContentWidth.width(scale: PopoverTextSize.large.textScale) == 480)
         #expect(PopoverContentWidth.width(scale: PopoverTextSize.extraLarge.textScale) == 560)

@@ -34,18 +34,11 @@ struct PopoverContentWidthTests {
     }
 
     @Test
-    func `smaller text never narrows the popover`() {
-        // Narrowing the window as well would squeeze the headline numbers into
-        // truncation; the smaller text alone already makes a denser popover.
-        #expect(isClose(PopoverContentWidth.width(scale: 0.9), 400))
-        #expect(isClose(PopoverContentWidth.width(scale: 0), 400))
-    }
-
-    @Test
-    func `width never decreases as the text scale grows`() {
-        // Text and width move together on purpose: a line that fits at one
-        // size must still fit at the next, so nothing new truncates.
-        let widths = [0.9, 1.0, 1.2, 1.4].map { PopoverContentWidth.width(scale: CGFloat($0)) }
-        #expect(zip(widths, widths.dropFirst()).allSatisfy { $0 <= $1 })
+    func `width is strictly proportional to the text scale`() {
+        // There is no size below today's, so the width never has to hold still
+        // while the text shrinks — the two move together at every step.
+        let widths = [1.0, 1.2, 1.4].map { PopoverContentWidth.width(scale: CGFloat($0)) }
+        #expect(zip(widths, widths.dropFirst()).allSatisfy { $0 < $1 })
+        #expect(isClose(PopoverContentWidth.width(scale: 1.2), 2 * PopoverContentWidth.base * 0.6))
     }
 }

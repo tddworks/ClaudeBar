@@ -19,9 +19,6 @@ public enum PopoverContentWidth {
     /// - Parameter scale: multiplier applied to every popover font, from
     ///   `PopoverTextSize`'s rendering mapping in the App layer.
     public static func width(scale: CGFloat) -> CGFloat {
-        // Never narrower than the design width. A narrower window would squeeze
-        // the headline numbers into truncation, and a denser popover is already
-        // what the smaller text gives.
-        max(base, base * scale)
+        base * scale
     }
 }

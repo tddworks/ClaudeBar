@@ -11,15 +11,19 @@ import Foundation
 /// macOS' own Text Size setting cannot help: it only rescales *semantic*
 /// fonts, and the popover pins every size explicitly with `.system(size:)`.
 ///
-/// - `.small`: denser than today, for a popover that has to fit a lot.
 /// - `.medium`: today's sizes, and the default.
 /// - `.large` / `.extraLarge`: progressively bigger text, with the popover
 ///   widening to match (`PopoverContentWidth`).
 ///
+/// There is deliberately no option smaller than today's sizes. The issue asked
+/// for the popover to be *more* readable, and a "Small" step would be the one
+/// setting that puts the 7pt clock glyphs and 8pt card labels below the floor
+/// the request was made about — a readability feature that can be turned into a
+/// legibility problem.
+///
 /// The concrete multiplier is a rendering concern and lives in the App layer
 /// next to the font wrapper that applies it; Domain models the user's choice.
 public enum PopoverTextSize: String, Sendable, Equatable, CaseIterable {
-    case small
     case medium
     case large
     case extraLarge
@@ -38,7 +42,6 @@ public enum PopoverTextSize: String, Sendable, Equatable, CaseIterable {
     /// Short label for the settings control.
     public var displayLabel: String {
         switch self {
-        case .small: "Small"
         case .medium: "Default"
         case .large: "Large"
         case .extraLarge: "Extra Large"
