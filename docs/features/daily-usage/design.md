@@ -4,7 +4,17 @@
 **Date:** 2026-06-09
 **Issue:** [#207](https://github.com/tddworks/ClaudeBar/issues/207) — Daily Usage cost & token cards overcount ~4×
 **Follow-up:** [#190](https://github.com/tddworks/ClaudeBar/issues/190) — locally served models billed at Anthropic rates (§11)
-**Affected code:** `Sources/Infrastructure/Claude/SessionJSONLParser.swift`, `Sources/Infrastructure/Claude/SessionLogCache.swift`, `Sources/Infrastructure/Claude/ClaudeDailyUsageAnalyzer.swift`, `Sources/Infrastructure/Claude/ModelPricing.swift`, `Sources/Infrastructure/Claude/ClaudeLocalInferenceDetector.swift`
+**Affected code:** written for `Sources/Infrastructure/Claude/`, which is now data (UH2,
+[TARGET_ARCHITECTURE §10](../../architecture/TARGET_ARCHITECTURE.md#10--usage-history-as-data)).
+The rules below hold unchanged; their homes moved:
+
+| Named below | Now |
+|---|---|
+| `SessionJSONLParser` + `SessionLogCache` | `JSONLinesReader` (`Modules/DataSources/Sources/Internal/Logs`) |
+| the dedup in `ClaudeDailyUsageAnalyzer` | `LogRecord.deduplicated`, keyed by `claude.json`'s `id` paths |
+| `ClaudeDailyUsageAnalyzer.aggregate` | `DayAggregator` |
+| `ModelPricing` | `PriceList` + `claude-prices.json` |
+| `ClaudeLocalInferenceDetector` | `LocalEndpoint`, `claude.json`'s `freeWhen.localEndpoint` |
 
 ---
 

@@ -343,6 +343,30 @@
       }
     }
   ],
+  "usageHistory": {
+    "records": {
+      "files": "${CLAUDE_CONFIG_DIR:-~/.claude}/projects/**/*.jsonl",
+      "format": "jsonLines",
+      "where": { "path": "$.type", "equals": "assistant" },
+      "at": "$.timestamp",
+      "id": ["$.message.id", "$.requestId"],
+      "model": "$.message.model",
+      "tokens": {
+        "input": "$.message.usage.input_tokens",
+        "output": "$.message.usage.output_tokens",
+        "cacheWrite": "$.message.usage.cache_creation_input_tokens",
+        "cacheRead": "$.message.usage.cache_read_input_tokens"
+      }
+    },
+    "prices": { "file": "claude-prices.json" },
+    "freeWhen": {
+      "localEndpoint": {
+        "file": "${CLAUDE_CONFIG_DIR:-~}/.claude.json",
+        "url": ["$.env.ANTHROPIC_BASE_URL", ["$.providers[*].base_url", "$.providers[*].env.ANTHROPIC_BASE_URL"]]
+      }
+    },
+    "sessionGap": 1800
+  },
   "accounts": {
     "signIn": {
       "cli": "claude",

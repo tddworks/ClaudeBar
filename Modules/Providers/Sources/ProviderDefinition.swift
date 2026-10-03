@@ -86,6 +86,9 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// What it needs from the person — the provider's `SettingsForm`. The
     /// account-scope ones are what *Add Account* asks for.
     public let settings: [Setting]
+    /// *TODAY'S USAGE* — how to extract a login's usage history from its
+    /// tool's own logs; `nil` when the provider offers none.
+    public let usageHistory: UsageLog.Definition?
 
     /// What *Add Account*'s form asks for: the account-scope settings.
     public var accountSettings: [Setting] { settings.filter { $0.scope == .account } }
@@ -249,8 +252,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         dataSources: [DataSourceDefinition],
         defaultDataSource: String,
         accounts: Accounts? = nil,
-        settings: [Setting] = []
+        settings: [Setting] = [],
+        usageHistory: UsageLog.Definition? = nil
     ) {
+        self.usageHistory = usageHistory
         self.profile = profile
         self.cli = cli
         self.enabledByDefault = enabledByDefault
@@ -284,7 +289,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             dataSources: try container.decode([DataSourceDefinition].self, forKey: .dataSources),
             defaultDataSource: try container.decode(String.self, forKey: .defaultDataSource),
             accounts: accounts,
-            settings: settings
+            settings: settings,
+            usageHistory: try container.decodeIfPresent(UsageLog.Definition.self, forKey: .usageHistory)
         )
         try validateSettings()
     }
@@ -298,10 +304,11 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         try container.encode(defaultDataSource, forKey: .defaultDataSource)
         try container.encodeIfPresent(accounts, forKey: .accounts)
         if !settings.isEmpty { try container.encode(settings, forKey: .settings) }
+        try container.encodeIfPresent(usageHistory, forKey: .usageHistory)
     }
 
     enum CodingKeys: String, CodingKey {
-        case profile, cli, enabledByDefault, dataSources, defaultDataSource, accounts, settings
+        case profile, cli, enabledByDefault, dataSources, defaultDataSource, accounts, settings, usageHistory
     }
 
     /// Each setting's id is used once.
@@ -396,7 +403,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             dataSources: sources,
             defaultDataSource: defaultDataSource,
             accounts: accounts,
-            settings: settings
+            settings: settings,
+            usageHistory: usageHistory
         )
     }
 }

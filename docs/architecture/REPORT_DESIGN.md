@@ -105,11 +105,11 @@ Local Data Source (e.g., ~/.claude/projects/*/*.jsonl)
     │
     │ File system enumeration (filtered by modification date)
     ▼
-Parser (e.g., SessionJSONLParser)
+Reader (e.g., JSONLinesReader, configured by a definition's usageHistory)
     │
     │ Extracts structured records (tokens, timestamps, models)
     ▼
-Analyzer (e.g., ClaudeDailyUsageAnalyzer)
+Aggregator (e.g., DayAggregator, priced by a PriceList)
     │
     │ Partitions by time period, aggregates metrics
     ▼
@@ -135,9 +135,9 @@ The first report card implementation analyzes Claude Code session JSONL files to
 | `DailyUsageStat` | `Domain/DailyUsage/` | One day's metrics with formatting |
 | `DailyUsageReport` | `Domain/DailyUsage/` | Today vs yesterday with deltas |
 | `DailyUsageAnalyzing` | `Domain/DailyUsage/` | `@Mockable` protocol |
-| `SessionJSONLParser` | `Infrastructure/Claude/` | Extracts token records from JSONL |
-| `ModelPricing` | `Infrastructure/Claude/` | Token count → USD cost |
-| `ClaudeDailyUsageAnalyzer` | `Infrastructure/Claude/` | Scans files, aggregates, reports |
+| `usageHistory` + `claude-prices.json` | `Modules/Providers/Resources/Providers/` | Where Claude's logs are, how a record reads, what a token costs |
+| `UsageLog`, `JSONLinesReader`, `PriceList`, `DayAggregator` | `Modules/DataSources` | Reads, prices and sums any tool's logs into days |
+| `UsageHistory` | `Modules/Providers` | One per login, `account.usageHistory` |
 | `DailyUsageCardView` | `App/Views/` | Three metric cards |
 
 ### Data Source

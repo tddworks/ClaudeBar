@@ -30,16 +30,17 @@ Every report feature follows this data flow:
 Data Source → Parser → Analyzer → Report Model → UsageSnapshot → Card View
 ```
 
-Mapped to where the code lives today. Reports belong to the **Usage History**
-context; its module (`Modules/UsageHistory`, [MODULAR_DESIGN §2](../../../docs/architecture/MODULAR_DESIGN.md#2--the-modules))
-isn't carved yet, so until it is:
+Mapped to where the code lives today. **First ask: is it usage history for
+another tool?** Then it is no Swift at all — a `usageHistory` block in that
+provider's definition, run by `DataSources`' `UsageLog`
+([TARGET_ARCHITECTURE §10](../../../docs/architecture/TARGET_ARCHITECTURE.md#10--usage-history-as-data)).
+A genuinely new kind of report is a capability a login offers (CANONICAL §2.1):
 
 | Piece | Location | What to Create |
 |-------|----------|----------------|
-| **Report models** | `Sources/Domain/{Feature}/` | Rich models (`{Name}Stat`, `{Name}Report`), formatting included |
-| **Analyzer port** | `Sources/Domain/{Feature}/` | `@Mockable` `{Name}Analyzing` protocol |
-| **Parser + analyzer** | `Sources/Infrastructure/{Feature}/` | Reading local files; named for the format, not a vendor, when it can be |
-| **Provider capability** | passed to `Providers.make(…)` | The report rides beside usage, like `dailyUsage` and `guestPasses` |
+| **Report models** | `Modules/Quotas` (values) | Rich models (`{Name}Stat`, `{Name}Report`), formatting included |
+| **Reading** | `Modules/DataSources/Sources/Internal/` | Workers named for the format, never a vendor; what differs per tool is the definition's data |
+| **Account capability** | `Modules/Providers` | An `@Observable` handle on `Account`, `nil` when the definition doesn't declare it, like `usageHistory` and `guestPasses` |
 | **App** | `Sources/App/Views/` | Card view(s), wired in `ClaudeBarApp` |
 
 **Don't add a field to `UsageSnapshot`.** The usage kernel (`Modules/Quotas`) is
@@ -324,9 +325,9 @@ struct {Name}CardView: View {
 ### 3b. Give the Provider the capability
 
 The generic `Provider` (`Modules/Providers/Sources/Provider.swift`) holds
-optional capabilities beside its data sources: `dailyUsage` (read on
-interactive and popover refreshes, never in the background, #204) and
-`guestPasses`. A new report is one more: an `@Observable` value holding the
+optional capabilities beside its data sources, handed to its logins:
+`usageHistory` (read when the popover opens, never in the background, #204)
+and `guestPasses`. A new report is one more: an `@Observable` value holding the
 latest report, fetched when the provider's popover refreshes. Write its tests in
 `Modules/Providers/Tests/` first. Agree its shape in Phase 0: it is a change to
 the shared `Provider`.
@@ -336,7 +337,7 @@ the shared `Provider`.
 The view reads it through the provider, as the popover reads guest passes:
 
 ```swift
-if let report = (provider as? Provider)?.{name}?.report {
+if let report = (provider as? Account)?.{name}?.report {
     let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
     // Render card(s) in LazyVGrid or standalone
 }
@@ -344,15 +345,13 @@ if let report = (provider as? Provider)?.{name}?.report {
 
 ### 3d. Register in ClaudeBarApp
 
-Pass the analyzer when the built-in provider is made:
+A capability the definition declares is built by `Providers.make` — as
+`usageHistory` is from a definition's `usageHistory` block — so the App
+passes nothing. Only a capability not yet expressible as data is handed in:
 
 ```swift
-Self.builtIn(
-    "claude",
-    settings: settingsRepository,
-    dailyUsage: ClaudeDailyUsageAnalyzer(…),
-    {name}: {Name}(analyzer: {Name}Analyzer())
-)
+Self.builtIn("claude", settings: settingsRepository,
+             guestPasses: GuestPasses(source: ClaudeGuestPassSource(…)))
 ```
 
 ---

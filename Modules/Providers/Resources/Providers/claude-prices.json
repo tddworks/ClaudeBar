@@ -1,0 +1,40 @@
+{
+  "currency": "USD",
+  "per": 1000000,
+  "models": [
+    { "id": "claude-fable-5-1", "name": "Claude Fable 5.1", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheRead": "0.25" },
+    { "id": "claude-opus-5-5", "name": "Claude Opus 5.5", "input": "4", "output": "20", "cacheWrite": "5", "cacheRead": "0.20" },
+    { "id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5", "input": "2", "output": "10", "cacheWrite": "2.50", "cacheRead": "0.20" },
+    { "id": "claude-haiku-4-5", "name": "Claude Haiku 4.5", "input": "1", "output": "5", "cacheWrite": "1.25", "cacheRead": "0.10" },
+    { "id": "claude-mythos-5-1", "name": "Claude Mythos 5.1", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheRead": "0.25" },
+    { "id": "claude-fable-5", "name": "Claude Fable 5", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheRead": "1" },
+    { "id": "claude-mythos-5", "name": "Claude Mythos 5", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheRead": "1" },
+    { "id": "claude-opus-5", "name": "Claude Opus 5", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
+    { "id": "claude-opus-4-8", "name": "Claude Opus 4.8", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
+    { "id": "claude-opus-4-7", "name": "Claude Opus 4.7", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
+    { "id": "claude-opus-4-6", "name": "Claude Opus 4.6", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
+    { "id": "claude-opus-4-5", "name": "Claude Opus 4.5", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
+    { "id": "claude-opus-4-1", "name": "Claude Opus 4.1", "input": "15", "output": "75", "cacheWrite": "18.75", "cacheRead": "1.50" },
+    { "id": "claude-opus-4-20250514", "name": "Claude Opus 4", "input": "15", "output": "75", "cacheWrite": "18.75", "cacheRead": "1.50" },
+    { "id": "claude-sonnet-5", "name": "Claude Sonnet 5", "input": "2", "output": "10", "cacheWrite": "2.50", "cacheRead": "0.20" },
+    { "id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" },
+    { "id": "claude-sonnet-4-5", "name": "Claude Sonnet 4.5", "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" },
+    { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" },
+    { "id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" },
+    { "id": "claude-3-5-haiku-20241022", "name": "Claude Haiku 3.5", "input": "0.80", "output": "4", "cacheWrite": "1", "cacheRead": "0.08" }
+  ],
+  "families": [
+    { "contains": "fable", "as": "claude-fable-5-1" },
+    { "contains": "mythos", "as": "claude-mythos-5-1" },
+    { "contains": "opus", "as": "claude-opus-4-6" },
+    { "contains": "haiku", "as": "claude-haiku-4-5" }
+  ],
+  "free": [
+    "qwen", "llama", "gemma", "mistral", "mixtral", "codestral", "devstral",
+    "magistral", "ministral", "gpt-oss", "ollama", "lmstudio", "lm-studio",
+    "localai", "llamafile", "ramalama", "openhermes", "hermes", "granite",
+    "starcoder", "aya-expanse", "wizardlm", "vicuna", "openchat", "dolphin",
+    "hunyuan", "internlm", "minicpm", "smollm", "phi-4", "phi4"
+  ],
+  "otherwise": { "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" }
+}
