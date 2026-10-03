@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftUI
 import Domain
 @testable import ClaudeBar
 
