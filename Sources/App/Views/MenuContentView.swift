@@ -12,6 +12,7 @@ struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
     let quotaAlerter: QuotaAlerter
+    let leaderboard: Leaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
     var onHookSettingsChanged: ((Bool) -> Void)?
@@ -32,6 +33,8 @@ struct MenuContentView: View {
     @State private var pillsViewportWidth: CGFloat = 0
     /// Logins hidden by the account chips — the page's filter, never a pause.
     @State private var hiddenAccountIds: Set<String> = []
+    /// The Leaderboard tab is open in place of a provider.
+    @State private var showsLeaderboard = false
 
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
@@ -430,16 +433,19 @@ struct MenuContentView: View {
                     ProviderPill(
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
-                        isSelected: tab.contains(selectedProviderId),
+                        isSelected: !showsLeaderboard && tab.contains(selectedProviderId),
                         hasData: tab.accounts.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
+                        showsLeaderboard = false
                         if !tab.contains(selectedProviderId), let first = tab.accounts.first {
                             selectedProviderId = first.id
                         }
                     }
                     .help(index < 9 ? "\(settings.shown(tab.name)) (⌘\(index + 1))" : settings.shown(tab.name))
                 }
+                LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
+                    .help("Leaderboard")
             }
             // A scroll view clips at its edges: leave room for an outlined
             // theme's thick outline and hard shadow.
@@ -496,7 +502,9 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if settings.overviewModeEnabled {
+        if showsLeaderboard && !settings.overviewModeEnabled {
+            LeaderboardPopoverView(leaderboard: leaderboard, monitor: monitor)
+        } else if settings.overviewModeEnabled {
             let providers = monitor.enabledProviders
             if providers.isEmpty {
                 emptyState
@@ -1140,6 +1148,8 @@ struct ProviderPill: View {
     let providerName: String
     let isSelected: Bool
     let hasData: Bool
+    /// A symbol of its own, for a tab that isn't a provider.
+    var symbol: String? = nil
     let action: () -> Void
 
     @Environment(\.appTheme) private var theme
@@ -1148,7 +1158,7 @@ struct ProviderPill: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: providerIcon)
+                Image(systemName: symbol ?? providerIcon)
                     .font(.system(size: 10, weight: .semibold))
 
                 Text(providerName)
@@ -1190,6 +1200,17 @@ struct ProviderPill: View {
 
     private var providerIcon: String {
         ProviderVisualIdentityLookup.symbolIcon(for: providerId)
+    }
+}
+
+/// The pill that opens the Leaderboard tab, styled as a provider's.
+struct LeaderboardPill: View {
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ProviderPill(providerId: "leaderboard", providerName: "Leaderboard", isSelected: isSelected, hasData: true,
+                     symbol: "trophy.fill", action: action)
     }
 }
 

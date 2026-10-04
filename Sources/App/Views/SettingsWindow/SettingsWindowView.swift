@@ -13,6 +13,8 @@ struct SettingsWindowView: View {
     /// so a button press and the background publish cannot both start a tile.
     let notifyDriver: NotifyPublishDriver
 
+    let leaderboard: Leaderboard
+
     var onHookSettingsChanged: ((Bool) -> Void)?
 
     @Environment(\.appTheme) private var theme
@@ -97,6 +99,8 @@ struct SettingsWindowView: View {
             HooksPane()
         case .notify:
             NotifyPane(monitor: monitor, driver: notifyDriver)
+        case .leaderboard:
+            LeaderboardPane(leaderboard: leaderboard, monitor: monitor)
         case .updates:
             UpdatesPane()
         case .logs:
