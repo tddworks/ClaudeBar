@@ -1,0 +1,20 @@
+{
+  "name": "claudebar-leaderboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "migrate:local": "wrangler d1 migrations apply claudebar-leaderboard --local",
+    "migrate:remote": "wrangler d1 migrations apply claudebar-leaderboard --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20261004.1",
+    "typescript": "^7.0.2",
+    "vitest": "4.1",
+    "wrangler": "^4.147.0"
+  }
+}

@@ -112,3 +112,31 @@ jobs:
           verbose: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  leaderboard-server:
+    name: Leaderboard Worker
+    runs-on: ubuntu-latest
+    # Runs on pull_request without secrets; deploying is a manual step, never from a PR.
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Server/leaderboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Server/leaderboard/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npx vitest run
