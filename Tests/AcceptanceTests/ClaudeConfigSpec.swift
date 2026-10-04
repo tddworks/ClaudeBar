@@ -133,6 +133,7 @@ struct ClaudeConfigSpec {
                 extensionMetrics: [ExtensionMetric(label: "Tokens Today", value: "74,422", unit: "tokens")]
             )
             let fileProbe = MockUsageProbe()
+            given(fileProbe).isAvailable().willReturn(true)
             given(fileProbe).probe().willReturn(fileSnapshot)
 
             let claude = ClaudeProvider(
