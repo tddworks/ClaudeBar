@@ -31,6 +31,10 @@ public struct UsageLog: Sendable {
     /// Now, as this log's clock tells it.
     public var currentTime: Date { now() }
 
+    /// Whether these logs can say what a day cost: a price list, or a cost
+    /// the log writes itself. Without either every cost reads zero.
+    public var knowsCost: Bool { prices != nil || definition.records.cost != nil }
+
     /// One stat per day of `range`, every date present; a day with nothing
     /// is an empty day. Unreadable files are skipped.
     public func days(in range: DateRange) async -> [DailyUsageStat] {
@@ -188,15 +192,19 @@ extension UsageLog {
         public let cacheWrite1h: String?
         public let cacheRead: String?
         public let total: String?
+        /// The log's input count already holds its cache reads, so they are
+        /// taken out of it: input then means what it means everywhere else.
+        public let inputIncludesCacheRead: Bool?
 
         public init(input: String? = nil, output: String? = nil, cacheWrite: String? = nil, cacheWrite1h: String? = nil,
-                    cacheRead: String? = nil, total: String? = nil) {
+                    cacheRead: String? = nil, total: String? = nil, inputIncludesCacheRead: Bool? = nil) {
             self.input = input
             self.output = output
             self.cacheWrite = cacheWrite
             self.cacheWrite1h = cacheWrite1h
             self.cacheRead = cacheRead
             self.total = total
+            self.inputIncludesCacheRead = inputIncludesCacheRead
         }
     }
 

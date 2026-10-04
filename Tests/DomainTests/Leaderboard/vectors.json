@@ -1,0 +1,57 @@
+{
+  "$comment": "Shared with the server (tddworks/claudebar-server, leaderboard/test/vectors.json). Change both copies together.",
+  "usernames": {
+    "valid": [
+      "abc",
+      "tokenwhale",
+      "late_night_dev",
+      "vim-or-bust",
+      "A1_b2-C3",
+      "xxxxxxxxxxxxxxxxxxxx"
+    ],
+    "invalid": [
+      "",
+      "ab",
+      "xxxxxxxxxxxxxxxxxxxxx",
+      "has space",
+      "dot.name",
+      "\u00e9mile",
+      "@handle",
+      "tab\tname",
+      "new\nline"
+    ]
+  },
+  "signing": {
+    "privateKey": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+    "publicKey": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    "cases": [
+      {
+        "method": "PUT",
+        "pathAndQuery": "/usage",
+        "timestamp": 1791080000,
+        "nonce": "AAECAwQFBgcICQoLDA0ODw",
+        "body": "{\"days\":[{\"provider\":\"claude\",\"day\":\"2026-10-04\",\"input\":100,\"output\":50,\"cacheWrite\":0,\"cacheRead\":900,\"unsplit\":0}]}",
+        "canonical": "PUT\n/usage\n1791080000\nAAECAwQFBgcICQoLDA0ODw\n778b9de68d706a6a3c7fad6e909619f6a435dd5d0ba871abdab66d1c9030216a",
+        "signature": "WxcUoti_n7yaxtgOs9FDAkHau0AcxuDf_oemYmjzi_MoLPdZiP8KkkInMPXCKLaCc-Ld9mNgcgMmUlLqqWGjDg"
+      },
+      {
+        "method": "GET",
+        "pathAndQuery": "/me?period=7d",
+        "timestamp": 1791080001,
+        "nonce": "EBESExQVFhcYGRobHB0eHw",
+        "body": "",
+        "canonical": "GET\n/me?period=7d\n1791080001\nEBESExQVFhcYGRobHB0eHw\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "6Eks1tsBniGnwEQK8X4PY2DBcB7JJpCtRsj1WSqdTEFGdHbdnL9QCgvPKhLyE8ISp_7fWIBiM_10zT2LjrmTBA"
+      },
+      {
+        "method": "DELETE",
+        "pathAndQuery": "/me",
+        "timestamp": 1791080002,
+        "nonce": "ICEiIyQlJicoKSorLC0uLw",
+        "body": "",
+        "canonical": "DELETE\n/me\n1791080002\nICEiIyQlJicoKSorLC0uLw\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "Yv_kJzCiFC8uTnG5CfMbj8JyjUEVeO671OJbl4A24uYPiT1hqRycYM9K5ahMPArQmMw7WjUll4GUkAFpOtc7CQ"
+      }
+    ]
+  }
+}

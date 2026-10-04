@@ -57,119 +57,64 @@ struct CostStatCard: View {
         return min(100, costUsage.budgetPercentUsed(budget: budget))
     }
 
+    /// An outlined theme (Pop) prints a budgeted spend its own way: amount
+    /// left, budget right, the card's name on a sticker.
+    private var printedBudget: Decimal? {
+        guard theme.isOutlined, let budget = effectiveBudget, budget > 0 else { return nil }
+        return budget
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Header row with icon and status badge
-            HStack(alignment: .top, spacing: 0) {
-                // Left side: icon and label
-                HStack(spacing: 5) {
-                    Image(systemName: "dollarsign.circle.fill")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(budgetStatusColor)
-
-                    Text(headerTitle)
-                        .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                        .tracking(0.3)
-                }
-
-                Spacer(minLength: 4)
-
-                // Status badge
-                if let status = budgetStatus {
-                    Text(status.badgeText)
-                        .badge(theme.statusColor(for: status.toQuotaStatus))
-                }
+            if let budget = printedBudget {
+                printedHeader(budget: budget)
+                QuotaProgressBar(
+                    percent: budgetPercentUsed,
+                    fill: theme.accentPrimary,
+                    animate: animateProgress,
+                    delay: delay
+                )
+            } else {
+                standardHeader
             }
 
-            // Large cost display
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(costUsage.formattedCost)
-                    .font(theme.displayFont(size: 28, weight: .heavy))
-                    .foregroundStyle(theme.textPrimary)
-
-                if let budget = effectiveBudget {
-                    Text("of \(formatBudget(budget))")
-                        .font(.system(size: 12, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textSecondary)
-                }
-            }
-
-            // Budget progress bar (if budget is set)
-            if let budget = effectiveBudget, budget > 0 {
-                budgetProgressBar(budget: budget)
-            } else if costUsage.kind == .extraUsage, effectiveBudget == nil {
-                Text("No monthly cap")
-                    .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            // Its parts — a model's share of the day — largest first
-            if !costUsage.lines.isEmpty {
-                VStack(spacing: 4) {
-                    ForEach(Array(costUsage.lines.prefix(3).enumerated()), id: \.offset) { _, line in
-                        HStack(spacing: 6) {
-                            Text(line.label)
-                                .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                                .foregroundStyle(theme.textSecondary)
-                                .lineLimit(1)
-                            Spacer(minLength: 4)
-                            Text(line.formattedAmount)
-                                .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                                .foregroundStyle(theme.textPrimary)
-                        }
-                        .help(line.detail ?? line.label)
-                    }
-                    if costUsage.lines.count > 3 {
-                        Text("and \(costUsage.lines.count - 3) more")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-
-            // Show API Duration if > 0, or reset time for Pro Extra usage
-            if costUsage.apiDuration > 0 {
-                HStack(spacing: 3) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 7))
-
-                    Text("API Time: \(costUsage.formattedApiDuration)")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                }
-                .foregroundStyle(theme.textTertiary)
-                .lineLimit(1)
-            } else if let resetText = costUsage.resetText {
-                HStack(spacing: 3) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 7))
-
-                    Text(resetText)
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                }
-                .foregroundStyle(theme.textTertiary)
-                .lineLimit(1)
-            }
+            details
         }
         .padding(12)
+        .padding(.top, printedBudget == nil ? 0 : 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: theme.cardCornerRadius)
                     .fill(theme.cardGradient).themeShadow(theme)
 
+                if printedBudget != nil {
+                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                        .fill(theme.accentPrimary.opacity(0.16))
+                }
+
                 // Light mode shadow
-                if colorScheme == .light {
+                if colorScheme == .light && !theme.isOutlined {
                     RoundedRectangle(cornerRadius: theme.cardCornerRadius)
                         .fill(Color.clear)
                         .shadow(color: Color.black.opacity(0.1), radius: 6, y: 3)
                 }
 
-                RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                    .stroke(cardBorderGradient, lineWidth: 1)
+                // An outlined theme inks its cards solid, like every other card.
+                if theme.isOutlined {
+                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
+                } else {
+                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                        .stroke(cardBorderGradient, lineWidth: 1)
+                }
             }
         )
+        .overlay(alignment: .topTrailing) {
+            if printedBudget != nil {
+                sticker.offset(x: -12, y: -9)
+            }
+        }
         .scaleEffect(isHovering ? 1.015 : 1.0)
         .animation(.easeOut(duration: 0.15), value: isHovering)
         .onHover { isHovering = $0 }
@@ -178,25 +123,168 @@ struct CostStatCard: View {
         }
     }
 
+    // MARK: - Printed (outlined theme)
+
+    /// "SPENT THIS MONTH / $12.40" on the left; "of your budget / $50.00 /
+    /// On track" on the right.
+    private func printedHeader(budget: Decimal) -> some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(QuotaCardText.spentLabel(for: costUsage.kind))
+                    .font(.system(size: 8, weight: .heavy, design: theme.fontDesign))
+                    .foregroundStyle(theme.textPrimary)
+                    .tracking(0.6)
+                OutlinedNumber(text: costUsage.formattedCost, size: 26, color: theme.accentPrimary)
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text("of your budget")
+                    .font(.system(size: 9, weight: .bold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
+                Text(formatBudget(budget, cents: true))
+                    .font(theme.displayFont(size: 14))
+                    .foregroundStyle(theme.textPrimary)
+                if let status = budgetStatus {
+                    Text(QuotaCardText.budgetPhrase(status))
+                        .font(.system(size: 9, weight: .bold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+            }
+        }
+    }
+
+    /// The card's name on a tilted, dashed sticker over its top edge.
+    private var sticker: some View {
+        Text(headerTitle)
+            .font(.system(size: 8.5, weight: .heavy, design: theme.fontDesign))
+            .foregroundStyle(theme.textPrimary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 6).fill(theme.statusWarning))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(theme.glassBorder, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 6).fill(theme.glassBorder).offset(x: 2, y: 2)
+            )
+            .rotationEffect(.degrees(-5))
+            .fixedSize()
+    }
+
+    // MARK: - Standard
+
+    @ViewBuilder
+    private var standardHeader: some View {
+        // Header row with icon and status badge
+        HStack(alignment: .top, spacing: 0) {
+            // Left side: icon and label
+            HStack(spacing: 5) {
+                Image(systemName: "dollarsign.circle.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(budgetStatusColor)
+
+                Text(headerTitle)
+                    .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .tracking(0.3)
+            }
+
+            Spacer(minLength: 4)
+
+            // Status badge
+            if let status = budgetStatus {
+                Text(status.badgeText)
+                    .badge(theme.statusColor(for: status.toQuotaStatus))
+            }
+        }
+
+        // Large cost display
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(costUsage.formattedCost)
+                .font(theme.displayFont(size: 28, weight: .heavy))
+                .foregroundStyle(theme.textPrimary)
+
+            if let budget = effectiveBudget {
+                Text("of \(formatBudget(budget))")
+                    .font(.system(size: 12, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+            }
+        }
+
+        // Budget progress bar (if budget is set)
+        if let budget = effectiveBudget, budget > 0 {
+            budgetProgressBar(budget: budget)
+        } else if costUsage.kind == .extraUsage, effectiveBudget == nil {
+            Text("No monthly cap")
+                .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
+                .foregroundStyle(theme.textTertiary)
+        }
+    }
+
+    /// A spend's parts and its time, under either header.
+    @ViewBuilder
+    private var details: some View {
+        // Its parts — a model's share of the day — largest first
+        if !costUsage.lines.isEmpty {
+            VStack(spacing: 4) {
+                ForEach(Array(costUsage.lines.prefix(3).enumerated()), id: \.offset) { _, line in
+                    HStack(spacing: 6) {
+                        Text(line.label)
+                            .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textSecondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(line.formattedAmount)
+                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+                    }
+                    .help(line.detail ?? line.label)
+                }
+                if costUsage.lines.count > 3 {
+                    Text("and \(costUsage.lines.count - 3) more")
+                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+
+        // Show API Duration if > 0, or reset time for Pro Extra usage
+        if costUsage.apiDuration > 0 {
+            HStack(spacing: 3) {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 7))
+
+                Text("API Time: \(costUsage.formattedApiDuration)")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+            }
+            .foregroundStyle(theme.textTertiary)
+            .lineLimit(1)
+        } else if let resetText = costUsage.resetText {
+            HStack(spacing: 3) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 7))
+
+                Text(resetText)
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+            }
+            .foregroundStyle(theme.textTertiary)
+            .lineLimit(1)
+        }
+    }
+
     // MARK: - Budget Progress Bar
 
     @ViewBuilder
     private func budgetProgressBar(budget: Decimal) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    // Track
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(theme.progressTrack)
-
-                    // Fill
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(budgetProgressGradient)
-                        .frame(width: animateProgress ? geo.size.width * budgetPercentUsed / 100 : 0)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
-                }
-            }
-            .frame(height: 5)
+            QuotaProgressBar(
+                percent: budgetPercentUsed,
+                fill: budgetProgressGradient,
+                animate: animateProgress,
+                delay: delay
+            )
 
             // Budget label
             if let remaining = effectiveBudgetRemaining {
@@ -242,12 +330,12 @@ struct CostStatCard: View {
         )
     }
 
-    private func formatBudget(_ budget: Decimal) -> String {
+    private func formatBudget(_ budget: Decimal, cents: Bool = false) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.minimumFractionDigits = 0
+        formatter.minimumFractionDigits = cents ? 2 : 0
         formatter.maximumFractionDigits = 2
         return formatter.string(from: budget as NSDecimalNumber) ?? "$\(budget)"
     }

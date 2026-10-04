@@ -11,6 +11,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case syncAlerts
     case hooks
     case notify
+    case leaderboard
     case updates
     case logs
     case about
@@ -26,6 +27,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: "Sync & Alerts"
         case .hooks: "Hooks"
         case .notify: "Notify!"
+        case .leaderboard: "Leaderboard"
         case .updates: "Updates"
         case .logs: "Logs"
         case .about: "About"
@@ -42,6 +44,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: ["background", "refresh", "interval", "notification"]
         case .hooks: ["claude code", "session", "install"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
+        case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete"]
         case .updates: ["sparkle", "beta", "version", "check"]
         case .logs: ["log file", "debug", "report"]
         case .about: ["version", "github", "license"]
@@ -68,6 +71,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: "arrow.triangle.2.circlepath"
         case .hooks: "antenna.radiowaves.left.and.right"
         case .notify: "iphone.radiowaves.left.and.right"
+        case .leaderboard: "trophy.fill"
         case .updates: "arrow.down.circle.fill"
         case .logs: "doc.text.fill"
         case .about: "info.circle.fill"
@@ -94,7 +98,7 @@ enum SettingsSectionGroup: String, CaseIterable, Identifiable {
     var sections: [SettingsSection] {
         switch self {
         case .app: [.general, .appearance, .menuBar]
-        case .monitoring: [.providers, .syncAlerts, .hooks, .notify]
+        case .monitoring: [.providers, .syncAlerts, .hooks, .notify, .leaderboard]
         case .system: [.updates, .logs, .about]
         }
     }

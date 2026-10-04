@@ -32,6 +32,8 @@ public struct PopTheme: AppThemeProvider {
     static let amber = Color(red: 0.718, green: 0.475, blue: 0.122)     // #B7791F
     static let grape = Color(red: 0.545, green: 0.361, blue: 0.965)    // #8B5CF6
     static let sky = Color(red: 0.561, green: 0.827, blue: 1.0)        // #8FD3FF
+    static let coralSoft = Color(red: 1.0, green: 0.882, blue: 0.855)  // #FFE1DA
+    static let mintSoft = Color(red: 0.867, green: 0.965, blue: 0.906) // #DDF6E7
 
     // MARK: - Background
 

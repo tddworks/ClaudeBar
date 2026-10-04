@@ -180,6 +180,22 @@ public final class JSONSettingsRepository:
         store.write(value: hide, key: "app.hideAccountEmail")
     }
 
+    public func hideLeaderboardCountry() -> Bool {
+        store.read(key: "app.hideLeaderboardCountry") ?? false
+    }
+
+    public func setHideLeaderboardCountry(_ hide: Bool) {
+        store.write(value: hide, key: "app.hideLeaderboardCountry")
+    }
+
+    public func hideLeaderboardName() -> Bool {
+        store.read(key: "app.hideLeaderboardName") ?? false
+    }
+
+    public func setHideLeaderboardName(_ hide: Bool) {
+        store.write(value: hide, key: "app.hideLeaderboardName")
+    }
+
     public func notchEnabled() -> Bool {
         store.read(key: "app.notchEnabled") ?? false
     }
@@ -739,5 +755,33 @@ extension JSONSettingsRepository: MultiAccountSettingsRepository {
             return nil
         }
         return config
+    }
+}
+
+// MARK: - LeaderboardSettingsRepository
+
+// A destination's own namespace, `leaderboard.*`, beside `notify.*`. The
+// private key is not here: it lives in `CredentialSigningKeyStore`.
+extension JSONSettingsRepository: LeaderboardSettingsRepository {
+    public func leaderboardRecord() -> LeaderboardRecord? {
+        guard let username: String = store.read(key: "leaderboard.username") else { return nil }
+        let lastUpload: Double? = store.read(key: "leaderboard.lastUpload")
+        return LeaderboardRecord(
+            username: username,
+            sharing: store.read(key: "leaderboard.sharing") ?? [],
+            visible: store.read(key: "leaderboard.visible") ?? true,
+            lastUpload: lastUpload.map(Date.init(timeIntervalSince1970:)),
+            sharesCountry: store.read(key: "leaderboard.sharesCountry") ?? false,
+            globeHintDismissed: store.read(key: "leaderboard.globeHintDismissed") ?? false
+        )
+    }
+
+    public func saveLeaderboardRecord(_ record: LeaderboardRecord?) {
+        store.write(value: record?.username, key: "leaderboard.username")
+        store.write(value: record?.sharing, key: "leaderboard.sharing")
+        store.write(value: record?.visible, key: "leaderboard.visible")
+        store.write(value: record?.lastUpload?.timeIntervalSince1970, key: "leaderboard.lastUpload")
+        store.write(value: record?.sharesCountry, key: "leaderboard.sharesCountry")
+        store.write(value: record?.globeHintDismissed, key: "leaderboard.globeHintDismissed")
     }
 }

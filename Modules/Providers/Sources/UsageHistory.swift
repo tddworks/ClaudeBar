@@ -17,6 +17,9 @@ public final class UsageHistory {
     /// first, once read and when any of them holds usage.
     public private(set) var lastThirtyDays: [DailyUsageStat] = []
 
+    /// Whether a day's cost means anything; without it only tokens do.
+    public var knowsCost: Bool { log.knowsCost }
+
     private let log: UsageLog
     private let ledger: DayLedger?
 

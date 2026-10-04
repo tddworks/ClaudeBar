@@ -228,3 +228,88 @@ private struct SegmentButton: View {
         .onHover { isHovering = $0 }
     }
 }
+
+/// A settings action: a capsule in the theme's accent, a quiet glass one, or
+/// a destructive one in the critical status colour.
+struct SettingsActionButton: View {
+    enum Style { case prominent, secondary, destructive }
+
+    let title: String
+    let iconName: String
+    var style: Style = .prominent
+    var isBusy: Bool = false
+    let action: () -> Void
+
+    @Environment(\.appTheme) private var theme
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(title: String, iconName: String, style: Style = .prominent, isBusy: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.iconName = iconName
+        self.style = style
+        self.isBusy = isBusy
+        self.action = action
+    }
+
+    /// Notify!'s spelling: prominent or not.
+    init(title: String, iconName: String, isProminent: Bool, isBusy: Bool = false, action: @escaping () -> Void) {
+        self.init(title: title, iconName: iconName, style: isProminent ? .prominent : .secondary, isBusy: isBusy, action: action)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if isBusy {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 14, height: 14)
+                } else {
+                    Image(systemName: iconName)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+            }
+            .foregroundStyle(style == .secondary ? theme.textPrimary : theme.textOnStatus)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(background)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        ZStack {
+            switch style {
+            case .prominent: Capsule().fill(theme.accentGradient)
+            case .secondary: Capsule().fill(theme.glassBackground)
+            case .destructive: Capsule().fill(theme.statusCritical)
+            }
+            Capsule().stroke(style == .prominent ? Color.clear : theme.glassBorder, lineWidth: theme.cardBorderWidth)
+        }
+    }
+}
+
+/// A text field in the settings' field style.
+struct SettingsTextField: View {
+    let placeholder: String
+    @Binding var text: String
+
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(theme.textTertiary))
+            .textFieldStyle(.plain)
+            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+            .foregroundStyle(theme.textPrimary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(theme.glassBackground)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
+            )
+    }
+}

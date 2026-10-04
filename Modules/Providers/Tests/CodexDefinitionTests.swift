@@ -213,7 +213,7 @@ struct CodexDefinitionTests {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
-        stub.answerHTTP(#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":10}}}"#,
+        stub.answerHTTP(#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":10}},"credits":{"has_credits":true,"balance":"900"}}"#,
                         headers: ["x-codex-credits-balance": "750"])
 
         let usage = try await stub.make("codex").refresh()
@@ -221,6 +221,19 @@ struct CodexDefinitionTests {
         #expect(usage.accountTier == .custom("PLUS"))
         #expect(usage.costUsage?.totalCost == 250)
         #expect(usage.costUsage?.budget == 1000)
+    }
+
+    // https://github.com/tddworks/ClaudeBar/issues/444
+    @Test
+    func `api without credits shows no cost`() async throws {
+        let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
+        defer { stub.cleanUp() }
+        try stub.writeCodexAuth()
+        stub.answerHTTP(#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":0,"limit_window_seconds":604800}},"credits":{"has_credits":false,"unlimited":false,"balance":"0"}}"#)
+
+        let usage = try await stub.make("codex").refresh()
+
+        #expect(usage.costUsage == nil)
     }
 
     @Test

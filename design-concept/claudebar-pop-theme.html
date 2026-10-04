@@ -263,7 +263,7 @@ body{background:var(--cream);color:var(--ink);font-family:"Plus Jakarta Sans",sy
           <div class="card account">
             <div class="avatar">S</div>
             <div style="min-width:0">
-              <div class="acc-name"><span class="email" id="email">slamhan1987@gmail.com</span><span class="tier">MAX</span><span class="eye" id="eye" title="Hide account emails">👁</span></div>
+              <div class="acc-name"><span class="email" id="email">sam@example.com</span><span class="tier">MAX</span><span class="eye" id="eye" title="Hide account emails">👁</span></div>
               <div class="acc-meta">Updated just now · via CLI</div>
             </div>
           </div>
@@ -456,7 +456,7 @@ document.querySelectorAll('#seg span').forEach(s=>s.onclick=()=>{document.queryS
 drawChart('cost');
 
 // ---------- hide account email ----------
-const full='slamhan1987@gmail.com', masked='s•••@g•••.com';
+const full='sam@example.com', masked='s•••@e•••.com';
 function setHidden(h){
   document.getElementById('email').textContent=h?masked:full;
   document.getElementById('eye').classList.toggle('on',h);

@@ -75,6 +75,18 @@ struct JSONLinesReaderTests {
         #expect(record?.cacheWrite1h == 150)
     }
 
+    @Test func `an input that includes the cache reads counts only the rest`() {
+        let shape = RecordShape(UsageLog.Records(
+            files: "~/logs/*.jsonl", at: "$.at",
+            tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cached", inputIncludesCacheRead: true)
+        ))
+        let line = #"{"in":100,"cached":70,"out":5,"at":"2026-03-11T10:00:00.000Z"}"#
+        let record = JSONLinesReader(shape: shape).read(content: line).first
+        #expect(record?.input == 30)
+        #expect(record?.cacheRead == 70)
+        #expect(record?.tokens == 35)
+    }
+
     @Test func `a missing token kind counts zero`() {
         let records = reader().read(content: Self.line("m-large"))
         #expect(records[0].cacheWrite == 0)

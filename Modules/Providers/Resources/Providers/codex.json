@@ -282,7 +282,11 @@
             }
           ],
           "cost": {
-            "remaining": ["$header.x-codex-credits-balance", "$.credits.balance"],
+            "when": {
+              "path": "$.credits.has_credits",
+              "equals": true
+            },
+            "remaining":["$header.x-codex-credits-balance", "$.credits.balance"],
             "limit": 1000
           },
           "email": ["$credential.email"]
@@ -344,6 +348,27 @@
       "requiresFiles": ["${CODEX_HOME:-~/.codex}/auth.json"]
     }
   ],
+  "usageHistory": {
+    "records": {
+      "files": "${CODEX_HOME:-~/.codex}/sessions/**/rollout-*.jsonl",
+      "format": "jsonLines",
+      "where": { "path": "$.payload.type", "equals": "token_count" },
+      "at": "$.timestamp",
+      "id": [
+        "$.payload.info.total_token_usage.total_tokens",
+        "$.payload.info.total_token_usage.input_tokens",
+        "$.payload.info.total_token_usage.cached_input_tokens",
+        "$.payload.info.total_token_usage.output_tokens"
+      ],
+      "tokens": {
+        "input": "$.payload.info.last_token_usage.input_tokens",
+        "output": "$.payload.info.last_token_usage.output_tokens",
+        "cacheRead": "$.payload.info.last_token_usage.cached_input_tokens",
+        "inputIncludesCacheRead": true
+      }
+    },
+    "sessionGap": 1800
+  },
   "accounts": {
     "signIn": {
       "cli": "codex",
@@ -429,7 +454,10 @@
           "hint": "Sign in to the original account in this Codex folder, or remove it and add the new account in Settings."
         }
       },
-      "tty": null
+      "tty": null,
+      "usageHistory": {
+        "records": { "files": "{{account.codexHome}}/sessions/**/rollout-*.jsonl" }
+      }
     }
   }
 }
