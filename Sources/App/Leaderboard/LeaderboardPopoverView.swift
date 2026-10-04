@@ -312,45 +312,58 @@ struct LeaderboardStandingsView: View {
                 row(standing, isMe: standing.username == membership.username?.value)
             }
             if let me = mine?.standing, me.rank > 5 {
-                Text("· · ·")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(theme.textTertiary)
-                    .frame(maxWidth: .infinity)
+                // A gap only when places are skipped: #6 follows #5 directly.
+                if me.rank > 6 {
+                    Text("· · ·")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(theme.textTertiary)
+                        .frame(maxWidth: .infinity)
+                }
                 row(me, isMe: true)
             }
         }
     }
 
+    /// One line per place; its bar is the row's own background, filled in
+    /// proportion to the leader, so six places fit in half the height.
     private func row(_ standing: Standing, isMe: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
-                OutlinedNumber(text: "\(standing.rank)", size: 16,
-                               color: standing.rank <= 3 ? theme.statusWarning : nil)
-                    .frame(width: 24)
-                Text("@" + standing.username)
-                    .font(.system(size: 12, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                if isMe {
-                    Text("YOU")
-                        .font(.system(size: 9, weight: .heavy, design: theme.fontDesign))
-                        .foregroundStyle(theme.textOnStatus)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(theme.accentPrimary))
-                }
-                Spacer(minLength: 6)
-                Text(Self.tokens(standing.total))
-                    .font(.system(size: 12, weight: .heavy, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
+        let fraction = min(1, max(0, Double(standing.total) / Double(leader)))
+        let shape = RoundedRectangle(cornerRadius: 8)
+        return HStack(spacing: 8) {
+            OutlinedNumber(text: "\(standing.rank)", size: 15, color: standing.rank <= 3 ? theme.statusWarning : nil)
+                .frame(width: 22)
+            Text("@" + standing.username)
+                .font(.system(size: 12, weight: .bold, design: theme.fontDesign))
+                .foregroundStyle(theme.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if isMe {
+                Text("YOU")
+                    .font(.system(size: 9, weight: .heavy, design: theme.fontDesign))
+                    .foregroundStyle(theme.textOnStatus)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(theme.accentPrimary))
             }
-            QuotaProgressBar(percent: Double(standing.total) / Double(leader) * 100,
-                             fill: isMe ? theme.accentGradient : LinearGradient(colors: [theme.textTertiary.opacity(0.6)],
-                                                                                 startPoint: .leading, endPoint: .trailing))
-                .padding(.leading, 32)
+            Spacer(minLength: 6)
+            Text(Self.tokens(standing.total))
+                .font(.system(size: 12, weight: .heavy, design: theme.fontDesign))
+                .foregroundStyle(theme.textPrimary)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .frame(height: 30)
+        .background(alignment: .leading) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    shape.fill(theme.progressTrack.opacity(0.5))
+                    shape.fill(isMe ? AnyShapeStyle(theme.accentPrimary.opacity(0.35)) : AnyShapeStyle(theme.textTertiary.opacity(0.22)))
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+        }
+        .overlay(shape.stroke(isMe ? theme.accentPrimary : theme.glassBorder.opacity(theme.isOutlined ? 0.9 : 0.4),
+                              lineWidth: isMe ? max(1.5, theme.cardBorderWidth * 0.8) : max(1, theme.cardBorderWidth * 0.6)))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Footer
