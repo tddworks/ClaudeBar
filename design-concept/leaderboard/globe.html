@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar Globe — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1320px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end}
+h1{margin:0;font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted);max-width:660px}
+.tag{display:inline-flex;align-items:center;gap:6px;border:var(--line);border-radius:999px;padding:3px 12px;font-weight:800;font-size:13px;background:var(--sun);box-shadow:2px 2px 0 var(--ink)}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+
+/* Web board with globe */
+.web{border:var(--line);border-radius:22px;box-shadow:6px 6px 0 var(--ink);overflow:hidden;background:var(--card)}
+.browser{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:var(--line);background:var(--lav)}
+.browser i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:#fff}
+.browser .url{margin-left:8px;flex:1;border:2px solid var(--ink);border-radius:999px;padding:3px 12px;background:#fff;font:500 12px "JetBrains Mono",monospace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.web-body{display:flex;flex-wrap:wrap;gap:22px;padding:24px;background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:16px 16px}
+.globe-card{flex:999 1 560px;min-width:0;position:relative;border:var(--line);border-radius:20px;box-shadow:var(--shadow);background:radial-gradient(circle at 50% 45%,#2B2442 0%,#17141F 70%);overflow:hidden;min-height:520px}
+#globe{position:absolute;inset:0}
+#globe canvas{display:block;cursor:grab}
+#globe canvas:active{cursor:grabbing}
+.globe-head{position:absolute;left:16px;top:14px;right:16px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;pointer-events:none}
+.globe-head h2{margin:0;color:#FFF8EC;font-size:22px;font-weight:800}
+.seg{pointer-events:auto;display:flex;border:2px solid #FFF8EC;border-radius:999px;overflow:hidden;background:rgba(255,248,236,.08)}
+.seg button{border:0;background:transparent;color:#FFF8EC;font:800 12px "Bricolage Grotesque",sans-serif;padding:6px 12px;cursor:pointer;min-height:32px}
+.seg button[aria-pressed="true"]{background:#FFF8EC;color:var(--ink)}
+.legend{position:absolute;left:16px;bottom:14px;right:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:#D9D2EE;font-size:12px;pointer-events:none}
+.legend .chip{border:1.5px solid rgba(255,248,236,.5);border-radius:999px;padding:2px 10px;color:#FFF8EC}
+.tip{position:absolute;pointer-events:none;background:#FFF8EC;color:var(--ink);border:var(--line);border-radius:12px;box-shadow:3px 3px 0 var(--ink);padding:8px 12px;font-size:13px;transform:translate(-50%,calc(-100% - 14px));white-space:nowrap;opacity:0;transition:opacity .12s}
+.tip b{font-size:15px}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:#D9D2EE;font-size:14px}
+.side{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px}
+.label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.big{font-size:44px;font-weight:800;line-height:1;-webkit-text-stroke:2px var(--ink);color:var(--sun);text-shadow:3px 3px 0 var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ol.countries{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+ol.countries li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:2px solid var(--ink);border-radius:12px;position:relative;overflow:hidden;font-size:13px}
+ol.countries li .fill{position:absolute;inset:0 auto 0 0;background:var(--sky);opacity:.55;z-index:0}
+ol.countries li>*:not(.fill){position:relative;z-index:1}
+.num{font:700 12px "JetBrains Mono",monospace}
+.note{font-size:12px;color:var(--muted)}
+.note b{color:var(--ink)}
+
+/* App side */
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px;flex:1 1 360px;min-width:0;max-width:440px}
+.pop{background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:var(--line);border-radius:22px;box-shadow:5px 5px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}
+.setrow+.setrow{border-top:2px dashed #D9CFF5}
+.setrow p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.sw i{position:absolute;inset:0;border:var(--line);border-radius:999px;background:#fff;pointer-events:none}
+.sw i::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:left .15s}
+.sw input:checked+i{background:var(--mint)}
+.sw input:checked+i::after{left:20px}
+.sw input:focus-visible+i{box-shadow:0 0 0 3px var(--sky)}
+pre.payload{margin:0;border:2px dashed var(--ink);border-radius:12px;padding:10px;background:#fff;font:500 11px/1.5 "JetBrains Mono",monospace;white-space:pre-wrap}
+pre.payload mark{background:var(--sun);border-radius:4px;padding:0 2px}
+.oneliner{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.oneliner b{color:var(--ink)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.rules .card h3{margin:0 0 6px;font-size:15px}
+.rules .card p{margin:0;font-size:13.5px;color:#3a3550}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div>
+      <h1>ClaudeBar around the world</h1>
+      <p class="sub">A globe on the web board showing where members use ClaudeBar: by country only, from members who opted in, and only where at least three members are.</p>
+    </div>
+    <span class="tag">Sample data</span>
+  </header>
+
+  <section>
+    <p class="section-title">Web board · claudebar.tddworks.com/leaderboard</p>
+    <div class="web">
+      <div class="browser" aria-hidden="true"><i></i><i></i><i></i><span class="url">claudebar.tddworks.com/leaderboard#globe</span></div>
+      <div class="web-body">
+        <div class="globe-card" aria-label="Globe of ClaudeBar members by country">
+          <div id="globe"></div>
+          <div class="loading" id="loading">Loading the globe…</div>
+          <div class="globe-head">
+            <h2>Where ClaudeBar is used</h2>
+            <div class="seg" role="group" aria-label="Size markers by">
+              <button type="button" data-metric="members" aria-pressed="true">Members</button>
+              <button type="button" data-metric="tokens" aria-pressed="false">Tokens</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span class="chip">Country only</span>
+            <span class="chip">Opt-in</span>
+            <span class="chip">≥ 3 members per country</span>
+            <span>Drag to turn · hover a marker</span>
+            <span class="chip" id="backend">…</span>
+          </div>
+          <div class="tip" id="tip"></div>
+        </div>
+
+        <div class="side">
+          <div class="stats">
+            <div class="card"><div class="label">Countries</div><div class="big" id="countryCount">0</div></div>
+            <div class="card"><div class="label">Members shown</div><div class="big" id="memberCount">0</div></div>
+          </div>
+          <div class="card">
+            <div class="label" id="listTitle">Top countries · members</div>
+            <ol class="countries" id="countryList"></ol>
+          </div>
+          <p class="note"><b><span id="hiddenCount">0</span> countries</b> with fewer than 3 opted-in members aren't shown, so no one can be picked out. Their members still count on the board.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">In the app</p>
+    <div class="row">
+      <div class="col">
+        <p class="label">Settings → Leaderboard</p>
+        <div class="pop">
+          <div class="card">
+            <div class="setrow">
+              <div><b>Show me on the web board</b><p>Off keeps you ranked only in your own ClaudeBar</p></div>
+              <span class="sw"><input type="checkbox" checked aria-label="Show me on the web board"><i></i></span>
+            </div>
+            <div class="setrow">
+              <div><b>Show my country on the globe</b><p>Your country, from your network, counted with others. Never your city, never your IP. Off by default.</p></div>
+              <span class="sw"><input type="checkbox" id="optin" aria-label="Show my country on the globe"><i></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">Join form → Exactly what gets uploaded</p>
+        <div class="pop">
+          <pre class="payload" id="payload"></pre>
+          <p class="note">The app sends nothing new. With the toggle on, the server keeps the country Cloudflare sees your request come from, and only that.</p>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">Popover · under the board</p>
+        <div class="pop">
+          <div class="oneliner">🌍 <span>Members in <b id="countryLine">13 countries</b> · <a href="#globe">see the globe</a></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rules">
+    <div class="card"><h3>Where the country comes from</h3><p>Cloudflare's edge already knows which country a request comes from. The server stores that two-letter code for members who opted in. The Mac asks for no location, and the IP is never stored.</p></div>
+    <div class="card"><h3>What's public</h3><p>Per-country totals only: how many members and how many tokens. Never who is where. A VPN shows the VPN's country.</p></div>
+    <div class="card"><h3>The threshold</h3><p>A country appears once three opted-in members are there. One member alone in a country would be identifiable on a small board.</p></div>
+  </section>
+</main>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.webgpu.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm",
+  "d3-geo": "https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/+esm"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { feature } from "topojson-client";
+import { geoCentroid, geoEquirectangular, geoPath } from "d3-geo";
+
+// Sample data: opted-in members and their 7-day tokens per country.
+const SAMPLE = {
+  "United States of America": [48, 61.2e9], "China": [31, 38.0e9], "Japan": [14, 21.4e9], "Germany": [17, 18.9e9],
+  "United Kingdom": [12, 14.1e9], "India": [11, 9.8e9], "Canada": [8, 9.1e9], "France": [7, 7.7e9],
+  "Brazil": [5, 4.4e9], "Netherlands": [5, 6.2e9], "Australia": [4, 3.9e9], "South Korea": [6, 8.3e9],
+  "Singapore": [3, 4.0e9], "Sweden": [3, 2.6e9], "Spain": [2, 1.1e9], "Poland": [2, 0.9e9], "Kenya": [1, 0.3e9], "Mexico": [2, 0.7e9],
+};
+const THRESHOLD = 3;
+const FLAGS = { "United States of America": "🇺🇸", China: "🇨🇳", Japan: "🇯🇵", Germany: "🇩🇪", "United Kingdom": "🇬🇧", India: "🇮🇳", Canada: "🇨🇦",
+  France: "🇫🇷", Brazil: "🇧🇷", Netherlands: "🇳🇱", Australia: "🇦🇺", "South Korea": "🇰🇷", Singapore: "🇸🇬", Sweden: "🇸🇪" };
+// No mint: it would vanish on green land.
+const CANDY = [0xFFD84D, 0xFFB3C7, 0xA9D8FF, 0xC9B8FF, 0xFFC98A, 0xFF8A8A];
+const R = 1;
+let metric = "members";
+
+const fmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(1) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : String(n);
+const el = (tag, props = {}, ...kids) => { const n = document.createElement(tag); Object.entries(props).forEach(([k, v]) => k === "text" ? (n.textContent = v) : k === "style" ? (n.style.cssText = v) : n.setAttribute(k, v)); kids.forEach((k) => n.append(k)); return n; };
+
+function toVec(lon, lat, r = R) {
+  const phi = (90 - lat) * Math.PI / 180, theta = (lon + 180) * Math.PI / 180;
+  return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+}
+
+// Scene
+const host = document.getElementById("globe");
+// WebGPU where the browser has it; three.js falls back to WebGL 2 on its own.
+const renderer = new THREE.WebGPURenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+host.append(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 0.6, 3.4);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 2; controls.maxDistance = 5;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.6;
+
+// Ink outline: a slightly larger back-faced sphere, the Pop theme's thick border.
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(R * 1.035, 64, 64), new THREE.MeshBasicMaterial({ color: 0x1E1B2E, side: THREE.BackSide })));
+// The Earth: a flat map painted once (sky ocean, green land, ink coasts),
+// wrapped onto the sphere. Its mapping matches toVec, so markers sit right.
+const earth = new THREE.Mesh(new THREE.SphereGeometry(R, 96, 96), new THREE.MeshBasicMaterial({ color: 0xDDEFFF }));
+scene.add(earth);
+// Graticule
+const grid = new THREE.Group();
+const gridMat = new THREE.LineBasicMaterial({ color: 0x3A7BD5, transparent: true, opacity: 0.16 });
+for (let lat = -60; lat <= 60; lat += 30) {
+  const pts = []; for (let lon = -180; lon <= 180; lon += 4) pts.push(toVec(lon, lat, R * 1.001));
+  grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+}
+for (let lon = -180; lon < 180; lon += 30) {
+  const pts = []; for (let lat = -90; lat <= 90; lat += 4) pts.push(toVec(lon, lat, R * 1.001));
+  grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+}
+scene.add(grid);
+
+const markers = new THREE.Group();
+scene.add(markers);
+let countries = [];
+
+async function load() {
+  const world = await (await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")).json();
+  const geo = feature(world, world.objects.countries);
+  // The merged land shape: testing country by country trips over polygons
+  // that cross the date line (Alaska, Russia) and leaves holes.
+  const land = feature(world, world.objects.land);
+  const W = 4096, H = 2048;
+  const canvas = Object.assign(document.createElement("canvas"), { width: W, height: H });
+  const ctx = canvas.getContext("2d");
+  const path = geoPath(geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]), ctx);
+  ctx.fillStyle = "#DDEFFF"; ctx.fillRect(0, 0, W, H);
+  ctx.beginPath(); path(land);
+  ctx.fillStyle = "#4CC38A"; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#1E1B2E"; ctx.lineJoin = "round"; ctx.stroke();
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = renderer.getMaxAnisotropy?.() ?? 1;
+  earth.material.color.set(0xffffff);
+  earth.material.map = map;
+  earth.material.needsUpdate = true;
+  countries = geo.features.map((f) => ({ name: f.properties.name, centre: geoCentroid(f) }))
+    .filter((c) => SAMPLE[c.name]).map((c) => ({ ...c, members: SAMPLE[c.name][0], tokens: SAMPLE[c.name][1] }));
+  document.getElementById("loading").remove();
+  draw();
+}
+
+function draw() {
+  markers.clear();
+  const shown = countries.filter((c) => c.members >= THRESHOLD).sort((a, b) => b[metric] - a[metric]);
+  const max = Math.max(...shown.map((c) => c[metric]));
+  shown.forEach((c, i) => {
+    const h = 0.04 + 0.26 * (c[metric] / max);
+    const color = CANDY[i % CANDY.length];
+    const base = toVec(c.centre[0], c.centre[1], R);
+    const spike = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, h, 12), new THREE.MeshBasicMaterial({ color }));
+    const outline = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, h + 0.012, 12), new THREE.MeshBasicMaterial({ color: 0x1E1B2E, side: THREE.BackSide }));
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 16), new THREE.MeshBasicMaterial({ color }));
+    const capOutline = new THREE.Mesh(new THREE.SphereGeometry(0.044, 16, 16), new THREE.MeshBasicMaterial({ color: 0x1E1B2E, side: THREE.BackSide }));
+    const g = new THREE.Group();
+    [spike, outline].forEach((m) => { m.position.y = h / 2; g.add(m); });
+    [cap, capOutline].forEach((m) => { m.position.y = h; g.add(m); });
+    g.position.copy(base);
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), base.clone().normalize());
+    g.userData = c;
+    markers.add(g);
+  });
+  document.getElementById("countryCount").textContent = String(shown.length);
+  document.getElementById("countryLine").textContent = `${shown.length} countries`;
+  document.getElementById("memberCount").textContent = String(shown.reduce((a, c) => a + c.members, 0));
+  document.getElementById("hiddenCount").textContent = String(countries.length - shown.length);
+  document.getElementById("listTitle").textContent = `Top countries · ${metric}`;
+  const list = document.getElementById("countryList");
+  list.replaceChildren(...shown.slice(0, 8).map((c) => el("li", {},
+    el("span", { class: "fill", style: `width:${(c[metric] / max) * 100}%` }),
+    el("span", { text: FLAGS[c.name] ?? "🌍" }),
+    el("span", { text: c.name === "United States of America" ? "United States" : c.name }),
+    el("span", { class: "num", text: metric === "members" ? `${c.members}` : fmt(c.tokens) }))));
+}
+
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+  metric = b.dataset.metric;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  draw();
+}));
+
+// Hover
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip");
+renderer.domElement.addEventListener("pointermove", (e) => {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(markers.children, true)[0];
+  if (hit) {
+    let g = hit.object; while (g.parent !== markers) g = g.parent;
+    const c = g.userData;
+    tip.replaceChildren(el("b", { text: `${FLAGS[c.name] ?? "🌍"} ${c.name === "United States of America" ? "United States" : c.name}` }), el("br"),
+      document.createTextNode(`${c.members} members · ${fmt(c.tokens)} tokens · 7 days`));
+    tip.style.left = `${e.clientX - r.left}px`; tip.style.top = `${e.clientY - r.top}px`; tip.style.opacity = "1";
+    controls.autoRotate = false;
+  } else { tip.style.opacity = "0"; controls.autoRotate = true; }
+});
+renderer.domElement.addEventListener("pointerleave", () => { tip.style.opacity = "0"; controls.autoRotate = true; });
+
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false); renderer.domElement.style.width = w + "px"; renderer.domElement.style.height = h + "px";
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host); resize();
+await renderer.init();
+document.getElementById("backend").textContent = renderer.backend.isWebGPUBackend ? "WebGPU" : "WebGL 2 fallback";
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+load().catch((error) => {
+  console.error(error);
+  document.getElementById("loading").textContent = "The world map couldn't load (offline?).";
+});
+
+// The upload preview, with and without the toggle.
+const payload = document.getElementById("payload");
+function renderPayload() {
+  const on = document.getElementById("optin").checked;
+  payload.replaceChildren(document.createTextNode(`PUT /usage   signed as @itshan
+{
+  "today": "2026-10-04",
+  "days": [ { "provider": "claude", … } ]
+}
+`), on ? Object.assign(document.createElement("mark"), { textContent: "+ the server keeps: country = \"NL\" (from Cloudflare, not from this Mac)" })
+       : document.createTextNode("No country is kept."));
+}
+document.getElementById("optin").addEventListener("change", renderPayload);
+renderPayload();
+</script>
+</body>
+</html>

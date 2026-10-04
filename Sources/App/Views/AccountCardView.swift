@@ -74,19 +74,6 @@ struct AccountCardView: View {
     /// The eye after the account: masks every account email in the popover
     /// and the menu bar, or shows them again — remembered across launches.
     private var emailMaskBadge: some View {
-        Button {
-            settings.hideAccountEmail.toggle()
-        } label: {
-            Image(systemName: settings.hideAccountEmail ? "eye.slash.fill" : "eye.fill")
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(settings.hideAccountEmail ? theme.textPrimary : theme.textTertiary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(settings.hideAccountEmail ? theme.progressTrack : Color.clear))
-                .overlay(Capsule().stroke(theme.glassBorder, lineWidth: settings.hideAccountEmail ? 0 : 1))
-        }
-        .buttonStyle(.plain)
-        .help(settings.hideAccountEmail ? "Show account emails" : "Hide account emails")
-        .accessibilityLabel(settings.hideAccountEmail ? "Show account emails" : "Hide account emails")
+        PrivacyEyeBadge(isHidden: $settings.hideAccountEmail, what: "account emails")
     }
 }

@@ -7,7 +7,7 @@ import Testing
 @Suite
 struct AccountEmailMaskTests {
     @Test func `an email keeps its first letters and its ending`() {
-        #expect(AccountEmailMask.masked("slamhan1987@gmail.com") == "s•••@g•••.com")
+        #expect(AccountEmailMask.masked("sam@example.com") == "s•••@e•••.com")
         #expect(AccountEmailMask.masked("work@corp.example.co.uk") == "w•••@c•••.uk")
     }
 
@@ -21,7 +21,7 @@ struct AccountEmailMaskTests {
     }
 
     @Test func `the menu bar's short name of a masked email stays short`() {
-        let names = MenuBarAccountName.names(["claude": AccountEmailMask.masked("slamhan1987@gmail.com"),
+        let names = MenuBarAccountName.names(["claude": AccountEmailMask.masked("sam@example.com"),
                                               "claude.work": AccountEmailMask.masked("work@corp.com")])
         #expect(names["claude"] == "s•••")
         #expect(names["claude.work"] == "w•••")

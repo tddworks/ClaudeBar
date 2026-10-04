@@ -1,18 +1,18 @@
 #!/bin/bash
-# Extract release notes for a specific version from CHANGELOG.md
-# Usage: ./scripts/extract-changelog.sh <version>
-# Example: ./scripts/extract-changelog.sh 0.2.4
+# Extract release notes for a specific version from CHANGELOG.md.
+# Falls back to [Unreleased] section if [VERSION] is not found yet.
+# Usage: ./scripts/extract-changelog.sh <version> [changelog_file]
+# Example: ./scripts/extract-changelog.sh 0.5.1
 #
-# Output: The markdown content for that version, suitable for GitHub Release or appcast.xml
+# Output: markdown for the GitHub Release and Sparkle's update dialog (appcast.xml)
 
 set -e
 
-VERSION="$1"
+VERSION="${1#v}"
 CHANGELOG_FILE="${2:-CHANGELOG.md}"
 
 if [ -z "$VERSION" ]; then
     echo "Usage: $0 <version> [changelog_file]" >&2
-    echo "Example: $0 0.2.4" >&2
     exit 1
 fi
 
@@ -21,36 +21,35 @@ if [ ! -f "$CHANGELOG_FILE" ]; then
     exit 1
 fi
 
-# Remove 'v' prefix if present
-VERSION="${VERSION#v}"
-
-# Extract section between [VERSION] header and next version header (or EOF)
-# Pattern: Match from "## [VERSION]" to the next "## [" or end of file
-awk -v version="$VERSION" '
-    BEGIN { found=0; printing=0 }
-
-    # Match the target version header
+# 1. Try versioned section: ## [VERSION]
+# A section ends at the next release, the `---` separator, the "Older
+# releases" line or the reference links — never at an in-section `## `
+# heading such as GitHub's "## New Contributors".
+NOTES=$(awk -v version="$VERSION" '
     /^## \[/ {
-        if (printing) {
-            # We hit the next version, stop printing
-            exit
-        }
-        # Check if this is our target version
-        if (index($0, "[" version "]") > 0) {
-            found=1
-            printing=1
-            next  # Skip the header line itself
-        }
+        if (printing) { exit }
+        if (index($0, "[" version "]") > 0) { printing=1; next }
     }
-
-    # Print lines when we are in the right section
+    printing && (/^---$/ || /^## Older releases/ || /^\[[^]]+\]: /) { exit }
     printing { print }
+' "$CHANGELOG_FILE")
 
-    END {
-        if (!found) {
-            print "Error: Version " version " not found in changelog" > "/dev/stderr"
-            exit 1
-        }
-    }
-' "$CHANGELOG_FILE" | sed '/^$/N;/^\n$/d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
-# The sed commands: remove multiple blank lines, and trim trailing blank lines
+# 2. Fall back to [Unreleased] section
+if [ -z "$NOTES" ]; then
+    NOTES=$(awk '
+        /^## \[Unreleased\]/ { printing=1; next }
+        /^## \[/             { if (printing) exit }
+        /^---$/              { if (printing) exit }
+        printing             { print }
+    ' "$CHANGELOG_FILE")
+fi
+
+if [ -z "$NOTES" ]; then
+    echo "Error: No notes found for v$VERSION or [Unreleased] in $CHANGELOG_FILE" >&2
+    exit 1
+fi
+
+# Collapse multiple blank lines; trim trailing blank lines
+echo "$NOTES" \
+  | sed '/^$/N;/^\n$/d' \
+  | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'

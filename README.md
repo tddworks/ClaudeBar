@@ -65,6 +65,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/notify/README.md) |
 | Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/session-hooks/README.md) |
 | Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/daily-usage/README.md) |
+| Leaderboard | Share daily token totals and see where you rank → [docs](docs/features/leaderboard/README.md) |
 | Themes | Dark, Light, CLI, Christmas, Pop, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
 | Extensions | Add any quota source with a manifest and a script → [docs](docs/features/extensions/README.md) |
 | URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/url-schemes/README.md) |
@@ -138,6 +139,27 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     </tr>
     <tr>
       <td align="center" valign="top" width="16.66%"><a href="https://hansonkim.github.io"><img src="https://avatars.githubusercontent.com/u/1308073?v=4?s=80" width="80px;" alt="Hanson Kim"/><br /><sub><b>Hanson Kim</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=hansonkim" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/jsvisa"><img src="https://avatars.githubusercontent.com/u/3627395?v=4?s=80" width="80px;" alt="Delweng"/><br /><sub><b>Delweng</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=jsvisa" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/SridarDhandapani"><img src="https://avatars.githubusercontent.com/u/18103118?v=4?s=80" width="80px;" alt="Sridar Dhandapani"/><br /><sub><b>Sridar Dhandapani</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=SridarDhandapani" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://weavr.care/"><img src="https://avatars.githubusercontent.com/u/16575586?v=4?s=80" width="80px;" alt="Seunghwan Kim"/><br /><sub><b>Seunghwan Kim</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=shwankim7" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://rasterfactory.com/"><img src="https://avatars.githubusercontent.com/u/194952?v=4?s=80" width="80px;" alt="Ryan"/><br /><sub><b>Ryan</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=rasterfactory" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://www.akeeba.com/"><img src="https://avatars.githubusercontent.com/u/256041?v=4?s=80" width="80px;" alt="Nicholas K. Dionysopoulos"/><br /><sub><b>Nicholas K. Dionysopoulos</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=nikosdion" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/jzd101"><img src="https://avatars.githubusercontent.com/u/48935928?v=4?s=80" width="80px;" alt="jzd101"/><br /><sub><b>jzd101</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=jzd101" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/hubert-alch"><img src="https://avatars.githubusercontent.com/u/3193430?v=4?s=80" width="80px;" alt="Hubert"/><br /><sub><b>Hubert</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=hubert-alch" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://pingie.com/"><img src="https://avatars.githubusercontent.com/u/4954230?v=4?s=80" width="80px;" alt="simplytoast1"/><br /><sub><b>simplytoast1</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=simplytoast1" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/cszhe"><img src="https://avatars.githubusercontent.com/u/3096714?v=4?s=80" width="80px;" alt="Jason He"/><br /><sub><b>Jason He</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=cszhe" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/arkad-cm"><img src="https://avatars.githubusercontent.com/u/96408707?v=4?s=80" width="80px;" alt="Arkadev Banerjee"/><br /><sub><b>Arkadev Banerjee</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=arkad-cm" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/shoo99"><img src="https://avatars.githubusercontent.com/u/10192375?v=4?s=80" width="80px;" alt="shoo99"/><br /><sub><b>shoo99</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=shoo99" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/joakimt90"><img src="https://avatars.githubusercontent.com/u/251045847?v=4?s=80" width="80px;" alt="joakimt90"/><br /><sub><b>joakimt90</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=joakimt90" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://roy-tong.github.io/"><img src="https://avatars.githubusercontent.com/u/196586291?v=4?s=80" width="80px;" alt="Roy Tong"/><br /><sub><b>Roy Tong</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=roy-tong" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/nhonn"><img src="https://avatars.githubusercontent.com/u/22555991?v=4?s=80" width="80px;" alt="Noah"/><br /><sub><b>Noah</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=nhonn" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/NicholasLea"><img src="https://avatars.githubusercontent.com/u/46642679?v=4?s=80" width="80px;" alt="Nicholas"/><br /><sub><b>Nicholas</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=NicholasLea" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/JawsomeJason"><img src="https://avatars.githubusercontent.com/u/787276?v=4?s=80" width="80px;" alt="Jason Featheringham ⊙ω⊙"/><br /><sub><b>Jason Featheringham ⊙ω⊙</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=JawsomeJason" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/brandonpierce"><img src="https://avatars.githubusercontent.com/u/10343786?v=4?s=80" width="80px;" alt="Brandon Pierce"/><br /><sub><b>Brandon Pierce</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=brandonpierce" title="Code">💻</a></td>
     </tr>
   </tbody>
   <tfoot>

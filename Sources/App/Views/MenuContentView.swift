@@ -12,6 +12,7 @@ struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
     let quotaAlerter: QuotaAlerter
+    let leaderboard: Leaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
     var onHookSettingsChanged: ((Bool) -> Void)?
@@ -32,6 +33,8 @@ struct MenuContentView: View {
     @State private var pillsViewportWidth: CGFloat = 0
     /// Logins hidden by the account chips — the page's filter, never a pause.
     @State private var hiddenAccountIds: Set<String> = []
+    /// The Leaderboard tab is open in place of a provider.
+    @State private var showsLeaderboard = false
 
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
@@ -74,7 +77,7 @@ struct MenuContentView: View {
                 if !settings.overviewModeEnabled {
                     providerPills
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 16 - scrollTopInset)
                 }
 
                 // Session Indicator (shown when Claude Code is active)
@@ -93,6 +96,7 @@ struct MenuContentView: View {
                         metricsContent
                     }
                     .padding(.horizontal, 16)
+                    .padding(.top, scrollTopInset)
                     .padding(.bottom, 16)
                 }
                 .frame(maxHeight: contentMaxHeight)
@@ -415,6 +419,13 @@ struct MenuContentView: View {
         monitor.enabledProviders
     }
 
+    /// Room above the scrolled cards for an outlined theme's thick top
+    /// outline (and hover lift), which the scroll view would otherwise clip.
+    /// Taken from the gap under the pills, so the spacing doesn't change.
+    private var scrollTopInset: CGFloat {
+        theme.isOutlined ? 4 : 0
+    }
+
     private var providerPills: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
@@ -422,16 +433,19 @@ struct MenuContentView: View {
                     ProviderPill(
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
-                        isSelected: tab.contains(selectedProviderId),
+                        isSelected: !showsLeaderboard && tab.contains(selectedProviderId),
                         hasData: tab.accounts.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
+                        showsLeaderboard = false
                         if !tab.contains(selectedProviderId), let first = tab.accounts.first {
                             selectedProviderId = first.id
                         }
                     }
                     .help(index < 9 ? "\(settings.shown(tab.name)) (⌘\(index + 1))" : settings.shown(tab.name))
                 }
+                LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
+                    .help("Leaderboard")
             }
             // A scroll view clips at its edges: leave room for an outlined
             // theme's thick outline and hard shadow.
@@ -488,7 +502,9 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if settings.overviewModeEnabled {
+        if showsLeaderboard && !settings.overviewModeEnabled {
+            LeaderboardPopoverView(leaderboard: leaderboard, monitor: monitor)
+        } else if settings.overviewModeEnabled {
             let providers = monitor.enabledProviders
             if providers.isEmpty {
                 emptyState
@@ -853,9 +869,13 @@ struct MenuContentView: View {
             if settings.showDailyUsageCards,
                let report = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.report ?? snapshot.dailyUsageReport {
                 let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
+                // Logs that can't be priced show no cost rather than a made-up $0.
+                let knowsCost = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.knowsCost ?? true
                 HStack(spacing: 10) {
-                    DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
-                        .frame(maxWidth: .infinity)
+                    if knowsCost {
+                        DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
+                            .frame(maxWidth: .infinity)
+                    }
                     DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
                         .frame(maxWidth: .infinity)
                 }
@@ -866,9 +886,10 @@ struct MenuContentView: View {
 
             // The same login's last thirty days, as a chart.
             if settings.showDailyUsageCards,
-               let days = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.lastThirtyDays,
-               !days.isEmpty {
-                UsageHistoryChartView(days: days, delay: Double(snapshot.quotas.count + 4) * 0.08)
+               let history = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory,
+               !history.lastThirtyDays.isEmpty {
+                UsageHistoryChartView(days: history.lastThirtyDays, delay: Double(snapshot.quotas.count + 4) * 0.08,
+                                      measure: history.knowsCost ? .cost : .tokens, showsCost: history.knowsCost)
             }
 
             // Show extension metrics cards (from extension probes)
@@ -1132,6 +1153,8 @@ struct ProviderPill: View {
     let providerName: String
     let isSelected: Bool
     let hasData: Bool
+    /// A symbol of its own, for a tab that isn't a provider.
+    var symbol: String? = nil
     let action: () -> Void
 
     @Environment(\.appTheme) private var theme
@@ -1140,7 +1163,7 @@ struct ProviderPill: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: providerIcon)
+                Image(systemName: symbol ?? providerIcon)
                     .font(.system(size: 10, weight: .semibold))
 
                 Text(providerName)
@@ -1182,6 +1205,17 @@ struct ProviderPill: View {
 
     private var providerIcon: String {
         ProviderVisualIdentityLookup.symbolIcon(for: providerId)
+    }
+}
+
+/// The pill that opens the Leaderboard tab, styled as a provider's.
+struct LeaderboardPill: View {
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ProviderPill(providerId: "leaderboard", providerName: "Leaderboard", isSelected: isSelected, hasData: true,
+                     symbol: "trophy.fill", action: action)
     }
 }
 
@@ -1321,8 +1355,8 @@ struct WrappedStatCard: View {
 
     private var valueCaption: String {
         if isCappedSpend { return "Spent" }
-        if quota.isDollarBased { return "Remaining" }
-        return effectiveDisplayMode.displayLabel
+        if quota.isDollarBased { return theme.isOutlined ? "left" : "Remaining" }
+        return QuotaCardText.caption(mode: effectiveDisplayMode, isOutlined: theme.isOutlined)
     }
 
     /// The color used for the pace label/number
@@ -1385,6 +1419,18 @@ struct WrappedStatCard: View {
                     Text(dollarText)
                         .font(theme.displayFont(size: 18))
                         .foregroundStyle(theme.textPrimary)
+                } else if theme.isOutlined {
+                    // Printed: "62%" outlined, its short caption right beside it.
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        OutlinedNumber(
+                            text: "\(Int(quota.displayPercent(mode: effectiveDisplayMode)))%",
+                            size: 28,
+                            color: effectiveDisplayMode == .pace ? paceColor : nil
+                        )
+                        Text(valueCaption)
+                            .font(.system(size: 9, weight: .heavy, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
                         Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))")
@@ -1399,29 +1445,22 @@ struct WrappedStatCard: View {
 
                 Spacer(minLength: 4)
 
-                Text(valueCaption)
-                    .font(.system(size: isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign))
-                    .fixedSize()
-                    .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.8) : theme.textTertiary)
+                if !(theme.isOutlined && isPercent) {
+                    Text(valueCaption)
+                        .font(.system(size: isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign))
+                        .fixedSize()
+                        .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.8) : theme.textTertiary)
+                }
             }
 
-            // Progress bar with gradient and pace tick
+            // Progress bar with the pace tick under it
             VStack(spacing: 1) {
-                GeometryReader { geo in
-                    let progressPercent = quota.displayProgressPercent(mode: effectiveDisplayMode)
-                    ZStack(alignment: .leading) {
-                        // Track
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(theme.progressTrack)
-
-                        // Fill (clamp width to 0-100%)
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(theme.progressGradient(for: quota.percentRemaining))
-                            .frame(width: animateProgress ? geo.size.width * max(0, min(100, progressPercent)) / 100 : 0)
-                            .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
-                    }
-                }
-                .frame(height: 5)
+                QuotaProgressBar(
+                    percent: quota.displayProgressPercent(mode: effectiveDisplayMode),
+                    fill: theme.progressGradient(for: quota.percentRemaining),
+                    animate: animateProgress,
+                    delay: delay
+                )
 
                 // Expected pace tick mark
                 if let expectedPercent = quota.expectedProgressPercent(mode: effectiveDisplayMode) {
@@ -1444,15 +1483,30 @@ struct WrappedStatCard: View {
 
             // Reset info (hidden when the grid hoisted a shared countdown)
             if showsReset, let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {
-                HStack(spacing: 3) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 7))
+                if theme.isOutlined {
+                    // Always one row, the time always whole. As the card
+                    // narrows, "Resets in" gives way to a clock, then the
+                    // badge's words to the pace's icon.
+                    let line = QuotaCardText.ResetLine(resetText)
+                    let timeOnly = line.time.map { QuotaCardText.ResetLine(time: $0) } ?? line
+                    ViewThatFits(in: .horizontal) {
+                        resetFooter(compactBadge: false) { resetLine(line) }
+                        resetFooter(compactBadge: false) { clockedResetLine(timeOnly) }
+                        resetFooter(compactBadge: true) { clockedResetLine(timeOnly) }
+                    }
+                } else {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 7))
 
-                    Text(resetText)
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                        Text(resetText)
+                            .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
+                    }
+                    .foregroundStyle(theme.textTertiary)
+                    .lineLimit(1)
                 }
-                .foregroundStyle(theme.textTertiary)
-                .lineLimit(1)
+            } else if showsPaceBadge {
+                HStack { Spacer(); PaceBadge(pace: quota.pace) }
             }
         }
         .padding(12)
@@ -1470,6 +1524,52 @@ struct WrappedStatCard: View {
         .onHover { isHovering = $0 }
         .onAppear {
             animateProgress = true
+        }
+    }
+
+    /// A plain percentage — not a dollar amount, which keeps its own layout.
+    private var isPercent: Bool {
+        !(quota.formattedDollarUsed != nil && quota.formattedDollarCap != nil)
+            && quota.formattedDollarRemaining == nil
+    }
+
+    /// An outlined theme also names the pace in a footer badge — when the
+    /// pace is known and isn't already the headline.
+    private var showsPaceBadge: Bool {
+        theme.isOutlined && quota.pace != .unknown && effectiveDisplayMode != .pace
+    }
+
+    /// "Resets in **2h 4m**": the lead muted, the time in ink.
+    private func resetLine(_ line: QuotaCardText.ResetLine) -> Text {
+        let time = line.time.map {
+            Text($0)
+                .font(.system(size: 8.5, weight: .heavy, design: theme.fontDesign))
+                .foregroundColor(theme.textPrimary)
+        }
+        guard !line.lead.isEmpty else { return time ?? Text("") }
+        let lead = Text(line.lead)
+            .font(.system(size: 8.5, weight: .semibold, design: theme.fontDesign))
+            .foregroundColor(theme.textTertiary)
+        guard let time else { return lead }
+        return lead + Text(" ") + time
+    }
+
+    /// A clock, then the reset time.
+    private func clockedResetLine(_ line: QuotaCardText.ResetLine) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "clock.fill")
+                .font(.system(size: 7))
+                .foregroundStyle(theme.textTertiary)
+            resetLine(line)
+        }
+    }
+
+    /// The reset time and, on the right, the pace badge, on one row.
+    private func resetFooter(compactBadge: Bool, @ViewBuilder reset: () -> some View) -> some View {
+        HStack(spacing: 4) {
+            reset().fixedSize()
+            Spacer(minLength: 2)
+            if showsPaceBadge { PaceBadge(pace: quota.pace, compact: compactBadge) }
         }
     }
 

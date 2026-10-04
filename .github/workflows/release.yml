@@ -294,7 +294,8 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Extract release notes from CHANGELOG.md
+          # Extract release notes from CHANGELOG.md: [VERSION], or [Unreleased]
+          # before "Promote CHANGELOG" below renames it to [VERSION]
           if [ -f "CHANGELOG.md" ]; then
             NOTES=$(./scripts/extract-changelog.sh "$VERSION" 2>/dev/null || echo "")
           fi

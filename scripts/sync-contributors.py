@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Render the landing-page contributor grid from .all-contributorsrc.
 
-The all-contributors bot owns .all-contributorsrc and the README table. It can
-only emit its own <table> markup, though, which doesn't fit the card grid in
-docs/index.html — so this script renders that one surface instead, from the same
+all-contributors (the bot, and CI's `add`/`generate`) owns .all-contributorsrc
+and the README table. It can only emit its own <table> markup, though, which
+doesn't fit the card grid in docs/index.html — so this script renders that one surface instead, from the same
 source of truth. It never edits .all-contributorsrc or the README.
 
-Run after the bot's PR merges (CI does this automatically):
+Run after .all-contributorsrc changes (CI does this automatically):
 
     python3 scripts/sync-contributors.py
 

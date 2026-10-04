@@ -8,10 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Quota alerts: add your own percentages under Settings → Sync & Alerts. When a provider's lowest quota window falls below one, ClaudeBar sends a notification — once per crossing, again only after recovery. The fixed 50/20/0 status alerts stay on. https://github.com/tddworks/ClaudeBar/issues/68
+- Leaderboard globe: opt in to put your country on the web board's globe of where ClaudeBar is used. Only your country is kept, never your city or IP; it shows once three members there opt in. An eye hides it in the popover, and Turn off removes it. ([#460](https://github.com/tddworks/ClaudeBar/pull/460))
+- Quota alerts: add your own percentages under Settings → Sync & Alerts. When a provider's lowest quota window falls below one, ClaudeBar sends a notification — once per crossing, again only after recovery. The fixed 50/20/0 status alerts stay on. ([#68](https://github.com/tddworks/ClaudeBar/issues/68))
+
+---
+
+## [0.5.2] - 2026-10-04
+
+### Added
+- Leaderboard: join with a username from the new Leaderboard tab, share daily token totals from Claude, Codex or Mistral, and see your rank today, this week or this month. Only token counts leave your Mac; leaving deletes them. ([#459](https://github.com/tddworks/ClaudeBar/pull/459))
+- Codex daily usage: today's and the last 30 days' Codex tokens now show beside Claude's, read from Codex's session logs. ([#459](https://github.com/tddworks/ClaudeBar/pull/459))
+
+### Fixed
+- Codex in API mode no longer shows a made-up "$1000 of $1000" API cost when your ChatGPT account has no Codex credits; the card now appears only when you have credits. ([#444](https://github.com/tddworks/ClaudeBar/issues/444))
 
 ### Changed
 - Breaking: the CLI theme's menu bar icon is now an outline terminal that fills in while Claude Code works, in your quota's status colour. It replaces the two terminals shown side by side; nothing to change on your side. Applies with the readout off. ([#445](https://github.com/tddworks/ClaudeBar/pull/445))
+- The Pop theme's cards now match its design: outlined percentages with "left" beside them, striped bars on every card, the reset time in bold beside a pace sticker, a lavender extra-usage card with its budget, and a one-piece Cost / Tokens / Cache picker. ([#452](https://github.com/tddworks/ClaudeBar/pull/452))
 
 ---
 
@@ -1222,7 +1235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/tddworks/ClaudeBar/compare/v0.5.0...v0.5.2
 [0.5.0]: https://github.com/tddworks/ClaudeBar/compare/v0.4.95...v0.5.0
 [0.4.95]: https://github.com/tddworks/ClaudeBar/compare/v0.4.94...v0.4.95
 [0.4.94]: https://github.com/tddworks/ClaudeBar/compare/v0.4.93...v0.4.94

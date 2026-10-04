@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar Leaderboard — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFF8EC; --dot:#E9DCC4; --ink:#1E1B2E; --muted:#5E5873;
+  --card:#FFFFFF; --lav:#EDE6FF; --mint:#9FE3B8; --mint-ink:#0E6B3A;
+  --pink:#FFB3C7; --sun:#FFD84D; --sky:#A9D8FF; --violet:#7C5CFF;
+  --line:3px solid var(--ink); --shadow:4px 4px 0 var(--ink); --r:18px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+h1,h2,h3,p{margin:0}
+button,input{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.wrap{max-width:1500px;margin:0 auto;padding:40px 16px 80px}
+header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:end;justify-content:space-between;margin-bottom:36px}
+header.top h1{font-size:44px;font-weight:800;letter-spacing:-.02em}
+header.top p{color:var(--muted);max-width:640px}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;gap:6px;border:var(--line);border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px;background:var(--card);box-shadow:2px 2px 0 var(--ink)}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.row{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px}
+.caption{font-size:13px;color:var(--muted);max-width:400px}
+.caption b{color:var(--ink)}
+
+/* Popover */
+.pop{width:400px;max-width:100%;background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:var(--line);border-radius:26px;box-shadow:6px 6px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px}
+.pop-head{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:50%;border:var(--line);background:var(--sun);display:grid;place-items:center}
+.pop-head h2{font-size:20px;font-weight:800;line-height:1}
+.pop-head small{display:block;color:var(--muted);font-size:12px}
+.pill{margin-left:auto;border:var(--line);border-radius:999px;padding:4px 12px;background:var(--mint);font-weight:800;font-size:12px;box-shadow:2px 2px 0 var(--ink)}
+.tabs{display:flex;gap:6px;overflow:hidden}
+.tabs span{border:var(--line);border-radius:999px;padding:4px 10px;font-weight:700;font-size:13px;background:var(--card);white-space:nowrap}
+.tabs span.on{background:var(--violet);color:#fff}
+.card{background:var(--card);border:var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+.card.lav{background:var(--lav)}
+.label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.input{display:flex;align-items:center;border:var(--line);border-radius:12px;background:#fff;overflow:hidden}
+.input span{padding:0 4px 0 12px;font-weight:800;color:var(--muted)}
+.input input{flex:1;border:0;outline:0;padding:10px 12px 10px 2px;background:transparent;min-width:0;font-weight:700}
+.input:focus-within{box-shadow:0 0 0 3px var(--sky)}
+.hint{font-size:12px;color:var(--muted)}
+.hint.ok{color:var(--mint-ink);font-weight:700}
+.hint.bad{color:#B4232C;font-weight:700}
+.prov{display:flex;flex-direction:column;gap:6px}
+.prov label{display:flex;align-items:center;gap:10px;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:#fff;cursor:pointer;min-height:44px}
+.prov label.off{opacity:.55;cursor:not-allowed}
+.prov input{width:18px;height:18px;accent-color:var(--violet)}
+.prov .amt{margin-left:auto;font-size:13px}
+.prov em{font-style:normal;font-size:11px;color:var(--muted);margin-left:auto}
+.btn{border:var(--line);border-radius:14px;background:var(--violet);color:#fff;font-weight:800;padding:10px 16px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;min-height:44px}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn:disabled{background:#CFC8E8;color:#5E5873;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.small{padding:6px 12px;min-height:36px;font-size:13px;border-radius:12px}
+details.payload{border:2px dashed var(--ink);border-radius:12px;padding:8px 10px;background:#fff}
+details.payload summary{cursor:pointer;font-weight:700;font-size:13px}
+details.payload pre{margin:8px 0 0;font-size:11.5px;white-space:pre-wrap;color:#2c2840}
+.rank-hero{display:flex;align-items:center;gap:14px}
+.rank-num{font-size:56px;font-weight:800;line-height:.9;-webkit-text-stroke:2px var(--ink);color:var(--sun);text-shadow:3px 3px 0 var(--ink)}
+.rank-hero .meta{display:flex;flex-direction:column;gap:2px}
+.rank-hero .meta b{font-size:18px}
+.seg{display:flex;border:var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.seg button{flex:1;border:0;background:transparent;padding:6px 8px;font-weight:700;font-size:13px;cursor:pointer;min-height:36px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:700;font-size:12px;background:#fff;cursor:pointer;min-height:32px}
+.chip[aria-pressed="true"]{background:var(--sun)}
+ol.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ol.board li{display:grid;grid-template-columns:30px 30px 1fr auto;align-items:center;gap:8px;padding:6px 8px;border:2px solid var(--ink);border-radius:12px;background:#fff}
+ol.board li.me{background:var(--mint);box-shadow:3px 3px 0 var(--ink)}
+ol.board li.gap{border-style:dashed;background:transparent;justify-content:center;display:flex;color:var(--muted);font-size:12px;padding:2px}
+.pos{font-weight:800;text-align:center}
+.av{width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font-weight:800;font-size:12px}
+.who{min-width:0;display:flex;flex-direction:column}
+.who b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{font-size:11px;color:var(--muted)}
+.tok{font-weight:800;font-size:13px}
+.bar{height:10px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
+.bar i{display:block;height:100%;background:repeating-linear-gradient(-45deg,var(--violet) 0 6px,#9B83FF 6px 12px)}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.sw i{position:absolute;inset:0;border:var(--line);border-radius:999px;background:#fff;pointer-events:none}
+.sw i::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:left .15s}
+.sw input:checked+i{background:var(--mint)}
+.sw input:checked+i::after{left:20px}
+.sw input:focus-visible+i{box-shadow:0 0 0 3px var(--sky)}
+.setrow{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:8px 0}
+.setrow+.setrow{border-top:2px dashed #D9CFF5}
+.setrow p{font-size:12px;color:var(--muted)}
+.danger{background:#FFE1E6;color:#8A1424}
+
+/* Web board */
+.web{flex:1 1 640px;min-width:0;background:#fff;border:var(--line);border-radius:22px;box-shadow:6px 6px 0 var(--ink);overflow:hidden}
+.browser{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:var(--line);background:var(--lav)}
+.browser i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:#fff}
+.browser .url{margin-left:8px;flex:1;border:2px solid var(--ink);border-radius:999px;padding:3px 12px;background:#fff;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.web-body{padding:28px;display:flex;flex-direction:column;gap:22px;background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:16px 16px}
+.web-head{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:end}
+.web-head h2{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.web-head p{color:var(--muted)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end}
+.step{border:var(--line);border-radius:18px 18px 8px 8px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0}
+.step .medal{font-size:30px;font-weight:800;-webkit-text-stroke:2px var(--ink);color:#fff;text-shadow:2px 2px 0 var(--ink);line-height:1}
+.step .av{width:52px;height:52px;font-size:20px;border-width:3px}
+.step b{font-size:17px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .tok{font-size:20px}
+.s1{background:var(--sun);min-height:230px}
+.s2{background:var(--sky);min-height:196px}
+.s3{background:var(--pink);min-height:172px}
+.tablebox{overflow-x:auto;border:var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:10px 14px;text-align:left;border-bottom:2px solid #EEE7DA;font-size:14px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:#FBF6EC}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",ui-monospace,monospace}
+tr.me td{background:var(--mint)}
+.mix{display:flex;height:12px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;min-width:120px}
+.mix i{display:block;height:100%}
+.note{font-size:12px;color:var(--muted)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:44px}
+.notes .card h3{font-size:16px;margin-bottom:6px}
+.notes .card p,.notes .card li{font-size:13.5px;color:#3a3550}
+.notes ul{margin:6px 0 0;padding-left:18px}
+@media (max-width:520px){header.top h1{font-size:32px}.web-body{padding:16px}.web-head h2{font-size:30px}.podium{gap:8px}.step{padding:10px 6px}.step .tok{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <h1>Leaderboard</h1>
+    <p>Join with a username, choose which providers to share, and ClaudeBar uploads your daily token totals so you can see where you rank. Pop theme. Sample data throughout.</p>
+  </div>
+  <div class="legend">
+    <span class="tag">1 · Join</span><span class="tag">2 · Your rank</span><span class="tag">3 · Settings</span><span class="tag">4 · Web board</span>
+  </div>
+</header>
+
+<div class="row">
+  <!-- 1 + 2: one interactive popover -->
+  <div class="col">
+    <p class="section-title">In the popover · interactive</p>
+    <div class="pop" aria-label="ClaudeBar popover, Leaderboard tab">
+      <div class="pop-head">
+        <div class="logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E1B2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+        </div>
+        <div><h2>ClaudeBar</h2><small>Your quotas, the cute way</small></div>
+        <span class="pill" id="statusPill">NOT JOINED</span>
+      </div>
+      <div class="tabs" aria-hidden="true"><span>Claude</span><span>Codex</span><span class="on">Leaderboard</span><span>Gemini</span></div>
+
+      <!-- JOIN -->
+      <form id="joinView" class="col" style="gap:12px" novalidate>
+        <div class="card lav col" style="gap:4px">
+          <p class="label">Join the board</p>
+          <p style="font-weight:800;font-size:20px;line-height:1.15">Rank your token usage against other ClaudeBar users</p>
+        </div>
+        <div class="card col" style="gap:12px">
+          <div class="field">
+            <label class="label" for="username">Username</label>
+            <div class="input"><span>@</span><input id="username" autocomplete="off" spellcheck="false" maxlength="20" placeholder="pick-a-name" aria-describedby="userHint"></div>
+            <p class="hint" id="userHint">3–20 letters, numbers, - or _. Shown publicly.</p>
+          </div>
+          <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="label" style="margin-bottom:6px">Share tokens from</legend>
+            <div class="prov" id="provList"></div>
+          </fieldset>
+          <details class="payload">
+            <summary>Exactly what gets uploaded</summary>
+            <pre class="mono" id="payload"></pre>
+          </details>
+          <button class="btn" id="joinBtn" type="submit" disabled>Join leaderboard</button>
+          <p class="hint">Daily totals only. Never prompts, file names, projects or your account email. Leave any time; leaving deletes your rows.</p>
+        </div>
+      </form>
+
+      <!-- JOINED -->
+      <div id="boardView" class="col" style="gap:12px" hidden>
+        <div class="card col" style="gap:10px">
+          <div class="rank-hero">
+            <span class="rank-num" id="myRank">#7</span>
+            <div class="meta">
+              <b id="myName">@you</b>
+              <span class="mono" style="font-size:13px"><span id="myTok">0</span> tokens · <span id="myPeriod">7 days</span></span>
+              <span class="hint ok" id="myMove">▲ 2 since yesterday</span>
+            </div>
+          </div>
+          <div class="seg" role="group" aria-label="Period" id="periodSeg"></div>
+          <div class="chips" role="group" aria-label="Provider" id="provChips"></div>
+        </div>
+        <div class="card col" style="gap:8px">
+          <p class="label">Top of the board</p>
+          <ol class="board" id="miniBoard"></ol>
+        </div>
+        <div class="foot">
+          <span>Uploaded 2 min ago · next in 1 h</span>
+          <a href="#web" class="btn small ghost" style="text-decoration:none;display:inline-flex;align-items:center">Full board</a>
+        </div>
+      </div>
+    </div>
+    <p class="caption"><b>Try it:</b> type a username and press Join. Ticked providers are the only ones uploaded. Providers without local token logs can't be shared yet, so they're greyed out.</p>
+  </div>
+
+  <!-- 3: settings -->
+  <div class="col">
+    <p class="section-title">Settings → Leaderboard</p>
+    <div class="pop" style="gap:10px" aria-label="Leaderboard settings">
+      <p style="font-weight:800;font-size:22px">Leaderboard</p>
+      <div class="card">
+        <div class="setrow">
+          <div><b>Username</b><p class="mono" id="setName">@not-joined</p></div>
+          <button class="btn small ghost" type="button">Rename</button>
+        </div>
+        <div class="setrow">
+          <div><b>Upload automatically</b><p>Every hour while ClaudeBar runs</p></div>
+          <span class="sw"><input type="checkbox" checked aria-label="Upload automatically"><i></i></span>
+        </div>
+        <div class="setrow">
+          <div><b>Show me on the web board</b><p>Off keeps you ranked only in your own app</p></div>
+          <span class="sw"><input type="checkbox" checked aria-label="Show me on the web board"><i></i></span>
+        </div>
+      </div>
+      <div class="card">
+        <p class="label" style="margin-bottom:4px">Shared providers</p>
+        <div class="setrow"><div><b>Claude</b><p>From ~/.claude logs</p></div><span class="sw"><input type="checkbox" checked aria-label="Share Claude"><i></i></span></div>
+        <div class="setrow"><div><b>Codex</b><p>From ~/.codex session logs</p></div><span class="sw"><input type="checkbox" checked aria-label="Share Codex"><i></i></span></div>
+        <div class="setrow"><div><b>Mistral</b><p>From usage history</p></div><span class="sw"><input type="checkbox" aria-label="Share Mistral"><i></i></span></div>
+      </div>
+      <button class="btn danger" type="button">Leave and delete my data</button>
+    </div>
+    <p class="caption">Leaving removes your username and every uploaded row from the server, not just from the board.</p>
+  </div>
+
+  <!-- 4: web -->
+  <div class="col" id="web" style="flex:1 1 640px;min-width:0">
+    <p class="section-title">Web board · tddworks.github.io/ClaudeBar/leaderboard</p>
+    <div class="web">
+      <div class="browser" aria-hidden="true"><i></i><i></i><i></i><span class="url mono">tddworks.github.io/ClaudeBar/leaderboard</span></div>
+      <div class="web-body">
+        <div class="web-head">
+          <div>
+            <h2>Token Leaderboard</h2>
+            <p id="webSub">Top ClaudeBar users by tokens · last 7 days</p>
+          </div>
+          <div class="filters">
+            <div class="seg" role="group" aria-label="Period" id="webPeriod" style="min-width:230px"></div>
+          </div>
+        </div>
+        <div class="chips" role="group" aria-label="Provider" id="webChips"></div>
+        <div class="podium" id="podium"></div>
+        <div class="tablebox">
+          <table>
+            <thead><tr><th>#</th><th>User</th><th>Mix</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache</th><th class="num">Total</th></tr></thead>
+            <tbody id="webRows"></tbody>
+          </table>
+        </div>
+        <p class="note">Mix: <span style="color:#7C5CFF;font-weight:800">■</span> Claude <span style="color:#1FA37A;font-weight:800">■</span> Codex <span style="color:#F29B38;font-weight:800">■</span> Mistral. Totals are self-reported by each user's ClaudeBar.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="notes">
+  <div class="card"><h3>What's uploaded</h3><p>One row per user, provider and day: input, output, cache-write and cache-read tokens. Computed locally from the same logs that drive Daily usage. Nothing else leaves the Mac.</p></div>
+  <div class="card"><h3>Which providers</h3><p>Only providers with local token logs can be ranked: Claude today, plus Codex and Mistral. Quota-only providers (Gemini, Copilot, Cursor…) report percentages, not tokens, so they're greyed out.</p></div>
+  <div class="card"><h3>Open questions</h3><ul><li>Backend and hosting: a small API plus a static page on GitHub Pages?</li><li>Anti-cheat: totals are self-reported. A per-install key signs uploads, and outliers get flagged.</li><li>Rank by total tokens, or output only, or cost?</li></ul></div>
+</section>
+</div>
+
+<script>
+const PROVIDERS=[
+  {id:'claude',name:'Claude',color:'#7C5CFF',has:true,src:'~/.claude logs'},
+  {id:'codex',name:'Codex',color:'#1FA37A',has:true,src:'~/.codex logs'},
+  {id:'mistral',name:'Mistral',color:'#F29B38',has:true,src:'usage history'},
+  {id:'gemini',name:'Gemini',color:'#888',has:false},
+  {id:'copilot',name:'Copilot',color:'#888',has:false}
+];
+const PERIODS=[{id:'today',label:'Today',mult:1/7},{id:'7d',label:'7 days',mult:1},{id:'30d',label:'30 days',mult:4.1}];
+const AV=['#FFD84D','#A9D8FF','#FFB3C7','#9FE3B8','#EDE6FF','#FFC98A'];
+// Sample users: 7-day token totals per provider, in millions.
+const USERS=[
+  ['tokenwhale',{claude:182,codex:41}],['vim-or-bust',{claude:120,codex:66,mistral:4}],
+  ['late_night_dev',{claude:141,codex:12}],['ship_it',{codex:118,claude:20}],
+  ['rubberduck',{claude:96,mistral:18}],['nanobanana',{claude:61,codex:40}],
+  ['cachequeen',{claude:88}],['yak-shaver',{codex:52,claude:11}],
+  ['sudo_make',{claude:44,codex:6}],['pairwithme',{claude:31,mistral:9}],
+  ['merge-conflict',{codex:33}],['quietcoder',{claude:19}]
+];
+const ME_SAMPLE={claude:79,codex:14,mistral:2};
+const state={user:'',share:{claude:true,codex:true,mistral:false},joined:false,period:'7d',prov:'all'};
+
+const $=s=>document.querySelector(s);
+const fmt=n=>n>=1000?(n/1000).toFixed(2)+'B':n>=10?n.toFixed(0)+'M':n.toFixed(1)+'M';
+const valid=u=>/^[A-Za-z0-9_-]{3,20}$/.test(u);
+const taken=u=>USERS.some(([n])=>n.toLowerCase()===u.toLowerCase());
+
+function provList(){
+  $('#provList').innerHTML=PROVIDERS.map(p=>p.has
+    ?`<label><input type="checkbox" data-p="${p.id}" ${state.share[p.id]?'checked':''}><b>${p.name}</b><span class="amt mono">${fmt(ME_SAMPLE[p.id]||0)} this week</span></label>`
+    :`<label class="off"><input type="checkbox" disabled><b>${p.name}</b><em>no token logs</em></label>`).join('');
+  $('#provList').querySelectorAll('input[data-p]').forEach(i=>i.onchange=()=>{state.share[i.dataset.p]=i.checked;payload();check()});
+}
+function payload(){
+  const shared=PROVIDERS.filter(p=>p.has&&state.share[p.id]);
+  const day=shared.map(p=>{const t=Math.round((ME_SAMPLE[p.id]||0)/7*1e6);return `    {"provider":"${p.id}","date":"2026-10-04","input":${Math.round(t*.08)},"output":${Math.round(t*.04)},"cacheWrite":${Math.round(t*.1)},"cacheRead":${t-Math.round(t*.08)-Math.round(t*.04)-Math.round(t*.1)}}`});
+  $('#payload').textContent=`POST /v1/usage\n{\n  "username": "${state.user||'pick-a-name'}",\n  "days": [\n${day.join(',\n')||'    '}\n  ]\n}`;
+}
+function check(){
+  const u=state.user,h=$('#userHint');
+  let ok=false;
+  if(!u){h.className='hint';h.textContent='3–20 letters, numbers, - or _. Shown publicly.'}
+  else if(!valid(u)){h.className='hint bad';h.textContent='Use 3–20 letters, numbers, - or _.'}
+  else if(taken(u)){h.className='hint bad';h.textContent='@'+u+' is taken. Try another.'}
+  else{h.className='hint ok';h.textContent='@'+u+' is available';ok=true}
+  const any=Object.values(state.share).some(Boolean);
+  $('#joinBtn').disabled=!(ok&&any);
+  $('#joinBtn').textContent=any?'Join leaderboard':'Pick at least one provider';
+}
+function rows(){
+  const mult=PERIODS.find(p=>p.id===state.period).mult;
+  const me=state.joined?[[state.user,Object.fromEntries(Object.entries(ME_SAMPLE).filter(([k])=>state.share[k]))]]:[];
+  return USERS.concat(me).map(([name,by])=>{
+    const parts=Object.fromEntries(Object.entries(by).filter(([k])=>state.prov==='all'||k===state.prov).map(([k,v])=>[k,v*mult]));
+    const total=Object.values(parts).reduce((a,b)=>a+b,0);
+    return {name,parts,total,me:state.joined&&name===state.user};
+  }).filter(r=>r.total>0).sort((a,b)=>b.total-a.total).map((r,i)=>({...r,rank:i+1}));
+}
+function seg(el,onPick){
+  el.innerHTML=PERIODS.map(p=>`<button type="button" data-v="${p.id}" aria-pressed="${state.period===p.id}">${p.label}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{state.period=b.dataset.v;render()});
+}
+function chips(el){
+  const opts=[{id:'all',name:'All'}].concat(PROVIDERS.filter(p=>p.has));
+  el.innerHTML=opts.map(p=>`<button type="button" class="chip" data-v="${p.id}" aria-pressed="${state.prov===p.id}">${p.name}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{state.prov=b.dataset.v;render()});
+}
+const avatar=(r,i)=>`<span class="av" style="background:${r.me?'#fff':AV[i%AV.length]}" aria-hidden="true">${r.name[0].toUpperCase()}</span>`;
+function render(){
+  const R=rows(),per=PERIODS.find(p=>p.id===state.period),provName=state.prov==='all'?'all providers':PROVIDERS.find(p=>p.id===state.prov).name;
+  seg($('#periodSeg'));seg($('#webPeriod'));chips($('#provChips'));chips($('#webChips'));
+  $('#webSub').textContent=`Top ClaudeBar users by tokens · ${provName} · ${per.label.toLowerCase()}`;
+  // popover
+  const me=R.find(r=>r.me);
+  if(state.joined){
+    $('#myRank').textContent=me?'#'+me.rank:'–';
+    $('#myTok').textContent=me?fmt(me.total):'0';
+    $('#myPeriod').textContent=per.label.toLowerCase();
+    $('#myMove').textContent=me?'▲ 2 since yesterday':'Not shared for this provider';
+    $('#myMove').className=me?'hint ok':'hint';
+    const top=R.slice(0,5),max=R[0]?R[0].total:1;
+    let html=top.map((r,i)=>`<li class="${r.me?'me':''}"><span class="pos">${r.rank}</span>${avatar(r,i)}<span class="who"><b>@${r.name}</b><span class="bar" aria-hidden="true"><i style="width:${Math.max(4,r.total/max*100)}%"></i></span></span><span class="tok mono">${fmt(r.total)}</span></li>`).join('');
+    if(me&&me.rank>5)html+=`<li class="gap" aria-hidden="true">· · ·</li><li class="me"><span class="pos">${me.rank}</span>${avatar(me,0)}<span class="who"><b>@${me.name} (you)</b><span class="bar" aria-hidden="true"><i style="width:${Math.max(4,me.total/max*100)}%"></i></span></span><span class="tok mono">${fmt(me.total)}</span></li>`;
+    $('#miniBoard').innerHTML=html;
+  }
+  // web
+  const podium=[R[1],R[0],R[2]],cls=['s2','s1','s3'],medal=['2','1','3'];
+  $('#podium').innerHTML=podium.map((r,i)=>r?`<div class="step ${cls[i]}"><span class="medal">${medal[i]}</span>${avatar(r,i+1)}<b>@${r.name}</b><span class="tok mono">${fmt(r.total)}</span></div>`:'<div></div>').join('');
+  $('#webRows').innerHTML=R.map((r,i)=>{
+    const mix=PROVIDERS.filter(p=>r.parts[p.id]).map(p=>`<i style="width:${r.parts[p.id]/r.total*100}%;background:${p.color}" title="${p.name} ${fmt(r.parts[p.id])}"></i>`).join('');
+    return `<tr class="${r.me?'me':''}"><td class="mono"><b>${r.rank}</b></td><td><b>@${r.name}</b>${r.me?' <span class="tag" style="padding:0 8px;font-size:11px">you</span>':''}</td><td><span class="mix">${mix}</span></td><td class="num">${fmt(r.total*.08)}</td><td class="num">${fmt(r.total*.04)}</td><td class="num">${fmt(r.total*.88)}</td><td class="num"><b>${fmt(r.total)}</b></td></tr>`;
+  }).join('');
+}
+$('#username').oninput=e=>{state.user=e.target.value.trim();payload();check()};
+$('#joinView').onsubmit=e=>{
+  e.preventDefault();if($('#joinBtn').disabled)return;
+  state.joined=true;
+  $('#joinView').hidden=true;$('#boardView').hidden=false;
+  $('#statusPill').textContent='RANKED';$('#myName').textContent='@'+state.user;$('#setName').textContent='@'+state.user;
+  render();
+};
+provList();payload();check();render();
+</script>
+</body>
+</html>

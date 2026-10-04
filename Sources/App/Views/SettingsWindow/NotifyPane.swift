@@ -151,7 +151,7 @@ struct NotifyPane: View {
                 .padding(.top, 8)
 
             HStack(spacing: 8) {
-                NotifyPaneButton(
+                SettingsActionButton(
                     title: "Save Link",
                     iconName: "link"
                 ) {
@@ -160,7 +160,7 @@ struct NotifyPane: View {
                 .disabled(pendingLink == nil)
                 .opacity(pendingLink == nil ? 0.6 : 1)
 
-                NotifyPaneButton(
+                SettingsActionButton(
                     title: isVerifying ? "Checking..." : "Verify Device",
                     iconName: "checkmark.shield.fill",
                     isProminent: false,
@@ -519,7 +519,7 @@ struct NotifyPane: View {
                 title: "Send an Update Now",
                 subtitle: "Publishes the current quota straight away, so you can watch it land instead of waiting for the next refresh."
             ) {
-                NotifyPaneButton(
+                SettingsActionButton(
                     title: isPublishing ? "Sending..." : "Send Now",
                     iconName: "paperplane.fill",
                     isBusy: isPublishing
@@ -782,53 +782,5 @@ private struct NotifyOutcomeLine: View {
             .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
             .foregroundStyle(outcome.isFailure ? theme.statusCritical : theme.statusHealthy)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// A pane action button in the Settings window's capsule language: filled with
-/// the accent gradient when it is the obvious next step, glass when it sits
-/// beside one.
-private struct NotifyPaneButton: View {
-    let title: String
-    let iconName: String
-    var isProminent: Bool = true
-    var isBusy: Bool = false
-    let action: () -> Void
-
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if isBusy {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 14, height: 14)
-                } else {
-                    Image(systemName: iconName)
-                        .font(.system(size: 11, weight: .semibold))
-                }
-
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-            }
-            .foregroundStyle(isProminent ? Color.white : theme.textPrimary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(buttonBackground)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var buttonBackground: some View {
-        ZStack {
-            if isProminent {
-                Capsule().fill(theme.accentGradient)
-            } else {
-                Capsule().fill(theme.glassBackground)
-            }
-
-            Capsule().stroke(isProminent ? Color.clear : theme.glassBorder, lineWidth: theme.cardBorderWidth)
-        }
     }
 }

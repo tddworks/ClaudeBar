@@ -50,22 +50,16 @@ struct ExtensionMetricCardView: View {
 
             // Progress bar (if progress provided)
             if let progress = metric.progress {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(theme.progressTrack)
-
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(LinearGradient(
-                                colors: [accentColor.opacity(0.8), accentColor],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ))
-                            .frame(width: animateProgress ? geo.size.width * min(1, max(0, progress)) : 0)
-                            .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
-                    }
-                }
-                .frame(height: 5)
+                QuotaProgressBar(
+                    percent: progress * 100,
+                    fill: LinearGradient(
+                        colors: [accentColor.opacity(0.8), accentColor],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    animate: animateProgress,
+                    delay: delay
+                )
             }
 
             // Delta comparison line

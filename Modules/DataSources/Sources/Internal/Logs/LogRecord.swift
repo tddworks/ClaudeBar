@@ -100,8 +100,10 @@ struct RecordShape: Sendable {
         guard counts.prefix(5).contains(where: { $0 != nil }) || cost != nil else { return nil }
         let parts = records.id.map { scope.string($0) }
         let id = parts.isEmpty || parts.contains(nil) ? nil : parts.compactMap { $0 }.joined(separator: "\u{1F}")
+        var input = counts[0] ?? 0
+        if tokens.inputIncludesCacheRead == true { input = max(0, input - (counts[3] ?? 0)) }
         return LogRecord(at: at, id: id, model: model,
-                         input: counts[0] ?? 0, output: counts[1] ?? 0, cacheWrite: counts[2] ?? 0,
+                         input: input, output: counts[1] ?? 0, cacheWrite: counts[2] ?? 0,
                          cacheWrite1h: counts[5] ?? 0, cacheRead: counts[3] ?? 0, total: counts[4], cost: cost)
     }
 
