@@ -78,12 +78,12 @@ struct ClaudeLocalFileTests {
         let source = try #require(definition.dataSource("localFile"))
         #expect(source.label == "Local File")
         #expect(source.summary == "Reads Claude Desktop's buddy-tokens.json (best-effort)")
-        guard case .file(let call)? = source.fetch else {
+        guard case .file(let call) = source.fetch else {
             Issue.record("localFile is not a file data source")
             return
         }
         #expect(call.path == "~/Library/Application Support/Claude/buddy-tokens.json")
-        guard case .script(let mapping)? = source.mapping else {
+        guard case .script(let mapping) = source.mapping else {
             Issue.record("localFile is not mapped by a script")
             return
         }
@@ -105,14 +105,14 @@ struct ClaudeLocalFileTests {
         // ClaudeProbeMode.localFile persists as its raw value under the same
         // key Provider.activeKind reads — the saved value and the definition's
         // kind must keep matching, or the saved choice selects nothing.
-        #expect(Providers.builtIn("claude").dataSource("localFile") != nil)
+        try #expect(Providers.builtIn("claude").dataSource("localFile") != nil)
     }
 
     // MARK: - The happy path
 
     @Test
     func `reads today's tokens as a note, not a quota`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -130,7 +130,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `groups large counts and keeps zero`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -145,7 +145,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a current file is ready and a missing one is not`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -158,7 +158,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a missing file fails the fetch`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -172,7 +172,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `malformed JSON is a parse failure`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -189,7 +189,7 @@ struct ClaudeLocalFileTests {
         (#"{"tokens-today": {"date": "2026-02-30", "tokens": 100}}"#, "buddy-tokens.json schema changed: invalid 'date' value"),
     ])
     func `schema changes are parse failures with a structural reason`(body: String, reason: String) async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -200,7 +200,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a negative token count is a parse failure`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -213,7 +213,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a stale counter is no data`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -225,7 +225,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a future date is no data`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -238,7 +238,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a provider saved to localFile mode refreshes from the file`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -255,7 +255,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `a failing file surfaces its error instead of CLI data`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -274,7 +274,7 @@ struct ClaudeLocalFileTests {
 
     @Test
     func `availability in localFile mode answers for the file alone`() async throws {
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
@@ -291,7 +291,7 @@ struct ClaudeLocalFileTests {
     @Test
     func `background refresh has no floor in localFile mode`() throws {
         // Reading a small local file is cheap; the user's interval stands.
-        let harness = try ClaudeHarness()
+        var harness = try ClaudeHarness()
         defer { harness.cleanUp() }
         let account = try localFileAccount(harness)
         #expect(account.provider.backgroundRefreshFloor == nil)
