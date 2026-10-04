@@ -136,7 +136,7 @@ final class NotchWindowDriver {
             }
 
         let selected = monitor.selectedProvider
-        let snapshot = selected?.snapshot
+        let snapshot = selected.flatMap { monitor.usage(of: $0) }
         let quotas = snapshot?.quotas ?? []
         let headline = snapshot?.lowestQuota
 
@@ -156,7 +156,7 @@ final class NotchWindowDriver {
             // The panel is about what is nearly gone, so lead with the most
             // depleted rather than whichever quota happens to be first.
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
-            today: snapshot?.dailyUsageReport?.today,
+            today: ((selected as? Account)?.usageHistory?.report ?? snapshot?.dailyUsageReport)?.today,
             headline: headline,
             isRefreshing: selected?.isSyncing ?? false
         )

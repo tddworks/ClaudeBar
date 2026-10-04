@@ -14,6 +14,18 @@
 
 ---
 
+
+## As data
+
+Copilot is `Modules/Providers/Resources/Providers/copilot.json` with `copilot-billing.js` and `copilot-user.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it. Ported from #391. The plan below is the history of the old probes.
+
+- **Two data sources**, `billing` and `copilotAPI`, the old Probe Mode's values, so `copilot.probeMode` is read as it was.
+- **The username travels with the key.** Billing's credential adds `username` from its setting (`with`) and refuses a blank or malformed one (`match`, checked after `with`), so Billing without a username is not ready rather than a bad URL.
+- **A mapping never writes settings.** The old probe stored `apiReturnedEmpty` and the billing month, and cleared the manual value at month change. Now `monthlyLimit` and `manualUsage` are settings handed to the script (`mapping.script.values`); a manual value is used only while GitHub reports no Copilot items, and nothing is stored back.
+- **Left and Window laws.** Unlimited or no AI-credits quota is the plan with no card, not 100%; the plan is the account's tier, never its email. Billing's window is the calendar month GitHub names, in UTC; the Copilot API's is the month ending on its reset date.
+- **The GitHub CLI's login.** The Copilot API's lookup ends with the `gh:github.com` Keychain item (go-keyring base64, `encoding: goKeyringBase64`); `gh`'s OAuth token answers `copilot_internal/user` but not the billing API (404), so Billing hands over to the Copilot API on no key or a refused one. The response's `login` is the account shown.
+- **Compatibility.** The token moves from UserDefaults (or Keychain `github-copilot-token`) through `ProviderVault.legacyKeys`; the username is read from its old UserDefaults key and moves to `copilot.username` when saved; the old limit, a JSON number, reads as text. The old manual-override switch and value aren't carried over.
+
 ## Background
 
 GitHub Copilot now bills usage as **AI Credits** instead of premium requests (see [usage-based billing docs](https://docs.github.com/en/copilot/concepts/billing/usage-based-billing-for-individuals)). All paid plans (Pro, Pro+, Max) get a monthly allowance measured in credits; one credit ≈ $0.01 of model spend. The previous "premium request" model is gone.

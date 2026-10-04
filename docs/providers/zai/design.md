@@ -1,10 +1,10 @@
-# Z.ai: probe design
+# Z.ai: design
 
-Research notes for the Z.ai (GLM Coding Plan) probe, from the code, [#22](https://github.com/tddworks/ClaudeBar/pull/22), [#181](https://github.com/tddworks/ClaudeBar/pull/181) and [#240](https://github.com/tddworks/ClaudeBar/pull/240).
+Research notes for Z.ai (GLM Coding Plan), from the code, [#22](https://github.com/tddworks/ClaudeBar/pull/22), [#181](https://github.com/tddworks/ClaudeBar/pull/181) and [#240](https://github.com/tddworks/ClaudeBar/pull/240).
 
 ## Source
 
-`GET <platform>/api/monitor/usage/quota/limit` with `Authorization: Bearer <key>`, `Accept-Language: en-US,en`. HTTP 401/403 → "Authentication required".
+`GET <platform>/api/monitor/usage/quota/limit` with `Authorization: Bearer <key>`, `Accept-Language: en-US,en`. HTTP 401/403 → *Key needed*.
 
 | Base URL seen in Claude's config contains | Platform queried |
 |---|---|
@@ -12,19 +12,16 @@ Research notes for the Z.ai (GLM Coding Plan) probe, from the code, [#22](https:
 | `open.bigmodel.cn` | `https://open.bigmodel.cn` (Zhipu) |
 | `dev.bigmodel.cn` | `https://dev.bigmodel.cn` |
 
-## Config discovery
+## As data
 
-Z.ai has no CLI of its own. Users point Claude Code at Z.ai's Anthropic-compatible endpoint, so the probe reads Claude Code's settings file (or the custom path) with `cat` and looks for:
+Z.ai is `Modules/Providers/Resources/Providers/zai.json` and `zai-usage.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it. Ported from #392.
 
-1. **Platform**: `env.ANTHROPIC_BASE_URL`, then `providers[].base_url`, then any occurrence of one of the three hosts anywhere in the file. The last step lets unusual config shapes work.
-2. **Key**: `env.ANTHROPIC_AUTH_TOKEN`, then `providers[].api_key`, then top-level `api_key`, then the configured env var name.
-
-`isAvailable` also requires `claude` on PATH, a leftover from treating Z.ai as "Claude Code pointed elsewhere".
-
-Known limits:
-
-- The env var is read from `ProcessInfo.processInfo.environment`, the app's own environment. Launched from Finder or Login Items, that doesn't include shell rc exports ([#170](https://github.com/tddworks/ClaudeBar/issues/170)). Loading the login shell's environment, the way `BinaryLocator` does for PATH, would fix it.
-- The custom path goes through `URL(fileURLWithPath:)` and `cat` without a shell, so `~` isn't expanded.
+- **The key and its host travel together.** The credential is a `firstOf`: the saved `apiKey` setting, Claude Code's settings file, then an environment variable. Each one yields a `token` and a `baseURL`, and the request goes to `https://{{baseURL#host}}/api/monitor/usage/quota/limit`. A saved key or an environment key gets its `baseURL` from the `platform` choice setting (`with`); the file gives its own.
+- **A file key is used only for a Z.ai host.** `jsonFile` reads `env.ANTHROPIC_AUTH_TOKEN`/`env.ANTHROPIC_BASE_URL`, then `providers[0].api_key`/`base_url`, then top-level `api_key`; `match` refuses the record unless `baseURL` is on `api.z.ai`, `open.bigmodel.cn` or `dev.bigmodel.cn` (anchored, so `api.z.ai.example.com` is not one). The old probe also searched the whole file for a host, which could pair one entry's key with another's URL; that's gone, as is the `claude`-on-PATH check, which the quota API never needed.
+- **Environment.** `glmAuthEnvVar` defaults to `ZAI_API_KEY`. The composition root reads a variable the person named through `ShellEnvironment` (the app's environment, then the login shell via `LoginShellEnvironment`, whose name check and markers are unchanged). Only a named variable: availability checks run the same lookup, and an unconditional shell would run for everyone who doesn't use Z.ai.
+- **Errors.** 401 and 403 are *Key needed*; no key anywhere is *Key needed*.
+- **Accounts.** An added account is a key and a platform (`accounts.patch`); it never reads the file or the environment.
+- **Compatibility.** The saved key moves from its old Keychain name through `ProviderVault.legacyKeys`; `zai.configPath` and `zai.glmAuthEnvVar` are already `<id>.<setting>`. A leading `~` in the path is now expanded.
 
 ## Response
 
@@ -54,13 +51,13 @@ Several entries share one `type` and differ only by `unit`. Mapping observed on 
 | `type` | `unit` | Shown as |
 |---|---|---|
 | `TIME_LIMIT` | any (seen: 5) | MCP (tools) |
-| `TOKENS_LIMIT` / `CREDIT_LIMIT` | 3 | 5-hour session |
-| `TOKENS_LIMIT` / `CREDIT_LIMIT` | 6 | Weekly |
+| `TOKENS_LIMIT` / `CREDIT_LIMIT` | 3 | 5-hour session (window 5 h) |
+| `TOKENS_LIMIT` / `CREDIT_LIMIT` | 6 | Weekly (window 7 d) |
 | `TOKENS_LIMIT` / `CREDIT_LIMIT` | 7 | Monthly (plan-dependent, rare) |
 | `TOKENS_LIMIT` / `CREDIT_LIMIT` | missing | 5-hour session (responses before `unit` existed) |
 | `TOKENS_LIMIT` / `CREDIT_LIMIT` | other | "Tokens (unit N)" / "Credits (unit N)", kept rather than dropped |
 
-Other types are skipped. If nothing is left → "No recognized quota types found".
+Only units 3 and 6 state a window; the rest have none rather than a guessed one (the Window law). Other types are skipped. If nothing is left → "No recognized quota types found".
 
 History:
 

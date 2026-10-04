@@ -22,11 +22,11 @@ tuist build ClaudeBar -C Release
 
 ## How code is organised
 
-Three layers: `Sources/Domain` (models, `QuotaMonitor` as the single source of truth, protocols), `Sources/Infrastructure` (probes, storage, network) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels). The why and the data flow: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
+Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider` and `DataSource` (`Modules/`). Around them: `Sources/Domain` (`QuotaMonitor` as the single source of truth, sessions, Notify!), `Sources/Infrastructure` (storage, notifications, hooks) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels). The why and the data flow: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
 
 ## Adding a provider
 
-Ask your agent to "add a new provider for X" to load the `add-provider` skill (`.claude/skills/add-provider/`). It walks through parsing tests → probe tests → probe → provider → registration. Read a similar provider's `docs/providers/<id>/design.md` first, and add `docs/providers/<id>/README.md` for the new one.
+Ask your agent to "add a new provider for X" to load the `add-provider` skill (`.claude/skills/add-provider/`). It walks through captured fixtures → golden tests → the JSON definition (and a general engine rule when the definition can't say something) → registration. Read a similar provider's `docs/providers/<id>/design.md` first, and add `docs/providers/<id>/README.md` for the new one.
 
 ## Rules
 

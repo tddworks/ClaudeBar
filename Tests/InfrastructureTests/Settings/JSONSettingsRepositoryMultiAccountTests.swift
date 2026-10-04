@@ -55,14 +55,6 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `activeAccountId is nil for a provider that was never configured`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.activeAccountId(forProvider: "claude") == nil)
-    }
-
-    @Test
     func `existing single-account settings survive account writes`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
@@ -206,70 +198,32 @@ struct JSONSettingsRepositoryMultiAccountTests {
         #expect(repo.accounts(forProvider: "claude").isEmpty)
     }
 
+    // MARK: - The default login's name
+
     @Test
-    func `removing the active account clears the active pointer`() {
+    func `the default login's name is saved and forgotten`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        repo.addAccount(account("personal"), forProvider: "claude")
-        repo.addAccount(account("work"), forProvider: "claude")
-        repo.setActiveAccountId("personal", forProvider: "claude")
+        repo.setDefaultAccountLabel("Personal", forProvider: "claude")
+        #expect(repo.defaultAccountLabel(forProvider: "claude") == "Personal")
+        #expect(repo.defaultAccountLabel(forProvider: "codex") == nil)
 
-        repo.removeAccount(accountId: "personal", forProvider: "claude")
-
-        #expect(repo.activeAccountId(forProvider: "claude") == nil)
-    }
-
-    @Test
-    func `removing a non-active account keeps the active pointer`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.addAccount(account("personal"), forProvider: "claude")
-        repo.addAccount(account("work"), forProvider: "claude")
-        repo.setActiveAccountId("work", forProvider: "claude")
-
-        repo.removeAccount(accountId: "personal", forProvider: "claude")
-
-        #expect(repo.activeAccountId(forProvider: "claude") == "work")
-    }
-
-    // MARK: - Active Account
-
-    @Test
-    func `setActiveAccountId persists the value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setActiveAccountId("work", forProvider: "claude")
-
-        #expect(repo.activeAccountId(forProvider: "claude") == "work")
-    }
-
-    @Test
-    func `setActiveAccountId to nil clears the value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setActiveAccountId("work", forProvider: "claude")
-        repo.setActiveAccountId(nil, forProvider: "claude")
-
-        #expect(repo.activeAccountId(forProvider: "claude") == nil)
-    }
-
-    @Test
-    func `active account is namespaced per provider`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setActiveAccountId("personal", forProvider: "claude")
-        repo.setActiveAccountId("work", forProvider: "codex")
-
-        #expect(repo.activeAccountId(forProvider: "claude") == "personal")
-        #expect(repo.activeAccountId(forProvider: "codex") == "work")
+        repo.setDefaultAccountLabel(nil, forProvider: "claude")
+        #expect(repo.defaultAccountLabel(forProvider: "claude") == nil)
     }
 
     // MARK: - Key Pattern (JSONSettingsStore)
+
+    @Test
+    func `the default login's name is stored under providers dot id dot defaultAccountLabel`() {
+        let (store, repo, dir) = makeStore()
+        defer { cleanup(dir) }
+
+        repo.setDefaultAccountLabel("Personal", forProvider: "claude")
+
+        #expect(store.read(key: "providers.claude.defaultAccountLabel") == "Personal")
+    }
 
     @Test
     func `accounts are stored under providers dot id dot accounts`() {
@@ -281,16 +235,6 @@ struct JSONSettingsRepositoryMultiAccountTests {
         let raw: [Any]? = store.read(key: "providers.claude.accounts")
         #expect(raw?.count == 1)
         #expect((raw?.first as? [String: Any])?["accountId"] as? String == "personal")
-    }
-
-    @Test
-    func `active account is stored under providers dot id dot activeAccountId`() {
-        let (store, repo, dir) = makeStore()
-        defer { cleanup(dir) }
-
-        repo.setActiveAccountId("work", forProvider: "claude")
-
-        #expect(store.read(key: "providers.claude.activeAccountId") == "work")
     }
 
     @Test
@@ -324,11 +268,11 @@ struct JSONSettingsRepositoryMultiAccountTests {
         defer { cleanup(dir) }
 
         repo.addAccount(account("personal", label: "Personal"), forProvider: "claude")
-        repo.setActiveAccountId("personal", forProvider: "claude")
+        repo.setDefaultAccountLabel("Me", forProvider: "claude")
 
         let reopened = JSONSettingsRepository(store: JSONSettingsStore(fileURL: store.fileURL))
 
         #expect(reopened.accounts(forProvider: "claude").map(\.accountId) == ["personal"])
-        #expect(reopened.activeAccountId(forProvider: "claude") == "personal")
+        #expect(reopened.defaultAccountLabel(forProvider: "claude") == "Me")
     }
 }

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provider Journeys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* ClaudeBar — provider user journeys, outside in.
+   Single dark theme, like docs/mockups/notch-live-activity.html: the subject
+   is a menu-bar app on a dark desktop. Every colour is painted explicitly. */
+:root{
+  --desk:#120C24; --desk-2:#241340; --glow:#3A1C5C;
+  --chrome:#0C0814; --panel:#17111F; --panel-2:#1F1729; --field:#0F0A16;
+  --rule:rgba(255,255,255,.09); --rule-2:rgba(255,255,255,.16);
+  --ink:#EDE9F6; --ink-2:#A79BC2; --ink-3:#6D6386;
+  --ok:#34D399; --warn:#FBBF24; --bad:#F87171; --accent:#C084FC; --info:#60A5FA;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--chrome);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.stage{max-width:1180px;margin:0 auto;padding:48px 16px 80px;display:flex;flex-direction:column;gap:28px}
+.eyebrow{font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+h1{margin:6px 0 10px;font-size:clamp(28px,4vw,42px);line-height:1.08;font-weight:600;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{margin:0;color:var(--ink-2);max-width:68ch}
+code,.mono{font-family:var(--mono);font-size:.86em}
+
+/* personas */
+.personas{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.persona{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .2s}
+.persona[aria-pressed="true"]{border-color:var(--accent)}
+.persona b{display:block;font-size:15px}
+.persona span{color:var(--ink-2);font-size:13.5px}
+.persona .tag{font-family:var(--cond);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+
+/* journey rail */
+.rail{display:flex;gap:6px;flex-wrap:wrap;padding:0;margin:0;list-style:none}
+.rail button{font:inherit;font-size:13px;color:var(--ink-2);background:var(--panel);border:1px solid var(--rule);border-radius:999px;padding:6px 12px;cursor:pointer}
+.rail button[aria-current="step"]{color:var(--chrome);background:var(--accent);border-color:var(--accent);font-weight:600}
+.rail .n{font-family:var(--mono);opacity:.7;margin-right:6px}
+
+/* the two halves */
+.scene{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.scene{grid-template-columns:1fr}}
+
+/* the screen */
+.desktop{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--rule-2);
+  background:radial-gradient(120% 120% at 50% -10%,var(--glow),var(--desk-2) 45%,var(--desk) 100%);min-height:520px}
+.menubar{height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:12.5px;background:rgba(0,0,0,.35);backdrop-filter:blur(8px)}
+.menubar .apps{display:flex;gap:14px;color:var(--ink-2)} .menubar .apps b{color:var(--ink)}
+.menubar .cb{display:flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);font-family:var(--mono)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.screen{padding:16px;display:flex;justify-content:flex-end}
+.screen.center{justify-content:center}
+
+/* popover */
+.pop{width:min(100%,360px);background:rgba(23,17,31,.94);border:1px solid var(--rule-2);border-radius:14px;padding:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pill{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--panel-2);color:var(--ink-2);border:1px solid var(--rule)}
+.pill.on{background:rgba(192,132,252,.18);color:var(--ink);border-color:var(--accent)}
+.pill.new{animation:pop .6s ease}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;padding:10px}
+.card .t{font-family:var(--cond);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.card .v{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.card .s{font-size:11.5px;color:var(--ink-2)}
+.bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin:6px 0 4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)} .bar i.warn{background:var(--warn)} .bar i.bad{background:var(--bad)}
+.foot{display:flex;justify-content:space-between;margin-top:10px;font-size:11.5px;color:var(--ink-3)}
+.err{border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);border-radius:10px;padding:10px;font-size:13px}
+.err b{color:var(--bad)}
+.btn{font:inherit;font-size:12.5px;border-radius:7px;padding:5px 11px;border:1px solid var(--rule-2);background:var(--panel-2);color:var(--ink);cursor:default}
+.btn.primary{background:var(--accent);color:#1a0f24;border-color:var(--accent);font-weight:600}
+
+/* settings window */
+.win{width:100%;max-width:640px;background:rgba(23,17,31,.97);border:1px solid var(--rule-2);border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.win .tb{height:30px;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:1px solid var(--rule);font-size:12.5px;color:var(--ink-2)}
+.win .tb i{width:11px;height:11px;border-radius:50%;background:#3a3046}
+.win .tb .title{margin-left:auto;margin-right:auto}
+.win .body{display:grid;grid-template-columns:150px 1fr;min-height:430px}
+@media (max-width:560px){.win .body{grid-template-columns:1fr}.side{display:none}}
+.side{border-right:1px solid var(--rule);padding:10px 8px;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px}
+.side span{padding:5px 8px;border-radius:6px} .side .on{background:rgba(192,132,252,.16);color:var(--ink)}
+.main{padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.h{font-weight:600} .sub{font-size:12.5px;color:var(--ink-2)}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;background:var(--panel-2);font-size:13.5px}
+.row .grow{flex:1}
+.badge{font-family:var(--cond);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:rgba(96,165,250,.18);color:var(--info)}
+.badge.custom{background:rgba(192,132,252,.2);color:var(--accent)}
+.toggle{width:28px;height:16px;border-radius:9px;background:var(--ok);position:relative}
+.toggle::after{content:"";position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.label{font-family:var(--cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+.seg{display:inline-flex;border:1px solid var(--rule-2);border-radius:8px;overflow:hidden;font-size:12.5px}
+.seg span{padding:4px 12px;color:var(--ink-2)} .seg .on{background:var(--accent);color:#1a0f24;font-weight:600}
+.field{font-family:var(--mono);font-size:12.5px;background:var(--field);border:1px solid var(--rule);border-radius:7px;padding:6px 9px;color:var(--ink);overflow-wrap:anywhere}
+.ok{color:var(--ok)} .warnc{color:var(--warn)} .badc{color:var(--bad)} .dim{color:var(--ink-3)}
+.steps{display:flex;gap:4px;font-size:12px;flex-wrap:wrap}
+.steps span{padding:3px 9px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-3)}
+.steps .done{color:var(--ok);border-color:rgba(52,211,153,.4)} .steps .now{color:var(--ink);border-color:var(--accent);background:rgba(192,132,252,.14)}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.choice{border:1px solid var(--rule);border-radius:10px;padding:10px;background:var(--panel-2);font-size:13px}
+.choice b{display:block} .choice span{color:var(--ink-2);font-size:12px}
+.choice.on{border-color:var(--accent)}
+.json{font-family:var(--mono);font-size:12px;background:var(--field);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;line-height:1.6;white-space:pre;overflow:auto}
+.json .k{color:var(--info)} .json .n{color:var(--warn)} .json .pick{outline:1px solid var(--accent);border-radius:3px;background:rgba(192,132,252,.18)}
+.mapgrid{display:grid;grid-template-columns:90px 1fr;gap:6px 8px;align-items:center;font-size:12.5px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.split{grid-template-columns:1fr}}
+
+/* the trace */
+.trace{background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.trace h2{margin:0;font-size:19px;letter-spacing:-.01em}
+.trace .who{font-size:13px;color:var(--accent);font-family:var(--cond);letter-spacing:.1em;text-transform:uppercase}
+.trace dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:8px 12px;font-size:14px}
+.trace dt{font-family:var(--cond);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+.trace dd{margin:0}
+.trace .words{display:flex;flex-wrap:wrap;gap:5px}
+.trace .words span{font-size:12.5px;padding:1px 8px;border-radius:5px;background:rgba(255,255,255,.07);border:1px solid var(--rule)}
+.finding{border-left:3px solid var(--warn);padding:6px 10px;background:rgba(251,191,36,.07);border-radius:0 8px 8px 0;font-size:13.5px}
+.finding b{color:var(--warn)}
+.nav{display:flex;justify-content:space-between;gap:8px}
+.nav button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:8px;padding:6px 12px;cursor:pointer}
+.nav button:disabled{opacity:.35;cursor:default}
+.legend{color:var(--ink-3);font-size:13px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <header>
+    <div class="eyebrow">ClaudeBar · Outside in</div>
+    <h1>Provider journeys, <em>from the screen to the model</em></h1>
+    <p class="lede">Four people, eleven moments. Each moment shows what is on screen, the words it prints, what the person does, the command that lands on the domain, and the node that answers. The words printed here are the words the model uses. The findings are where the journey changed the model.</p>
+  </header>
+
+  <section class="personas" id="personas" aria-label="Personas"></section>
+  <ol class="rail" id="rail" aria-label="Moments"></ol>
+
+  <section class="scene">
+    <div class="desktop">
+      <div class="menubar">
+        <div class="apps"><b>Terminal</b><span>Shell</span><span>Edit</span><span>View</span></div>
+        <div class="cb" id="mb"><span class="dot" id="mbdot"></span><span id="mbtext">38%</span></div>
+      </div>
+      <div class="screen" id="screen"></div>
+    </div>
+    <aside class="trace" id="trace" aria-live="polite"></aside>
+  </section>
+
+  <p class="legend">Arrows ← → move between moments. Every screen is a proposal; words in <code>code</code> are domain names from <code>docs/architecture/CANONICAL_MODEL.md</code>.</p>
+</div>
+
+<script>
+const personas = [
+  { id:"mia", tag:"Glances", name:"Mia — uses Claude Code and Codex all day", line:"Wants to know, without opening anything, whether she can keep going." },
+  { id:"raj", tag:"Fixes", name:"Raj — Codex stopped updating", line:"Wants the app to tell him what is wrong and how to fix it, in one place." },
+  { id:"ken", tag:"Adds", name:"Ken — pays for a gateway ClaudeBar doesn't ship", line:"Wants to track OpenRouter credits without writing a script." },
+  { id:"lin", tag:"Shares", name:"Lin — runs the team's internal LLM gateway", line:"Wants her team to get the provider Ken made, without anyone retyping it." }
+];
+
+const pop = (pills, body, foot) => `
+  <div class="pop">
+    <div class="pills">${pills}</div>
+    ${body}
+    <div class="foot">${foot}</div>
+  </div>`;
+const card = (t, v, s, pct, cls="") => `
+  <div class="card"><div class="t">${t}</div><div class="v">${v}</div>
+  <div class="bar"><i class="${cls}" style="width:${pct}%"></i></div><div class="s">${s}</div></div>`;
+const win = (sideOn, main) => `
+  <div class="win"><div class="tb"><i></i><i></i><i></i><span class="title">Settings</span></div>
+  <div class="body"><div class="side">${["General","Providers","Menu Bar","Sync & Alerts","Notify!","Appearance"].map(s=>`<span class="${s===sideOn?"on":""}">${s}</span>`).join("")}</div>
+  <div class="main">${main}</div></div></div>`;
+const steps = (now) => `<div class="steps">${["Start from","Connect","Map fields","Look","Save"].map((s,i)=>`<span class="${i<now?"done":i===now?"now":""}">${i<now?"✓ ":""}${s}</span>`).join("")}</div>`;
+
+const moments = [
+  { who:"mia", title:"A glance at the menu bar", mb:["38%","warn"],
+    screen:() => `<div style="width:100%;max-width:360px;margin-left:auto;font-size:13px;color:var(--ink-2)">The menu bar shows the lowest quota across every enabled provider, coloured by its status.</div>`,
+    sees:["38%","amber dot"], does:"Nothing. Amber means look soon, not stop.",
+    cmd:"monitor.lowestQuota · monitor.overallStatus", node:"<code>Monitor</code> → worst <code>Quota.status</code>",
+    find:null },
+  { who:"mia", title:"Open the popover", mb:["38%","warn"],
+    screen:() => pop(`<span class="pill">Claude</span><span class="pill on">Codex</span><span class="pill">DeepSeek</span>`,
+      `<div class="cards">${card("Session","38%","Resets in 1h 12m · Running hot",38,"warn")}${card("Weekly","71%","Resets Mon 9am · On track",71)}${card("Spark","92%","Resets in 3h",92)}${card("Extra usage","$4.20","of $50.00",8)}</div>`,
+      `<span>Updated 2m ago · via RPC</span><span>PLUS</span>`),
+    sees:["Session","Weekly","Spark","% left","Resets in","Running hot","EXTRA USAGE","Updated 2m ago","via RPC","PLUS"],
+    does:"Reads Session first; decides to switch to a lighter model for an hour.",
+    cmd:"provider.usage · quota.pace · quota.window", node:"<code>Usage</code> → <code>[Quota]</code> · <code>Cost</code> · <code>Plan</code>",
+    find:"<b>Which data source answered</b> is printed (<em>via RPC</em>). When RPC fails and the terminal fallback answers, the footer says <em>via Terminal</em> — so <code>Usage</code> carries the data source <code>kind</code> that produced it." },
+  { who:"raj", title:"Something is wrong", mb:["—","bad"],
+    screen:() => pop(`<span class="pill">Claude</span><span class="pill on">Codex</span>`,
+      `<div class="err"><b>Couldn't read your key</b><br>Session expired. Run <code>codex</code> in terminal to log in again.<div style="display:flex;gap:6px;margin-top:8px"><span class="btn primary">Open Codex settings</span><span class="btn">Try again</span></div></div>
+       <div class="cards" style="margin-top:8px;opacity:.55">${card("Session","38%","Last seen 3h ago",38,"warn")}${card("Weekly","71%","Last seen 3h ago",71)}</div>`,
+      `<span>Updated 3h ago · via API</span><span></span>`),
+    sees:["Couldn't read your key","Session expired","Run codex in terminal","Last seen 3h ago","Open Codex settings"],
+    does:"Runs <code>codex</code> to log in, or opens settings.",
+    cmd:"provider.lastError · provider.usage (kept)", node:"<code>DataSourceError</code> with its <b>step</b>: key · connection · fields",
+    find:"<b>The error names the step that failed</b> — <em>Couldn't read your key</em>, <em>Couldn't connect</em>, <em>Couldn't find the numbers</em> — because each sends Raj somewhere different. So <code>DataSourceError</code> carries <code>step: lookup | fetch | mapping</code>, and the last usage stays on screen, dimmed, as the model's law says." },
+  { who:"raj", title:"Codex settings: pick a data source", mb:["—","bad"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Codex <span class="badge">Built in</span></div>
+      <div class="label">Data source</div>
+      <div><span class="seg"><span>RPC</span><span class="on">API</span></span></div>
+      <div class="sub">Calls ChatGPT API directly. If it fails, ClaudeBar tries the terminal.</div>
+      <div class="label">Key lookup order</div>
+      <div class="row"><span class="grow">1 · <code>~/.codex/auth.json</code></span><span class="badc">expired</span></div>
+      <div class="sub">Refreshed automatically every 8 days. This one can't be refreshed — log in again with <code>codex</code>.</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="btn primary">Test Connection</span><span class="sub">Last test: <span class="badc">key</span> failed</span></div>`)}</div>`,
+    sees:["DATA SOURCE","RPC · API","KEY LOOKUP ORDER","Test Connection","Built in"],
+    does:"Switches to RPC, presses Test Connection, sees three quotas, closes the window.",
+    cmd:"provider.use(\"rpc\") · dataSource.fetchUsage()", node:"<code>Provider.dataSources</code> · <code>CredentialLookup</code>",
+    find:"<b>PROBE MODE becomes DATA SOURCE</b> on screen, and the API data source shows its <b>key lookup order</b> — the screen's own words for <code>CredentialLookup</code>. The fallback is said in one sentence, not a setting." },
+  { who:"ken", title:"Add Provider: start from", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Add Provider</div>${steps(0)}
+      <div class="sub">Where does ClaudeBar read your usage from?</div>
+      <div class="choices">
+        <div class="choice on"><b>API</b><span>A URL that returns JSON</span></div>
+        <div class="choice"><b>CLI</b><span>A command that prints usage</span></div>
+        <div class="choice"><b>File</b><span>A JSON file on this Mac</span></div>
+        <div class="choice"><b>Copy a provider</b><span>DeepSeek, Codex, …</span></div>
+      </div>
+      <div class="sub dim">Import a provider file instead…</div>`)}</div>`,
+    sees:["Add Provider","API","CLI","File","Copy a provider","Import"],
+    does:"Chooses API — OpenRouter has a <code>/auth/key</code> endpoint.",
+    cmd:"ProviderDefinition.blank(fetch: .http) · definition.copy()", node:"<code>ProviderDefinition</code> (unsaved)",
+    find:"<b>The picker is a closed list, in the words Settings already prints</b> — <em>API · CLI</em>, as in <em>API Mode · CLI Mode</em> — which is why <code>Fetch</code> is a closed sum (<code>http</code> · <code>cli</code> · <code>file</code>; RPC and Terminal stay built-in only). And <b>Copy a provider</b> means a built-in definition is also a starting point: the same JSON, a new id." },
+  { who:"ken", title:"Connect", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Add Provider</div>${steps(1)}
+      <div class="label">URL</div><div class="field">GET https://openrouter.ai/api/v1/auth/key</div>
+      <div class="label">Key lookup order</div>
+      <div class="row"><span class="grow">1 · Environment variable <code>OPENROUTER_API_KEY</code></span><span class="dim">not set</span></div>
+      <div class="row"><span class="grow">2 · API key <code>sk-or-••••••••3f2a</code></span><span class="ok">in Keychain</span></div>
+      <div class="label">Sent as</div><div class="field">Authorization: Bearer {{apiKey}}</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="btn primary">Test Connection</span><span class="ok">200 OK · 412 ms</span></div>`)}</div>`,
+    sees:["URL","Key lookup order","Environment variable","API key","Sent as","Test Connection","200 OK"],
+    does:"Pastes his key, presses Test Connection.",
+    cmd:"dataSource.fetchResponse()", node:"<code>Fetch.http</code> · <code>CredentialLookup</code> → <code>Response</code>",
+    find:"<b>Test Connection must stop before mapping</b>: Ken has no fields mapped yet, but he needs to see what came back. So a fetch produces a <code>Response</code> (status · headers · body), a public value, and <code>fetchUsage()</code> = <code>mapping.read(fetchResponse())</code>." },
+  { who:"ken", title:"Map fields", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Add Provider</div>${steps(2)}
+      <div class="split">
+        <div><div class="label">Response</div><div class="json">{
+  <span class="k">"data"</span>: {
+    <span class="k">"label"</span>: "ken-laptop",
+    <span class="k">"limit"</span>: <span class="n pick">50</span>,
+    <span class="k">"usage"</span>: <span class="n">37.6</span>,
+    <span class="k">"limit_remaining"</span>: <span class="n pick">12.4</span>,
+    <span class="k">"is_free_tier"</span>: false
+  }
+}</div></div>
+        <div><div class="label">Quota · Credits</div>
+          <div class="mapgrid">
+            <span class="dim">Remaining</span><span class="field">data.limit_remaining</span>
+            <span class="dim">Limit</span><span class="field">data.limit</span>
+            <span class="dim">In</span><span class="field">USD</span>
+            <span class="dim">Resets</span><span class="dim">never — a balance</span>
+          </div>
+          <div style="margin-top:8px">${card("Credits","$12.40","of $50.00 · no reset",25,"warn")}</div>
+          <div class="sub" style="margin-top:6px">+ Add another quota</div>
+        </div>
+      </div>`)}</div>`,
+    sees:["Response","Remaining","Limit","Resets","never — a balance","+ Add another quota"],
+    does:"Clicks <code>12.4</code>, then <code>50</code>. The card appears as it will in the popover.",
+    cmd:"mapping.quotas.append(.money(remaining:, of:))", node:"<code>Mapping.json</code> → <code>Quota.left = money</code>, <code>window = nil</code>",
+    find:"<b>Ken maps money, and the screen has no percentage to ask for</b> — the <code>Left</code> law made visible: a balance is <code>money</code>, never a fake 100%. <b>Resets: never</b> is <code>window = nil</code>. The picker offers <em>Used · Remaining · Limit · Resets</em> — the mapping's vocabulary is these four words." },
+  { who:"ken", title:"Look and save", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Add Provider</div>${steps(3)}
+      <div class="label">Name</div><div class="field">OpenRouter</div>
+      <div class="label">Symbol · colour</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="field">arrow.triangle.branch</span><span style="width:22px;height:22px;border-radius:6px;background:#6366F1;display:inline-block"></span><span style="width:22px;height:22px;border-radius:6px;background:#10B981;display:inline-block;opacity:.4"></span><span style="width:22px;height:22px;border-radius:6px;background:#F59E0B;display:inline-block;opacity:.4"></span></div>
+      <div class="label">Refresh</div><div class="sub">With the others (Sync &amp; Alerts)</div>
+      <div style="display:flex;gap:8px;margin-top:6px"><span class="btn primary">Save</span><span class="btn">Back</span></div>`)}</div>`,
+    sees:["Name","Symbol","colour","Save"],
+    does:"Names it, picks a colour, saves.",
+    cmd:"catalog.add(definition) → monitor.lineup.append", node:"<code>ProviderProfile</code> · <code>ProviderLook</code> · <code>ProviderCatalog</code>",
+    find:"<b>The look is part of the definition from day one</b> for a custom provider — there is no <code>switch id</code> to add it to. Built-ins must reach the same place (target slice 3) or the two kinds drift." },
+  { who:"ken", title:"It's in the menu bar", mb:["38%","warn"],
+    screen:() => pop(`<span class="pill">Claude</span><span class="pill">Codex</span><span class="pill on new">OpenRouter</span>`,
+      `<div class="cards">${card("Credits","$12.40","of $50.00 · no reset",25,"warn")}</div>`,
+      `<span>Updated just now · via API</span><span>CUSTOM</span>`),
+    sees:["OpenRouter","Credits","$12.40","of $50.00","CUSTOM"],
+    does:"Nothing more. No restart.",
+    cmd:"provider.refresh()", node:"one <code>Provider</code>, one <code>DataSource</code> — the same types Codex uses",
+    find:"<b>CUSTOM</b> is the screen's word for a provider the user made — the model's <em>declared</em> kind is renamed <b>custom</b>. Built in · Custom · Extension are the three origins." },
+  { who:"lin", title:"Export", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Providers</div><div class="sub">Enable the assistants you use. Click a provider to configure it.</div>
+      <div class="row"><span class="dot"></span><span class="grow">Codex</span><span class="badge">Built in</span><span class="toggle"></span></div>
+      <div class="row"><span class="dot"></span><span class="grow">Acme Gateway</span><span class="badge custom">Custom</span><span class="btn">Edit</span><span class="btn primary">Export…</span></div>
+      <div class="row"><span class="dot warn"></span><span class="grow">My Script</span><span class="badge">Extension</span><span class="toggle"></span></div>
+      <div class="field" style="white-space:pre;margin-top:4px">acme-gateway.json
+  name, look, data sources, mapping
+  <span class="ok">no keys — they stay in your Keychain</span></div>`)}</div>`,
+    sees:["Built in","Custom","Extension","Edit","Export…","no keys"],
+    does:"Exports the provider and posts the file in the team channel.",
+    cmd:"definition.exported() → file", node:"<code>ProviderDefinition</code> (secrets stripped)",
+    find:"<b>An exported definition never contains a secret</b> — only the lookup order and the setting's name. That is a law on <code>ProviderDefinition</code>, and it is why a secret in the definition is a <em>reference</em>, never a value." },
+  { who:"lin", title:"A teammate imports it", mb:["38%","warn"],
+    screen:() => `<div class="screen center" style="padding:0;width:100%">${win("Providers",`
+      <div class="h">Import provider</div>
+      <div class="row"><span class="grow"><b>Acme Gateway</b> · API · 2 quotas</span><span class="badge custom">Custom</span></div>
+      <div class="sub">Reads <code>https://llm.acme.internal/v1/usage</code>. It will send your key to that address.</div>
+      <div class="label">Key needed</div>
+      <div class="row"><span class="grow">API key</span><span class="field" style="flex:1">paste here</span></div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="btn primary">Test Connection</span><span class="btn">Add</span></div>`)}</div>`,
+    sees:["Import provider","It will send your key to that address","Key needed","Test Connection","Add"],
+    does:"Pastes his own key, tests, adds.",
+    cmd:"catalog.import(file) → definition.missingSettings", node:"<code>ProviderCatalog</code> · <code>SettingsForm.missing</code>",
+    find:"<b>Import says where the key will go</b> before asking for it — a provider file is executable intent. And a <em>CLI</em> provider imported from someone else shows the command it will run and asks before saving (model §9's open question, answered by the journey)." }
+];
+
+let current = Math.max(0, Math.min(moments.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+const $ = s => document.querySelector(s);
+
+function renderPersonas(){
+  const who = moments[current].who;
+  $("#personas").innerHTML = personas.map(p =>
+    `<div class="persona" role="button" tabindex="0" data-id="${p.id}" aria-pressed="${p.id===who}">
+      <div class="tag">${p.tag}</div><b>${p.name}</b><span>${p.line}</span></div>`).join("");
+  document.querySelectorAll(".persona").forEach(el => {
+    const go = () => { current = moments.findIndex(m => m.who === el.dataset.id); render(); };
+    el.onclick = go; el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+}
+function renderRail(){
+  $("#rail").innerHTML = moments.map((m,i) =>
+    `<li><button ${i===current?'aria-current="step"':""} data-i="${i}"><span class="n">${String(i+1).padStart(2,"0")}</span>${m.title}</button></li>`).join("");
+  document.querySelectorAll("#rail button").forEach(b => b.onclick = () => { current = +b.dataset.i; render(); });
+}
+function render(){
+  const m = moments[current], p = personas.find(x => x.id === m.who);
+  $("#mbtext").textContent = m.mb[0];
+  $("#mbdot").className = "dot" + (m.mb[1]==="warn" ? " warn" : m.mb[1]==="bad" ? " bad" : "");
+  const html = m.screen();
+  $("#screen").className = html.trim().startsWith('<div class="screen') ? "" : "screen";
+  $("#screen").innerHTML = html;
+  $("#trace").innerHTML = `
+    <div class="who">${p.tag} · ${p.name.split(" — ")[0]}</div>
+    <h2>${String(current+1).padStart(2,"0")} · ${m.title}</h2>
+    <dl>
+      <dt>Sees</dt><dd class="words">${m.sees.map(w=>`<span>${w}</span>`).join("")}</dd>
+      <dt>Does</dt><dd>${m.does}</dd>
+      <dt>Command</dt><dd><code>${m.cmd}</code></dd>
+      <dt>Node</dt><dd>${m.node}</dd>
+    </dl>
+    ${m.find ? `<div class="finding">${m.find}</div>` : ""}
+    <div class="nav"><button id="prev" ${current===0?"disabled":""}>← Previous</button><button id="next" ${current===moments.length-1?"disabled":""}>Next →</button></div>`;
+  $("#prev").onclick = () => { if (current>0){ current--; render(); } };
+  $("#next").onclick = () => { if (current<moments.length-1){ current++; render(); } };
+  renderPersonas(); renderRail();
+}
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("input,textarea")) return;
+  if (e.key === "ArrowRight" && current < moments.length-1){ current++; render(); }
+  if (e.key === "ArrowLeft" && current > 0){ current--; render(); }
+});
+render();
+</script>
+</body>
+</html>

@@ -18,14 +18,17 @@ protocol AlertSender: Sendable {
 public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
 
     private let alertSender: AlertSender
+    private let accountSettings: (any MultiAccountSettingsRepository)?
 
     /// Public initializer - uses system alerts
-    public init() {
+    public init(accountSettings: (any MultiAccountSettingsRepository)? = nil) {
+        self.accountSettings = accountSettings
         self.alertSender = SystemAlertSender()
     }
 
     /// Internal initializer for testing
-    init(alertSender: AlertSender) {
+    init(alertSender: AlertSender, accountSettings: (any MultiAccountSettingsRepository)? = nil) {
+        self.accountSettings = accountSettings
         self.alertSender = alertSender
     }
 
@@ -81,20 +84,15 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
     }
 
     func providerDisplayName(for providerId: String) -> String {
+        if providerId.hasPrefix("codex."), let account = accountSettings?.accounts(forProvider: "codex")
+            .first(where: { $0.toProviderAccount(providerId: "codex").id == providerId }) {
+            return account.email.map { "Codex · \($0)" } ?? "Codex"
+        }
+        // A provider that is data names itself in its profile.
+        if let definition = Providers.definition(forLineupId: providerId) {
+            return definition.profile.name
+        }
         switch providerId {
-        case "claude": return "Claude"
-        case "codex": return "Codex"
-        case "gemini": return "Gemini"
-        case "copilot": return "GitHub Copilot"
-        case "antigravity": return "Antigravity"
-        case "zai": return "Z.ai"
-        case "bedrock": return "AWS Bedrock"
-        case "minimax": return "MiniMax"
-        case "alibaba": return "Alibaba"
-        case "opencode-go": return "OpenCode Go"
-        case "omp": return "Oh My Pi"
-        case "grok": return "Grok"
-        case "commandcode": return "Command Code"
         default: return providerId.capitalized
         }
     }

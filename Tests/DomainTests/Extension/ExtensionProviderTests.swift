@@ -132,7 +132,7 @@ struct ExtensionProviderTests {
     @Test
     func `refresh stores error on probe failure`() async {
         let probe = MockUsageProbe()
-        given(probe).probe().willThrow(ProbeError.executionFailed("script failed"))
+        given(probe).probe().willThrow(UsageError.executionFailed("script failed"))
 
         let provider = ExtensionProvider(
             manifest: makeManifest(id: "test", name: "Test"),
@@ -161,7 +161,7 @@ struct ExtensionProviderTests {
         )
 
         let badProbe = MockUsageProbe()
-        given(badProbe).probe().willThrow(ProbeError.timeout)
+        given(badProbe).probe().willThrow(UsageError.timeout)
 
         let provider = ExtensionProvider(
             manifest: makeManifest(id: "test", name: "Test"),

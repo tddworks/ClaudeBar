@@ -7,6 +7,9 @@ import Infrastructure
 
 // MARK: - Theme Option Button
 
+/// A theme as a tile: a small preview drawn from the theme's own paper,
+/// card, outline, shadow, accent and number font, its name below. The
+/// tile's frame follows the current theme; the preview, the theme it shows.
 struct ThemeOptionButton: View {
     let themeProvider: any AppThemeProvider
     let isSelected: Bool
@@ -21,63 +24,96 @@ struct ThemeOptionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(themeProvider.accentGradient)
-                        .frame(width: 28, height: 28)
+            VStack(alignment: .leading, spacing: 6) {
+                ThemePreview(themeProvider: themeProvider)
+                    .frame(height: 52)
 
-                    Image(systemName: themeProvider.icon)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(themeProvider.id == "cli" ? Color.black : .white)
-                }
-
-                VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
                     Text(themeProvider.displayName)
-                        .font(.system(size: 11, weight: .medium, design: themeProvider.fontDesign))
+                        .font(.system(size: 11, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(1)
-
                     if let subtitle = themeProvider.subtitle {
                         Text(subtitle)
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(themeProvider.accentPrimary)
-                    }
-                }
-
-                Spacer()
-
-                if isImported {
-                    Button {
-                        ThemeRegistry.shared.removeImportedTheme(id: themeProvider.id)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
+                            .font(.system(size: 8, weight: .semibold, design: theme.fontDesign))
                             .foregroundStyle(theme.textTertiary)
+                            .lineLimit(1)
                     }
-                    .buttonStyle(.plain)
-                }
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(theme.statusHealthy)
+                    Spacer(minLength: 0)
+                    if isImported {
+                        Button {
+                            ThemeRegistry.shared.removeImportedTheme(id: themeProvider.id)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(theme.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Remove \(themeProvider.displayName)")
+                    }
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(theme.accentPrimary)
+                    }
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(7)
             .background(
-                RoundedRectangle(cornerRadius: themeProvider.cardCornerRadius)
-                    .fill(isSelected ? theme.accentPrimary.opacity(0.15) : (isHovering ? theme.hoverOverlay : Color.clear))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: themeProvider.cardCornerRadius)
-                            .stroke(isSelected ? theme.accentPrimary : theme.glassBorder.opacity(0.5), lineWidth: isSelected ? 2 : 1)
-                    )
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isHovering && !isSelected ? AnyShapeStyle(theme.hoverOverlay) : AnyShapeStyle(theme.glassBackground))
+                    .themeShadow(theme, scale: 0.75)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? theme.accentPrimary : theme.glassBorder,
+                            lineWidth: isSelected ? max(2, theme.cardBorderWidth + 0.5) : theme.cardBorderWidth)
+            )
+            .offset(x: isSelected && theme.cardShadow != nil ? -1 : 0, y: isSelected && theme.cardShadow != nil ? -1 : 0)
             .scaleEffect(isHovering ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
+        .accessibilityLabel("\(themeProvider.displayName) theme")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// A miniature of a theme: its paper, a card with its outline and shadow,
+/// an accent pill, and a number in its own font.
+struct ThemePreview: View {
+    let themeProvider: any AppThemeProvider
+
+    var body: some View {
+        let t = themeProvider
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 9)
+                .fill(t.backgroundGradient)
+
+            RoundedRectangle(cornerRadius: 6)
+                .fill(t.cardGradient)
+                .themeShadow(t, scale: 0.5)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(t.glassBorder, lineWidth: min(t.cardBorderWidth, 2)))
+                .frame(height: 17)
+                .padding(.horizontal, 7)
+                .padding(.top, 7)
+
+            HStack(alignment: .bottom) {
+                Capsule()
+                    .fill(t.accentGradient)
+                    .overlay(Capsule().stroke(t.cardBorderWidth > 1 ? t.glassBorder : .clear, lineWidth: min(t.cardBorderWidth, 2)))
+                    .frame(width: 28, height: 10)
+                Spacer()
+                Text("62%")
+                    .font(t.displayFont(size: 11))
+                    .foregroundStyle(t.textPrimary)
+            }
+            .padding(.horizontal, 7)
+            .padding(.bottom, 6)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .overlay(RoundedRectangle(cornerRadius: 9).stroke(t.glassBorder.opacity(t.cardBorderWidth > 1 ? 1 : 0.6), lineWidth: min(t.cardBorderWidth, 2)))
     }
 }
 
@@ -122,7 +158,7 @@ struct DisplayModeButton: View {
             .fill(isSelected ? theme.accentPrimary.opacity(0.2) : (isHovering ? theme.hoverOverlay : Color.clear))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
+                    .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: theme.cardBorderWidth)
             )
     }
 }
@@ -204,7 +240,7 @@ struct MenuBarChoiceButton: View {
             }
 
             RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: 1)
+                .stroke(isSelected ? theme.accentPrimary.opacity(0.5) : theme.glassBorder, lineWidth: theme.cardBorderWidth)
         }
     }
 }

@@ -1,0 +1,39 @@
+{
+  "profile": {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "links": { "dashboard": "https://platform.deepseek.com/usage" },
+    "look": {
+      "symbol": "d.square.fill",
+      "icon": "DeepSeekIcon",
+      "color": { "light": [0.23, 0.35, 0.92], "dark": [0.42, 0.52, 1.0] },
+      "gradientEnd": { "light": [0.15, 0.20, 0.75], "dark": [0.22, 0.28, 0.85] }
+    }
+  },
+  "enabledByDefault": false,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads the primary billing-currency balance, including paid and granted credit.",
+      "credential": {
+        "firstOf": [ { "environment": "DEEPSEEK_API_KEY" }, { "setting": "apiKey" } ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.deepseek.com/user/balance",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
+          "timeout": 30
+        }
+      },
+      "mapping": { "script": { "file": "deepseek-balance.js" } }
+    }
+  ],
+  "accounts": {
+    "form": [ { "id": "apiKey", "label": "API key", "secret": true } ],
+    "patch": {
+      "api": { "credential": { "firstOf": null, "setting": "apiKey" } }
+    }
+  }
+}

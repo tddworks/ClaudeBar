@@ -43,6 +43,10 @@ struct StatusColorOverridingTheme: AppThemeProvider {
     var textTertiary: Color { base.textTertiary }
     var fontDesign: Font.Design { base.fontDesign }
     var customFontName: String? { base.customFontName }
+    var displayFontName: String? { base.displayFontName }
+    var cardBorderWidth: CGFloat { base.cardBorderWidth }
+    var cardShadow: ThemeShadow? { base.cardShadow }
+    var textOnStatus: Color { base.textOnStatus }
 
     // MARK: Status Colors
 
@@ -50,6 +54,12 @@ struct StatusColorOverridingTheme: AppThemeProvider {
     var statusWarning: Color { resolved(.warning) ?? base.statusWarning }
     var statusCritical: Color { resolved(.critical) ?? base.statusCritical }
     var statusDepleted: Color { resolved(.depleted) ?? base.statusDepleted }
+
+    /// A colour the person chose wins in the menu bar too; otherwise the
+    /// theme's own menu-bar colour.
+    func menuBarStatusColor(for status: QuotaStatus, darkMenuBar: Bool) -> Color {
+        resolved(status) ?? base.menuBarStatusColor(for: status, darkMenuBar: darkMenuBar)
+    }
 
     private func resolved(_ status: QuotaStatus) -> Color? {
         policy.color(for: status, appearance: appearance).map { Color($0) }

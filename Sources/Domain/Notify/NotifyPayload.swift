@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// One provider's quota window, paired with the provider's display name.

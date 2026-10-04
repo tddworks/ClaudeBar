@@ -1,0 +1,193 @@
+{
+  "profile": {
+    "id": "alibaba",
+    "name": "Alibaba",
+    "links": {
+      "dashboard": "{{setting.region.dashboard}}"
+    },
+    "look": {
+      "symbol": "questionmark.circle.fill",
+      "icon": "QuestionIcon"
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    {
+      "id": "apiKey",
+      "label": "API Key",
+      "kind": "secret",
+      "scope": "account",
+      "for": [
+        "api"
+      ]
+    },
+    {
+      "id": "cookie",
+      "label": "Console Cookie",
+      "kind": "secret",
+      "scope": "account",
+      "for": [
+        "cookie"
+      ]
+    },
+    {
+      "id": "region",
+      "label": "Region",
+      "scope": "account",
+      "default": "intl",
+      "kind": {
+        "choice": [
+          {
+            "id": "intl",
+            "label": "International (alibabacloud.com)",
+            "gateway": "modelstudio.console.alibabacloud.com",
+            "console": "bailian-singapore-cs.alibabacloud.com",
+            "action": "IntlBroadScopeAspnGateway",
+            "commodity": "sfm_codingplan_public_intl",
+            "regionId": "ap-southeast-1",
+            "dashboard": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail"
+          },
+          {
+            "id": "cn",
+            "label": "China Mainland (aliyun.com)",
+            "gateway": "bailian.console.aliyun.com",
+            "console": "bailian-beijing-cs.aliyuncs.com",
+            "action": "BroadScopeAspnGateway",
+            "commodity": "sfm_codingplan_public_cn",
+            "regionId": "cn-beijing",
+            "dashboard": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+          }
+        ]
+      }
+    }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API Key",
+      "summary": "Reads your Coding Plan quota with a Model Studio API key",
+      "credential": {
+        "setting": "apiKey"
+      },
+      "fallbackOn": {
+        "authenticationRequired": "cookie"
+      },
+      "fetch": {
+        "http": {
+          "url": "https://{{setting.region.gateway}}/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId={{setting.region.regionId}}",
+          "method": "POST",
+          "timeout": 15,
+          "body": "{\"queryCodingPlanInstanceInfoRequest\":{\"commodityCode\":\"{{setting.region.commodity}}\"}}",
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Bearer {{token}}",
+            "X-DashScope-API-Key": "{{token}}"
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "alibaba-quota.js"
+        }
+      }
+    },
+    {
+      "kind": "cookie",
+      "label": "Console Cookie",
+      "summary": "Reads your Coding Plan quota with your signed-in Alibaba Cloud console session",
+      "credential": {
+        "firstOf": [
+          {
+            "setting": "cookie"
+          },
+          {
+            "browserCookies": {
+              "domains": [
+                "aliyun.com",
+                "alibabacloud.com"
+              ],
+              "names": [
+                "login_aliyunid_ticket",
+                "login_aliyunid_csrf",
+                "sec_token",
+                "aliyun_choice",
+                "cna"
+              ],
+              "format": "header"
+            }
+          }
+        ],
+        "cookies": [
+          "sec_token",
+          "login_aliyunid_csrf"
+        ]
+      },
+      "fetch": {
+        "http": {
+          "steps": [
+            {
+              "name": "dashboard",
+              "unless": "sec_token",
+              "request": {
+                "url": "{{setting.region.dashboard}}",
+                "timeout": 15,
+                "headers": {
+                  "Cookie": "{{token}}"
+                }
+              },
+              "keep": {
+                "sec_token": {
+                  "pattern": "[\"']?sec_token[\"']?\\s*[:=]\\s*[\"']([^\"']+)[\"']"
+                }
+              }
+            },
+            {
+              "name": "console",
+              "dropEmpty": [
+                "login_aliyunid_csrf"
+              ],
+              "request": {
+                "url": "https://{{setting.region.console}}/data/api.json?action={{setting.region.action}}&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+                "method": "POST",
+                "timeout": 15,
+                "body": "params=%7B%22Api%22%3A%22zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2%22%2C%22V%22%3A%221.0%22%2C%22Data%22%3A%7B%22queryCodingPlanInstanceInfoRequest%22%3A%7B%22commodityCode%22%3A%22{{setting.region.commodity}}%22%2C%22onlyLatestOne%22%3Atrue%7D%7D%7D&region={{setting.region.regionId}}&sec_token={{sec_token}}",
+                "headers": {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "Accept": "*/*",
+                  "Cookie": "{{token}}",
+                  "X-Requested-With": "XMLHttpRequest",
+                  "x-csrf-token": "{{login_aliyunid_csrf}}"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "errors": {
+        "http.401": {
+          "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+        },
+        "http.403": {
+          "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "alibaba-quota.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "cookie": {
+        "credential": {
+          "firstOf": null,
+          "setting": "cookie"
+        }
+      }
+    }
+  }
+}

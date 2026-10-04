@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Turns quota readings into the tile and gauge ClaudeBar publishes to Notify!.
@@ -37,9 +40,10 @@ public struct NotifyPayloadBuilder: Sendable {
         gaugeSelection: NotifyGaugeSelection = .automatic,
         includesTile: Bool = true,
         includesGauge: Bool = true,
-        includesScreenTile: Bool = true
+        includesScreenTile: Bool = true,
+        statusPolicy: StatusPolicy = .absolute
     ) -> NotifyPayload {
-        let ordered = Self.ordered(readings)
+        let ordered = Self.ordered(readings, under: statusPolicy)
         guard let headline = ordered.first else { return .empty }
 
         // The Live Activity and the Home Screen tile are built once and shared.
@@ -47,12 +51,12 @@ public struct NotifyPayloadBuilder: Sendable {
         // could only produce two things that were supposed to be identical and
         // one day were not.
         let tile = (includesTile || includesScreenTile)
-            ? self.tile(ordered: ordered, headline: headline)
+            ? self.tile(ordered: ordered, headline: headline, policy: statusPolicy)
             : nil
 
         return NotifyPayload(
             tile: includesTile ? tile : nil,
-            gauge: includesGauge ? gauge(ordered: ordered, headline: headline, selection: gaugeSelection) : nil,
+            gauge: includesGauge ? gauge(ordered: ordered, headline: headline, selection: gaugeSelection, policy: statusPolicy) : nil,
             screenTile: includesScreenTile ? tile : nil
         )
     }
@@ -61,10 +65,10 @@ public struct NotifyPayloadBuilder: Sendable {
 
     /// Worst first, and fully deterministic: two payloads built from the same
     /// readings must compare equal, or the driver would republish forever.
-    static func ordered(_ readings: [NotifyQuotaReading]) -> [NotifyQuotaReading] {
+    static func ordered(_ readings: [NotifyQuotaReading], under policy: StatusPolicy = .absolute) -> [NotifyQuotaReading] {
         readings.sorted { left, right in
-            let leftStatus = left.quota.status
-            let rightStatus = right.quota.status
+            let leftStatus = left.quota.status(under: policy)
+            let rightStatus = right.quota.status(under: policy)
             if leftStatus != rightStatus { return leftStatus > rightStatus }
             if left.quota.percentRemaining != right.quota.percentRemaining {
                 return left.quota.percentRemaining < right.quota.percentRemaining
@@ -85,7 +89,7 @@ public struct NotifyPayloadBuilder: Sendable {
 
     // MARK: - Tile
 
-    private func tile(ordered: [NotifyQuotaReading], headline: NotifyQuotaReading) -> NotifyTile? {
+    private func tile(ordered: [NotifyQuotaReading], headline: NotifyQuotaReading, policy: StatusPolicy) -> NotifyTile? {
         let omitsProviderName = Set(ordered.map(\.providerId)).count == 1
         let metrics = ordered
             .prefix(NotifyLimits.metricCount)
@@ -94,7 +98,7 @@ public struct NotifyPayloadBuilder: Sendable {
                     label: Self.label(for: reading, omittingProviderName: omitsProviderName),
                     value: Self.headlineValue(for: reading.quota),
                     unit: Self.unit(for: reading.quota),
-                    tintHex: reading.quota.status.notifyTintHex
+                    tintHex: reading.quota.status(under: policy).notifyTintHex
                 )
             }
 
@@ -102,7 +106,7 @@ public struct NotifyPayloadBuilder: Sendable {
             title: title,
             body: Self.summary(for: headline),
             symbolName: NotifySymbol.quota,
-            tintHex: headline.quota.status.notifyTintHex,
+            tintHex: headline.quota.status(under: policy).notifyTintHex,
             progress: Self.progress(for: ordered),
             trailing: headline.quota.compactResetTime,
             metrics: metrics
@@ -114,7 +118,8 @@ public struct NotifyPayloadBuilder: Sendable {
     private func gauge(
         ordered: [NotifyQuotaReading],
         headline: NotifyQuotaReading,
-        selection: NotifyGaugeSelection
+        selection: NotifyGaugeSelection,
+        policy: StatusPolicy
     ) -> NotifyGauge? {
         let shown = Self.selected(from: ordered, selection: selection) ?? headline
 
@@ -124,7 +129,7 @@ public struct NotifyPayloadBuilder: Sendable {
             unit: Self.unit(for: shown.quota),
             detail: Self.gaugeDetail(for: shown),
             symbolName: NotifySymbol.quota,
-            tintHex: shown.quota.status.notifyTintHex,
+            tintHex: shown.quota.status(under: policy).notifyTintHex,
             progress: shown.quota.isDollarBased ? nil : shown.quota.percentRemaining
         )
     }

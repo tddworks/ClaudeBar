@@ -1,0 +1,70 @@
+{
+  "profile": {
+    "id": "zai",
+    "name": "Z.ai",
+    "links": { "dashboard": "https://z.ai/subscribe", "status": "https://docs.z.ai/devpack/faq" },
+    "look": {
+      "symbol": "z.square.fill",
+      "icon": "ZaiIcon",
+      "color": { "light": [0.23, 0.51, 0.96], "dark": [0.35, 0.6, 1] },
+      "gradientEnd": { "light": [0.2, 0.35, 0.75], "dark": [0.3, 0.45, 0.85] }
+    }
+  },
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "apiKey", "label": "API Key", "kind": "secret", "scope": "account" },
+    { "id": "platform", "label": "Platform", "scope": "account", "default": "zai",
+      "kind": { "choice": [
+        { "id": "zai", "label": "Z.ai (api.z.ai)", "host": "api.z.ai" },
+        { "id": "zhipu", "label": "Zhipu (open.bigmodel.cn)", "host": "open.bigmodel.cn" },
+        { "id": "dev", "label": "Zhipu dev (dev.bigmodel.cn)", "host": "dev.bigmodel.cn" }
+      ] } },
+    { "id": "configPath", "label": "Claude settings file", "default": "~/.claude/settings.json", "kind": "path" },
+    { "id": "glmAuthEnvVar", "label": "Environment variable", "default": "ZAI_API_KEY" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your GLM Coding Plan quota with your Z.ai key",
+      "credential": {
+        "firstOf": [
+          { "setting": "apiKey", "with": { "baseURL": "https://{{setting.platform.host}}" } },
+          {
+            "jsonFile": {
+              "path": "{{setting.configPath}}",
+              "token": ["$.env.ANTHROPIC_AUTH_TOKEN", "$.providers.0.api_key", "$.api_key"],
+              "baseURL": ["$.env.ANTHROPIC_BASE_URL", "$.providers.0.base_url"]
+            },
+            "match": { "baseURL": "^https?://(api\\.z\\.ai|open\\.bigmodel\\.cn|dev\\.bigmodel\\.cn)(/|:|$)" }
+          },
+          { "environment": "{{setting.glmAuthEnvVar}}", "with": { "baseURL": "https://{{setting.platform.host}}" } }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://{{baseURL#host}}/api/monitor/usage/quota/limit",
+          "timeout": 10,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept-Language": "en-US,en",
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "mapping": { "script": { "file": "zai-usage.js" } }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey",
+          "with": { "baseURL": "https://{{setting.platform.host}}" }
+        }
+      }
+    }
+  }
+}

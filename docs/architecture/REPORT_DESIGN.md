@@ -35,7 +35,6 @@ Each report belongs to a specific provider and lives on `UsageSnapshot`, not `Qu
 public struct UsageSnapshot {
     public let quotas: [UsageQuota]           // Quota cards
     public let costUsage: CostUsage?          // API cost card
-    public let bedrockUsage: BedrockUsageSummary?  // Bedrock card
     public let dailyUsageReport: DailyUsageReport? // Daily usage cards
     // Future: weeklyReport, modelBreakdownReport, etc.
 }
@@ -43,13 +42,12 @@ public struct UsageSnapshot {
 
 ### 2. Analyzer Injected into Provider
 
-The analyzer (protocol) is injected into the provider that owns the data source. The provider calls the analyzer during `refresh()` and attaches the result to the snapshot.
+The provider's definition declares how its logs read (`usageHistory`); each login owns the result, read when the popover opens — never attached to the snapshot.
 
 ```
-ClaudeProvider
-├── cliProbe: UsageProbe          → quotas
-├── apiProbe: UsageProbe          → quotas
-└── dailyUsageAnalyzer: DailyUsageAnalyzing  → dailyUsageReport
+Account (a login)
+├── usage                 ← its data sources → quotas
+└── usageHistory          ← UsageLog, built from the definition's usageHistory → days
 ```
 
 ### 3. Infrastructure is Provider-Scoped
@@ -106,11 +104,11 @@ Local Data Source (e.g., ~/.claude/projects/*/*.jsonl)
     │
     │ File system enumeration (filtered by modification date)
     ▼
-Parser (e.g., SessionJSONLParser)
+Reader (e.g., JSONLinesReader, configured by a definition's usageHistory)
     │
     │ Extracts structured records (tokens, timestamps, models)
     ▼
-Analyzer (e.g., ClaudeDailyUsageAnalyzer)
+Aggregator (e.g., DayAggregator, priced by a PriceList)
     │
     │ Partitions by time period, aggregates metrics
     ▼
@@ -135,10 +133,9 @@ The first report card implementation analyzes Claude Code session JSONL files to
 |-----------|----------|---------|
 | `DailyUsageStat` | `Domain/DailyUsage/` | One day's metrics with formatting |
 | `DailyUsageReport` | `Domain/DailyUsage/` | Today vs yesterday with deltas |
-| `DailyUsageAnalyzing` | `Domain/DailyUsage/` | `@Mockable` protocol |
-| `SessionJSONLParser` | `Infrastructure/Claude/` | Extracts token records from JSONL |
-| `ModelPricing` | `Infrastructure/Claude/` | Token count → USD cost |
-| `ClaudeDailyUsageAnalyzer` | `Infrastructure/Claude/` | Scans files, aggregates, reports |
+| `usageHistory` + `claude-prices.json` | `Modules/Providers/Resources/Providers/` | Where Claude's logs are, how a record reads, what a token costs |
+| `UsageLog`, `JSONLinesReader`, `PriceList`, `DayAggregator` | `Modules/DataSources` | Reads, prices and sums any tool's logs into days |
+| `UsageHistory` | `Modules/Providers` | One per login, `account.usageHistory` |
 | `DailyUsageCardView` | `App/Views/` | Three metric cards |
 
 ### Data Source

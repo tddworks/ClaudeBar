@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Represents a hook event received from Claude Code.
@@ -34,15 +37,26 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         self.message = message
     }
 
-    /// Whether this event originates from ClaudeBar's own background quota probe.
+    /// Whether this event must be ignored as ClaudeBar's own background probe traffic.
     ///
     /// ClaudeBar refreshes quotas by spawning `claude /usage` in
     /// `<AppSupport>/ClaudeBar/Probe`. Claude Code fires SessionStart/SessionEnd
     /// hooks for that run, which loop back into ClaudeBar's own hook server. These
     /// events must be ignored so routine background polling doesn't pollute the
     /// recent-sessions list or fire "Claude Code Finished: Probe" notifications.
-    /// (issue #172)
+    ///
+    /// Two signals mark them: the probe working directory (issue #172), and —
+    /// since #222 — an event with no attributable working directory at all.
+    /// The probe's hook payloads can arrive with `cwd` missing or reshaped by a
+    /// CLI update; an event that can't say where it ran is indistinguishable
+    /// from probe noise and couldn't name a project anyway, so it is dropped.
+    /// (The primary defense is upstream of this filter: probe sessions are
+    /// spawned with `CLAUDEBAR_PROBE=1` and the installed hook command exits
+    /// before POSTing when it sees it.)
     public var isClaudeBarProbe: Bool {
+        guard !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return true
+        }
         let components = ((cwd as NSString).standardizingPath as NSString).pathComponents
         return Array(components.suffix(2)) == ["ClaudeBar", "Probe"]
     }

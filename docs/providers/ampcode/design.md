@@ -1,6 +1,16 @@
-# Amp Code: probe design
+# Amp Code: design
 
-How the Amp probe reads `amp usage`, from the code and commit history (Feb–Mar 2026).
+How Amp's usage is read from `amp usage`, from the code and commit history (Feb–Mar 2026).
+
+## As data
+
+Amp is `Modules/Providers/Resources/Providers/ampcode.json` and `amp-usage.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it.
+
+- **Fetch:** a `command`, `amp usage --no-color`, over pipes with an 8-second timeout. The old probe ran it in a terminal; the command prints plain text either way, and its exit code is now a fact (`cli.nonzero`) rather than something the probe checked by hand.
+- **Default login:** runs with the CLI's own sign-in and needs no credential, so it has no hand-off source.
+- **Added accounts:** `accounts.patch` gives each one `{"setting": "apiKey"}` (its access token, from the vault) and sets `AMP_API_KEY: {{token}}` in that one process's environment.
+- **Errors:** `cli.missing` keeps the old *CLI not found: AmpCode*.
+- **Money:** the Free allowance is `left: { money, of }`, which replaces the old share plus a `$17.59/$20.00` reset text. The Individual balance is money only.
 
 ## Source
 

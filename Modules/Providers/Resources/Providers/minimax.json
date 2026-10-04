@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "id": "minimax",
+    "name": "MiniMax",
+    "links": {
+      "dashboard": "https://{{setting.region.platform}}/user-center/payment/coding-plan"
+    },
+    "look": {
+      "symbol": "waveform",
+      "icon": "MiniMaxIcon",
+      "color": { "light": [0.82, 0.2, 0.35], "dark": [0.91, 0.27, 0.42] },
+      "gradientEnd": { "light": [0.86, 0.43, 0.14], "dark": [0.96, 0.53, 0.24] }
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    { "id": "apiKey", "label": "API Key", "kind": "secret", "scope": "account" },
+    { "id": "region", "label": "Region", "scope": "account", "default": "china",
+      "kind": { "choice": [
+        { "id": "china", "label": "China (minimaxi.com)", "api": "api.minimaxi.com", "platform": "platform.minimaxi.com" },
+        { "id": "international", "label": "International (minimax.io)", "api": "api.minimax.io", "platform": "platform.minimax.io" }
+      ] } },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "MINIMAX_API_KEY" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Calls the MiniMax Token Plan API with your key",
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
+      "fetch": {
+        "http": {
+          "url": "https://{{setting.region.api}}/v1/token_plan/remains",
+          "timeout": 30,
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
+        }
+      },
+      "mapping": { "script": { "file": "minimax-remains.js" } }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": { "credential": { "firstOf": null, "setting": "apiKey" } }
+    }
+  }
+}

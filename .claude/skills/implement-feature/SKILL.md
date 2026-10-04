@@ -6,7 +6,7 @@ description: |
   (2) Creating domain models that follow user's mental model
   (3) Building SwiftUI views that consume domain models directly
   (4) User asks "how do I implement X" or "add feature Y"
-  (5) Implementing any feature that spans Domain, Infrastructure, and App layers
+  (5) Implementing any feature that spans modules (DataSources, Providers, Quotas) and the App
 ---
 
 # Implement Feature in ClaudeBar
@@ -53,36 +53,30 @@ Identify:
 Use ASCII diagram showing all components and their interactions:
 
 ```
-Example: Adding a new AI provider
+Example: Codex accounts (#326) — a definition change plus generic pieces
 
-┌─────────────────────────────────────────────────────────────────────┐
-│                           ARCHITECTURE                               │
-├─────────────────────────────────────────────────────────────────────┤
+┌──────────────────────────────────────────────────────────────────────┐
+│                            ARCHITECTURE                               │
+├──────────────────────────────────────────────────────────────────────┤
+│  Resources (data)        Modules (Swift, no vendor names)    App     │
 │                                                                      │
-│  ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐  │
-│  │  External   │     │  Infrastructure  │     │     Domain       │  │
-│  └─────────────┘     └──────────────────┘     └──────────────────┘  │
-│                                                                      │
-│  ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐  │
-│  │  CLI Tool   │────▶│  NewUsageProbe   │────▶│  UsageSnapshot   │  │
-│  │  (new-cli)  │     │  (implements     │     │  (existing)      │  │
-│  └─────────────┘     │   UsageProbe)    │     └──────────────────┘  │
-│                      └──────────────────┘              │             │
-│                              │                         ▼             │
-│                              │              ┌──────────────────┐     │
-│                              │              │  NewProvider     │     │
-│                              └─────────────▶│  (AIProvider)    │     │
-│                                             └──────────────────┘     │
-│                                                       │              │
-│                                                       ▼              │
-│                              ┌──────────────────────────────────┐   │
-│                              │  App Layer                        │   │
-│                              │  ┌────────────────────────────┐   │   │
-│                              │  │ ClaudeBarApp.swift         │   │   │
-│                              │  │ (register new provider)    │   │   │
-│                              │  └────────────────────────────┘   │   │
-│                              └──────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+│  ┌──────────────┐   ┌─────────────────────────────┐   ┌───────────┐  │
+│  │ codex.json   │──▶│ Providers                   │──▶│ Accounts  │  │
+│  │  accounts:   │   │  ProviderDefinition.Accounts│   │ card      │  │
+│  │  folder, ids │   │  AddedAccounts (validate)   │   └───────────┘  │
+│  │  dataSources │   │  Provider(account:)         │         │        │
+│  └──────────────┘   └──────────────┬──────────────┘         ▼        │
+│                                    │                 ┌───────────┐   │
+│                     ┌──────────────▼──────────────┐  │ClaudeBarApp│  │
+│                     │ DataSources                 │  │ builds one│   │
+│                     │  identity, requiresFiles,   │  │ Provider  │   │
+│                     │  JSON-RPC `then`, env       │  │ per saved │   │
+│                     └──────────────┬──────────────┘  │ account   │   │
+│                                    ▼                 └───────────┘   │
+│                     ┌─────────────────────────────┐                  │
+│                     │ Quotas  (UsageSnapshot …)   │                  │
+│                     └─────────────────────────────┘                  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Step 3: Document Component Interactions
@@ -98,8 +92,8 @@ Example:
 
 | Component      | Purpose                | Inputs          | Outputs        | Dependencies    |
 |----------------|------------------------|-----------------|----------------|-----------------|
-| NewUsageProbe  | Fetch usage from CLI   | CLI command     | UsageSnapshot  | CLIExecutor     |
-| NewProvider    | Manages probe lifecycle| UsageProbe      | snapshot state | UsageProbe      |
+| AddedAccounts  | Validate a login folder| folder path     | account config | DataSources     |
+| identity rule  | Fail closed on swaps   | credential      | UsageError     | —               |
 ```
 
 ### Step 4: Present for User Approval
@@ -172,29 +166,44 @@ struct MenuContentView: View {
 
 ### 3. Protocol-Based DI with @Mockable
 
+Ports for what lies outside the app live at a module's root and are
+`@Mockable`; their implementations are `internal` in `Internal/`:
+
 ```swift
 @Mockable
-public protocol UsageProbe: Sendable {
-    func probe() async throws -> UsageSnapshot
-    func isAvailable() async -> Bool
+public protocol NetworkClient: Sendable {
+    func request(_ request: URLRequest) async throws -> (Data, URLResponse)
 }
 ```
 
 ## Architecture
 
-> **Full documentation:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
+> **Reference:** [MODULAR_DESIGN.md](../../../docs/architecture/MODULAR_DESIGN.md) (modules) ·
+> [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (how a provider runs) ·
+> [ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md) (the app layers)
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| **Domain** | `Sources/Domain/` | `QuotaMonitor` (single source of truth), rich models, protocols |
-| **Infrastructure** | `Sources/Infrastructure/` | Probes, storage, adapters |
-| **App** | `Sources/App/` | SwiftUI views consuming domain directly (no ViewModel) |
+The code is mid-migration from three layers to modules. Find which side the
+behaviour lives on before you change it:
+
+| Where | Holds | Tests |
+|---|---|---|
+| `Modules/Providers/Resources/Providers/<id>.json` (+ `.js`) | every built-in provider: where the key is, how to fetch, how to read | `Modules/Providers/Tests/` (golden tests over `StubbedProvider` / `ClaudeHarness`) |
+| `Modules/Providers/Sources` | `Provider` (the one lifecycle: refresh, fallback chain, accounts), `ProviderDefinition`, `AddedAccounts`, settings and account contracts | `Modules/Providers/Tests/` |
+| `Modules/DataSources/Sources` | `DataSource` and its workers: credential lookups and refreshes; HTTP, steps, JSON-RPC, terminal, command, file, directory, local-server and CloudWatch fetches; JSON / text / script mapping; the process runners | `Modules/DataSources/Tests/` |
+| `Modules/Quotas/Sources` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError`, plans and costs (interim shapes, see each type's `- Note:`) | the tests of the module that uses it |
+| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions, Usage History | `Tests/DomainTests/` |
+| `Sources/Infrastructure` | storage, notifications, hooks, the local-log analyzers behind Usage History | `Tests/InfrastructureTests/` |
+| `Sources/App` | SwiftUI views reading the domain directly | `Tests/AppTests/`, `Tests/AcceptanceTests/` |
+
+A bug in a migrated provider is fixed in its JSON, or generically in
+`DataSources`, never with vendor-named Swift. Modules never `import Domain`.
 
 **Key patterns:**
-- **Repository Pattern with ISP** - Provider-specific sub-protocols (`ZaiSettingsRepository`, `CopilotSettingsRepository`)
-- **Protocol-Based DI** - `@Mockable` for testing
-- **Chicago School TDD** - Test state, not interactions
-- **No ViewModel layer** - Views consume domain directly
+- **Modules by context** — the domain at a module's root, its implementation in `Internal/`, one factory enum per module (`DataSources.make`, `Providers.make`)
+- **Providers are data** — a feature a provider needs becomes a generic rule or worker, then a line of JSON
+- **Protocol-based DI** — `@Mockable` ports; Chicago-school tests assert on state
+- **No ViewModel layer** — views read `QuotaMonitor` and `Provider` directly
+- **Settings** — generic per-provider values (`dataSourceKind`, `isOn`) before a new sub-protocol
 
 ## TDD Workflow (Chicago School)
 
@@ -233,7 +242,7 @@ struct FeatureModelTests {
 }
 ```
 
-### Phase 2: Infrastructure Tests
+### Phase 2: Module Tests (DataSources / Providers)
 
 Stub dependencies to return data, assert on resulting state:
 
@@ -259,7 +268,17 @@ struct FeatureServiceTests {
 
 ### Phase 3: Integration
 
-Wire up in `ClaudeBarApp.swift` and create views.
+Wire up in `ClaudeBarApp.swift` (the composition root) and create views.
+Acceptance specs in `Tests/AcceptanceTests/` compose real modules with stubbed ports.
+
+```bash
+tuist test Providers         # one module's tests (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test                     # everything
+# tuist caches results; to force a re-run of one suite:
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
+  -destination 'platform=macOS,arch=arm64' -only-testing:ProvidersTests/ClaudeAPITests
+```
+
 
 ## References
 
@@ -280,10 +299,10 @@ Wire up in `ClaudeBarApp.swift` and create views.
 - [ ] Write failing test asserting expected STATE (Red)
 - [ ] Write minimal code to pass the test (Green)
 - [ ] Refactor while keeping tests green
-- [ ] Define domain models in `Sources/Domain/` with behavior
+- [ ] Put each type in the module MODULAR_DESIGN.md names (never a vendor-named type in a module)
 - [ ] Test state changes and return values (not interactions)
 - [ ] Define protocols with `@Mockable` for external dependencies
 - [ ] Stub mocks to return data, assert on resulting state
-- [ ] Implement infrastructure in `Sources/Infrastructure/`
+- [ ] Implement ports in the module's `Internal/`
 - [ ] Create views consuming domain models directly
-- [ ] Run `swift test` to verify all tests pass
+- [ ] Run `tuist test` to verify all tests pass

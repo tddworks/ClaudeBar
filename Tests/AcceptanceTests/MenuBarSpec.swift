@@ -60,8 +60,8 @@ struct MenuBarSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
+            let codex = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude, codex]),
                 clock: TestClock()
@@ -95,8 +95,8 @@ struct MenuBarSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
+            let codex = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
@@ -123,7 +123,7 @@ struct MenuBarSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()
@@ -140,7 +140,7 @@ struct MenuBarSpec {
         func `no snapshots defaults to healthy`() {
             // Given — fresh monitor, no refresh yet
             let settings = MenuBarSpec.makeSettings()
-            let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()

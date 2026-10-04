@@ -17,7 +17,8 @@ Sources/App/Theme/
     ├── DarkTheme.swift         # Default dark theme
     ├── LightTheme.swift        # Light theme
     ├── CLITheme.swift          # Terminal-style theme
-    └── ChristmasTheme.swift    # Festive holiday theme
+    ├── ChristmasTheme.swift    # Festive holiday theme
+    └── PopTheme.swift          # Cream paper, ink outlines, hard shadows (Lilita One in Resources/Fonts)
 ```
 
 ## Core Components
@@ -73,6 +74,12 @@ public protocol AppThemeProvider {
     // Progress Bar
     var progressTrack: Color { get }
 
+    // Outlines, Shadows, Numbers (defaults: 1, nil, nil, .white)
+    var cardBorderWidth: CGFloat { get }
+    var cardShadow: ThemeShadow? { get }
+    var displayFontName: String? { get }
+    var textOnStatus: Color { get }
+
     // Computed Helpers
     func statusColor(for status: QuotaStatus) -> Color
     func progressGradient(for percent: Double) -> LinearGradient
@@ -123,6 +130,7 @@ Text("Hello")
 | Light | `light` | Soft purple-pink tones for bright environments |
 | CLI | `cli` | Minimalistic terminal aesthetic with green accents |
 | Christmas | `christmas` | Festive red/green/gold with snowfall |
+| Pop | `pop` | Cream dotted paper, 2.5 pt ink outlines, hard offset shadows, candy status colours, Lilita One numbers ([concept](../../design-concept/claudebar-pop-theme.html)) |
 | System | `system` | Follows macOS appearance (resolves to Light or Dark) |
 
 ## Creating a New Theme
@@ -255,6 +263,8 @@ Create a new parser in `Sources/Infrastructure/TerminalImport/` that produces a 
 | `glassHighlight` | `Color` | Glass top edge shine |
 | `cardCornerRadius` | `CGFloat` | Corner radius for cards |
 | `pillCornerRadius` | `CGFloat` | Corner radius for pills |
+| `cardBorderWidth` | `CGFloat` | Outline width of cards, pills and buttons — every `glassBorder` stroke uses it. Default `1` |
+| `cardShadow` | `ThemeShadow?` | A shadow under card fills (`.themeShadow(theme)`); `radius: 0` is a hard printed shadow. Default `nil` |
 
 ### Typography
 
@@ -264,6 +274,8 @@ Create a new parser in `Sources/Infrastructure/TerminalImport/` that produces a 
 | `textSecondary` | `Color` | Subtitle text color |
 | `textTertiary` | `Color` | Hint/timestamp color |
 | `fontDesign` | `Font.Design` | `.default`, `.rounded`, `.monospaced`, `.serif` |
+| `displayFontName` | `String?` | Font for big numbers via `theme.displayFont(size:)` — percentages, totals, today's values. Default `nil` (system, bold) |
+| `textOnStatus` | `Color` | Text on a status colour (badges). Default `.white`; Pop uses ink |
 
 ### Status Colors
 

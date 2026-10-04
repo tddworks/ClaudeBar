@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Domain
 @testable import Infrastructure
 
 @Suite
@@ -52,5 +53,22 @@ struct HookInstallerTests {
         let marker = HookInstaller.hookMarker
         #expect(!marker.isEmpty)
         #expect(marker.allSatisfy { $0.isLetter || $0 == "_" })
+    }
+
+    // MARK: - Probe sessions (issue #222)
+
+    @Test
+    func `hook command exits before POSTing when the session is a ClaudeBar probe`() {
+        let command = HookInstaller.hookCommand
+
+        // The guard references the probe marker and returns before any POST.
+        let probeGuard = command.range(
+            of: "[ \"$\(HookConstants.probeEnvironmentKey)\" = \"1\" ] && return 0"
+        )
+        #expect(probeGuard != nil)
+
+        if let probeGuard, let curl = command.range(of: "curl") {
+            #expect(probeGuard.lowerBound < curl.lowerBound)
+        }
     }
 }

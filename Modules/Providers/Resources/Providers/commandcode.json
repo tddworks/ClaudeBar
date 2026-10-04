@@ -1,0 +1,66 @@
+{
+  "profile": {
+    "id": "commandcode",
+    "name": "Command Code",
+    "links": { "dashboard": "https://commandcode.ai/usage" },
+    "look": {
+      "symbol": "command",
+      "icon": "CommandCodeIcon",
+      "color": { "light": [0.07, 0.07, 0.07], "dark": [0.33, 0.42, 0.95] },
+      "gradientEnd": { "light": [0.25, 0.25, 0.25], "dark": [0.18, 0.11, 0.61] }
+    }
+  },
+  "cli": "cmd",
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "apiKey", "label": "API Key", "kind": "secret", "scope": "account" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your credits and window limits from the Command Code API",
+      "credential": {
+        "firstOf": [
+          { "environment": "COMMAND_CODE_API_KEY" },
+          { "environment": "COMMANDCODE_API_KEY" },
+          { "jsonFile": { "path": "~/.commandcode/auth.json", "token": "$.apiKey" } },
+          { "setting": "apiKey" }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "steps": [
+            {
+              "name": "whoami",
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/whoami?limits=1",
+                "timeout": 15,
+                "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
+              },
+              "keep": { "orgId": ["$.data.org.id", "$.org.id"] }
+            },
+            {
+              "name": "credits",
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/billing/credits?orgId={{orgId}}",
+                "timeout": 15,
+                "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
+              },
+              "dropEmpty": ["orgId"]
+            }
+          ]
+        }
+      },
+      "mapping": { "script": { "file": "commandcode-credits.js" } },
+      "errors": {
+        "http.401": { "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY." },
+        "http.403": { "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY." }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": { "api": { "credential": { "firstOf": null, "setting": "apiKey" } } }
+  }
+}

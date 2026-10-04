@@ -3,7 +3,7 @@ import Domain
 
 /// A simple overlay that shows the referral link with copy functionality.
 struct SharePassOverlay: View {
-    let pass: ClaudePass
+    let pass: GuestPass
     let onDismiss: () -> Void
 
     @Environment(\.appTheme) private var theme
@@ -108,7 +108,7 @@ struct SharePassOverlay: View {
                                 .fill(theme.glassBackground)
                                 .overlay(
                                     Capsule()
-                                        .stroke(theme.glassBorder, lineWidth: 1)
+                                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                                 )
                         )
                     }
@@ -130,7 +130,7 @@ struct SharePassOverlay: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(theme.glassBorder, lineWidth: 1)
+                            .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                     )
                     .shadow(color: Color.black.opacity(0.4), radius: 20, y: 10)
             )
@@ -217,7 +217,7 @@ struct SharePassErrorOverlay: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(theme.glassBorder, lineWidth: 1)
+                            .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                     )
                     .shadow(color: Color.black.opacity(0.4), radius: 20, y: 10)
             )
@@ -234,7 +234,7 @@ struct SharePassErrorOverlay: View {
         DarkTheme().backgroundGradient
 
         SharePassOverlay(
-            pass: ClaudePass(
+            pass: GuestPass(
                 referralURL: URL(string: "https://claude.ai/referral/DJ_kWX90Xw")!
             ),
             onDismiss: {}

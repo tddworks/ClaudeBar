@@ -16,7 +16,7 @@ struct SettingsPane<Content: View>: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 21, weight: .bold, design: theme.fontDesign))
+                        .font(theme.displayFont(size: theme.displayFontName == nil ? 21 : 26))
                         .foregroundStyle(theme.textPrimary)
 
                     Text(subtitle)
@@ -49,10 +49,10 @@ struct SettingsCard<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                .fill(theme.cardGradient)
+                .fill(theme.cardGradient).themeShadow(theme)
                 .overlay(
                     RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                        .stroke(theme.glassBorder, lineWidth: 1)
+                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                 )
         )
     }
@@ -95,9 +95,23 @@ struct SettingsRowDivider: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        Divider()
-            .background(theme.glassBorder.opacity(0.5))
-            .padding(.vertical, 12)
+        if theme.isOutlined {
+            // Printed rows part with a dashed rule, as on paper.
+            Line()
+                .stroke(theme.progressTrack, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                .frame(height: 2)
+                .padding(.vertical, 12)
+        } else {
+            Divider()
+                .background(theme.glassBorder.opacity(0.5))
+                .padding(.vertical, 12)
+        }
+    }
+
+    private struct Line: Shape {
+        func path(in rect: CGRect) -> Path {
+            Path { $0.move(to: CGPoint(x: 0, y: rect.midY)); $0.addLine(to: CGPoint(x: rect.maxX, y: rect.midY)) }
+        }
     }
 }
 
@@ -108,11 +122,31 @@ struct SettingsSwitch: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        Toggle("", isOn: $isOn)
-            .toggleStyle(.switch)
-            .tint(theme.accentPrimary)
-            .scaleEffect(0.8)
-            .labelsHidden()
+        if theme.isOutlined {
+            // An outlined theme's switch: an inked capsule, healthy when on.
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { isOn.toggle() }
+            } label: {
+                ZStack(alignment: isOn ? .trailing : .leading) {
+                    Capsule()
+                        .fill(isOn ? theme.statusHealthy : theme.progressTrack)
+                        .overlay(Capsule().stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth * 0.8))
+                    Circle()
+                        .fill(theme.glassBackground)
+                        .overlay(Circle().stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth * 0.8))
+                        .padding(3)
+                }
+                .frame(width: 40, height: 23)
+            }
+            .buttonStyle(.plain)
+            .accessibilityRepresentation { Toggle("", isOn: $isOn) }
+        } else {
+            Toggle("", isOn: $isOn)
+                .toggleStyle(.switch)
+                .tint(theme.accentPrimary)
+                .scaleEffect(0.8)
+                .labelsHidden()
+        }
     }
 }
 
@@ -159,7 +193,7 @@ struct SettingsSegmentedControl<Option: Hashable>: View {
                 .fill(Color.black.opacity(0.2))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(theme.glassBorder, lineWidth: 1)
+                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                 )
         )
     }

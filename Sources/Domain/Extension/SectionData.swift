@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Represents parsed probe output data for a specific section type.
@@ -104,6 +107,7 @@ private struct RawQuota: Codable {
             providerId: providerId,
             resetsAt: resetsAt,
             resetText: resetText,
+            windowDuration: quotaType.conventionalWindow.seconds,
             dollarRemaining: dollarRemaining.map { Decimal($0) }
         )
     }

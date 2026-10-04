@@ -113,7 +113,8 @@ struct UsagePaceTests {
             percentRemaining: 50,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         let elapsed = quota.percentTimeElapsed!
@@ -128,7 +129,8 @@ struct UsagePaceTests {
             percentRemaining: 100,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         let elapsed = quota.percentTimeElapsed!
@@ -143,7 +145,8 @@ struct UsagePaceTests {
             percentRemaining: 0,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         #expect(quota.percentTimeElapsed == 100)
@@ -167,7 +170,8 @@ struct UsagePaceTests {
             percentRemaining: 50,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         let pace = quota.pacePercent!
@@ -182,7 +186,8 @@ struct UsagePaceTests {
             percentRemaining: 75,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         let pace = quota.pacePercent!
@@ -207,7 +212,8 @@ struct UsagePaceTests {
             percentRemaining: 30,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         #expect(quota.pace == .ahead)
     }
@@ -220,7 +226,8 @@ struct UsagePaceTests {
             percentRemaining: 90,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         #expect(quota.pace == .behind)
     }
@@ -234,7 +241,8 @@ struct UsagePaceTests {
             percentRemaining: 30,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
 
         #expect(quota.displayPercent(mode: .pace) == 30)
@@ -270,7 +278,8 @@ struct UsagePaceTests {
             percentRemaining: 50,
             quotaType: .weekly,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
         let elapsed = quota.percentTimeElapsed!
@@ -297,7 +306,8 @@ struct UsagePaceTests {
             percentRemaining: 90,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         let insight = quota.paceInsight!
         #expect(insight.hasSuffix("below expected usage"))
@@ -311,7 +321,8 @@ struct UsagePaceTests {
             percentRemaining: 30,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         let insight = quota.paceInsight!
         #expect(insight.hasSuffix("above expected usage"))
@@ -325,7 +336,8 @@ struct UsagePaceTests {
             percentRemaining: 50,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         #expect(quota.paceInsight == "Right on track")
     }

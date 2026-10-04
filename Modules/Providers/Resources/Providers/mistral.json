@@ -1,0 +1,33 @@
+{
+  "profile": {
+    "id": "mistral",
+    "name": "Mistral",
+    "links": { "dashboard": "https://console.mistral.ai" },
+    "look": {
+      "symbol": "cat.fill",
+      "icon": "MistralIcon",
+      "color": { "light": [0.9, 0.45, 0.0], "dark": [1.0, 0.55, 0.0] },
+      "gradientEnd": { "light": [0.75, 0.25, 0.05], "dark": [0.85, 0.35, 0.1] }
+    }
+  },
+  "enabledByDefault": false,
+  "defaultDataSource": "logs",
+  "dataSources": [
+    {
+      "kind": "logs",
+      "label": "Vibe logs",
+      "summary": "Mistral Vibe's session logs on this Mac; today's usage shows as TODAY'S USAGE",
+      "fetch": { "directory": { "path": "~/.vibe/logs/session", "match": "^session_" } },
+      "mapping": { "script": { "file": "mistral-logs.js" } }
+    }
+  ],
+  "usageHistory": {
+    "records": {
+      "files": "~/.vibe/logs/session/session_*/meta.json",
+      "format": "json",
+      "at": { "fromPath": "session_(\\d{8}_\\d{6})", "format": "yyyyMMdd_HHmmss", "timeZone": "UTC" },
+      "tokens": { "total": "$.stats.session_total_llm_tokens" },
+      "cost": "$.stats.session_cost"
+    }
+  }
+}

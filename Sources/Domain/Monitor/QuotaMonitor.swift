@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 import Observation
 
@@ -35,6 +38,19 @@ public final class QuotaMonitor {
     /// tests; the app injects a real provider via the convenience init.
     private let powerStateProvider: (any PowerStateProvider)?
 
+    /// Settings repository the user's provider order is read from and written
+    /// to. `nil` (tests) keeps the registration order everywhere.
+    private let settingsRepository: (any ProviderSettingsRepository)?
+
+    /// The persisted provider order (provider IDs), empty when the user never
+    /// reordered. Observable state: mutating it re-renders every view that
+    /// reads `allProviders`/`enabledProviders`.
+    private var storedProviderOrder: [String] = []
+
+    /// The person's status policy, read live — every status the monitor
+    /// reports, and every alert it sends, is under it.
+    private let readStatusPolicy: @MainActor () -> StatusPolicy
+
     /// Previous status for change detection
     private var previousStatuses: [String: QuotaStatus] = [:]
 
@@ -47,21 +63,79 @@ public final class QuotaMonitor {
     /// The currently selected provider ID (for UI display)
     public var selectedProviderId: String = "claude"
 
+    /// The quotas each product hides (#140), by product id — loaded from
+    /// settings, observable so every surface follows a change at once.
+    private var hiddenQuotas: [String: Set<String>] = [:]
+
     // MARK: - Initialization
 
     /// Creates a QuotaMonitor with a provider repository.
     /// Automatically validates the selected provider on initialization.
+    /// When `settingsRepository` is given, providers are presented in the
+    /// persisted order (issue #141); unlisted IDs keep their registration
+    /// position and disabled providers are skipped by `enabledProviders`.
     public init(
         providers: any AIProviderRepository,
         alerter: (any QuotaAlerter)? = nil,
         clock: any Clock,
-        powerStateProvider: (any PowerStateProvider)? = nil
+        settingsRepository: (any ProviderSettingsRepository)? = nil,
+        powerStateProvider: (any PowerStateProvider)? = nil,
+        statusPolicy: @escaping @MainActor () -> StatusPolicy = { .absolute }
     ) {
         self.providers = providers
         self.alerter = alerter
         self.clock = clock
         self.powerStateProvider = powerStateProvider
+        self.settingsRepository = settingsRepository
+        if let settingsRepository {
+            storedProviderOrder = settingsRepository.providerOrder()
+        }
+        self.readStatusPolicy = statusPolicy
+        for provider in providers.all { loadHiddenQuotas(for: provider) }
         selectFirstEnabledIfNeeded()
+    }
+
+    // MARK: - Hidden quotas (#140)
+
+    /// A provider's usage as every surface reads it: without the quotas the
+    /// person hid for its product, so a quota they don't watch is never shown
+    /// and never sets a status or an alert.
+    public func usage(of provider: any AIProvider) -> UsageSnapshot? {
+        provider.snapshot?.hiding(hiddenQuotaKeys(for: provider))
+    }
+
+    /// The quota keys hidden for a provider's product — shared by its accounts.
+    public func hiddenQuotaKeys(for provider: any AIProvider) -> Set<String> {
+        hiddenQuotas[Self.productId(of: provider)] ?? []
+    }
+
+    /// Hides or shows one quota for a provider's product, saved. Refused —
+    /// `false` — when it would hide the last quota the provider reports.
+    @discardableResult
+    public func setQuota(_ key: String, hidden: Bool, for provider: any AIProvider) -> Bool {
+        let product = Self.productId(of: provider)
+        var keys = hiddenQuotas[product] ?? []
+        if hidden {
+            let reported = Set(provider.snapshot?.quotas.map(\.quotaType.quotaKey) ?? [])
+            guard !reported.subtracting(keys).subtracting([key]).isEmpty else { return false }
+            keys.insert(key)
+        } else {
+            keys.remove(key)
+        }
+        hiddenQuotas[product] = keys
+        settingsRepository?.setHiddenQuotaKeys(keys, forProvider: product)
+        return true
+    }
+
+    private func loadHiddenQuotas(for provider: any AIProvider) {
+        let product = Self.productId(of: provider)
+        guard hiddenQuotas[product] == nil, let keys = settingsRepository?.hiddenQuotaKeys(forProvider: product) else { return }
+        hiddenQuotas[product] = keys
+    }
+
+    /// The product a lineup entry belongs to — `codex` for `codex.<acct>`.
+    private static func productId(of provider: any AIProvider) -> String {
+        (provider as? Account)?.provider.id ?? provider.id
     }
 
     // MARK: - Monitoring Operations
@@ -98,7 +172,8 @@ public final class QuotaMonitor {
     /// Handles snapshot update and alerts user if status changed
     private func handleSnapshotUpdate(provider: any AIProvider, snapshot: UsageSnapshot) async {
         let previousStatus = previousStatuses[provider.id] ?? .healthy
-        let newStatus = snapshot.overallStatus
+        // A quota the person hid doesn't page them.
+        let newStatus = snapshot.hiding(hiddenQuotaKeys(for: provider)).overallStatus(under: statusPolicy)
 
         previousStatuses[provider.id] = newStatus
 
@@ -156,19 +231,44 @@ public final class QuotaMonitor {
         providers.provider(id: id)
     }
 
-    /// Returns all providers
+    /// Returns all providers in the persisted order (registration order when
+    /// the user never reordered).
     public var allProviders: [any AIProvider] {
-        providers.all
+        ordered(providers.all)
     }
 
-    /// Returns only enabled providers
+    /// Returns only enabled providers, in the persisted order.
     public var enabledProviders: [any AIProvider] {
-        providers.enabled
+        ordered(providers.enabled)
+    }
+
+    /// Sorts the given providers by the persisted order. Listed IDs come first
+    /// in stored sequence; unlisted IDs keep their registration position after
+    /// them (ranked past the end of the stored list), so a stored order that
+    /// omits providers — or names ones that no longer exist — degrades to a
+    /// stable registration order. Disabled IDs are gone before this runs for
+    /// `enabledProviders` because the caller filters first.
+    private func ordered(_ input: [any AIProvider]) -> [any AIProvider] {
+        guard !storedProviderOrder.isEmpty else { return input }
+        let rank = Dictionary(
+            storedProviderOrder.enumerated().map { ($1, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return input
+            .enumerated()
+            .sorted { lhs, rhs in
+                let leftRank = rank[lhs.element.id] ?? (storedProviderOrder.count + lhs.offset)
+                let rightRank = rank[rhs.element.id] ?? (storedProviderOrder.count + rhs.offset)
+                if leftRank != rightRank { return leftRank < rightRank }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 
     /// Adds a provider dynamically
     public func addProvider(_ provider: any AIProvider) {
         providers.add(provider)
+        loadHiddenQuotas(for: provider)
     }
 
     /// Removes a provider by ID
@@ -179,7 +279,7 @@ public final class QuotaMonitor {
     /// Returns the lowest quota across all enabled providers
     public func lowestQuota() -> UsageQuota? {
         providers.enabled
-            .compactMap(\.snapshot?.lowestQuota)
+            .compactMap { usage(of: $0)?.lowestQuota }
             .min()
     }
 
@@ -247,7 +347,7 @@ public final class QuotaMonitor {
             guard let provider = enabledProviders.first(where: { $0.id == id }) else { return nil }
             let config = configurations[id] ?? MenuBarProviderSettings()
             let key = config.primaryQuotaKey.isEmpty
-                ? provider.snapshot?.quotas.first?.quotaType.quotaKey : config.primaryQuotaKey
+                ? usage(of: provider)?.quotas.first?.quotaType.quotaKey : config.primaryQuotaKey
             guard let key,
                   let label = menuBarLabel(
                     providerId: id, primaryQuotaKey: key, secondaryQuotaKey: config.secondaryQuotaKey,
@@ -288,7 +388,7 @@ public final class QuotaMonitor {
         burnRateThreshold: Double = 1.5
     ) -> MenuBarLabel? {
         let primaryQuotaKey = primaryQuotaKey.isEmpty
-            ? (enabledProviders.first { $0.id == providerId }?.snapshot?.quotas.first?.quotaType.quotaKey ?? "")
+            ? (enabledProviders.first { $0.id == providerId }.flatMap { usage(of: $0) }?.quotas.first?.quotaType.quotaKey ?? "")
             : primaryQuotaKey
         func segment(forQuotaKey quotaKey: String) -> (text: String, status: QuotaStatus)? {
             let percentage = showPercentage
@@ -365,10 +465,13 @@ public final class QuotaMonitor {
         }
     }
 
+    /// HOW STRICT TO BE — the person's policy (Settings → General).
+    public var statusPolicy: StatusPolicy { readStatusPolicy() }
+
     /// Returns the overall status across enabled providers (worst status wins)
     public var overallStatus: QuotaStatus {
         providers.enabled
-            .compactMap(\.snapshot?.overallStatus)
+            .compactMap { usage(of: $0)?.overallStatus(under: statusPolicy) }
             .max() ?? .healthy
     }
 
@@ -381,7 +484,7 @@ public final class QuotaMonitor {
 
     /// Status of the currently selected provider (for menu bar icon)
     public var selectedProviderStatus: QuotaStatus {
-        selectedProvider?.snapshot?.overallStatus ?? .healthy
+        selectedProvider.flatMap { usage(of: $0) }?.overallStatus(under: statusPolicy) ?? .healthy
     }
 
     /// Whether any provider is currently refreshing
@@ -394,6 +497,53 @@ public final class QuotaMonitor {
         if providers.enabled.contains(where: { $0.id == id }) {
             selectedProviderId = id
         }
+    }
+
+    /// The popover's pills: one per product, its enabled logins inside —
+    /// the tabs follow the persisted order (issue #141), not the
+    /// registration order.
+    public var tabs: [ProductTab] { ProductTab.tabs(of: enabledProviders) }
+
+    /// The tab the selected login belongs to.
+    public var selectedTab: ProductTab? { tabs.first { $0.contains(selectedProviderId) } }
+
+    /// Selects the tab in the given 1-based slot, counted the way the popover
+    /// lists them (⌘1 is the first pill), opening on its first login — the
+    /// slots follow the persisted order (issue #141). A slot with no tab
+    /// leaves the selection alone.
+    public func selectProvider(atPosition position: Int) {
+        let tabs = tabs
+        guard tabs.indices.contains(position - 1), let first = tabs[position - 1].accounts.first else { return }
+        selectedProviderId = first.id
+    }
+
+    /// Moves a provider up (negative offset) or down (positive offset) within
+    /// the displayed order, clamped at the boundaries, and persists the new
+    /// order. This is the one write path for reordering, so QuotaMonitor stays
+    /// the single source of truth for provider order.
+    public func moveProvider(id: String, by offset: Int) {
+        guard offset != 0 else { return }
+        let ids = ordered(providers.all).map(\.id)
+        guard let index = ids.firstIndex(of: id) else { return }
+        let newIndex = min(max(index + offset, 0), ids.count - 1)
+        guard newIndex != index else { return }
+        var reordered = ids
+        reordered.remove(at: index)
+        reordered.insert(id, at: newIndex)
+        setProviderOrder(reordered)
+    }
+
+    /// Applies a full provider order and persists it through the settings
+    /// repository (when one is wired). IDs that no longer exist in
+    /// `providers.all` — extensions removed, a deleted Codex account — are
+    /// dropped before anything is stored or persisted, so the saved order
+    /// never accumulates dead ids. IDs missing from the list keep their
+    /// registration position.
+    public func setProviderOrder(_ order: [String]) {
+        let live = Set(providers.all.map(\.id))
+        let filtered = order.filter { live.contains($0) }
+        storedProviderOrder = filtered
+        settingsRepository?.setProviderOrder(filtered)
     }
 
     /// Sets a provider's enabled state.
@@ -505,7 +655,7 @@ public final class QuotaMonitor {
                     // bind a low (`.utility`) QoS so any CLI subprocess spawned
                     // during the refresh runs on efficiency cores / throttled —
                     // both keep idle energy use low (issue #204).
-                    await ProbeExecutionContext.$qualityOfService.withValue(.utility) {
+                    await FetchContext.$qualityOfService.withValue(.utility) {
                         if let providerIds {
                             await self.refresh(providerIds: providerIds, kind: .background)
                         } else {

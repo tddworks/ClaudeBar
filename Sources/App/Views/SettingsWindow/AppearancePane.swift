@@ -39,6 +39,15 @@ struct AppearancePane: View {
             }
 
             SettingsCard {
+                SettingsRow(
+                    title: "Native menu bar icons",
+                    subtitle: "Monochrome provider icons adapt to light and dark menu bars. Usage colors stay the same."
+                ) {
+                    SettingsSwitch(isOn: $settings.nativeMenuBarIconsEnabled)
+                }
+            }
+
+            SettingsCard {
                 SettingsFieldLabel(text: "STATUS COLORS")
                     .padding(.bottom, 10)
 

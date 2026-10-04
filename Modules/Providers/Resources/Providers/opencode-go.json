@@ -1,0 +1,138 @@
+{
+  "profile": {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "links": {
+      "dashboard": "https://opencode.ai/auth"
+    },
+    "look": {
+      "symbol": "square.stack.3d.up.fill",
+      "icon": "OpenCodeIcon",
+      "color": {
+        "light": [
+          0.42,
+          0.28,
+          1
+        ],
+        "dark": [
+          0.52,
+          0.36,
+          1
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.3,
+          0.15,
+          0.8
+        ],
+        "dark": [
+          0.36,
+          0.2,
+          0.9
+        ]
+      }
+    }
+  },
+  "cli": "opencode",
+  "enabledByDefault": true,
+  "settings": [
+    {
+      "id": "apiKey",
+      "label": "API Key",
+      "kind": "secret",
+      "scope": "account"
+    }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your OpenCode Go usage from the OpenCode API",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "OPENCODE_API_KEY"
+          },
+          {
+            "jsonFile": {
+              "path": "${XDG_DATA_HOME:-~/.local/share}/opencode/auth.json",
+              "token": "$.opencode-go.key"
+            }
+          },
+          {
+            "jsonFile": {
+              "path": "${XDG_DATA_HOME:-~/.local/share}/opencode/auth.json",
+              "token": "$.opencode.key"
+            }
+          }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://opencode.ai/zen/go/v1/usage",
+          "timeout": 15,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json"
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "opencode-api.js"
+        }
+      },
+      "errors": {
+        "http.401": {
+          "sessionExpired": "Run `opencode auth login` and pick OpenCode Zen to refresh your API key."
+        },
+        "http.403": "subscriptionRequired"
+      },
+      "fallbackOn": {
+        "authenticationRequired": "local"
+      }
+    },
+    {
+      "kind": "local",
+      "label": "Local",
+      "hidden": true,
+      "summary": "Adds up OpenCode Go spend from opencode's own database",
+      "fetch": {
+        "command": {
+          "cli": "opencode",
+          "args": [
+            "db",
+            "WITH rows AS ( SELECT CAST(COALESCE(json_extract(data, '$.time.created'), time_created) AS INTEGER) AS t, CAST(json_extract(data, '$.cost') AS REAL) AS cost FROM message WHERE json_valid(data) AND json_extract(data, '$.providerID') = 'opencode-go' AND json_extract(data, '$.role') = 'assistant' AND json_type(data, '$.cost') IN ('integer', 'real') ), clock AS ( SELECT CAST(strftime('%s', 'now') AS INTEGER) * 1000 AS now_ms, CAST(strftime('%s', date('now', '-6 days', 'weekday 1')) AS INTEGER) * 1000 AS week_ms ), anchor AS ( SELECT MIN(t) AS ms, CAST(strftime('%d', MIN(t) / 1000, 'unixepoch') AS INTEGER) AS day, strftime('%H:%M:%S', MIN(t) / 1000, 'unixepoch') AS at FROM rows ), months AS ( SELECT ms, day, at, date('now', 'start of month', '-1 month') AS m0, date('now', 'start of month') AS m1, date('now', 'start of month', '+1 month') AS m2 FROM anchor WHERE ms IS NOT NULL ), starts AS ( SELECT datetime(date(m0, '+' || (MIN(day, CAST(strftime('%d', date(m0, '+1 month', '-1 day')) AS INTEGER)) - 1) || ' days') || ' ' || at) AS s0, datetime(date(m1, '+' || (MIN(day, CAST(strftime('%d', date(m1, '+1 month', '-1 day')) AS INTEGER)) - 1) || ' days') || ' ' || at) AS s1, datetime(date(m2, '+' || (MIN(day, CAST(strftime('%d', date(m2, '+1 month', '-1 day')) AS INTEGER)) - 1) || ' days') || ' ' || at) AS s2 FROM months ), month AS ( SELECT CAST(strftime('%s', CASE WHEN s1 <= datetime('now') THEN s1 ELSE s0 END) AS INTEGER) * 1000 AS start_ms, CAST(strftime('%s', CASE WHEN s1 <= datetime('now') THEN s2 ELSE s1 END) AS INTEGER) * 1000 AS end_ms FROM starts ) SELECT (SELECT now_ms FROM clock) AS now_ms, (SELECT COALESCE(SUM(cost), 0) FROM rows, clock WHERE t >= now_ms - 18000000) AS five_hour_cost, (SELECT MIN(t) FROM rows, clock WHERE t >= now_ms - 18000000) AS five_hour_oldest_ms, (SELECT COALESCE(SUM(cost), 0) FROM rows, clock WHERE t >= week_ms) AS weekly_cost, (SELECT week_ms + 604800000 FROM clock) AS week_end_ms, (SELECT COALESCE(SUM(cost), 0) FROM rows, month WHERE t >= start_ms AND t < end_ms) AS monthly_cost, (SELECT start_ms FROM month) AS month_start_ms, (SELECT end_ms FROM month) AS month_end_ms",
+            "--format",
+            "json"
+          ],
+          "timeout": 15
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "opencode-local.js"
+        }
+      },
+      "errors": {
+        "cli.missing": {
+          "cliNotFound": "opencode"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        },
+        "fallbackOn": null
+      },
+      "local": null
+    }
+  }
+}

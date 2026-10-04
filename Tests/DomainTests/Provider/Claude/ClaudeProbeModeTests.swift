@@ -31,4 +31,17 @@ struct ClaudeProbeModeTests {
         #expect(description.contains("Claude Desktop"))
         #expect(description.lowercased().contains("best-effort"))
     }
+
+    // MARK: - The saved value names a data source
+
+    @Test
+    func `every mode's raw value names a claude data source`() throws {
+        // The saved `<id>.probeMode` value is what `Provider.activeKind`
+        // selects, so each case's raw value must be a kind in `claude.json` —
+        // a mode the definition doesn't have would silently fall back to cli.
+        let definition = try Providers.builtIn("claude")
+        for mode in ClaudeProbeMode.allCases {
+            #expect(definition.dataSource(mode.rawValue) != nil, "\(mode.rawValue) has no data source")
+        }
+    }
 }

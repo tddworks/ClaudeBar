@@ -53,13 +53,25 @@ Fix bugs using Chicago School TDD, root cause analysis, and rich domain design.
 
 ### Locate in Architecture
 
-> **Reference:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
+> **Reference:** [MODULAR_DESIGN.md](../../../docs/architecture/MODULAR_DESIGN.md) (modules) ·
+> [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (how a provider runs) ·
+> [ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md) (the app layers)
 
-| Layer | Location | What to look for |
-|-------|----------|------------------|
-| **Domain** | `Sources/Domain/` | Incorrect business logic, missing invariants |
-| **Infrastructure** | `Sources/Infrastructure/` | Parsing errors, CLI/API issues |
-| **App** | `Sources/App/` | View state issues, binding problems |
+The code is mid-migration from three layers to modules. Find which side the
+behaviour lives on before you change it:
+
+| Where | Holds | Tests |
+|---|---|---|
+| `Modules/Providers/Resources/Providers/<id>.json` (+ `.js`) | every built-in provider: where the key is, how to fetch, how to read | `Modules/Providers/Tests/` (golden tests over `StubbedProvider` / `ClaudeHarness`) |
+| `Modules/Providers/Sources` | `Provider` (the one lifecycle: refresh, fallback chain, accounts), `ProviderDefinition`, `AddedAccounts`, settings and account contracts | `Modules/Providers/Tests/` |
+| `Modules/DataSources/Sources` | `DataSource` and its workers: credential lookups and refreshes; HTTP, steps, JSON-RPC, terminal, command, file, directory, local-server and CloudWatch fetches; JSON / text / script mapping; the process runners | `Modules/DataSources/Tests/` |
+| `Modules/Quotas/Sources` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError`, plans and costs (interim shapes, see each type's `- Note:`) | the tests of the module that uses it |
+| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions, Usage History | `Tests/DomainTests/` |
+| `Sources/Infrastructure` | storage, notifications, hooks, the local-log analyzers behind Usage History | `Tests/InfrastructureTests/` |
+| `Sources/App` | SwiftUI views reading the domain directly | `Tests/AppTests/`, `Tests/AcceptanceTests/` |
+
+A bug in a migrated provider is fixed in its JSON, or generically in
+`DataSources`, never with vendor-named Swift. Modules never `import Domain`.
 
 ### Domain Invariants
 
@@ -86,36 +98,39 @@ We follow **Chicago School TDD** (state-based testing):
 Test the CORRECT behavior, not the bug:
 
 ```swift
+@MainActor
 @Suite
 struct {Component}Tests {
 
-    @Test func `{describes correct behavior}`() {
-        // Given - setup that triggers the bug scenario
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        claude.isEnabled = false  // Bug trigger condition
+    @Test func `{describes correct behavior}`() async throws {
+        // Given - the response that triggers the bug, captured from the real CLI/API
+        let stub = try StubbedProvider(providerId: "codex")
+        defer { stub.cleanUp() }
+        stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":30,"windowDurationMins":10080}}}}"#)
 
-        // When - action that should work correctly
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude, codex]))
+        // When - the real definition reads it
+        let usage = try await stub.make("codex").refresh()
 
         // Then - assert EXPECTED behavior (will FAIL before fix)
-        #expect(monitor.selectedProviderId == "codex")  // Not "claude"
+        #expect(usage.quota(for: .session)?.windowDuration == 7 * 86400)  // the window the provider stated
     }
 }
 ```
 
 ### Test Location
 
-| Bug Location | Test Location |
-|--------------|---------------|
-| `Sources/Domain/Monitor/` | `Tests/DomainTests/Monitor/` |
-| `Sources/Domain/Provider/` | `Tests/DomainTests/Provider/` |
-| `Sources/Infrastructure/CLI/` | `Tests/InfrastructureTests/CLI/` |
+The test goes beside the code it pins (the table in Phase 1). For a migrated
+provider, add the captured response to its golden tests in
+`Modules/Providers/Tests/`; for a generic worker, to `Modules/DataSources/Tests/`.
 
 ### Run Test (Should FAIL)
 
 ```bash
-swift test --filter "{TestSuiteName}"
+tuist test Providers         # one module's tests (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test                     # everything
+# tuist caches results; to force a re-run of one suite:
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
+  -destination 'platform=macOS,arch=arm64' -only-testing:ProvidersTests/ClaudeAPITests
 ```
 
 ## Phase 3: Fix & Verify (Green)
@@ -152,13 +167,8 @@ private func selectFirstEnabledIfNeeded() { ... }
 
 ### Verify Fix
 
-```bash
-# Run the specific test (should PASS now)
-swift test --filter "{TestSuiteName}"
-
-# Run ALL tests to ensure no regressions
-swift test
-```
+Run the same suite again (it should PASS now), then `tuist test` for every
+target.
 
 ## Checklist
 

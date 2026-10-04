@@ -58,6 +58,22 @@ public final class AppSettings {
         }
     }
 
+    /// Whether a single readout also starts with its provider's logo. Several
+    /// readouts, or several accounts, always show theirs.
+    public var menuBarProviderLogoEnabled: Bool {
+        didSet {
+            repository.setMenuBarProviderLogoEnabled(menuBarProviderLogoEnabled)
+        }
+    }
+
+    /// Whether account labels appear beside provider icons in the menu bar.
+    /// Tooltip and accessibility descriptions keep the account identity.
+    public var menuBarAccountLabelsEnabled: Bool {
+        didSet {
+            repository.setMenuBarAccountLabelsEnabled(menuBarAccountLabelsEnabled)
+        }
+    }
+
     /// Whether a dual-window menu bar label should render as two stacked
     /// smaller lines (one per quota window) instead of one long "A | B" line,
     /// roughly halving the menu bar width it occupies. Opt-in, default off;
@@ -152,6 +168,14 @@ public final class AppSettings {
     public var menuBarSecondaryQuotaKey: String {
         didSet {
             repository.setMenuBarSecondaryQuotaKey(menuBarSecondaryQuotaKey)
+        }
+    }
+
+    /// *Hide account email* (#375): emails show masked — `s•••@g•••.com` —
+    /// in the popover and the menu bar. Settings still shows them in full.
+    public var hideAccountEmail: Bool {
+        didSet {
+            repository.setHideAccountEmail(hideAccountEmail)
         }
     }
 
@@ -309,6 +333,11 @@ public final class AppSettings {
         }
     }
 
+    /// Use native monochrome provider icons only in the menu bar.
+    public var nativeMenuBarIconsEnabled: Bool {
+        didSet { repository.setNativeMenuBarIconsEnabled(nativeMenuBarIconsEnabled) }
+    }
+
     // MARK: - Status Color Settings
 
     /// Per-status user colors; nil defers to High Contrast, then the theme.
@@ -326,6 +355,11 @@ public final class AppSettings {
     }
 
     /// Reading this inside a view body or a sync's `read` tracks both settings.
+    /// HOW STRICT TO BE — what every status on screen and every alert uses.
+    public var statusPolicy: StatusPolicy {
+        .from(burnRateWarningEnabled: burnRateWarningEnabled, burnRateThreshold: burnRateThreshold)
+    }
+
     public var statusColorPolicy: StatusColorPolicy {
         StatusColorPolicy(overrides: statusColorOverrides, highContrastEnabled: highContrastEnabled)
     }
@@ -387,8 +421,10 @@ public final class AppSettings {
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
         self.statusColorOverrides = repository.statusColorOverrides()
+        self.nativeMenuBarIconsEnabled = repository.nativeMenuBarIconsEnabled()
         self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
+        self.hideAccountEmail = repository.hideAccountEmail()
         self.notchEnabled = repository.notchEnabled()
         self.touchBarEnabled = repository.touchBarEnabled()
         self.notifyEnabled = repository.isNotifyEnabled()
@@ -402,6 +438,8 @@ public final class AppSettings {
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.menuBarPercentageEnabled = repository.menuBarPercentageEnabled()
         self.menuBarDurationEnabled = repository.menuBarDurationEnabled()
+        self.menuBarAccountLabelsEnabled = repository.menuBarAccountLabelsEnabled()
+        self.menuBarProviderLogoEnabled = repository.menuBarProviderLogoEnabled()
         self.menuBarStackedEnabled = repository.menuBarStackedEnabled()
         // The stored size decodes through the Domain fallback so an unknown
         // raw value (from a newer build's settings file) renders small
@@ -456,14 +494,7 @@ public final class AppSettings {
     public var provider: ProviderSettingsRepository { repository }
     public var claude: ClaudeSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
-    public var kimi: KimiSettingsRepository { repository }
-    public var copilot: CopilotSettingsRepository { repository }
-    public var zai: ZaiSettingsRepository { repository }
-    public var bedrock: BedrockSettingsRepository { repository }
-    public var minimax: MiniMaxSettingsRepository { repository }
     public var deepseek: DeepSeekSettingsRepository { repository }
-    public var alibaba: AlibabaSettingsRepository { repository }
-    public var vercel: VercelSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
     public var notify: NotifySettingsRepository { repository }
 

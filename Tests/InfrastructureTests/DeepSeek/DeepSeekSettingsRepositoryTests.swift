@@ -33,13 +33,16 @@ struct DeepSeekSettingsRepositoryTests {
         let settingsURL = tempDirectory.appendingPathComponent("settings.json")
         let suiteName = "DeepSeekJSONCredentialsTests.\(UUID().uuidString)"
         let credentials = UserDefaults(suiteName: suiteName)!
+        let secureDefaults = UserDefaults(suiteName: suiteName + ".secure")!
         defer {
             try? FileManager.default.removeItem(at: tempDirectory)
             credentials.removePersistentDomain(forName: suiteName)
+            secureDefaults.removePersistentDomain(forName: suiteName + ".secure")
         }
         let repository = JSONSettingsRepository(
             store: JSONSettingsStore(fileURL: settingsURL),
-            credentials: credentials
+            credentials: credentials,
+            secureCredentials: UserDefaultsCredentialRepository(defaults: secureDefaults)
         )
 
         #expect(repository.deepseekAuthEnvVar().isEmpty)

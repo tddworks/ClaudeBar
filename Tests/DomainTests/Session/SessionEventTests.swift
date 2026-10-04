@@ -103,6 +103,31 @@ struct SessionEventTests {
     }
 
     @Test
+    func `event with no cwd is treated as probe noise`() {
+        // The probe's hook payloads can arrive with cwd missing or reshaped by
+        // a CLI update; without it the suffix filter let the probe leak back
+        // in as a "Claude Code Started/Finished" pair (#222).
+        let event = SessionEvent(
+            sessionId: "no-cwd-1",
+            eventName: .sessionStart,
+            cwd: ""
+        )
+
+        #expect(event.isClaudeBarProbe)
+    }
+
+    @Test
+    func `event with whitespace-only cwd is treated as probe noise`() {
+        let event = SessionEvent(
+            sessionId: "no-cwd-2",
+            eventName: .sessionEnd,
+            cwd: "   "
+        )
+
+        #expect(event.isClaudeBarProbe)
+    }
+
+    @Test
     func `all event names have correct raw values`() {
         #expect(SessionEvent.EventName.sessionStart.rawValue == "SessionStart")
         #expect(SessionEvent.EventName.sessionEnd.rawValue == "SessionEnd")

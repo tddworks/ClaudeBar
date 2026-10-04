@@ -1,0 +1,58 @@
+{
+  "profile": {
+    "id": "cursor",
+    "name": "Cursor",
+    "links": { "dashboard": "https://www.cursor.com/settings" },
+    "look": {
+      "symbol": "cursorarrow.rays",
+      "icon": "CursorIcon",
+      "color": { "light": [0.12, 0.62, 0.66], "dark": [0.2, 0.78, 0.82] },
+      "gradientEnd": { "light": [0.08, 0.45, 0.6], "dark": [0.15, 0.55, 0.75] }
+    }
+  },
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "accessToken", "label": "Access Token", "kind": "secret", "scope": "account" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads usage with the Cursor app's own login",
+      "requiresFiles": ["~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"],
+      "credential": {
+        "sqlite": {
+          "path": "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+          "query": "SELECT value AS token FROM ItemTable WHERE key = 'cursorAuth/accessToken'",
+          "fields": { "token": "$.token" },
+          "hint": "Sign in again in Cursor settings, then refresh."
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://cursor.com/api/usage-summary",
+          "headers": {
+            "Cookie": "WorkosCursorSessionToken={{token#jwt.sub}}::{{token}}",
+            "Content-Type": "application/json"
+          },
+          "timeout": 15,
+          "acceptedStatuses": [200]
+        }
+      },
+      "mapping": { "script": { "file": "cursor-usage.js" } },
+      "errors": {
+        "http.401": { "sessionExpired": "Re-authenticate in Cursor settings." },
+        "http.403": "authenticationRequired"
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "requiresFiles": [],
+        "credential": { "sqlite": null, "setting": "accessToken" }
+      }
+    }
+  }
+}

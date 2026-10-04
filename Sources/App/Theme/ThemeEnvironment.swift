@@ -58,7 +58,7 @@ public struct AppThemeProviderModifier: ViewModifier {
     private var effectiveColorScheme: ColorScheme {
         let mode = ThemeMode(rawValue: themeModeId)
         switch mode {
-        case .light: return .light
+        case .light, .pop: return .light
         case .dark, .cli, .christmas: return .dark
         case .system: return systemColorScheme
         case .none:
@@ -143,11 +143,36 @@ private struct ThemeCardModifier: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                    .fill(theme.cardGradient)
+                    .fill(theme.cardGradient).themeShadow(theme)
                     .overlay(
                         RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                            .stroke(theme.glassBorder, lineWidth: 1)
+                            .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                     )
             )
+    }
+}
+
+// MARK: - Sheets
+
+/// A sheet is a window of its own: it takes the system's appearance unless
+/// told otherwise, so the theme's light text would land on a white sheet and
+/// system controls would draw for the wrong appearance. This gives it the
+/// theme's colour scheme and background.
+private struct ThemedSheetModifier: ViewModifier {
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(theme.backgroundGradient.ignoresSafeArea())
+            .environment(\.colorScheme, colorScheme)
+            .preferredColorScheme(colorScheme)
+    }
+}
+
+extension View {
+    /// Apply to the root of every `.sheet` content in a themed window.
+    public func themedSheet() -> some View {
+        modifier(ThemedSheetModifier())
     }
 }

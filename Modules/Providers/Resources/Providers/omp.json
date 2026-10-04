@@ -1,0 +1,27 @@
+{
+  "profile": {
+    "id": "omp",
+    "name": "Oh My Pi",
+    "links": { "dashboard": "https://omp.sh" },
+    "look": {
+      "symbol": "terminal.fill",
+      "icon": "OmpIcon",
+      "color": { "light": [0.16, 0.62, 0.38], "dark": [0.3, 0.85, 0.55] },
+      "gradientEnd": { "light": [0.1, 0.48, 0.3], "dark": [0.16, 0.62, 0.42] }
+    }
+  },
+  "cli": "omp",
+  "enabledByDefault": true,
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Runs `omp usage --json` for every account Oh My Pi tracks",
+      "fetch": { "command": { "cli": "omp", "args": ["usage", "--json"], "timeout": 30 } },
+      "cache": { "ttl": 300 },
+      "mapping": { "script": { "file": "omp-usage.js" } },
+      "errors": { "cli.missing": { "cliNotFound": "omp" } }
+    }
+  ]
+}

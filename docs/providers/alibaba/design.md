@@ -1,6 +1,17 @@
-# Alibaba: probe design
+# Alibaba: design
 
 Research notes for the Alibaba Coding Plan probe. Written 2026-09 from the code, commit history (2026-03-12) and [#149](https://github.com/tddworks/ClaudeBar/issues/149).
+
+## As data
+
+Alibaba is `Modules/Providers/Resources/Providers/alibaba.json` and `alibaba-quota.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it. Ported from #394. The sections below are the research the old probe was built on; the requests are unchanged.
+
+- **Region is one choice setting** whose options carry the gateway, console host, console action, commodity code, region id and dashboard (`alibaba.region`, `intl` / `cn`, as before).
+- **Two data sources.** `api` (the key) hands over to `cookie` when no key is saved (`fallbackOn.authenticationRequired`), which is what the old probe did by checking for a key first.
+- **The cookie source is `http.steps`.** `dashboard` fetches the console page `unless` `sec_token` is already known and keeps it by pattern; `console` posts the form. The credential reads `sec_token` and `login_aliyunid_csrf` out of the Cookie header (`"cookies"` on the lookup); `x-csrf-token` is left out when the cookie has none (`dropEmpty` covers headers).
+- **The old Cookie Source switch is gone**: a pasted cookie is tried first, then the browser's.
+- **Window law.** The billing month is the month ending on its reset date, or no window without one; the probe guessed 30 days.
+- **Compatibility.** The API key and manual cookie move from UserDefaults to the Keychain through `ProviderVault.legacyKeys`.
 
 ## Status: unverified against a live account
 

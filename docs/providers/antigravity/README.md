@@ -27,7 +27,8 @@ ClaudeBar picks a source automatically on each refresh:
 ## Gotchas
 
 - **"Session expired. Sign in to Antigravity or run `agy` again."** ClaudeBar doesn't refresh Antigravity's sign-in itself. Every time the app or `agy` runs, the saved token is renewed. Once it expires with nothing running, open Antigravity or run `agy` once.
-- **"Command did not complete within the timeout" with the app closed** was a bug in 0.4.92 and earlier ([#301](https://github.com/tddworks/ClaudeBar/issues/301)): ClaudeBar treated "no Antigravity process" as a failure and never tried the Cloud Code fallback. It's fixed in the next release.
+- **"Command did not complete within the timeout" with the app closed** was a bug in 0.4.92 and earlier ([#301](https://github.com/tddworks/ClaudeBar/issues/301)): ClaudeBar treated "no Antigravity process" as a failure and never tried the Cloud Code fallback.
+- **The Claude pool shows as "Claude" and "Claude Weekly" cards, and the Gemini pool as Session and Weekly.** The cards are no longer grouped under "Gemini" / "Claude & others".
 - **"Authentication required" while Antigravity is running** means ClaudeBar found the language server process but its command line had no `--csrf_token`. Restart Antigravity.
 - **"Could not connect to Antigravity API"** means the process was found but none of its local ports answered. This usually happens while the app is still starting. Try again shortly.
 - **Gemini CLI quota is separate.** The [Gemini](../gemini/README.md) provider tracks Gemini Code Assist quota from the `gemini` CLI's sign-in.

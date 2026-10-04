@@ -76,22 +76,22 @@ struct QuotaTypeTests {
 
     @Test
     func `session quota has 5 hour duration`() {
-        #expect(QuotaType.session.duration == .hours(5))
+        #expect(QuotaType.session.conventionalWindow == .hours(5))
     }
 
     @Test
     func `weekly quota has 7 day duration`() {
-        #expect(QuotaType.weekly.duration == .days(7))
+        #expect(QuotaType.weekly.conventionalWindow == .days(7))
     }
 
     @Test
     func `model specific quota has 7 day duration`() {
-        #expect(QuotaType.modelSpecific("opus").duration == .days(7))
+        #expect(QuotaType.modelSpecific("opus").conventionalWindow == .days(7))
     }
 
     @Test
     func `time limit quota has 7 day duration`() {
-        #expect(QuotaType.timeLimit("any").duration == .days(7))
+        #expect(QuotaType.timeLimit("any").conventionalWindow == .days(7))
     }
 
     // MARK: - Model Name Tests

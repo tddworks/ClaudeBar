@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Mockable
+import Providers
 @testable import Domain
 @testable import Infrastructure
 
@@ -28,66 +29,6 @@ struct ActionBarSpec {
             return mock
         }
 
-        @Test
-        func `Claude dashboard URL is Anthropic billing`() {
-            let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
-            #expect(claude.dashboardURL?.absoluteString == "https://console.anthropic.com/settings/billing")
-        }
-
-        @Test
-        func `Codex dashboard URL is OpenAI usage`() {
-            let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
-            #expect(codex.dashboardURL?.absoluteString == "https://platform.openai.com/usage")
-        }
-
-        @Test
-        func `Copilot dashboard URL is GitHub features page`() {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let copilot = CopilotProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(copilot.dashboardURL?.absoluteString == "https://github.com/settings/copilot/features")
-        }
-
-        @Test
-        func `Antigravity has no dashboard URL`() {
-            let antigravity = AntigravityProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
-            #expect(antigravity.dashboardURL == nil)
-        }
-
-        @Test
-        func `Bedrock dashboard URL is AWS console`() {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let bedrock = BedrockProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(bedrock.dashboardURL?.absoluteString == "https://console.aws.amazon.com/bedrock/home")
-        }
-
-        @Test
-        func `Zai dashboard URL is Z.ai subscribe`() {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let zai = ZaiProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(zai.dashboardURL?.absoluteString == "https://z.ai/subscribe")
-        }
-    }
-
-    // MARK: - #25: Claude guest passes
-
-    @Suite("Scenario: Share Claude Code guest passes")
-    @MainActor
-    struct GuestPasses {
-
-        private static func makeSettings() -> MockProviderSettingsRepository {
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
-            return settings
-        }
-
         private static func makeUsageProbe(tier: AccountTier?) -> MockUsageProbe {
             let probe = MockUsageProbe()
             given(probe).probe().willReturn(
@@ -98,57 +39,101 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Claude supports guest passes when pass probe is provided`() {
-            // Without pass probe
-            let withoutPass = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
-            #expect(withoutPass.supportsGuestPasses == false)
+        func `Claude dashboard URL is Anthropic billing`() {
+            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
+            #expect(claude.dashboardURL?.absoluteString == "https://console.anthropic.com/settings/billing")
         }
 
         @Test
-        func `Max account sees the Share button`() async throws {
-            let claude = ClaudeProvider(
-                probe: Self.makeUsageProbe(tier: .claudeMax),
-                passProbe: MockClaudePassProbing(),
-                settingsRepository: Self.makeSettings()
-            )
-
-            try await claude.refresh()
-
-            #expect(claude.supportsGuestPasses == true)
+        func `Codex dashboard URL is OpenAI usage`() {
+            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
+            #expect(codex.dashboardURL?.absoluteString == "https://platform.openai.com/usage")
         }
 
         @Test
-        func `Pro account does not see the Share button`() async throws {
+        func `Copilot dashboard URL is GitHub features page`() throws {
+            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+            let copilot = try Providers.make("copilot", settings: settings).defaultAccount
+            #expect(copilot.dashboardURL?.absoluteString == "https://github.com/settings/copilot/features")
+        }
+
+        @Test
+        func `Antigravity has no dashboard URL`() throws {
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
+            let antigravity = try Providers.make("antigravity", settings: settings).defaultAccount
+            #expect(antigravity.dashboardURL == nil)
+        }
+
+        @Test
+        func `Bedrock dashboard URL is AWS console`() throws {
+            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+            let bedrock = try Providers.make("bedrock", settings: settings).defaultAccount
+            #expect(bedrock.dashboardURL?.absoluteString == "https://console.aws.amazon.com/bedrock/home")
+        }
+
+        @Test
+        func `Zai dashboard URL is Z.ai subscribe`() throws {
+            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+            let zai = try Providers.make("zai", settings: settings).defaultAccount
+            #expect(zai.dashboardURL?.absoluteString == "https://z.ai/subscribe")
+        }
+    }
+
+    // MARK: - #25: Claude guest passes
+
+    @Suite("Scenario: Share Claude Code guest passes")
+    @MainActor
+    struct GuestPassSharing {
+
+        private static func usage(_ tier: AccountTier?) -> UsageSnapshot {
+            UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: tier)
+        }
+
+        @Test
+        func `Claude offers guest passes only when it has a pass probe`() throws {
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
+            let withoutPasses = try Providers.make("claude", settings: settings).defaultAccount
+            let withPasses = try Providers.make("claude", settings: settings, guestPasses: GuestPasses(source: MockGuestPassSource())).defaultAccount
+
+            #expect(withoutPasses.guestPasses == nil)
+            #expect(withPasses.guestPasses != nil)
+        }
+
+        @Test
+        func `Max account sees the Share button`() {
+            let passes = GuestPasses(source: MockGuestPassSource())
+
+            #expect(passes.isOffered(for: Self.usage(.claudeMax)))
+        }
+
+        @Test
+        func `Pro account does not see the Share button`() {
             // Issue #243: Anthropic issues invitation links to Max plans only.
-            let claude = ClaudeProvider(
-                probe: Self.makeUsageProbe(tier: .claudePro),
-                passProbe: MockClaudePassProbing(),
-                settingsRepository: Self.makeSettings()
-            )
+            let passes = GuestPasses(source: MockGuestPassSource())
 
-            try await claude.refresh()
-
-            #expect(claude.supportsGuestPasses == false)
+            #expect(passes.isOffered(for: Self.usage(.claudePro)) == false)
         }
 
         @Test
         func `failed pass fetch is reported instead of failing silently`() async {
-            let passProbe = MockClaudePassProbing()
-            given(passProbe).probe().willThrow(ProbeError.parseFailed("Could not find referral URL"))
-            let claude = ClaudeProvider(
-                probe: Self.makeUsageProbe(tier: .claudeMax),
-                passProbe: passProbe,
-                settingsRepository: Self.makeSettings()
-            )
+            let passSource = MockGuestPassSource()
+            given(passSource).fetch().willThrow(UsageError.parseFailed("Could not find referral URL"))
+            let passes = GuestPasses(source: passSource)
 
             do {
-                _ = try await claude.fetchPasses()
+                _ = try await passes.fetch()
             } catch {
                 // Expected to throw
             }
 
-            #expect(claude.passError != nil)
-            #expect(claude.guestPass == nil)
+            #expect(passes.error != nil)
+            #expect(passes.pass == nil)
         }
     }
 }

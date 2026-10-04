@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// The accent color ClaudeBar sends to Notify! for a quota status.

@@ -23,11 +23,8 @@ struct HooksPane: View {
                     title: "Claude Code Hooks",
                     subtitle: "Track Claude Code sessions in real-time. Shows active session status, subagent activity, and task completion."
                 ) {
-                    Toggle("", isOn: $hooksEnabled)
-                        .toggleStyle(.switch)
-                        .tint(theme.accentPrimary)
-                        .scaleEffect(0.8)
-                        .labelsHidden()
+                    SettingsSwitch(isOn: $hooksEnabled)
+                        .accessibilityLabel("Claude Code Hooks")
                         .onChange(of: hooksEnabled) { _, newValue in
                             applyHooksEnabled(newValue)
                         }

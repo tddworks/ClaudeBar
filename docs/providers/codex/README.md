@@ -4,15 +4,19 @@ description: Track Codex 5-hour and weekly limits through the codex app-server R
 
 # Codex
 
-Shows your OpenAI Codex rate-limit windows (usually the 5-hour session and weekly limits) with reset countdowns. API mode also shows your Codex credits balance when ChatGPT reports one.
+Shows your OpenAI Codex rate-limit windows (usually the 5-hour session and weekly limits) with reset countdowns. API mode also shows your Codex credits balance when ChatGPT reports one. Separate preview buckets such as GPT-5.3-Codex-Spark appear as extra rows after your main windows.
 
 ## Setup
 
 1. Install the [Codex CLI](https://github.com/openai/codex) and run `codex` once to sign in with your ChatGPT account.
 2. Settings → Providers → Codex: turn it on (it is on by default).
-3. Optional: in the same pane, **Codex Configuration → Probe Mode** picks RPC or API.
+3. Optional: in the same pane, **Codex Configuration → Data fetching method** picks RPC or API.
 
-## Probe modes
+## Multiple accounts
+
+Use **Accounts → Add Account** in the provider settings to add another ChatGPT login: sign in with your browser, or choose a Codex folder that's already signed in. Accounts are told apart by their ChatGPT account, so two workspaces under one email are two accounts. Each can be named and pinned separately in the menu bar. See [multiple accounts](../../features/multi-account/README.md) for setup and reconnect instructions.
+
+## Data sources
 
 | Mode | Needs | Pick it when |
 |---|---|---|
@@ -20,6 +24,12 @@ Shows your OpenAI Codex rate-limit windows (usually the 5-hour session and weekl
 | API | A ChatGPT sign-in saved in `~/.codex/auth.json` | You'd rather not start a `codex` process on every refresh |
 
 RPC mode starts `codex app-server` for each refresh and asks it for your rate limits. If that fails it runs `codex` with `/status` and reads the screen instead. API mode calls the ChatGPT usage endpoint directly and refreshes the token in `~/.codex/auth.json` when it's more than 8 days old. Neither mode falls back to the other, so if one keeps failing, switch modes.
+
+## CLI location
+
+If ClaudeBar can't find the `codex` program, or finds a different one than you use, set **Settings → Providers → Codex → Configuration → CLI location**. Use **Choose…** to pick the program, or type its full path and press Return. The change takes effect immediately, for every account and for Add Account's sign-in. **Reset** goes back to finding `codex` on its own.
+
+A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a program, not a shell. Run `which c` (or `type c`) in a terminal to see what the alias runs, and choose that. An alias that only points `codex` at another config folder is a second account, not a different program: add that folder in **Accounts → Add Account**.
 
 ## Gotchas
 

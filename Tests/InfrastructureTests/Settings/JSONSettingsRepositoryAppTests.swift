@@ -7,6 +7,27 @@ import Foundation
 @Suite("JSONSettingsRepository App Settings Tests")
 struct JSONSettingsRepositoryAppTests {
 
+    @Test
+    func `account labels default to visible in existing settings`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        repo.setMenuBarPercentageEnabled(true)
+        #expect(repo.menuBarAccountLabelsEnabled())
+    }
+
+    @Test
+    func `account labels can be disabled and reenabled across reloads`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        repo.setMenuBarAccountLabelsEnabled(false)
+        let disabled = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(!disabled.menuBarAccountLabelsEnabled())
+        disabled.setMenuBarAccountLabelsEnabled(true)
+        let enabled = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(enabled.menuBarAccountLabelsEnabled())
+    }
+
     private func makeRepository() -> (JSONSettingsRepository, URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
@@ -228,6 +249,26 @@ struct JSONSettingsRepositoryAppTests {
         defer { cleanup(dir) }
 
         #expect(repo.showDailyUsageCards() == true)
+    }
+
+    @Test
+    func `a single readout's logo is off until asked for, and stays on`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.menuBarProviderLogoEnabled() == false)
+        repo.setMenuBarProviderLogoEnabled(true)
+        #expect(repo.menuBarProviderLogoEnabled() == true)
+    }
+
+    @Test
+    func `account emails show until hidden, and stay hidden`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.hideAccountEmail() == false)
+        repo.setHideAccountEmail(true)
+        #expect(repo.hideAccountEmail() == true)
     }
 
     @Test

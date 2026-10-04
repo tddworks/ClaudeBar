@@ -92,19 +92,22 @@ Examples:
 }
 ```
 
-### 3. Infrastructure Improvements
+### 3. Data Source Improvements
 
-Enhance probes, storage, or adapters:
+Make fetching or reading usage better: a provider's definition, or a generic
+worker in `DataSources` that every definition can use:
 
 ```
 Examples:
-- Better error messages
-- More robust parsing
-- Improved timeout handling
-- Caching support
+- Better error messages (a `text` mapping's error phrases, a `UsageError` hint)
+- More robust reading (a new JSON mapping rule instead of a script)
+- Timeouts, `cache.ttl`, a remembered rate limit
+- A fallback or hand-off (`fallback`, `fallbackOn`)
 ```
 
-**Test approach**: Behavior tests with mocked dependencies
+**Test approach**: golden tests that run the real definition over stubbed
+connections (`StubbedProvider`), or worker tests in `Modules/DataSources/Tests/`.
+Never a vendor-named Swift type: improve the definition, or the generic piece.
 
 ### 4. Performance Improvements
 
@@ -146,19 +149,35 @@ struct {Component}Tests {
 Improvements should NOT break existing behavior:
 
 ```bash
-# Run all tests to ensure no regressions
-swift test
+tuist test Providers         # one module's tests (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test                     # everything
+# tuist caches results; to force a re-run of one suite:
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
+  -destination 'platform=macOS,arch=arm64' -only-testing:ProvidersTests/ClaudeAPITests
 ```
+
 
 ## Architecture Reference
 
-> **Full documentation:** [docs/architecture/ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md)
+> **Reference:** [MODULAR_DESIGN.md](../../../docs/architecture/MODULAR_DESIGN.md) (modules) ·
+> [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (how a provider runs) ·
+> [ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md) (the app layers)
 
-| Layer | Location | Improvement Examples |
-|-------|----------|---------------------|
-| **Domain** | `Sources/Domain/` | New computed properties, convenience methods |
-| **Infrastructure** | `Sources/Infrastructure/` | Better parsing, error handling |
-| **App** | `Sources/App/` | UI enhancements, accessibility |
+The code is mid-migration from three layers to modules. Find which side the
+behaviour lives on before you change it:
+
+| Where | Holds | Tests |
+|---|---|---|
+| `Modules/Providers/Resources/Providers/<id>.json` (+ `.js`) | every built-in provider: where the key is, how to fetch, how to read | `Modules/Providers/Tests/` (golden tests over `StubbedProvider` / `ClaudeHarness`) |
+| `Modules/Providers/Sources` | `Provider` (the one lifecycle: refresh, fallback chain, accounts), `ProviderDefinition`, `AddedAccounts`, settings and account contracts | `Modules/Providers/Tests/` |
+| `Modules/DataSources/Sources` | `DataSource` and its workers: credential lookups and refreshes; HTTP, steps, JSON-RPC, terminal, command, file, directory, local-server and CloudWatch fetches; JSON / text / script mapping; the process runners | `Modules/DataSources/Tests/` |
+| `Modules/Quotas/Sources` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError`, plans and costs (interim shapes, see each type's `- Note:`) | the tests of the module that uses it |
+| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions, Usage History | `Tests/DomainTests/` |
+| `Sources/Infrastructure` | storage, notifications, hooks, the local-log analyzers behind Usage History | `Tests/InfrastructureTests/` |
+| `Sources/App` | SwiftUI views reading the domain directly | `Tests/AppTests/`, `Tests/AcceptanceTests/` |
+
+A bug in a migrated provider is fixed in its JSON, or generically in
+`DataSources`, never with vendor-named Swift. Modules never `import Domain`.
 
 ## Guidelines
 
@@ -186,5 +205,5 @@ swift test
 - [ ] Test FAILS before implementation
 - [ ] Improvement implemented
 - [ ] New test PASSES
-- [ ] All existing tests still pass (`swift test`)
+- [ ] All existing tests still pass (`tuist test`)
 - [ ] CHANGELOG updated with improvement

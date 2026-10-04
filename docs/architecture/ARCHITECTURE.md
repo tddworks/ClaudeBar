@@ -4,11 +4,14 @@ This document is the **single source of truth** for ClaudeBar's architecture. Al
 
 ## Overview
 
-ClaudeBar follows a **layered architecture** with clear separation of concerns:
+ClaudeBar is a menu bar app over a set of modules:
 
-- **Domain Layer** - Pure business logic, no external dependencies
-- **Infrastructure Layer** - Technical implementations (CLI, network, storage)
-- **App Layer** - SwiftUI views that consume domain directly
+- **App** (`Sources/App`) — SwiftUI views that read the domain directly, and the composition root (`ClaudeBarApp`).
+- **Domain** (`Sources/Domain`) — `QuotaMonitor`, the single source of truth, plus extension providers, Notify!, sessions and Usage History. It re-exports the modules.
+- **Modules** (`Modules/`) — the provider engine. `Providers` runs every built-in provider from a JSON definition through one generic `Provider`; `DataSources` does each data source's lookup → fetch → mapping; `Quotas` is the usage model; `AWSClients` is the only module that links the AWS SDK; `Diagnostics` is `AppLog`.
+- **Infrastructure** (`Sources/Infrastructure`) — storage (`~/.claudebar/settings.json`, the Keychain vault), notifications, hooks and the local-log analyzers behind Usage History.
+
+Every built-in provider is data: `Modules/Providers/Resources/Providers/<id>.json` (plus a mapping script when a format needs one). No Swift names a vendor outside `AWSClients`; what a provider needs that the definition language can't say becomes a general rule in `DataSources`. How a definition runs: [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) §8.2. Which module a file goes in: [MODULAR_DESIGN.md](MODULAR_DESIGN.md). The words: [CANONICAL_MODEL.md](CANONICAL_MODEL.md).
 
 The key principle is **QuotaMonitor as Single Source of Truth** - all provider state flows through this central actor.
 
@@ -16,90 +19,38 @@ The key principle is **QuotaMonitor as Single Source of Truth** - all provider s
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           APP LAYER                                  │
-│                                                                      │
-│  ClaudeBarApp                                                       │
-│  └── @State var monitor: QuotaMonitor  (injected to views)          │
-│                                                                      │
-│  Views (consume domain directly - NO AppState/ViewModel)            │
-│  ├── MenuContentView(monitor: QuotaMonitor)                         │
-│  ├── SettingsView(monitor: QuotaMonitor)                            │
-│  └── ProviderPill, QuotaBar, StatusBarIcon, etc.                    │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              │ Views consume directly
-                              ▼
+│ APP — ClaudeBarApp (composition root), SwiftUI views                 │
+│  MenuContentView(monitor:), SettingsView, ProviderPill, cards…       │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ views read the domain directly
+                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         DOMAIN LAYER                                 │
-│                                                                      │
-│  QuotaMonitor (@Observable) - Single Source of Truth                │
-│  ├── providers: AIProviders (private repository)                    │
-│  ├── Delegation: allProviders, enabledProviders, provider(for:)     │
-│  ├── Selection: selectedProviderId, selectedProvider                │
-│  └── Operations: refreshAll(), addProvider(), removeProvider()      │
-│                                                                      │
-│  AIProviders (@Observable) - Provider Collection Repository          │
-│  ├── all: [AIProvider]                                              │
-│  ├── enabled: [AIProvider] (filters by isEnabled)                   │
-│  └── add(), remove(), provider(id:)                                 │
-│                                                                      │
-│  AIProvider (@Observable) - Rich Domain Model                        │
-│  ├── isEnabled: Bool (via ProviderSettingsRepository)               │
-│  ├── snapshot: UsageSnapshot?                                       │
-│  ├── isSyncing: Bool                                                │
-│  └── refresh() async throws -> UsageSnapshot                        │
-│                                                                      │
-│  Repository Protocols (ISP - Interface Segregation Principle)        │
-│  ├── ProviderSettingsRepository - base: isEnabled state             │
-│  ├── ZaiSettingsRepository: ProviderSettingsRepository              │
-│  │   └── Z.ai specific: configPath, glmAuthEnvVar                   │
-│  └── CopilotSettingsRepository: ProviderSettingsRepository          │
-│      └── Copilot specific: authEnvVar + credentials (token/user)    │
-│                                                                      │
-│  Domain Models                                                       │
-│  ├── UsageSnapshot - point-in-time quota data                       │
-│  ├── UsageQuota - single quota with percentage, type, reset time    │
-│  ├── QuotaStatus - healthy/warning/critical/depleted                │
-│  └── QuotaType - session/weekly/modelSpecific/timeLimit             │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              │ Implements protocols
-                              ▼
+│ DOMAIN — QuotaMonitor (@Observable, single source of truth)          │
+│  AIProviders: the lineup (each login is an AIProvider)               │
+│  UsageHistory, SessionMonitor, Notify!, extension providers          │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     INFRASTRUCTURE LAYER                             │
-│                                                                      │
-│  CLI Probes (Sources/Infrastructure/)                               │
-│  ├── ClaudeUsageProbe - probes `claude /usage` (CLI + API)          │
-│  ├── CodexUsageProbe - probes Codex via RPC/TTY (RPC + API)         │
-│  ├── GeminiUsageProbe - probes Gemini CLI + API                     │
-│  ├── CopilotUsageProbe - probes GitHub API with token               │
-│  ├── AntigravityUsageProbe - probes local Antigravity server        │
-│  ├── ZaiUsageProbe - probes Z.ai API via Claude config              │
-│  ├── BedrockUsageProbe - probes AWS Bedrock API                     │
-│  ├── AmpCodeUsageProbe - probes Amp Code CLI                        │
-│  ├── KimiCLIUsageProbe - probes `kimi` CLI with /usage (CLI mode)   │
-│  └── KimiUsageProbe - probes Kimi HTTP API (API mode)               │
-│                                                                      │
-│  Storage (Sources/Infrastructure/Storage/)                          │
-│  ├── AIProviders - implements AIProviderRepository                  │
-│  ├── JSONSettingsStore - thread-safe JSON file I/O                  │
-│  └── JSONSettingsRepository                                         │
-│      └── Implements all settings protocols (ISP single impl)        │
-│                                                                      │
-│  Adapters (Sources/Infrastructure/Adapters/) - excluded from coverage│
-│  ├── PTYCommandRunner - runs CLI with PTY                           │
-│  ├── ProcessRPCTransport - JSON-RPC over stdin/stdout               │
-│  ├── DefaultCLIExecutor - real CLI execution                        │
-│  ├── InsecureLocalhostNetworkClient - self-signed cert handling     │
-│  └── SystemAlertSender - system notifications                       │
-│                                                                      │
-│  Network (Sources/Infrastructure/Network/)                          │
-│  └── NetworkClient protocol + URLSession extension                  │
-│                                                                      │
-│  Logging (Sources/Infrastructure/Logging/)                          │
-│  ├── AppLog - dual-output logging (OSLog + file)                    │
-│  └── FileLogger - persistent logs with rotation                     │
+│ PROVIDERS — Provider (one lifecycle: refresh, fallback, accounts)    │
+│  ProviderDefinition: profile, settings, data sources, accounts       │
+│  Resources/Providers/<id>.json (+ .js)  — every built-in provider    │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ DATASOURCES — DataSource: credential lookup → fetch → mapping        │
+│  closed sums CredentialLookup · Fetch · Mapping, and their workers   │
+│  ports: CLIExecutor, NetworkClient, RPCTransport, SecretStore,       │
+│         CloudWatchClient, PriceCatalog (implemented in AWSClients)   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ QUOTAS — UsageSnapshot, UsageQuota (Left, Window), CostUsage + lines │
+│  QuotaStatus, BudgetStatus, UsageError                               │
 └─────────────────────────────────────────────────────────────────────┘
+
+INFRASTRUCTURE (implements the ports and repositories the app wires in):
+  JSONSettingsRepository (+ compatibility tables), ProviderVault (Keychain),
+  NotificationAlerter, hooks, ClaudeGuestPassSource
 ```
 
 ## Key Design Principles
@@ -149,77 +100,26 @@ public actor QuotaMonitor {
 }
 ```
 
-### 3. Repository Pattern with ISP (Interface Segregation Principle)
+### 3. Settings are the definition's
 
-Settings are abstracted behind **provider-specific sub-protocols** following ISP:
+A provider's settings are listed in its definition (`settings`: a kind — `secret`, `choice`, `path`, `text` — and a scope, provider or account). They are read and written through the generic `ProviderSettingsRepository` (`value`, `setValue`, `dataSourceKind`, `isOn`), kept under `<id>.<setting>` in `~/.claudebar/settings.json`; secrets go to the Keychain through `ProviderVault`. A value an older version kept elsewhere is a row in a compatibility table (`JSONSettingsRepository.legacySettingKeys` / `legacyDefaultsKeys`, `ProviderVault.legacyKeys`), never a branch, and moves the first time it's saved.
 
-```swift
-// Base protocol - shared by all providers
-@Mockable
-public protocol ProviderSettingsRepository: Sendable {
-    func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool
-    func setEnabled(_ enabled: Bool, forProvider id: String)
-}
-
-// Z.ai-specific protocol - extends base with Z.ai config
-public protocol ZaiSettingsRepository: ProviderSettingsRepository {
-    func zaiConfigPath() -> String
-    func setZaiConfigPath(_ path: String)
-    func glmAuthEnvVar() -> String
-    func setGlmAuthEnvVar(_ envVar: String)
-}
-
-// Copilot-specific protocol - extends base with config + credentials
-public protocol CopilotSettingsRepository: ProviderSettingsRepository {
-    func copilotAuthEnvVar() -> String
-    func setCopilotAuthEnvVar(_ envVar: String)
-    // Credentials (merged per SRP - Copilot owns its credentials)
-    func saveGithubToken(_ token: String)
-    func getGithubToken() -> String?
-    func hasGithubToken() -> Bool
-    func saveGithubUsername(_ username: String)
-    func getGithubUsername() -> String?
-}
-
-// Single infrastructure implementation for all protocols
-public final class JSONSettingsRepository:
-    AppSettingsRepository,
-    ZaiSettingsRepository,
-    CopilotSettingsRepository,
-    // ... all other sub-protocols
-{
-    // Persists to ~/.claudebar/settings.json via JSONSettingsStore
-    // Credentials (tokens, API keys) use UserDefaults (Keychain migration planned)
-}
-```
-
-**Why ISP?**
-- Each provider depends **only** on its specific interface
-- Simple providers (Claude, Codex, Gemini) use base `ProviderSettingsRepository`
-- Z.ai uses `ZaiSettingsRepository` (config path + env var)
-- Copilot uses `CopilotSettingsRepository` (env var + credentials)
-- No provider sees methods it doesn't need
+App-wide preferences, hooks and Notify! have their own repositories (`AppSettingsRepository`, `HookSettingsRepository`, `NotifySettingsRepository`), all implemented by `JSONSettingsRepository`. Two narrow sub-protocols remain for Claude's and Codex's own settings (`ClaudeSettingsRepository`, `CodexSettingsRepository`).
 
 ### 4. Protocol-Based Dependency Injection
 
-All external dependencies are injected via protocols with `@Mockable` for testing.
+Everything outside the process is a `@Mockable` port, so tests never touch a real CLI, network or Keychain:
 
 ```swift
-@Mockable
-public protocol UsageProbe: Sendable {
-    func probe() async throws -> UsageSnapshot
-    func isAvailable() async -> Bool
-}
+@Mockable public protocol CLIExecutor: Sendable { … }        // DataSources
+@Mockable public protocol NetworkClient: Sendable { … }      // DataSources
+@Mockable public protocol CloudWatchClient: Sendable { … }   // DataSources, implemented in AWSClients
+@Mockable public protocol PriceCatalog: Sendable { … }       // DataSources, implemented in AWSClients
 
-// Simple providers receive base settingsRepository
-public init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
-    self.probe = probe
-    self.settingsRepository = settingsRepository
-}
-
-// Specialized providers receive their specific repository
-public init(probe: any UsageProbe, settingsRepository: any ZaiSettingsRepository) { ... }
-public init(probe: any UsageProbe, settingsRepository: any CopilotSettingsRepository) { ... }
+// Production wiring (ClaudeBarApp):
+Providers.make("bedrock", settings: settingsRepository,
+               cloudWatch: AWSClients.makeCloudWatch(), priceCatalog: AWSClients.makePriceCatalog())
+// Tests: DataSources.make(source, providerId:, cliExecutor: MockCLIExecutor(), network: MockNetworkClient(), …)
 ```
 
 ### 5. No ViewModel/AppState Layer
@@ -245,22 +145,22 @@ Tests focus on **state changes and return values**, not method call verification
 
 ```swift
 // Good: Test state/outcome
-@Test func `provider stores snapshot after refresh`() async throws {
-    let provider = makeProvider(probe: mockProbe)
-    #expect(provider.snapshot == nil)
+@Test func `the api reads the session window`() async throws {
+    let stub = try StubbedProvider(providerId: "acme")
+    stub.answerHTTP(#"{"session":{"used_percent":30}}"#)
 
-    _ = try await provider.refresh()
+    let usage = try await stub.make("acme").refresh()
 
-    #expect(provider.snapshot != nil)  // Verify state change
+    #expect(usage.quota(for: .session)?.percentRemaining == 70)  // Verify the outcome
 }
 
 // Avoid: Verifying method calls (London school)
 // verify(mock).someMethod().called(1)  // Don't do this
 ```
 
-### 7. Adapters Folder
+### 7. Real connections live behind ports
 
-Pure 3rd-party wrappers in `Adapters/` are excluded from code coverage since they only wrap system APIs.
+The real process runners (`DataSources/Internal/Process/`), network clients (`Internal/Network/`) and the AWS SDK (`AWSClients`) only wrap system APIs; the logic around them is tested through the ports with stubs.
 
 ## Data Flow
 
@@ -273,14 +173,15 @@ User clicks Refresh
 QuotaMonitor.refreshAll()
         │
         ▼
-For each enabled provider:
-    provider.refresh()
+For each enabled login:
+    provider.refresh(account)
         │
         ▼
-    probe.probe() → CLI/API call
+    the active data source: credential lookup → fetch → mapping
+    (a hand-off or fallback to another data source on failure)
         │
         ▼
-    Parse response → UsageSnapshot
+    UsageSnapshot
         │
         ▼
     provider.snapshot = newSnapshot
@@ -313,36 +214,19 @@ SwiftUI observes change → provider hidden from menu
 ## File Organization
 
 ```
+Modules/
+├── Quotas/          # the usage model — imports nothing
+├── Diagnostics/     # AppLog
+├── DataSources/     # DataSource, CredentialLookup · Fetch · Mapping, workers, ports
+├── AWSClients/      # the AWS SDK behind CloudWatchClient and PriceCatalog
+└── Providers/
+    ├── Sources/     # Provider, ProviderDefinition, Setting, accounts
+    └── Resources/Providers/   # <id>.json (+ .js) — every built-in provider
+
 Sources/
-├── Domain/                          # Pure business logic
-│   ├── Provider/
-│   │   ├── AIProvider.swift         # Protocol
-│   │   ├── AIProviders.swift        # Repository protocol
-│   │   ├── ClaudeProvider.swift     # Rich domain model
-│   │   ├── CopilotProvider.swift    # Uses CopilotSettingsRepository
-│   │   ├── ZaiProvider.swift        # Uses ZaiSettingsRepository
-│   │   ├── ProviderSettingsRepository.swift  # ISP protocols hierarchy
-│   │   ├── UsageProbe.swift
-│   │   ├── UsageQuota.swift
-│   │   ├── UsageSnapshot.swift
-│   │   └── QuotaStatus.swift
-│   └── Monitor/
-│       ├── QuotaMonitor.swift       # Single source of truth
-│       └── QuotaAlerter.swift       # Domain protocol for alerts
-│
-├── Infrastructure/                  # Technical implementations
-│   ├── CLI/                         # Probe implementations
-│   ├── Storage/                     # Repository implementations
-│   ├── Adapters/                    # 3rd-party wrappers (no coverage)
-│   ├── Network/                     # HTTP abstraction
-│   ├── Logging/                     # Dual-output logging
-│   └── Notifications/               # NotificationAlerter (implements QuotaAlerter)
-│
-└── App/                             # SwiftUI application
-    ├── ClaudeBarApp.swift           # Entry point, wires dependencies
-    ├── Views/                       # SwiftUI views
-    ├── Settings/                    # AppSettings (theme, etc.)
-    └── Resources/                   # Assets, Info.plist
+├── Domain/          # QuotaMonitor, extension providers, Notify!, sessions, Usage History
+├── Infrastructure/  # storage, Keychain vault, notifications, hooks, log analyzers
+└── App/             # ClaudeBarApp (composition root), SwiftUI views, settings panes
 ```
 
 ## Business Rules
@@ -369,7 +253,7 @@ For implementation guidance, see:
 
 ## Testing Strategy
 
-- **Domain Tests** - Test state changes and computed properties
-- **Infrastructure Tests** - Test parsing logic and probe behavior with mocks
-- **No Integration Tests** - Adapters folder excluded from coverage
+- **Provider golden tests** (`Modules/Providers/Tests`) - each definition run through the real `Provider` over stubbed connections, with real captured responses
+- **Engine tests** (`Modules/DataSources/Tests`) - each general rule on a neutral fixture, never a vendor's
+- **Domain and Infrastructure tests** - the monitor, settings storage and compatibility tables, notifications
 - **Chicago School** - Mocks stub data, don't verify calls

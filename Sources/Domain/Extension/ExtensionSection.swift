@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Defines a single section within an extension, with its own probe config and refresh interval.

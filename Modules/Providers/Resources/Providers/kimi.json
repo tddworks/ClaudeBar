@@ -1,0 +1,100 @@
+{
+  "profile": {
+    "id": "kimi",
+    "name": "Kimi",
+    "links": { "dashboard": "https://{{setting.region.site}}/code/console" },
+    "look": {
+      "symbol": "k.square.fill",
+      "icon": "KimiIcon",
+      "color": { "light": [0.2, 0.55, 0.85], "dark": [0.3, 0.65, 0.95] },
+      "gradientEnd": { "light": [0.1, 0.4, 0.7], "dark": [0.2, 0.5, 0.8] }
+    }
+  },
+  "cli": "kimi",
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "token", "label": "kimi-auth Session Token", "kind": "secret", "scope": "account", "for": ["api"] },
+    { "id": "home", "label": "Signed-in Kimi Folder", "scope": "account", "for": ["cli"], "kind": { "path": { "mustExist": true } } },
+    { "id": "region", "label": "Region", "scope": "account", "default": "china",
+      "kind": { "choice": [
+        { "id": "china", "label": "China (kimi.com)", "site": "www.kimi.com", "domain": "kimi.com" },
+        { "id": "international", "label": "International (kimi.ai)", "site": "www.kimi.ai", "domain": "kimi.ai" }
+      ] } }
+  ],
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Runs `kimi` and types /usage",
+      "fetch": {
+        "cli": {
+          "cli": "kimi",
+          "input": "/usage",
+          "inputDelay": 1.5,
+          "timeout": 15,
+          "workingDirectory": "dedicated",
+          "autoResponses": {
+            "💫": "/usage\r",
+            "context:": "/usage\r",
+            "Trust this folder": "\r"
+          },
+          "readyWhen": ["% used", "% left", "No token usage", "rate limit", "Error", "login"]
+        }
+      },
+      "mapping": { "script": { "file": "kimi-cli.js" } }
+    },
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your Kimi web session from the browser",
+      "credential": {
+        "firstOf": [
+          { "environment": "KIMI_AUTH_TOKEN" },
+          { "browserCookies": { "domains": ["{{setting.region.domain}}"], "names": ["kimi-auth"] } }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://{{setting.region.site}}/apiv2/kimi.gateway.billing.v1.BillingService/GetUsages",
+          "method": "POST",
+          "body": "{\"scope\":[\"FEATURE_CODING\"]}",
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}",
+            "Cookie": "kimi-auth={{token}}",
+            "Origin": "https://{{setting.region.site}}",
+            "Referer": "https://{{setting.region.site}}/code/console",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+            "connect-protocol-version": "1",
+            "x-language": "en-US",
+            "x-msh-platform": "web",
+            "r-timezone": "{{system.timeZone}}"
+          }
+        }
+      },
+      "mapping": { "script": { "file": "kimi-api.js" } }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "credential": { "firstOf": null, "setting": "token" }
+      },
+      "cli": {
+        "fetch": {
+          "cli": {
+            "environment": {
+              "unset": ["KIMI_AUTH_TOKEN", "KIMI_API_KEY", "KIMI_BASE_URL"],
+              "set": { "KIMI_SHARE_DIR": "{{account.home}}", "KIMI_CODE_HOME": "{{account.home}}" }
+            }
+          }
+        },
+        "requiresFiles": ["{{account.home}}"]
+      }
+    }
+  }
+}

@@ -491,4 +491,64 @@ struct UsageSnapshotTests {
         #expect(snapshot.hasQuotaGroups == false)
         #expect(snapshot.quotaGroups.isEmpty)
     }
+
+    // MARK: - Hiding quotas (issue #140)
+
+    private func gemini(flashLeft: Double = 60) -> UsageSnapshot {
+        UsageSnapshot(providerId: "gemini", quotas: [
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "gemini"),
+            UsageQuota(percentRemaining: 25, quotaType: .weekly, providerId: "gemini"),
+            UsageQuota(percentRemaining: flashLeft, quotaType: .modelSpecific("gemini-2.0-flash"), providerId: "gemini"),
+        ], capturedAt: Date(), accountEmail: "me@example.com")
+    }
+
+    @Test
+    func `hiding a quota leaves the rest of the usage as it was`() {
+        let usage = gemini().hiding(["model:gemini-2.0-flash"])
+
+        #expect(usage.quotas.map(\.quotaType) == [.session, .weekly])
+        #expect(usage.accountEmail == "me@example.com")
+        #expect(usage.providerId == "gemini")
+    }
+
+    @Test
+    func `hiding nothing, or keys no longer reported, changes nothing`() {
+        let usage = gemini()
+
+        #expect(usage.hiding([]) == usage)
+        #expect(usage.hiding(["time:mcp", "model:gone"]) == usage)
+    }
+
+    @Test
+    func `hiding every quota keeps them all — there is always something to watch`() {
+        let usage = gemini()
+
+        #expect(usage.hiding(["session", "weekly", "model:gemini-2.0-flash"]) == usage)
+    }
+
+    @Test
+    func `a hidden quota no longer sets the status or the lowest quota`() {
+        let usage = gemini(flashLeft: 10)
+
+        #expect(usage.overallStatus == .critical)
+        #expect(usage.hiding(["model:gemini-2.0-flash"]).overallStatus == .warning)
+        #expect(usage.hiding(["weekly"]).lowestQuota?.quotaType == .modelSpecific("gemini-2.0-flash"))
+    }
+
+    @Test
+    func `hiding works inside a group and keeps note-only sections`() {
+        let quotas = [
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "omp", group: "Codex"),
+            UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "omp", group: "Codex"),
+            UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+        ]
+        let metrics = [ExtensionMetric(label: "Copilot", value: "No usage reported", unit: "", group: "Copilot")]
+        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
+
+        let groups = snapshot.hiding(["time:Codex 7d"]).quotaGroups
+
+        #expect(groups.map(\.title) == ["Codex", "Claude", "Copilot"])
+        #expect(groups[0].quotas.map(\.quotaType) == [.timeLimit("Codex 5h")])
+        #expect(groups[2].note == "No usage reported")
+    }
 }

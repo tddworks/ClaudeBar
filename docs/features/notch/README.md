@@ -6,7 +6,7 @@ description: Show quota and live Claude Code session state (working, subagents, 
 
 ClaudeBar draws a small live status in the MacBook notch, like a Dynamic Island for your quota and your Claude Code session. On a display without a notch it draws a virtual one at the top centre. It shows only while it has something to report, and hovering over it opens a panel with more detail.
 
-Mockup: [notch-live-activity.html](../../mockups/notch-live-activity.html)
+Mockup: [notch-live-activity.html](../../../design-concept/notch-live-activity.html)
 
 ## Setup
 

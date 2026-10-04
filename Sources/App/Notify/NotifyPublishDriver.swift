@@ -263,7 +263,8 @@ final class NotifyPublishDriver {
             gaugeSelection: selection,
             includesTile: includesTile,
             includesGauge: includesGauge,
-            includesScreenTile: includesScreenTile
+            includesScreenTile: includesScreenTile,
+            statusPolicy: monitor.statusPolicy
         )
     }
 
