@@ -4,7 +4,7 @@ description: Contributor design for the Leaderboard. Join with a username, share
 
 # Leaderboard: design
 
-**Status:** BUILT on `feat/leaderboard`, not yet deployed: the app side, the Worker and the board page exist and are tested; the Worker has no production database or URL until a maintainer deploys it ([Server/leaderboard/README.md](../../../Server/leaderboard/README.md)). User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise.
+**Status:** BUILT on `feat/leaderboard`; the Worker is DEPLOYED at `https://claudebar-api.tddworks.com` with its production D1 ([Server/leaderboard/README.md](../../../Server/leaderboard/README.md)). The app side ships with the PR's release. User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise.
 
 This document owns **joining the board, what a member shares, how a member's uploads are trusted, and how standings are ranked**. Its neighbours own the rest:
 
@@ -156,7 +156,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Only providers you ticked are uploaded | `LeaderboardMembership.dailyTokens(from:in:)` |
 | A provider without token logs can't be ticked | `LeaderboardMembership.share(_:)` |
 | Nothing but four token counts per provider per day leaves the Mac | `DailyTokens` (its shape) |
-| A provider's day is the sum of all its logins on this Mac | `LeaderboardMembership.dailyTokens(from:in:)` |
+| A provider's day is the sum of all its logins on this Mac; days without tokens aren't sent | `DailyTokens.summed`, which both the upload and the join form's preview use, so the preview is exactly what is sent |
 | Your private key never leaves your Mac and is never logged | `SigningKeyStore` (Keychain, with the UserDefaults fallback Notify! uses for ad-hoc builds) |
 | Uploading a day again replaces it; it never adds | Worker, `PUT /usage` (`PRIMARY KEY (member, provider, day)` upsert) |
 | A missed hour, or a Mac asleep for days, heals on the next upload | `LeaderboardUploader`: uploads from the day of `lastUpload` to today, at most 30 days, and on join the last 30 |
@@ -174,7 +174,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 
 ## 5 · The API
 
-Host: a Cloudflare Worker. Storage: Cloudflare D1. The board page is static on GitHub Pages and reads `GET /board`. The app holds no secret: only the Worker can reach D1, through its database binding.
+Host: a Cloudflare Worker at `https://claudebar-api.tddworks.com`, deployed with the `cf` CLI from `cloudflare.config.ts`. Storage: Cloudflare D1. The board page is static on GitHub Pages and reads `GET /board`. The app holds no secret: only the Worker can reach D1, through its database binding.
 
 | Route | Auth | Does |
 |---|---|---|
@@ -217,7 +217,7 @@ The second destination after Notify! that sends ClaudeBar's own state outward, s
 
 ## 6a · Security, for an open-source client and server
 
-Everything here is public: the endpoints, the signed text, the caps. Nothing may depend on that staying secret, and nothing secret is in the repo: the Cloudflare account token lives only in a protected deploy environment, `.dev.vars` is git-ignored, and the `database_id` in `wrangler.jsonc` is useless without the token.
+Everything here is public: the endpoints, the signed text, the caps. Nothing may depend on that staying secret, and nothing secret is in the repo: the Cloudflare account token lives only in a protected deploy environment, `.dev.vars` is git-ignored, and the D1 database id in `cloudflare.config.ts` is useless without the token.
 
 | Threat | Mitigation | Owner |
 |---|---|---|

@@ -5,7 +5,7 @@ import Domain
 /// signed over the exact bytes sent; the host is fixed, so a setting can't
 /// point the app's key at someone else's server.
 public struct LeaderboardHTTPClient: LeaderboardAPI {
-    public static let defaultHost = URL(string: "https://claudebar-leaderboard.tddworks.workers.dev")!
+    public static let defaultHost = URL(string: "https://claudebar-api.tddworks.com")!
 
     private let networkClient: any NetworkClient
     private let host: URL

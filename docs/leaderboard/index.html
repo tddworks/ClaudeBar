@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ClaudeBar Leaderboard</title>
 <meta name="description" content="Top ClaudeBar users by AI coding tokens, shared by choice from their own Macs.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://claudebar-leaderboard.tddworks.workers.dev; img-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://claudebar-api.tddworks.com; img-src 'self' data:">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -68,7 +68,7 @@ a{color:var(--violet)}
 
 <script>
 // Every value from the server is written with textContent, never as HTML.
-const API = "https://claudebar-leaderboard.tddworks.workers.dev";
+const API = "https://claudebar-api.tddworks.com";
 const PERIODS = [["today", "Today"], ["7d", "7 days"], ["30d", "30 days"]];
 const PROVIDERS = [[null, "All"], ["claude", "Claude"], ["codex", "Codex"], ["mistral", "Mistral"]];
 const COLORS = { claude: "#7C5CFF", codex: "#1FA37A", mistral: "#F29B38" };
