@@ -179,6 +179,14 @@ public final class AppSettings {
         }
     }
 
+    /// Your country on the Leaderboard globe shows as `🌍 ••` in the popover,
+    /// for screen shares, the way *Hide account email* masks emails.
+    public var hideLeaderboardCountry: Bool {
+        didSet {
+            repository.setHideLeaderboardCountry(hideLeaderboardCountry)
+        }
+    }
+
     /// Whether to show daily usage report cards (API Cost, Token Usage, Working Time)
     public var showDailyUsageCards: Bool {
         didSet {
@@ -425,6 +433,7 @@ public final class AppSettings {
         self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.hideAccountEmail = repository.hideAccountEmail()
+        self.hideLeaderboardCountry = repository.hideLeaderboardCountry()
         self.notchEnabled = repository.notchEnabled()
         self.touchBarEnabled = repository.touchBarEnabled()
         self.notifyEnabled = repository.isNotifyEnabled()

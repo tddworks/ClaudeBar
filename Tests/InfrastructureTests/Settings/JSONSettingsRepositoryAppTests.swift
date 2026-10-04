@@ -272,6 +272,16 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `your globe country shows until hidden, and stays hidden`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.hideLeaderboardCountry() == false)
+        repo.setHideLeaderboardCountry(true)
+        #expect(repo.hideLeaderboardCountry() == true)
+    }
+
+    @Test
     func `setShowDailyUsageCards persists value`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

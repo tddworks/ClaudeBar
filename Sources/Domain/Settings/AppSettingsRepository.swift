@@ -67,6 +67,10 @@ public protocol AppSettingsRepository: Sendable {
     func hideAccountEmail() -> Bool
     func setHideAccountEmail(_ hide: Bool)
 
+    /// Your country on the Leaderboard globe shows as `🌍 ••` in the popover.
+    func hideLeaderboardCountry() -> Bool
+    func setHideLeaderboardCountry(_ hide: Bool)
+
     // MARK: - Notch
 
     /// Whether the notch live activity is shown (default: false).

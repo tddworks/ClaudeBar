@@ -64,6 +64,12 @@ final class Leaderboard {
     }
 }
 
+/// A two-letter country as people read it, "🇳🇱 Netherlands", or `🌍 ••` when
+/// *hide my globe country* is on.
+func leaderboardCountryLabel(_ code: String, hidden: Bool) -> String {
+    hidden ? "🌍 ••" : leaderboardCountryLabel(code)
+}
+
 /// A two-letter country as people read it: its flag and its name, "🇳🇱 Netherlands".
 func leaderboardCountryLabel(_ code: String) -> String {
     let flag = String(String.UnicodeScalarView(code.uppercased().unicodeScalars.compactMap { Unicode.Scalar(0x1F1E6 + $0.value - 65) }))

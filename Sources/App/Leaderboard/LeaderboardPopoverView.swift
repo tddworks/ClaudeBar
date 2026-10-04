@@ -226,6 +226,7 @@ struct LeaderboardStandingsView: View {
     @State private var top: [Standing] = []
     @State private var error: String?
     @State private var globe: GlobeSummary?
+    @State private var settings = AppSettings.shared
 
     private var view: BoardView { BoardView(period: period, provider: provider) }
     private var membership: LeaderboardMembership { leaderboard.membership }
@@ -302,6 +303,9 @@ struct LeaderboardStandingsView: View {
                 }
             }
             .buttonStyle(.plain)
+            if membership.sharesCountry, mine?.country != nil {
+                PrivacyEyeBadge(isHidden: $settings.hideLeaderboardCountry, what: "your globe country")
+            }
             Spacer(minLength: 4)
             if membership.sharesCountry {
                 Button("Turn off") { Task { try? await membership.setSharesCountry(false) } }
@@ -320,7 +324,8 @@ struct LeaderboardStandingsView: View {
         let count = globe?.countries.count ?? 0
         let countries = count == 0 ? "See where ClaudeBar is used" : count == 1 ? "Members in 1 country" : "Members in \(count) countries"
         guard membership.sharesCountry else { return count == 0 ? countries : countries + " · see the globe" }
-        let me = mine?.country.map { "You're on the globe as \(leaderboardCountryLabel($0))" } ?? "You're on the globe"
+        let me = mine?.country.map { "You're on the globe as \(leaderboardCountryLabel($0, hidden: settings.hideLeaderboardCountry))" }
+            ?? "You're on the globe"
         // Below the threshold your country isn't drawn yet; say why, without saying how many others there are.
         if let country = mine?.country, globe?.countries.contains(where: { $0.country == country }) == false {
             return "\(me) · shows once 3 members there opt in"

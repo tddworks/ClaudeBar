@@ -53,7 +53,7 @@ The tab then shows your rank and your provider mix, the board (up to the top 100
 
 ## The globe
 
-The web board's globe shows where ClaudeBar is used, by country, from members who opted in. Turn it on when you join, from the **New** card in the Leaderboard tab, or in **Settings → Leaderboard**. The tab's **🌍 Members in N countries** line opens it.
+The web board's globe shows where ClaudeBar is used, by country, from members who opted in. Turn it on when you join, from the **New** card in the Leaderboard tab, or in **Settings → Leaderboard**. The tab's **🌍 Members in N countries** line opens it. Once you're on it, that line names your country; the **eye** next to it shows it as `🌍 ••` for screen shares, like the eye that masks account emails, and **Turn off** takes you off the globe.
 
 ## Gotchas
 

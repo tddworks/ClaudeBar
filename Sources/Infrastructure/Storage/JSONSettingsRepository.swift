@@ -180,6 +180,14 @@ public final class JSONSettingsRepository:
         store.write(value: hide, key: "app.hideAccountEmail")
     }
 
+    public func hideLeaderboardCountry() -> Bool {
+        store.read(key: "app.hideLeaderboardCountry") ?? false
+    }
+
+    public func setHideLeaderboardCountry(_ hide: Bool) {
+        store.write(value: hide, key: "app.hideLeaderboardCountry")
+    }
+
     public func notchEnabled() -> Bool {
         store.read(key: "app.notchEnabled") ?? false
     }
