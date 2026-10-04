@@ -294,10 +294,15 @@ struct LeaderboardStandingsView: View {
 
     // MARK: The board
 
+    /// Rows visible before the list scrolls; the card keeps this height.
+    private static let visibleRows = 7
+    private static let rowHeight: CGFloat = 30
+    private static let rowSpacing: CGFloat = 6
+
     private var boardCard: some View {
         LeaderboardCard {
             HStack(alignment: .center) {
-                CardLabel(text: "TOP OF THE BOARD")
+                CardLabel(text: top.count >= 100 ? "TOP 100" : top.count > 1 ? "THE BOARD · \(top.count) MEMBERS" : "THE BOARD")
                 Spacer(minLength: 8)
                 InkSegmentedPicker(title: "Period", options: BoardPeriod.allCases, selection: $period, label: \.label)
                     .fixedSize()
@@ -307,19 +312,55 @@ struct LeaderboardStandingsView: View {
                 Text(error ?? "No one is on the board for \(period.label.lowercased()) yet.")
                     .font(.system(size: 12, design: theme.fontDesign))
                     .foregroundStyle(error == nil ? theme.textTertiary : theme.statusCritical)
+            } else {
+                standingsList
             }
-            ForEach(top.prefix(5)) { standing in
-                row(standing, isMe: standing.username == membership.username?.value)
-            }
-            if let me = mine?.standing, me.rank > 5 {
-                // A gap only when places are skipped: #6 follows #5 directly.
-                if me.rank > 6 {
-                    Text("· · ·")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(theme.textTertiary)
-                        .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Up to a hundred places in a list of fixed height: it scrolls inside
+    /// the card, and when your place is below what shows, a pinned row of
+    /// yours sits under it and scrolls the list to you.
+    private var standingsList: some View {
+        let me = mine?.standing
+        let scrolls = top.count > Self.visibleRows
+        let height = CGFloat(min(top.count, Self.visibleRows)) * (Self.rowHeight + Self.rowSpacing) - Self.rowSpacing
+            + (scrolls ? Self.rowHeight / 2 : 0)
+        return ScrollViewReader { proxy in
+            VStack(spacing: Self.rowSpacing) {
+                ScrollView(.vertical, showsIndicators: scrolls) {
+                    VStack(spacing: Self.rowSpacing) {
+                        ForEach(top) { standing in
+                            row(standing, isMe: standing.username == membership.username?.value)
+                                .id(standing.rank)
+                        }
+                        // Ranked but outside the hundred shown.
+                        if let me, !top.contains(where: { $0.rank == me.rank }) {
+                            Text("· · ·").font(.system(size: 11, weight: .bold)).foregroundStyle(theme.textTertiary)
+                            row(me, isMe: true).id(me.rank)
+                        }
+                    }
+                    .padding(.vertical, 2)
                 }
-                row(me, isMe: true)
+                .scrollDisabled(!scrolls)
+                .frame(height: height)
+                .mask {
+                    // A soft bottom edge says there is more below.
+                    VStack(spacing: 0) {
+                        Rectangle()
+                        if scrolls { LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 18) }
+                    }
+                }
+
+                if let me, scrolls, me.rank > Self.visibleRows {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(me.rank, anchor: .center) }
+                    } label: {
+                        row(me, isMe: true)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Scroll to your place")
+                }
             }
         }
     }
