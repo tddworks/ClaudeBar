@@ -406,8 +406,9 @@ struct LeaderboardStandingsView: View {
     }
 }
 
-/// A small text chip that filters a card's content: ink when on, outlined
-/// when off — deliberately unlike the navigation pills.
+/// A small text chip that filters a card's content, in the period picker's
+/// colours: ink when on, outlined when off — deliberately unlike the
+/// navigation pills.
 private struct FilterChip: View {
     let title: String
     let isOn: Bool
@@ -418,14 +419,16 @@ private struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10, weight: .bold, design: theme.fontDesign))
-                .foregroundStyle(isOn ? theme.textOnStatus : theme.textSecondary)
-                .padding(.horizontal, 8)
+                .font(.system(size: 9.5, weight: .heavy, design: theme.fontDesign))
+                // The period picker's colours: ink fill, card-paper label — legible in every theme.
+                .foregroundStyle(isOn ? theme.cardGradient : LinearGradient(colors: [theme.textSecondary], startPoint: .leading, endPoint: .trailing))
+                .padding(.horizontal, 9)
                 .padding(.vertical, 3)
                 .background(
-                    Capsule().fill(isOn ? theme.textPrimary : Color.clear)
-                        .overlay(Capsule().stroke(isOn ? Color.clear : theme.textTertiary.opacity(0.6), lineWidth: 1))
+                    Capsule().fill(isOn ? theme.glassBorder : Color.clear)
+                        .overlay(Capsule().stroke(isOn ? Color.clear : theme.glassBorder.opacity(0.35), lineWidth: 1))
                 )
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isOn ? .isSelected : [])
