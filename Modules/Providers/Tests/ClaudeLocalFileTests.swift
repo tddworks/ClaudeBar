@@ -198,14 +198,16 @@ struct ClaudeLocalFileTests {
         }
     }
 
-    @Test
-    func `a negative token count is a parse failure`() async throws {
+    @Test(arguments: ["-5", "74422.5"])
+    func `a negative or fractional token count is a parse failure`(value: String) async throws {
         var harness = try ClaudeHarness()
         harness.now = Self.now
         defer { harness.cleanUp() }
 
+        // A token count is a whole number of tokens; a fraction is a schema
+        // change, exactly like a negative count or a missing field.
         await #expect(throws: UsageError.parseFailed("buddy-tokens.json schema changed: invalid 'tokens' value")) {
-            try await readBody(harness, buddyTokens(Self.day(Self.now), -5))
+            try await readBody(harness, #"{"tokens-today": {"date": "\#(Self.day(Self.now))", "tokens": \#(value)}}"#)
         }
     }
 

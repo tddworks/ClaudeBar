@@ -25,7 +25,9 @@ function read(response, context) {
         return {error: {parseFailed: "buddy-tokens.json schema changed: missing 'tokens-today.tokens'"}};
     }
     const tokens = today.tokens;
-    if (typeof tokens !== 'number' || !isFinite(tokens) || tokens < 0) {
+    // A counter is a whole number of tokens — a fraction is a schema change,
+    // exactly like a negative or missing value.
+    if (typeof tokens !== 'number' || !isFinite(tokens) || tokens < 0 || !Number.isInteger(tokens)) {
         return {error: {parseFailed: "buddy-tokens.json schema changed: invalid 'tokens' value"}};
     }
 
