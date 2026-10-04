@@ -96,6 +96,44 @@ struct ClaudeProviderLocalFileTests {
         #expect(claude.snapshot == nil)
     }
 
+    // MARK: - Hybrid Users (Local File mode + CLI session JSONL data)
+
+    @Test
+    func `interactive refresh keeps extension metrics when attaching the daily report`() async throws {
+        // Hybrid users run Local File mode while an existing CLI install still
+        // has session JSONL data. The interactive refresh attaches the daily
+        // report, and that snapshot reconstruction must not silently drop the
+        // buddy-tokens "Tokens Today" card.
+        let settings = FakeLocalFileSettings(probeMode: .localFile)
+        let fileProbe = MockUsageProbe()
+        given(fileProbe).probe().willReturn(UsageSnapshot(
+            providerId: "claude",
+            quotas: [],
+            capturedAt: Date(),
+            extensionMetrics: [ExtensionMetric(label: "Tokens Today", value: "74,422", unit: "tokens")]
+        ))
+
+        let mockAnalyzer = MockDailyUsageAnalyzing()
+        given(mockAnalyzer).analyzeToday().willReturn(DailyUsageReport(
+            today: DailyUsageStat(date: Date(), totalCost: 1.5, totalTokens: 900, workingTime: 60, sessionCount: 1),
+            previous: DailyUsageStat.empty(for: Date().addingTimeInterval(-86400))
+        ))
+
+        let claude = ClaudeProvider(
+            cliProbe: unusedProbe(),
+            apiProbe: unusedProbe(),
+            fileProbe: fileProbe,
+            settingsRepository: settings,
+            dailyUsageAnalyzer: mockAnalyzer
+        )
+
+        let snapshot = try await claude.refresh()
+
+        #expect(snapshot.dailyUsageReport != nil)
+        #expect(snapshot.extensionMetrics?.first?.label == "Tokens Today")
+        #expect(snapshot.extensionMetrics?.first?.value == "74,422")
+    }
+
     // MARK: - Availability
 
     @Test

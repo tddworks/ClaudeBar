@@ -286,7 +286,8 @@ public final class ClaudeProvider: AIProvider {
             accountTier: snapshot.accountTier,
             costUsage: snapshot.costUsage,
             bedrockUsage: snapshot.bedrockUsage,
-            dailyUsageReport: report
+            dailyUsageReport: report,
+            extensionMetrics: snapshot.extensionMetrics
         )
     }
 
