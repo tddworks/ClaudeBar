@@ -188,15 +188,19 @@ extension UsageLog {
         public let cacheWrite1h: String?
         public let cacheRead: String?
         public let total: String?
+        /// The log's input count already holds its cache reads, so they are
+        /// taken out of it: input then means what it means everywhere else.
+        public let inputIncludesCacheRead: Bool?
 
         public init(input: String? = nil, output: String? = nil, cacheWrite: String? = nil, cacheWrite1h: String? = nil,
-                    cacheRead: String? = nil, total: String? = nil) {
+                    cacheRead: String? = nil, total: String? = nil, inputIncludesCacheRead: Bool? = nil) {
             self.input = input
             self.output = output
             self.cacheWrite = cacheWrite
             self.cacheWrite1h = cacheWrite1h
             self.cacheRead = cacheRead
             self.total = total
+            self.inputIncludesCacheRead = inputIncludesCacheRead
         }
     }
 

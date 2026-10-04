@@ -30,7 +30,7 @@ struct UsageHistoryTests {
     }
 
     private func login(_ id: String) -> ProviderAccountConfig {
-        ProviderAccountConfig(accountId: id, label: "", email: nil, probeConfig: ["codexHome": "/tmp/\(id)", "chatgptAccountId": id])
+        ProviderAccountConfig(accountId: id, label: "", email: nil, probeConfig: ["directory": "/tmp/\(id)"])
     }
 
     // MARK: - Reading
@@ -102,14 +102,14 @@ struct UsageHistoryTests {
     @Test
     func `the default login has the provider's usage history`() throws {
         let history = history()
-        let provider = try Providers.make("codex", settings: InMemoryProviderSettings(), usageHistory: history)
+        let provider = try Providers.make("grok", settings: InMemoryProviderSettings(), usageHistory: history)
 
         #expect(provider.defaultAccount.usageHistory === history)
     }
 
     @Test
     func `an added login whose logs aren't read has none`() throws {
-        let provider = try Providers.make("codex", settings: InMemoryProviderSettings(), accounts: [login("work")],
+        let provider = try Providers.make("grok", settings: InMemoryProviderSettings(), accounts: [login("work")],
                                           usageHistory: history())
 
         #expect(provider.accounts.first { !$0.isDefault }?.usageHistory == nil)
@@ -117,7 +117,7 @@ struct UsageHistoryTests {
 
     @Test
     func `a provider that offers no usage history has none`() throws {
-        let provider = try Providers.make("codex", settings: InMemoryProviderSettings())
+        let provider = try Providers.make("grok", settings: InMemoryProviderSettings())
 
         #expect(provider.defaultAccount.usageHistory == nil)
     }
