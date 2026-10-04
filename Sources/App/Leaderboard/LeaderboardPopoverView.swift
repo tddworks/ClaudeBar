@@ -286,26 +286,42 @@ struct LeaderboardStandingsView: View {
         }
     }
 
-    /// *🌍 MEMBERS IN N COUNTRIES* — links to the globe on the web board.
+    /// *🌍 MEMBERS IN N COUNTRIES* — links to the globe on the web board; for
+    /// members on it, says so, with the country kept and a way off.
     @ViewBuilder
     private var globeLine: some View {
-        Link(destination: leaderboard.globePage) {
-            HStack(spacing: 6) {
-                Text("🌍")
-                Text(globeText)
-                    .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                Spacer(minLength: 4)
-                Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .bold)).foregroundStyle(theme.textTertiary)
+        HStack(spacing: 6) {
+            Link(destination: leaderboard.globePage) {
+                HStack(spacing: 6) {
+                    Text("🌍")
+                    Text(globeText)
+                        .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .lineLimit(2)
+                    Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .bold)).foregroundStyle(theme.textTertiary)
+                }
             }
-            .padding(.horizontal, 4)
+            .buttonStyle(.plain)
+            Spacer(minLength: 4)
+            if membership.sharesCountry {
+                Button("Turn off") { Task { try? await membership.setSharesCountry(false) } }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .bold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textPrimary)
+                    .padding(.horizontal, 9).padding(.vertical, 3)
+                    .overlay(Capsule().stroke(theme.glassBorder, lineWidth: max(1, theme.cardBorderWidth * 0.6)))
+                    .help("Take your country off the globe; the server forgets it at once")
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
     }
 
     private var globeText: String {
-        guard let count = globe?.countries.count, count > 0 else { return "See where ClaudeBar is used" }
-        return count == 1 ? "Members in 1 country · see the globe" : "Members in \(count) countries · see the globe"
+        let count = globe?.countries.count ?? 0
+        let countries = count == 0 ? "See where ClaudeBar is used" : count == 1 ? "Members in 1 country" : "Members in \(count) countries"
+        guard membership.sharesCountry else { return count == 0 ? countries : countries + " · see the globe" }
+        let me = mine?.country.map { "You're on the globe as \(leaderboardCountryLabel($0))" } ?? "You're on the globe"
+        return count == 0 ? me : "\(me) · \(countries)"
     }
 
     // MARK: Your rank

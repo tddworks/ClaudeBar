@@ -15,6 +15,8 @@ struct LeaderboardPane: View {
     @State private var message: String?
     @State private var confirmLeave = false
     @State private var isWorking = false
+    /// The country the server keeps for the globe, read from your own data.
+    @State private var storedCountry: String?
 
     private var membership: LeaderboardMembership { leaderboard.membership }
 
@@ -61,14 +63,27 @@ struct LeaderboardPane: View {
                 ))
             }
             SettingsRowDivider()
-            SettingsRow(title: "Show my country on the globe",
-                        subtitle: "Your country, from where your requests come from, counted with others on the web board's globe. Never your city or IP; a country shows once three members are there. Turning this off forgets it at once.") {
+            SettingsRow(title: "Show my country on the globe", subtitle: globeSubtitle) {
                 SettingsSwitch(isOn: Binding(
                     get: { membership.sharesCountry },
                     set: { shares in run { try await membership.setSharesCountry(shares) } }
                 ))
             }
+            .task(id: membership.sharesCountry) {
+                storedCountry = membership.sharesCountry
+                    ? (try? await membership.myStanding(in: BoardView(period: .sevenDays)))?.country
+                    : nil
+            }
         }
+    }
+
+    /// Off: what turning it on keeps. On: what is kept now, and how to remove it.
+    private var globeSubtitle: String {
+        guard membership.sharesCountry else {
+            return "Your country, from where your requests come from, counted with others on the web board's globe. Never your city or IP; a country shows once three members are there."
+        }
+        let kept = storedCountry.map { "On the globe as \(leaderboardCountryLabel($0))." } ?? "On. Your country is recorded with your next request."
+        return kept + " Turn this off to remove it from the globe at once."
     }
 
     private var sharingCard: some View {

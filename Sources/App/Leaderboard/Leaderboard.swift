@@ -64,6 +64,13 @@ final class Leaderboard {
     }
 }
 
+/// A two-letter country as people read it: its flag and its name, "🇳🇱 Netherlands".
+func leaderboardCountryLabel(_ code: String) -> String {
+    let flag = String(String.UnicodeScalarView(code.uppercased().unicodeScalars.compactMap { Unicode.Scalar(0x1F1E6 + $0.value - 65) }))
+    let name = Locale.current.localizedString(forRegionCode: code) ?? code
+    return "\(flag) \(name)"
+}
+
 /// This Mac's token logs, from every login whose provider reads usage
 /// history: Claude, Codex and Mistral today.
 @MainActor
