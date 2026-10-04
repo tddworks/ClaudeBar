@@ -108,6 +108,8 @@ struct LeaderboardHTTPClientTests {
 
         #expect(sent?.url?.query == "period=today")
         #expect(sent?.value(forHTTPHeaderField: "X-Signature") == nil)
+        // The board is cacheable for the web page; the app must see it fresh.
+        #expect(sent?.cachePolicy == .reloadIgnoringLocalCacheData)
         #expect(standings == [Standing(rank: 1, username: "big", total: 1000, input: 500, cache: 500, byProvider: ["claude": 1000])])
     }
 

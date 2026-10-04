@@ -78,7 +78,9 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
                       signedBy credentials: MemberCredentials? = nil) async throws -> Data {
         let pathAndQuery = path + (query.map { "?" + $0 } ?? "")
         guard let url = URL(string: pathAndQuery, relativeTo: host) else { throw LeaderboardError.unreachable }
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        // The board is cacheable for the web page; the app always reads it fresh,
+        // or a board fetched before your first upload would hide you for minutes.
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         request.httpMethod = method
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

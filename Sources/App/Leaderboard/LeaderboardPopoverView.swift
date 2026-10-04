@@ -219,7 +219,6 @@ struct LeaderboardStandingsView: View {
     var body: some View {
         VStack(spacing: 12) {
             rankCard
-            filters
             boardCard
             footer
         }
@@ -232,7 +231,8 @@ struct LeaderboardStandingsView: View {
     private var rankCard: some View {
         LeaderboardCard {
             HStack(alignment: .firstTextBaseline) {
-                CardLabel(text: "YOUR RANK · \(period.label.uppercased())")
+                CardLabel(text: (["YOUR RANK", period.label] + [provider.map { leaderboardProviderName($0, in: monitor) }].compactMap { $0 })
+                    .joined(separator: " · ").uppercased())
                 Spacer()
                 if mine?.visible == false {
                     Label("Hidden", systemImage: "eye.slash")
@@ -276,20 +276,18 @@ struct LeaderboardStandingsView: View {
 
     // MARK: Filters
 
-    private var filters: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            InkSegmentedPicker(title: "Period", options: BoardPeriod.allCases, selection: $period, label: \.label)
-                .frame(maxWidth: .infinity)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ProviderPill(providerId: "all", providerName: "All", isSelected: provider == nil, hasData: true,
-                                 symbol: "square.grid.2x2.fill") { provider = nil }
-                    ForEach(membership.sharing.sorted(), id: \.self) { id in
-                        ProviderPill(providerId: id, providerName: leaderboardProviderName(id, in: monitor),
-                                     isSelected: provider == id, hasData: true) { provider = id }
-                    }
+    /// Which provider the board counts: small text chips inside the card, so
+    /// they read as a filter on it rather than as more tabs.
+    @ViewBuilder
+    private var providerFilter: some View {
+        let shared = membership.sharing.sorted()
+        if shared.count > 1 {
+            HStack(spacing: 4) {
+                FilterChip(title: "All", isOn: provider == nil) { provider = nil }
+                ForEach(shared, id: \.self) { id in
+                    FilterChip(title: leaderboardProviderName(id, in: monitor), isOn: provider == id) { provider = id }
                 }
-                .padding(4)
+                Spacer(minLength: 0)
             }
         }
     }
@@ -298,7 +296,13 @@ struct LeaderboardStandingsView: View {
 
     private var boardCard: some View {
         LeaderboardCard {
-            CardLabel(text: "TOP OF THE BOARD")
+            HStack(alignment: .center) {
+                CardLabel(text: "TOP OF THE BOARD")
+                Spacer(minLength: 8)
+                InkSegmentedPicker(title: "Period", options: BoardPeriod.allCases, selection: $period, label: \.label)
+                    .fixedSize()
+            }
+            providerFilter
             if top.isEmpty {
                 Text(error ?? "No one is on the board for \(period.label.lowercased()) yet.")
                     .font(.system(size: 12, design: theme.fontDesign))
@@ -399,5 +403,31 @@ struct LeaderboardStandingsView: View {
         case 1_000...: String(format: "%.1fK", Double(count) / 1e3)
         default: "\(count)"
         }
+    }
+}
+
+/// A small text chip that filters a card's content: ink when on, outlined
+/// when off — deliberately unlike the navigation pills.
+private struct FilterChip: View {
+    let title: String
+    let isOn: Bool
+    let action: () -> Void
+
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: theme.fontDesign))
+                .foregroundStyle(isOn ? theme.textOnStatus : theme.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule().fill(isOn ? theme.textPrimary : Color.clear)
+                        .overlay(Capsule().stroke(isOn ? Color.clear : theme.textTertiary.opacity(0.6), lineWidth: 1))
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
