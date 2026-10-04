@@ -11,8 +11,8 @@ import Infrastructure
 final class Leaderboard {
     let membership: LeaderboardMembership
     let uploader: LeaderboardUploader
-    let boardPage = URL(string: "https://claudebar.tddworks.com/leaderboard")!
-    let globePage = URL(string: "https://claudebar.tddworks.com/leaderboard#globe-section")!
+    let boardPage = URL(string: "https://claudebar.tddworks.com/leaderboard/")!
+    let globePage = URL(string: "https://claudebar.tddworks.com/leaderboard/#globe-section")!
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let logs: MonitorTokenLogs

@@ -82,7 +82,8 @@ struct LeaderboardPane: View {
         guard membership.sharesCountry else {
             return "Your country, from where your requests come from, counted with others on the web board's globe. Never your city or IP; a country shows once three members are there."
         }
-        let kept = storedCountry.map { "On the globe as \(leaderboardCountryLabel($0))." } ?? "On. Your country is recorded with your next request."
+        let kept = storedCountry.map { "On the globe as \(leaderboardCountryLabel($0)). It shows once 3 members there opt in." }
+            ?? "On. Your country is recorded with your next request."
         return kept + " Turn this off to remove it from the globe at once."
     }
 
