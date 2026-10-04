@@ -741,3 +741,27 @@ extension JSONSettingsRepository: MultiAccountSettingsRepository {
         return config
     }
 }
+
+// MARK: - LeaderboardSettingsRepository
+
+// A destination's own namespace, `leaderboard.*`, beside `notify.*`. The
+// private key is not here: it lives in `CredentialSigningKeyStore`.
+extension JSONSettingsRepository: LeaderboardSettingsRepository {
+    public func leaderboardRecord() -> LeaderboardRecord? {
+        guard let username: String = store.read(key: "leaderboard.username") else { return nil }
+        let lastUpload: Double? = store.read(key: "leaderboard.lastUpload")
+        return LeaderboardRecord(
+            username: username,
+            sharing: store.read(key: "leaderboard.sharing") ?? [],
+            visible: store.read(key: "leaderboard.visible") ?? true,
+            lastUpload: lastUpload.map(Date.init(timeIntervalSince1970:))
+        )
+    }
+
+    public func saveLeaderboardRecord(_ record: LeaderboardRecord?) {
+        store.write(value: record?.username, key: "leaderboard.username")
+        store.write(value: record?.sharing, key: "leaderboard.sharing")
+        store.write(value: record?.visible, key: "leaderboard.visible")
+        store.write(value: record?.lastUpload?.timeIntervalSince1970, key: "leaderboard.lastUpload")
+    }
+}
