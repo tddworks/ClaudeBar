@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar Leaderboard</title>
+<meta name="description" content="Top ClaudeBar users by AI coding tokens, shared by choice from their own Macs.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://claudebar-leaderboard.tddworks.workers.dev; img-src 'self' data:">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+@media (prefers-color-scheme:dark){:root{--paper:#17151F;--dot:#2A2735;--ink:#F3EEFF;--muted:#B9B2D0;--card:#221F2E;--lav:#2E2840;--mint:#2F7A50;--pink:#8A3A55;--sun:#8A6D10;--sky:#2C5A80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 16px 64px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:clamp(32px,6vw,48px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.seg{display:flex;border:var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;color:var(--ink);font:700 14px "Bricolage Grotesque",sans-serif;padding:8px 14px;cursor:pointer;min-height:40px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);font:700 13px "Bricolage Grotesque",sans-serif;padding:4px 12px;cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:var(--sun)}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end}
+.step{border:var(--line);border-radius:18px 18px 8px 8px;box-shadow:var(--shadow);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0}
+.step .medal{font-size:30px;font-weight:800;line-height:1}
+.step .name{font-weight:800;font-size:17px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .tok{font:700 18px "JetBrains Mono",monospace}
+.s1{background:var(--sun);min-height:200px}.s2{background:var(--sky);min-height:170px}.s3{background:var(--pink);min-height:150px}
+.box{overflow-x:auto;border:var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:10px 14px;text-align:left;border-bottom:2px solid var(--dot);font-size:14px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace}
+.mix{display:flex;height:12px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;min-width:110px}
+.mix span{display:block;height:100%}
+.note{font-size:13px;color:var(--muted)}
+.state{padding:24px;text-align:center;color:var(--muted)}
+a{color:var(--violet)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>ClaudeBar Leaderboard</h1>
+    <p class="sub" id="subtitle">Top ClaudeBar users by tokens · last 7 days</p>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Period" id="periods"></div>
+    <div class="chips" role="group" aria-label="Provider" id="providers"></div>
+  </div>
+
+  <section class="podium" id="podium" aria-label="Top three"></section>
+
+  <div class="box">
+    <table>
+      <thead><tr><th scope="col">#</th><th scope="col">User</th><th scope="col">Mix</th><th class="num" scope="col">Input</th><th class="num" scope="col">Output</th><th class="num" scope="col">Cache</th><th class="num" scope="col">Total</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7" class="state">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <p class="note">Totals are shared by each member's own ClaudeBar: daily token counts only, never prompts or projects. Join from the Leaderboard tab in the <a href="https://github.com/tddworks/ClaudeBar">ClaudeBar</a> menu.</p>
+</main>
+
+<script>
+// Every value from the server is written with textContent, never as HTML.
+const API = "https://claudebar-leaderboard.tddworks.workers.dev";
+const PERIODS = [["today", "Today"], ["7d", "7 days"], ["30d", "30 days"]];
+const PROVIDERS = [[null, "All"], ["claude", "Claude"], ["codex", "Codex"], ["mistral", "Mistral"]];
+const COLORS = { claude: "#7C5CFF", codex: "#1FA37A", mistral: "#F29B38" };
+const state = { period: "7d", provider: null };
+
+const el = (tag, props = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === "text") node.textContent = value;
+    else if (key === "style") node.style.cssText = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) node.append(child);
+  return node;
+};
+
+const fmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n);
+
+function controls() {
+  const periods = document.getElementById("periods");
+  periods.replaceChildren(...PERIODS.map(([id, label]) => {
+    const button = el("button", { type: "button", "aria-pressed": String(state.period === id), text: label });
+    button.addEventListener("click", () => { state.period = id; load(); });
+    return button;
+  }));
+  const providers = document.getElementById("providers");
+  providers.replaceChildren(...PROVIDERS.map(([id, label]) => {
+    const button = el("button", { type: "button", class: "chip", "aria-pressed": String(state.provider === id), text: label });
+    button.addEventListener("click", () => { state.provider = id; load(); });
+    return button;
+  }));
+  const period = PERIODS.find(([id]) => id === state.period)[1].toLowerCase();
+  const provider = PROVIDERS.find(([id]) => id === state.provider)[1];
+  document.getElementById("subtitle").textContent =
+    `Top ClaudeBar users by tokens · ${state.provider ? provider : "all providers"} · ${period}`;
+}
+
+function render(standings) {
+  const order = [[standings[1], "s2", "2"], [standings[0], "s1", "1"], [standings[2], "s3", "3"]];
+  document.getElementById("podium").replaceChildren(...order.map(([s, cls, medal]) => s
+    ? el("div", { class: `step ${cls}` }, el("span", { class: "medal", text: medal }),
+         el("span", { class: "name", text: "@" + s.username }), el("span", { class: "tok", text: fmt(s.total) }))
+    : el("div")));
+
+  const rows = document.getElementById("rows");
+  if (standings.length === 0) {
+    rows.replaceChildren(el("tr", {}, el("td", { colspan: "7", class: "state", text: "No one is on the board for this view yet." })));
+    return;
+  }
+  rows.replaceChildren(...standings.map((s) => {
+    const mix = el("span", { class: "mix", role: "img", "aria-label": Object.entries(s.byProvider).map(([p, n]) => `${p} ${fmt(n)}`).join(", ") });
+    for (const [provider, count] of Object.entries(s.byProvider)) {
+      mix.append(el("span", { style: `width:${(count / s.total) * 100}%;background:${COLORS[provider] ?? "#999"}` }));
+    }
+    return el("tr", {},
+      el("td", { class: "num", text: String(s.rank) }),
+      el("td", {}, el("strong", { text: "@" + s.username })),
+      el("td", {}, mix),
+      el("td", { class: "num", text: fmt(s.input) }),
+      el("td", { class: "num", text: fmt(s.output) }),
+      el("td", { class: "num", text: fmt(s.cache) }),
+      el("td", { class: "num" }, el("strong", { text: fmt(s.total) })));
+  }));
+}
+
+async function load() {
+  controls();
+  const query = new URLSearchParams({ period: state.period });
+  if (state.provider) query.set("provider", state.provider);
+  try {
+    const response = await fetch(`${API}/board?${query}`);
+    if (!response.ok) throw new Error(String(response.status));
+    render((await response.json()).standings);
+  } catch {
+    document.getElementById("podium").replaceChildren();
+    document.getElementById("rows").replaceChildren(
+      el("tr", {}, el("td", { colspan: "7", class: "state", text: "The leaderboard can't be reached right now." })));
+  }
+}
+
+load();
+</script>
+</body>
+</html>

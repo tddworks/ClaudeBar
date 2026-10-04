@@ -4,6 +4,8 @@ CREATE TABLE members (
   username TEXT NOT NULL,
   public_key TEXT NOT NULL,
   visible INTEGER NOT NULL DEFAULT 1,
+  -- Set only by a maintainer, never through the API: kept off the public board.
+  suspended INTEGER NOT NULL DEFAULT 0,
   joined_at TEXT NOT NULL,
   -- The member's own date at their last upload: their periods end on it.
   today TEXT

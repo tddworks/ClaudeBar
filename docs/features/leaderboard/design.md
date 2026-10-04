@@ -4,7 +4,7 @@ description: Contributor design for the Leaderboard. Join with a username, share
 
 # Leaderboard: design
 
-**Status:** DESIGN, being built on `feat/leaderboard`. Built so far: the engine rule `inputIncludesCacheRead` (§7). Everything else is designed, not built. The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise.
+**Status:** BUILT on `feat/leaderboard`, not yet deployed: the app side, the Worker and the board page exist and are tested; the Worker has no production database or URL until a maintainer deploys it ([Server/leaderboard/README.md](../../../Server/leaderboard/README.md)). User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise.
 
 This document owns **joining the board, what a member shares, how a member's uploads are trusted, and how standings are ranked**. Its neighbours own the rest:
 
@@ -59,7 +59,7 @@ Two findings fall out of these. A rank is never a property of a member alone; it
 | **Member** | Someone who joined: a username on the server with one public key | a provider *account* (a login); a member may have several logins per provider |
 | **Membership** | This Mac's side of being a member: the username, the private key, what is shared, whether visible | the server's member row, which never holds the private key |
 | **Username** | The public name, chosen at join, unique ignoring case | an account email, which is never sent |
-| **Daily tokens** | One provider's token counts for one local calendar day on this Mac: input, output, cache write, cache read | `DailyUsageStat`, which also carries cost, sessions and working time that are never shared |
+| **Daily tokens** | One provider's token counts for one local calendar day on this Mac: input, output, cache write, cache read, and *unsplit* — tokens a log keeps only as a total (Mistral) | `DailyUsageStat`, which also carries cost, sessions and working time that are never shared |
 | **Sharing** | The providers a member chose to upload | a provider being *enabled* in ClaudeBar |
 | **Upload** | One signed `PUT /usage` carrying days of daily tokens | a *refresh*, which fetches quotas |
 | **Board view** | A period and a provider filter: `7 days · Claude` | a period alone |
@@ -84,6 +84,8 @@ LeaderboardMembership                     this Mac's membership (aggregate root,
 
 Board                                     the server's ranking (aggregate root, Worker)
  ├─ members : Member                      username, public key, visible, joined at
+ ├─ members.today                        THE MEMBER'S OWN DATE: THEIR PERIODS END ON IT
+ ├─ members.suspended                    SET ONLY BY A MAINTAINER, NEVER THROUGH THE API
  └─ dailyTokens : DailyTokens             ONE ROW PER MEMBER · PROVIDER · DAY
      └─ standings(view) → [Standing]      RANKED BY TOTAL TOKENS, TIES BY USERNAME
 ```
@@ -164,7 +166,9 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A username is unique ignoring case | Worker, `POST /join` (`UNIQUE` on `lower(username)`) |
 | A username is 3–20 of `A–Z a–z 0–9 - _` | **Two owners, deliberately:** `Username` for instant feedback, the Worker as authority. The rule is pinned by one shared test vector file both suites read, so they cannot drift silently |
 | No future days, nothing older than 30 days, no day above the plausibility cap | Worker, `PUT /usage` |
-| Standings rank by total tokens; ties by username | Worker, `standings(view)` |
+| Standings rank by total tokens (the five counts summed); ties by username | Worker, `board.ts` |
+| A member's period ends on their own date, the one their Mac sent with its last upload, while it is within a day of UTC's | Worker, `board.ts` |
+| A suspended member is off the public board whatever they set | Worker, `board.ts` |
 | A hidden member is absent from the public board and still sees their own standing | Worker, `GET /board` vs `GET /me` |
 | Leaving deletes the member and every row, on the server | Worker, `DELETE /me`; the app forgets the key only after a 2xx |
 
@@ -175,7 +179,7 @@ Host: a Cloudflare Worker. Storage: Cloudflare D1. The board page is static on G
 | Route | Auth | Does |
 |---|---|---|
 | `POST /join` `{username, publicKey}` | none, rate-limited per IP | creates the member, or `409` if the name is taken |
-| `PUT /usage` `{days: [DailyTokens]}` | signed | upserts each day |
+| `PUT /usage` `{today, days: [DailyTokens]}` | signed | upserts each day; `today` is the Mac's date, refused when more than a day from UTC's |
 | `GET /me` | signed | the member, their standing in a view, every row they uploaded |
 | `GET /me/export` | signed | the same, as a downloadable JSON file |
 | `PATCH /me` `{username?, visible?}` | signed | rename, hide or show |
@@ -195,23 +199,11 @@ The Worker verifies with WebCrypto's Ed25519 against the stored public key, over
 
 **Storage.**
 
-```sql
-CREATE TABLE members (
-  id INTEGER PRIMARY KEY, username TEXT NOT NULL, public_key TEXT NOT NULL,
-  visible INTEGER NOT NULL DEFAULT 1, joined_at TEXT NOT NULL);
-CREATE UNIQUE INDEX members_username ON members(lower(username));
+The schema is [`migrations/0001_init.sql`](../../../Server/leaderboard/migrations/0001_init.sql): `members` (username unique ignoring case, public key, `visible`, `suspended`, `today`), `daily_tokens` (one row per member, provider and day, five counts), and `nonces`, swept hourly by the Worker's cron.
 
-CREATE TABLE daily_tokens (
-  member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL, day TEXT NOT NULL,            -- the member's local date, YYYY-MM-DD
-  input INTEGER NOT NULL, output INTEGER NOT NULL,
-  cache_write INTEGER NOT NULL, cache_read INTEGER NOT NULL,
-  PRIMARY KEY (member_id, provider, day));
+Every query is a prepared statement. A standing is one `SUM(input + output + cache_write + cache_read + unsplit) … GROUP BY member` over the view's days.
 
-CREATE TABLE nonces (nonce TEXT PRIMARY KEY, seen_at INTEGER NOT NULL);  -- swept after 10 min
-```
-
-Every query is a prepared statement. A standing is one `SUM(input + output + cache_write + cache_read) … GROUP BY member_id` over the view's days.
+CryptoKit's Ed25519 signatures are randomised, so the shared vectors are **verified** on both sides, never compared byte for byte.
 
 ## 6 · Privacy
 
@@ -291,15 +283,15 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | Piece | Home |
 |---|---|
 | `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
-| `@Mockable` ports: `LeaderboardAPI`, `SigningKeyStore`, `LeaderboardSettingsRepository` | `Sources/Domain/Leaderboard/` |
-| HTTP client, Keychain key store, settings through `JSONSettingsRepository` | `Sources/Infrastructure/Leaderboard/` |
-| Popover tab, Settings pane | `Sources/App/` |
+| `@Mockable` ports `LeaderboardAPI` and `SigningKeyStore`; plain `LeaderboardSettingsRepository` (like Notify!'s) and `@MainActor` `TokenLogs`, faked in tests | `Sources/Domain/Leaderboard/` |
+| `LeaderboardHTTPClient`, `CredentialSigningKeyStore`; settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
+| `Leaderboard` (wiring + hourly timer), `MonitorTokenLogs`, popover tab, `LeaderboardPane` | `Sources/App/` |
 | Worker + D1 migrations + its tests | `Server/leaderboard/`, with its own job in `tests.yml` |
 | Board page | `docs/leaderboard/` on GitHub Pages |
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own.
+Test-first slices, each green on its own. All nine are built; deployment is the remaining step.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.
@@ -315,7 +307,6 @@ Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands
 
 ## 9 · Open questions
 
-- **What does "today" mean across time zones?** Rows are keyed by each member's local date. "Today" could be each member's latest day, or UTC's date. Leaning: each member's own dates, so a day is always the day they lived.
 - **More than one Mac per username?** v1 is one: the key is per install, and a second Mac's upload would replace the first's days. Supporting it means a device column in the key and the row.
 - **Losing the key.** A reinstall or a lost Keychain item locks a member out of their name. A recovery code shown once at join, or a manual reset by an admin?
 - **Web login.** v1 shows your data in the app and offers Export. A one-time link from the app to a short web session is designed in outline and deferred.
@@ -323,5 +314,7 @@ Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands
 - ~~**Where does the Worker's code live?**~~ In this repo, `Server/leaderboard/`, with its own CI job. Decided by the maintainer so app and server change in one PR.
 - ~~**Rank by what?**~~ Total tokens: input + output + cache write + cache read. Decided by the maintainer; output-only stays an option if cache-heavy totals feel unfair.
 - ~~**Codex tokens?**~~ In v1: Codex gets a `usageHistory` read from its session logs, needing the generic `inputIncludesCacheRead` rule.
+- ~~**What does "today" mean across time zones?**~~ Each member's own date: every upload carries the Mac's `today`, believable within a day of UTC's, and that member's periods end on it.
+- ~~**Mistral keeps only totals?**~~ `DailyTokens.unsplit` carries tokens a log doesn't split, so they still count.
 - ~~**Where is the data stored?**~~ Cloudflare D1 behind a Worker. Settled because writes must pass server checks (a database the app writes to directly would need a secret in an open-source app), and D1's SQL answers a board view in one `GROUP BY` within the free tier.
 - ~~**Can someone use a public key to act as another member?**~~ No. A public key only verifies; signing needs the private half, which never leaves its Mac.

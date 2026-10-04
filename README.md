@@ -65,6 +65,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/notify/README.md) |
 | Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/session-hooks/README.md) |
 | Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/daily-usage/README.md) |
+| Leaderboard | Share daily token totals and see where you rank → [docs](docs/features/leaderboard/README.md) |
 | Themes | Dark, Light, CLI, Christmas, Pop, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
 | Extensions | Add any quota source with a manifest and a script → [docs](docs/features/extensions/README.md) |
 | URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/url-schemes/README.md) |

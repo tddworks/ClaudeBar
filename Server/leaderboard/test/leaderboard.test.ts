@@ -252,6 +252,15 @@ describe("the board", () => {
     expect(board.map((s) => [s.rank, s.username, s.total])).toEqual([[1, "big", 1000], [2, "tie-a", 300], [3, "tie-b", 300]]);
   });
 
+  it("keeps a suspended member off the board even when they'd show themselves", async () => {
+    const member = await join("spammer");
+    await upload(member, [day("claude", TODAY, 500)]);
+    await env.DB.prepare("UPDATE members SET suspended = 1 WHERE username = 'spammer'").run();
+    await signed(member, "PATCH", "/me", { visible: true });
+
+    expect(await standings()).toEqual([]);
+  });
+
   it("filters by provider and period, each member's period ending on their own today", async () => {
     const member = await join("periodic");
     await upload(member, [day("claude", TODAY, 10), day("claude", "2026-10-01", 20), day("codex", TODAY, 5)]);

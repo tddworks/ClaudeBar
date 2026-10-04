@@ -35,7 +35,7 @@ async function rows(db: D1Database, period: Period, provider: string | null, now
             SUM(t.input) AS input, SUM(t.output) AS output, SUM(t.cache_write + t.cache_read) AS cache,
             SUM(t.input + t.output + t.cache_write + t.cache_read + t.unsplit) AS total
        FROM members m JOIN daily_tokens t ON t.member_id = m.id
-      WHERE (m.visible = 1 OR m.id = ?4)
+      WHERE ((m.visible = 1 AND m.suspended = 0) OR m.id = ?4)
         AND t.day <= ${end} AND t.day > date(${end}, ?5)
         AND (?6 IS NULL OR t.provider = ?6)
       GROUP BY m.id, t.provider`,
