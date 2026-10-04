@@ -256,7 +256,11 @@ struct LeaderboardStandingsView: View {
                             .foregroundStyle(theme.textTertiary)
                     }
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
+                if let standing = mine?.standing, !standing.byProvider.isEmpty {
+                    YourMix(byProvider: standing.byProvider, monitor: monitor)
+                        .frame(width: 112)
+                }
             }
         }
     }
@@ -332,5 +336,58 @@ struct LeaderboardStandingsView: View {
         case 1_000...: String(format: "%.1fK", Double(count) / 1e3)
         default: "\(count)"
         }
+    }
+}
+
+/// *YOUR MIX* — what your tokens were spent on: a stacked bar in each
+/// provider's own colour, and the three largest shares.
+private struct YourMix: View {
+    let byProvider: [String: Int]
+    let monitor: QuotaMonitor
+
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var parts: [(id: String, share: Double)] {
+        let total = Double(max(1, byProvider.values.reduce(0, +)))
+        return byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / total) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("YOUR MIX")
+                .font(.system(size: 9, weight: .bold, design: theme.fontDesign))
+                .tracking(1)
+                .foregroundStyle(theme.textTertiary)
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    ForEach(parts, id: \.id) { part in
+                        Rectangle()
+                            .fill(color(part.id))
+                            .frame(width: geo.size.width * part.share)
+                    }
+                }
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(theme.glassBorder, lineWidth: max(1, theme.cardBorderWidth * 0.6)))
+            }
+            .frame(height: 8)
+            ForEach(parts.prefix(3), id: \.id) { part in
+                HStack(spacing: 5) {
+                    Circle().fill(color(part.id)).frame(width: 6, height: 6)
+                    Text(leaderboardProviderName(part.id, in: monitor))
+                        .lineLimit(1)
+                    Spacer(minLength: 2)
+                    Text("\(Int((part.share * 100).rounded()))%")
+                        .fixedSize()
+                }
+                .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                .foregroundStyle(theme.textSecondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func color(_ id: String) -> Color {
+        ProviderVisualIdentityLookup.color(for: id, scheme: colorScheme)
     }
 }
