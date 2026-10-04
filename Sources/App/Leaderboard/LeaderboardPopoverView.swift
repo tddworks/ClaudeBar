@@ -206,6 +206,7 @@ struct LeaderboardStandingsView: View {
     let monitor: QuotaMonitor
 
     @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
     @State private var period: BoardPeriod = .sevenDays
     @State private var provider: String?
     @State private var mine: MemberSummary?
@@ -328,7 +329,7 @@ struct LeaderboardStandingsView: View {
             + (scrolls ? Self.rowHeight / 2 : 0)
         return ScrollViewReader { proxy in
             VStack(spacing: Self.rowSpacing) {
-                ScrollView(.vertical, showsIndicators: scrolls) {
+                ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: Self.rowSpacing) {
                         ForEach(top) { standing in
                             row(standing, isMe: standing.username == membership.username?.value)
@@ -366,7 +367,8 @@ struct LeaderboardStandingsView: View {
     }
 
     /// One line per place; its bar is the row's own background, filled in
-    /// proportion to the leader, so six places fit in half the height.
+    /// proportion to the leader and split by provider in each provider's own
+    /// colour, so a row says how much and what.
     private func row(_ standing: Standing, isMe: Bool) -> some View {
         let fraction = min(1, max(0, Double(standing.total) / Double(leader)))
         let shape = RoundedRectangle(cornerRadius: 8)
@@ -397,14 +399,26 @@ struct LeaderboardStandingsView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     shape.fill(theme.progressTrack.opacity(0.5))
-                    shape.fill(isMe ? AnyShapeStyle(theme.accentPrimary.opacity(0.35)) : AnyShapeStyle(theme.textTertiary.opacity(0.22)))
-                        .frame(width: geo.size.width * fraction)
+                    HStack(spacing: 0) {
+                        ForEach(mix(of: standing), id: \.provider) { part in
+                            Rectangle()
+                                .fill(ProviderVisualIdentityLookup.color(for: part.provider, scheme: colorScheme).opacity(0.38))
+                                .frame(width: geo.size.width * fraction * part.share)
+                        }
+                    }
+                    .clipShape(shape)
                 }
             }
         }
         .overlay(shape.stroke(isMe ? theme.accentPrimary : theme.glassBorder.opacity(theme.isOutlined ? 0.9 : 0.4),
                               lineWidth: isMe ? max(1.5, theme.cardBorderWidth * 0.8) : max(1, theme.cardBorderWidth * 0.6)))
         .accessibilityElement(children: .combine)
+    }
+
+    /// Each provider's share of a standing, largest first.
+    private func mix(of standing: Standing) -> [(provider: String, share: Double)] {
+        let total = max(1, standing.byProvider.values.reduce(0, +))
+        return standing.byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / Double(total)) }
     }
 
     // MARK: Footer
