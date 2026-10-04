@@ -31,6 +31,10 @@ public struct UsageLog: Sendable {
     /// Now, as this log's clock tells it.
     public var currentTime: Date { now() }
 
+    /// Whether these logs can say what a day cost: a price list, or a cost
+    /// the log writes itself. Without either every cost reads zero.
+    public var knowsCost: Bool { prices != nil || definition.records.cost != nil }
+
     /// One stat per day of `range`, every date present; a day with nothing
     /// is an empty day. Unreadable files are skipped.
     public func days(in range: DateRange) async -> [DailyUsageStat] {

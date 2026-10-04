@@ -90,6 +90,13 @@ struct CodexUsageHistoryTests {
         #expect(report.today.totalTokens == 220)
     }
 
+    @Test func `Codex's logs name no model, so its history has no cost to show`() throws {
+        #expect(try !history().knowsCost)
+        let claude = try #require(try Providers.builtIn("claude").usageHistory)
+        #expect(UsageHistory(log: DataSources.makeUsageLog(claude, scripts: Providers.builtInScripts,
+                                                           environment: { _ in nil }, homeDirectory: home)).knowsCost)
+    }
+
     @Test func `an added account reads its own Codex folder`() throws {
         let definition = try Providers.builtIn("codex")
         let account = try #require(definition.usageHistory(forAccount: ["codexHome": "/tmp/work-codex"]))

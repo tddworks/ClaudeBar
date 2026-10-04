@@ -5,7 +5,7 @@ import Domain
 import Infrastructure
 
 /// *SETTINGS → LEADERBOARD*: your name, whether you're shown, what you share,
-/// your own data, and leaving. Joining happens in the popover's tab.
+/// your own data, and leaving. Joining is here or in the popover's tab.
 struct LeaderboardPane: View {
     let leaderboard: Leaderboard
     let monitor: QuotaMonitor
@@ -28,12 +28,9 @@ struct LeaderboardPane: View {
                 sharingCard
                 dataCard
             } else {
-                SettingsCard {
-                    SettingsRow(title: "Not joined",
-                                subtitle: "Open the ClaudeBar menu and pick the Leaderboard tab to join with a username.") {
-                        EmptyView()
-                    }
-                }
+                // Joinable here too: Overview mode hides the popover's tabs.
+                LeaderboardJoinView(leaderboard: leaderboard, monitor: monitor)
+                    .frame(maxWidth: 520, alignment: .leading)
             }
             if let message {
                 Text(message)

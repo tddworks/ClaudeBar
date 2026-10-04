@@ -8,6 +8,8 @@ import Domain
 struct UsageHistoryChartView: View {
     let days: [DailyUsageStat]
     let delay: Double
+    /// Logs that can't be priced offer no Cost measure.
+    let showsCost: Bool
 
     @Environment(\.appTheme) private var theme
     @State private var measure: Measure
@@ -15,12 +17,15 @@ struct UsageHistoryChartView: View {
     @State private var isVisible: Bool
 
     /// - Parameter shown: starts visible instead of fading in — for a still image.
-    init(days: [DailyUsageStat], delay: Double, measure: Measure = .cost, shown: Bool = false) {
+    init(days: [DailyUsageStat], delay: Double, measure: Measure = .cost, showsCost: Bool = true, shown: Bool = false) {
         self.days = days
         self.delay = delay
+        self.showsCost = showsCost
         _measure = State(initialValue: measure)
         _isVisible = State(initialValue: shown)
     }
+
+    private var measures: [Measure] { showsCost ? Measure.allCases : Measure.allCases.filter { $0 != .cost } }
 
     enum Measure: String, CaseIterable, Identifiable {
         case cost = "Cost"
@@ -43,9 +48,9 @@ struct UsageHistoryChartView: View {
             header
             HStack(spacing: 4) {
                 if theme.isOutlined {
-                    InkSegmentedPicker(title: "Measure", options: Measure.allCases, selection: $measure, label: \.rawValue)
+                    InkSegmentedPicker(title: "Measure", options: measures, selection: $measure, label: \.rawValue)
                 } else {
-                    ForEach(Measure.allCases) { choice in
+                    ForEach(measures) { choice in
                         chip(choice)
                     }
                 }

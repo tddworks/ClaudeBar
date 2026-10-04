@@ -869,9 +869,13 @@ struct MenuContentView: View {
             if settings.showDailyUsageCards,
                let report = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.report ?? snapshot.dailyUsageReport {
                 let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
+                // Logs that can't be priced show no cost rather than a made-up $0.
+                let knowsCost = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.knowsCost ?? true
                 HStack(spacing: 10) {
-                    DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
-                        .frame(maxWidth: .infinity)
+                    if knowsCost {
+                        DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
+                            .frame(maxWidth: .infinity)
+                    }
                     DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
                         .frame(maxWidth: .infinity)
                 }
@@ -882,9 +886,10 @@ struct MenuContentView: View {
 
             // The same login's last thirty days, as a chart.
             if settings.showDailyUsageCards,
-               let days = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.lastThirtyDays,
-               !days.isEmpty {
-                UsageHistoryChartView(days: days, delay: Double(snapshot.quotas.count + 4) * 0.08)
+               let history = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory,
+               !history.lastThirtyDays.isEmpty {
+                UsageHistoryChartView(days: history.lastThirtyDays, delay: Double(snapshot.quotas.count + 4) * 0.08,
+                                      measure: history.knowsCost ? .cost : .tokens, showsCost: history.knowsCost)
             }
 
             // Show extension metrics cards (from extension probes)
