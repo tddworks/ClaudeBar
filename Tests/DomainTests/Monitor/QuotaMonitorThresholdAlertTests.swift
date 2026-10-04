@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import Mockable
 @testable import Domain
+@testable import Infrastructure
 
 /// Tests for user-configured below-threshold alerts flowing through
 /// QuotaMonitor's refresh path (issue #68).
