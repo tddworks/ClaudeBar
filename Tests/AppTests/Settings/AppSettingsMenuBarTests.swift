@@ -7,6 +7,21 @@ import Infrastructure
 @Suite @MainActor
 struct AppSettingsMenuBarTests {
     @Test
+    func `account label visibility survives settings reload`() {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("settings.json")
+        let settings = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        #expect(settings.menuBarAccountLabelsEnabled)
+        settings.menuBarAccountLabelsEnabled = false
+        let reloaded = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        #expect(!reloaded.menuBarAccountLabelsEnabled)
+        reloaded.menuBarAccountLabelsEnabled = true
+        let enabled = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        #expect(enabled.menuBarAccountLabelsEnabled)
+    }
+
+    @Test
     func `each provider keeps its quota settings when removed promoted and reloaded`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }

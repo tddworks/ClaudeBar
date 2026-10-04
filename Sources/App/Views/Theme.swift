@@ -10,6 +10,7 @@ enum ThemeMode: String, CaseIterable {
     case system
     case cli
     case christmas
+    case pop
 
     var displayName: String {
         switch self {
@@ -18,6 +19,7 @@ enum ThemeMode: String, CaseIterable {
         case .system: "System"
         case .cli: "CLI"
         case .christmas: "Christmas"
+        case .pop: "Pop"
         }
     }
 
@@ -28,6 +30,7 @@ enum ThemeMode: String, CaseIterable {
         case .system: "circle.lefthalf.filled"
         case .cli: "terminal.fill"
         case .christmas: "snowflake"
+        case .pop: "paintpalette.fill"
         }
     }
 
@@ -401,10 +404,28 @@ enum AppTheme {
 
 struct AdaptiveGlassCardStyle: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appTheme) private var theme
     var cornerRadius: CGFloat = 16
     var padding: CGFloat = 12
 
     func body(content: Content) -> some View {
+        if theme.isOutlined {
+            // A printed theme has no glass: its paper card, outline and shadow.
+            content
+                .padding(padding)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(theme.cardGradient)
+                        .themeShadow(theme)
+                        .overlay(RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
+                )
+        } else {
+            glass(content)
+        }
+    }
+
+    private func glass(_ content: Content) -> some View {
         content
             .padding(padding)
             .background(
@@ -538,22 +559,30 @@ extension View {
 
 struct BadgeStyle: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appTheme) private var theme
     let color: Color
+
+    /// An outlined theme (Pop) draws badges as solid outlined chips.
+    private var isOutlined: Bool { theme.cardBorderWidth > 1 }
 
     func body(content: Content) -> some View {
         content
             .font(AppTheme.captionFont(size: 8))
-            .foregroundStyle(colorScheme == .dark ? .white : .white)
+            .foregroundStyle(theme.textOnStatus)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color.opacity(colorScheme == .dark ? 0.9 : 0.85))
+                RoundedRectangle(cornerRadius: isOutlined ? 999 : 4)
+                    .fill(isOutlined ? color : color.opacity(colorScheme == .dark ? 0.9 : 0.85))
                     .shadow(
-                        color: colorScheme == .light ? color.opacity(0.3) : .clear,
+                        color: colorScheme == .light && !isOutlined ? color.opacity(0.3) : .clear,
                         radius: 2,
                         y: 1
                     )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: isOutlined ? 999 : 4)
+                    .stroke(isOutlined ? theme.glassBorder : .clear, lineWidth: theme.cardBorderWidth * 0.6)
             )
             .fixedSize()
     }
@@ -599,222 +628,6 @@ extension View {
     }
 }
 
-// MARK: - Provider Colors (by ID)
-// Static visual identity based on provider ID - no registry needed.
-
-extension AppTheme {
-    /// Get provider theme color by ID
-    static func providerColor(for providerId: String, scheme: ColorScheme) -> Color {
-        switch providerId {
-        case "claude":
-            return coralAccent(for: scheme)
-        case "codex":
-            return tealBright(for: scheme)
-        case "gemini":
-            return goldenGlow(for: scheme)
-        case "copilot":
-            return scheme == .dark
-                ? Color(red: 0.38, green: 0.55, blue: 0.93)
-                : Color(red: 0.26, green: 0.43, blue: 0.82)
-        case "antigravity":
-            return scheme == .dark
-                ? Color(red: 0.72, green: 0.35, blue: 0.85)
-                : Color(red: 0.58, green: 0.22, blue: 0.72)
-        case "zai":
-            return scheme == .dark
-                ? Color(red: 0.35, green: 0.60, blue: 1.0)
-                : Color(red: 0.23, green: 0.51, blue: 0.96)
-        case "bedrock":
-            // AWS orange color
-            return scheme == .dark
-                ? Color(red: 1.0, green: 0.60, blue: 0.20)
-                : Color(red: 0.92, green: 0.47, blue: 0.07)
-        case "minimax":
-            // MiniMax brand pink-orange
-            return scheme == .dark
-                ? Color(red: 0.91, green: 0.27, blue: 0.42)
-                : Color(red: 0.82, green: 0.20, blue: 0.35)
-        case "deepseek":
-            // DeepSeek brand blue
-            return scheme == .dark
-                ? Color(red: 0.42, green: 0.52, blue: 1.0)
-                : Color(red: 0.23, green: 0.35, blue: 0.92)
-        case "alibaba":
-            // Alibaba Cloud orange
-            return scheme == .dark
-                ? Color(red: 1.0, green: 0.47, blue: 0.0)
-                : Color(red: 0.90, green: 0.38, blue: 0.0)
-        case "opencode-go":
-            return scheme == .dark
-                ? Color(red: 0.52, green: 0.36, blue: 1.0)
-                : Color(red: 0.42, green: 0.28, blue: 1.0)
-        case "omp":
-            return scheme == .dark
-                ? Color(red: 0.30, green: 0.85, blue: 0.55)
-                : Color(red: 0.16, green: 0.62, blue: 0.38)
-        case "grok":
-            return scheme == .dark
-                ? Color(white: 0.92)
-                : Color(white: 0.12)
-        case "commandcode":
-            return scheme == .dark
-                ? Color(red: 0.83, green: 1.0, blue: 0.29)
-                : Color(red: 0.07, green: 0.07, blue: 0.07)
-        case "vercel-gateway":
-            // Vercel brand black/white monochrome
-            return scheme == .dark
-                ? Color(white: 0.92)
-                : Color(white: 0.08)
-        default:
-            return purpleVibrant(for: scheme)
-        }
-    }
-
-    /// Get provider gradient by ID
-    static func providerGradient(for providerId: String, scheme: ColorScheme) -> LinearGradient {
-        let primaryColor = providerColor(for: providerId, scheme: scheme)
-        let secondaryColor: Color
-
-        switch providerId {
-        case "claude":
-            secondaryColor = pinkHot(for: scheme)
-        case "codex":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.25, green: 0.65, blue: 0.85)
-                : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "gemini":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.95, green: 0.55, blue: 0.35)
-                : Color(red: 0.85, green: 0.45, blue: 0.25)
-        case "copilot":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.55, green: 0.40, blue: 0.90)
-                : Color(red: 0.45, green: 0.30, blue: 0.80)
-        case "antigravity":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.45, green: 0.25, blue: 0.75)
-                : Color(red: 0.35, green: 0.15, blue: 0.65)
-        case "zai":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.30, green: 0.45, blue: 0.85)
-                : Color(red: 0.20, green: 0.35, blue: 0.75)
-        case "bedrock":
-            // AWS orange gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.85, green: 0.40, blue: 0.15)
-                : Color(red: 0.75, green: 0.30, blue: 0.05)
-        case "minimax":
-            // MiniMax pink-to-orange gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.96, green: 0.53, blue: 0.24)
-                : Color(red: 0.86, green: 0.43, blue: 0.14)
-        case "deepseek":
-            // DeepSeek blue gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.22, green: 0.28, blue: 0.85)
-                : Color(red: 0.15, green: 0.20, blue: 0.75)
-        case "alibaba":
-            // Alibaba orange-to-red gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.85, green: 0.25, blue: 0.0)
-                : Color(red: 0.75, green: 0.20, blue: 0.0)
-        case "opencode-go":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.36, green: 0.20, blue: 0.90)
-                : Color(red: 0.30, green: 0.15, blue: 0.80)
-        case "omp":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.16, green: 0.62, blue: 0.42)
-                : Color(red: 0.10, green: 0.48, blue: 0.30)
-        case "grok":
-            secondaryColor = scheme == .dark
-                ? Color(white: 0.60)
-                : Color(white: 0.40)
-        case "commandcode":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.55, green: 0.75, blue: 0.12)
-                : Color(red: 0.25, green: 0.25, blue: 0.25)
-        case "vercel-gateway":
-            secondaryColor = scheme == .dark
-                ? Color(white: 0.55)
-                : Color(white: 0.45)
-        default:
-            return accentGradient(for: scheme)
-        }
-
-        return LinearGradient(
-            colors: [primaryColor, secondaryColor],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    /// Get provider icon asset name by ID
-    static func providerIconAssetName(for providerId: String) -> String {
-        switch providerId {
-        case "claude": return "ClaudeIcon"
-        case "codex": return "CodexIcon"
-        case "gemini": return "GeminiIcon"
-        case "copilot": return "CopilotIcon"
-        case "antigravity": return "AntigravityIcon"
-        case "zai": return "ZaiIcon"
-        case "bedrock": return "BedrockIcon"
-        case "minimax": return "MiniMaxIcon"
-        case "deepseek": return "DeepSeekIcon"
-        case "alibaba": return "AlibabaIcon"
-        case "opencode-go": return "OpenCodeIcon"
-        case "omp": return "OmpIcon"
-        case "grok": return "GrokIcon"
-        case "commandcode": return "CommandCodeIcon"
-        case "vercel-gateway": return "VercelIcon"
-        default: return "QuestionIcon"
-        }
-    }
-
-    /// Get provider display name by ID
-    static func providerName(for providerId: String) -> String {
-        switch providerId {
-        case "claude": return "Claude"
-        case "codex": return "Codex"
-        case "gemini": return "Gemini"
-        case "copilot": return "GitHub Copilot"
-        case "antigravity": return "Antigravity"
-        case "zai": return "Z.ai"
-        case "bedrock": return "AWS Bedrock"
-        case "minimax": return "MiniMax"
-        case "deepseek": return "DeepSeek"
-        case "alibaba": return "Alibaba"
-        case "opencode-go": return "OpenCode Go"
-        case "omp": return "Oh My Pi"
-        case "grok": return "Grok"
-        case "commandcode": return "Command Code"
-        case "vercel-gateway": return "Vercel Gateway"
-        default: return providerId.capitalized
-        }
-    }
-
-    /// Get provider SF symbol icon by ID
-    static func providerSymbolIcon(for providerId: String) -> String {
-        switch providerId {
-        case "claude": return "brain.fill"
-        case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "gemini": return "sparkles"
-        case "copilot": return "chevron.left.forwardslash.chevron.right"
-        case "antigravity": return "wand.and.stars"
-        case "zai": return "z.square.fill"
-        case "bedrock": return "cloud.fill" // AWS cloud icon
-        case "minimax": return "waveform"
-        case "deepseek": return "d.square.fill"
-        case "alibaba": return "cloud.fill"
-        case "opencode-go": return "square.stack.3d.up.fill"
-        case "omp": return "terminal.fill"
-        case "grok": return "line.diagonal"
-        case "commandcode": return "command"
-        case "vercel-gateway": return "triangle.fill"
-        default: return "questionmark.circle.fill"
-        }
-    }
-}
 
 // MARK: - Status Theme Colors (Adaptive)
 
@@ -976,7 +789,8 @@ struct ThemeSwitcherButton: View {
         case .dark: themeMode = .system
         case .system: themeMode = .cli
         case .cli: themeMode = .christmas
-        case .christmas: themeMode = .light
+        case .christmas: themeMode = .pop
+        case .pop: themeMode = .light
         }
     }
 }
@@ -994,6 +808,7 @@ struct ThemeProvider: ViewModifier {
         case .system: systemColorScheme
         case .cli: .dark  // CLI uses dark mode base
         case .christmas: .dark  // Christmas uses dark mode base
+        case .pop: .light  // Pop is cream paper
         }
     }
 

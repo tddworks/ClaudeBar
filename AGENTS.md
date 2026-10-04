@@ -2,14 +2,14 @@
 
 Rules for AI coding agents (Claude Code, Codex, Cursor, …) in this repo. This is the only agent-instructions file; there is no `CLAUDE.md`. Everything else is one link away: [docs index](docs/README.md) · [architecture](docs/architecture/ARCHITECTURE.md) · [contributing](CONTRIBUTING.md) · [docs design](docs/documentation-design/README.md).
 
-ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files through one probe per provider (20 built in, one folder each in `Sources/Domain/Provider/`, registered in `ClaudeBarApp.init()`), plus user extensions from `~/.claudebar/extensions/`.
+ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files for 20 built-in providers, registered in `ClaudeBarApp.init()`, plus user extensions from `~/.claudebar/extensions/`. The code is moving from three layers to modules ([MODULAR_DESIGN.md](docs/architecture/MODULAR_DESIGN.md)). Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider`; what one needs that the engine can't say yet becomes a general rule in `DataSources`.
 
 ## Build & test
 
 ```bash
 tuist install && tuist generate          # generated *.xcodeproj / *.xcworkspace are git-ignored
-tuist test                               # DomainTests, InfrastructureTests, AppTests, AcceptanceTests
-tuist test InfrastructureTests           # one target
+tuist test                               # every target: module tests, DomainTests, InfrastructureTests, AppTests, AcceptanceTests
+tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
   -destination 'platform=macOS,arch=arm64' -only-testing:DomainTests   # bypasses Tuist's result cache
 ```
@@ -20,17 +20,24 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 ## Architecture
 
-| Layer | Location | Holds |
-|---|---|---|
-| Domain | `Sources/Domain/` | Rich models, `QuotaMonitor`, repository protocols. No I/O |
-| Infrastructure | `Sources/Infrastructure/` | Probes, storage, network, adapters |
-| App | `Sources/App/` | SwiftUI views that read the domain directly |
+| Where | Holds |
+|---|---|
+| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing |
+| `Modules/DataSources` | `DataSource` (credential lookup → fetch → mapping) and its workers: OAuth, HTTP, JSON-RPC, CLI, JSON/text/script mapping |
+| `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
+| `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
+| `Modules/Diagnostics` | `AppLog` |
+| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions. Re-exports the modules |
+| `Sources/Infrastructure` | storage, notifications, hooks, Claude's guest-pass source |
+| `Sources/App` | SwiftUI views that read the domain directly; the composition root |
+
+- **Modules never `import Domain`**, and no module's Swift names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `DataSources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md).
 
 - **`QuotaMonitor` is the single source of truth** for provider state. No ViewModel or AppState layer; views consume the domain.
-- **Settings follow ISP**: providers with their own config take a sub-protocol of `ProviderSettingsRepository` (read the provider's initializer to see which). All settings persist through `JSONSettingsRepository` to `~/.claudebar/settings.json` → [docs/settings.md](docs/settings.md).
+- **Settings**: a provider's settings are its definition's `settings`, read with the generic `value`/`dataSourceKind`/`isOn` of `ProviderSettingsRepository`; a value an old card saved elsewhere is read through the compatibility tables in `JSONSettingsRepository` and `ProviderVault`. All settings persist through `JSONSettingsRepository` to `~/.claudebar/settings.json` → [docs/settings.md](docs/settings.md).
 - **Notify! and session hooks are destinations, not providers**: they get standalone repositories beside `HookSettingsRepository`, never under `ProviderSettingsRepository` → [features/notify/design.md](docs/features/notify/design.md).
 - **Themes** implement `AppThemeProvider` and register in `ThemeRegistry` → [THEME_DESIGN.md](docs/architecture/THEME_DESIGN.md). Card backgrounds use `theme.cardGradient` / `theme.glassBorder`.
-- Details and data flow: [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
+- Details and data flow: [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) (the legacy layers) and [CANONICAL_MODEL.md](docs/architecture/CANONICAL_MODEL.md) (the words).
 
 ## TDD is the default
 
@@ -46,7 +53,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 ## Gotchas
 
-- Probes run CLIs in a dedicated working directory so folder-trust prompts don't block them → [providers/claude/design.md](docs/providers/claude/design.md)
+- CLI fetches run in a dedicated working directory (`ClaudeBar/Probe`, a name kept because CLIs already trust it) so folder-trust prompts don't block them → [providers/claude/design.md](docs/providers/claude/design.md)
 - Codex RPC: keep `resetsAt` and `windowDurationMins`; the primary window can be the weekly one → [providers/codex/design.md](docs/providers/codex/design.md)
 - An empty `pgrep` result surfaces as a runner timeout, not "not found" → [providers/antigravity/design.md](docs/providers/antigravity/design.md)
 - A key exported only in the user's shell profile is invisible when the app starts from Finder or at login → provider Gotchas

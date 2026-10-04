@@ -12,7 +12,9 @@ public struct CLITheme: AppThemeProvider {
     public let displayName = "CLI"
     public let icon = "terminal.fill"
     public let subtitle: String? = "Terminal"
-    public let statusBarIconName: String? = "terminal.fill"
+    /// The outline of the session glyph (`terminal.fill`), so the menu bar
+    /// shows one terminal that fills in while Claude Code is working.
+    public let statusBarIconName: String? = "terminal"
 
     // MARK: - CLI-Specific Colors
 

@@ -1,0 +1,69 @@
+{
+  "profile": {
+    "id": "grok",
+    "name": "Grok",
+    "links": { "dashboard": "https://grok.com/?_s=usage", "status": "https://status.x.ai" },
+    "look": {
+      "symbol": "line.diagonal",
+      "icon": "GrokIcon",
+      "color": { "light": [0.12, 0.12, 0.12], "dark": [0.92, 0.92, 0.92] },
+      "gradientEnd": { "light": [0.4, 0.4, 0.4], "dark": [0.6, 0.6, 0.6] }
+    }
+  },
+  "cli": "grok",
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "directory", "label": "Signed-in Grok Folder", "scope": "account", "kind": { "path": { "mustExist": true } } }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your Grok credits with the `grok` CLI's login",
+      "credential": {
+        "jsonFile": {
+          "path": "~/.grok/auth.json",
+          "token": "$.key",
+          "refreshToken": "$.refresh_token",
+          "email": "$.email",
+          "expiresAt": "$.expires_at",
+          "issuer": "$.oidc_issuer",
+          "clientId": "$.oidc_client_id",
+          "record": { "prefer": "refreshToken", "latest": "expiresAt" },
+          "defaults": { "issuer": "https://auth.x.ai" }
+        },
+        "refresh": {
+          "oauth2": {
+            "tokenURL": "{{issuer}}/oauth2/token",
+            "clientId": "{{clientId}}",
+            "onStatus": [401, 403],
+            "hint": "Run `grok login` in terminal to log in again.",
+            "dueWhen": { "unit": "iso8601", "skew": 300, "missingIsDue": false }
+          }
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://cli-chat-proxy.grok.com/v1/billing?format=credits",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json", "x-grok-client-mode": "build" },
+          "timeout": 15,
+          "acceptedStatuses": [200]
+        }
+      },
+      "mapping": { "script": { "file": "grok-billing.js", "credential": ["email"] } },
+      "errors": {
+        "http.401": { "sessionExpired": "Run `grok login` in terminal to log in again." },
+        "http.403": { "sessionExpired": "Run `grok login` in terminal to log in again." }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "requiresFiles": ["{{account.directory}}/auth.json"],
+        "credential": { "jsonFile": { "path": "{{account.directory}}/auth.json" } }
+      }
+    }
+  }
+}

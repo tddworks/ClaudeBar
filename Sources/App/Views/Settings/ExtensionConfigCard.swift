@@ -39,7 +39,7 @@ struct ExtensionConfigCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
+                .fill(theme.cardGradient).themeShadow(theme)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(
@@ -159,17 +159,14 @@ struct ExtensionConfigCard: View {
     }
 
     private func toggleView(for field: ConfigField) -> some View {
-        Toggle(isOn: Binding(
+        SettingsSwitch(isOn: Binding(
             get: {
                 readValue(for: field) == "true"
             },
             set: { newValue in
                 writeValue(newValue ? "true" : "false", for: field)
             }
-        )) {
-            EmptyView()
-        }
-        .toggleStyle(.switch)
+        ))
         .tint(theme.accentPrimary)
     }
 
@@ -189,7 +186,7 @@ struct ExtensionConfigCard: View {
             .fill(theme.glassBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(theme.glassBorder, lineWidth: 1)
+                    .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
             )
     }
 

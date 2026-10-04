@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// A fully composed menu bar label: the rendered text plus the worst-case

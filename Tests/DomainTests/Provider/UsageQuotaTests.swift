@@ -39,7 +39,8 @@ struct UsageQuotaTests {
             percentRemaining: 35,
             quotaType: .weekly,
             providerId: "claude",
-            resetsAt: resetDate
+            resetsAt: resetDate,
+            windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
         // Then
@@ -56,7 +57,8 @@ struct UsageQuotaTests {
             percentRemaining: 35,
             quotaType: .weekly,
             providerId: "claude",
-            resetsAt: resetDate
+            resetsAt: resetDate,
+            windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
         // Then
@@ -73,7 +75,8 @@ struct UsageQuotaTests {
             percentRemaining: 35,
             quotaType: .weekly,
             providerId: "claude",
-            resetsAt: resetDate
+            resetsAt: resetDate,
+            windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
         // Then
@@ -90,7 +93,8 @@ struct UsageQuotaTests {
             percentRemaining: 35,
             quotaType: .weekly,
             providerId: "claude",
-            resetsAt: resetDate
+            resetsAt: resetDate,
+            windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
         // Then
@@ -115,42 +119,42 @@ struct UsageQuotaTests {
     @Test
     func `compactResetTime shows days when over a day remains`() {
         let resetDate = Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600 + 30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "2d")
     }
 
     @Test
     func `compactResetTime shows hours and minutes when under a day`() {
         let resetDate = Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "3:58")
     }
 
     @Test
     func `compactResetTime pads minutes to two digits`() {
         let resetDate = Date().addingTimeInterval(5.0 * 3600 + 5.0 * 60 + 30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "5:05")
     }
 
     @Test
     func `compactResetTime shows whole hours with zero minutes`() {
         let resetDate = Date().addingTimeInterval(3.0 * 3600 + 30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "3:00")
     }
 
     @Test
     func `compactResetTime shows minutes when under an hour`() {
         let resetDate = Date().addingTimeInterval(45.0 * 60 + 30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "45m")
     }
 
     @Test
     func `compactResetTime shows soon when under a minute`() {
         let resetDate = Date().addingTimeInterval(30)
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude", resetsAt: resetDate, windowDuration: QuotaType.weekly.conventionalWindow.seconds)
         #expect(quota.compactResetTime == "soon")
     }
 
@@ -169,7 +173,7 @@ struct UsageQuotaTests {
 
         // When & Then
         #expect(quotaType.displayName == "Session")
-        #expect(quotaType.duration == .hours(5))
+        #expect(quotaType.conventionalWindow == .hours(5))
     }
 
     @Test
@@ -179,7 +183,7 @@ struct UsageQuotaTests {
 
         // When & Then
         #expect(quotaType.displayName == "Weekly")
-        #expect(quotaType.duration == .days(7))
+        #expect(quotaType.conventionalWindow == .days(7))
     }
 
     @Test
@@ -357,7 +361,8 @@ struct UsageQuotaTests {
             percentRemaining: 43,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: Date().addingTimeInterval(1.25 * 3600)
+            resetsAt: Date().addingTimeInterval(1.25 * 3600),
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         let expectedRemaining = quota.expectedProgressPercent(mode: .remaining)!
         let expectedUsed = quota.expectedProgressPercent(mode: .used)!
@@ -498,7 +503,8 @@ struct UsageQuotaTests {
             percentRemaining: 30,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         let rate = quota.burnRate!
         #expect(rate > 2.5 && rate < 3.1) // ~2.8, allow for test execution time
@@ -512,7 +518,8 @@ struct UsageQuotaTests {
             percentRemaining: 75,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         let rate = quota.burnRate!
         #expect(rate > 0.4 && rate < 0.6) // ~0.5
@@ -528,7 +535,8 @@ struct UsageQuotaTests {
             percentRemaining: 43,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
         #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .healthy)
     }
@@ -565,7 +573,8 @@ struct UsageQuotaTests {
             percentRemaining: 50,
             quotaType: .timeLimit("Anything"),
             providerId: "omp",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.timeLimit("Anything").conventionalWindow.seconds
         )
         let elapsed = quota.percentTimeElapsed!
         #expect(elapsed > 49 && elapsed < 51)
@@ -618,9 +627,9 @@ struct UsageQuotaTests {
     func `sharedResetDescription returns countdown when all quotas share a reset`() {
         let resetsAt = Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600 + 30.0 * 60 + 30)
         let quotas = [
-            UsageQuota(percentRemaining: 0, quotaType: .weekly, providerId: "claude", resetsAt: resetsAt),
-            UsageQuota(percentRemaining: 13, quotaType: .timeLimit("Build"), providerId: "claude", resetsAt: resetsAt),
-            UsageQuota(percentRemaining: 93, quotaType: .timeLimit("Chat"), providerId: "claude", resetsAt: resetsAt)
+            UsageQuota(percentRemaining: 0, quotaType: .weekly, providerId: "claude", resetsAt: resetsAt, windowDuration: QuotaType.weekly.conventionalWindow.seconds),
+            UsageQuota(percentRemaining: 13, quotaType: .timeLimit("Build"), providerId: "claude", resetsAt: resetsAt, windowDuration: QuotaType.timeLimit("Build").conventionalWindow.seconds),
+            UsageQuota(percentRemaining: 93, quotaType: .timeLimit("Chat"), providerId: "claude", resetsAt: resetsAt, windowDuration: QuotaType.timeLimit("Chat").conventionalWindow.seconds)
         ]
 
         #expect(quotas.sharedResetDescription() == "Resets in 2d 5h 30m")
@@ -630,8 +639,8 @@ struct UsageQuotaTests {
     func `sharedResetDescription returns countdown when resets are within 60 seconds`() {
         let base = Date().addingTimeInterval(3.0 * 3600 + 15.0 * 60 + 30)
         let quotas = [
-            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: base),
-            UsageQuota(percentRemaining: 20, quotaType: .timeLimit("Build"), providerId: "claude", resetsAt: base.addingTimeInterval(30))
+            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: base, windowDuration: QuotaType.weekly.conventionalWindow.seconds),
+            UsageQuota(percentRemaining: 20, quotaType: .timeLimit("Build"), providerId: "claude", resetsAt: base.addingTimeInterval(30), windowDuration: QuotaType.timeLimit("Build").conventionalWindow.seconds)
         ]
 
         #expect(quotas.sharedResetDescription() == "Resets in 3h 15m")
@@ -642,8 +651,8 @@ struct UsageQuotaTests {
         let weekly = Date().addingTimeInterval(3 * 86400)
         let session = Date().addingTimeInterval(4 * 3600)
         let quotas = [
-            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: weekly),
-            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude", resetsAt: session)
+            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: weekly, windowDuration: QuotaType.weekly.conventionalWindow.seconds),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude", resetsAt: session, windowDuration: QuotaType.session.conventionalWindow.seconds)
         ]
 
         #expect(quotas.sharedResetDescription() == nil)
@@ -656,7 +665,8 @@ struct UsageQuotaTests {
                 percentRemaining: 10,
                 quotaType: .weekly,
                 providerId: "claude",
-                resetsAt: Date().addingTimeInterval(86400)
+                resetsAt: Date().addingTimeInterval(86400),
+                windowDuration: QuotaType.weekly.conventionalWindow.seconds
             )
         ]
 
@@ -667,7 +677,7 @@ struct UsageQuotaTests {
     func `sharedResetDescription is nil when any quota lacks resetsAt`() {
         let resetsAt = Date().addingTimeInterval(86400)
         let quotas = [
-            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: resetsAt),
+            UsageQuota(percentRemaining: 10, quotaType: .weekly, providerId: "claude", resetsAt: resetsAt, windowDuration: QuotaType.weekly.conventionalWindow.seconds),
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude")
         ]
 

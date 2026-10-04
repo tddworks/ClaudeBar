@@ -310,8 +310,15 @@ Scenario: Disabled provider does not affect overall status
 
 **#24 — Dashboard opens correct URL per provider**
 ```
-Scenario: Open Claude dashboard
+Scenario: Open Claude dashboard on a subscription
   Given Claude is the selected provider
+  And the account is on a subscription plan (Max, Pro, Team, …) or its tier is not yet known
+  When the user clicks Dashboard
+  Then the browser opens "https://claude.ai/new#settings/usage"
+
+Scenario: Open Claude dashboard on a pay-as-you-go API account
+  Given Claude is the selected provider
+  And the account tier is API
   When the user clicks Dashboard
   Then the browser opens "https://console.anthropic.com/settings/billing"
 
@@ -438,10 +445,10 @@ Scenario: API mode unavailable without credentials
 |---|----------|
 | 35 | User enters GitHub PAT + username → Copilot quota fetched via API |
 | 36 | User sets plan tier (Free/Pro/Business/Enterprise/Pro+) → adjusts monthly limit |
-| 37 | User enables manual override → enters usage count or percentage |
-| 38 | API returns empty → warning banner suggests manual entry |
-| 39 | "Save & Test Connection" validates token |
-| 40 | Manual usage auto-clears when billing period changes |
+| 37 | User enters this month's usage (count or percentage) → used while GitHub reports none |
+| 38 | API returns no Copilot items → nothing used yet, or the entered usage |
+| 39 | Unlimited or no AI-credits plan → the plan, no card |
+| 40 | An entered usage is never used over GitHub's own numbers |
 
 ### BDD Scenarios
 
@@ -453,8 +460,8 @@ Scenario: Valid GitHub token
   Then premium request usage is displayed
 
 Scenario: Token from environment variable
-  Given the user sets GITHUB_TOKEN as the auth env var
-    And GITHUB_TOKEN is set in the environment
+  Given the user names MY_GH as the environment variable (COPILOT_TOKEN when none is named)
+    And MY_GH is set in ClaudeBar's environment
   When the probe authenticates
   Then the environment variable token is used
 ```
@@ -462,28 +469,27 @@ Scenario: Token from environment variable
 **#37 — Manual usage override**
 ```
 Scenario: Enter request count
-  Given the user enables manual override
-  When they enter "99" as the usage value
+  Given GitHub reports no Copilot usage
+  When they enter "99" as the usage this month
     And the monthly limit is 50 (Free/Pro)
   Then the quota shows -98% remaining
 
 Scenario: Enter percentage
-  Given the user enables manual override
-  When they enter "198%" as the usage value
+  Given GitHub reports no Copilot usage
+  When they enter "198%" as the usage this month
   Then the quota shows -98% remaining
 ```
 
-**#40 — Manual usage auto-clears on period change**
+**#40 — GitHub's numbers win**
 ```
-Scenario: Billing period rolls over
-  Given the user entered manual usage in January
-  When the billing period changes to February
-  Then the manual usage value is cleared
+Scenario: Usage entered, and GitHub reports some
+  Given the user entered "40" as the usage this month
+  When GitHub reports 15 AI credits used
+  Then the quota shows 15/50 AI credits
 ```
 
 ### Inner TDD Tests (existing)
-- `CopilotUsageProbeTests.*`
-- `CopilotProviderTests.*`
+- `CopilotDefinitionTests.*`
 
 ---
 
@@ -523,10 +529,8 @@ Scenario: No config and no env var
 ```
 
 ### Inner TDD Tests (existing)
-- `ZaiUsageProbeTests.*`
-- `ZaiUsageProbeParsingTests.*`
-- `ZaiUsageProbeEnvVarFallbackTests.*`
-- `ZaiProviderTests.*`
+- `ZaiDefinitionTests.*`
+- `ZaiExecutionTests.*`
 
 ---
 
@@ -567,7 +571,7 @@ Scenario: Budget configured
 ```
 
 ### Inner TDD Tests (existing)
-- `BedrockUsageProbeTests.*`
+- `BedrockDefinitionTests.*`
 
 ---
 

@@ -1,0 +1,50 @@
+{
+  "profile": {
+    "id": "kiro",
+    "name": "Kiro",
+    "links": { "dashboard": "https://app.kiro.dev/account/usage" },
+    "look": {
+      "symbol": "wand.and.stars.inverse",
+      "icon": "KiroIcon",
+      "color": { "light": [0.45, 0.25, 0.75], "dark": [0.55, 0.35, 0.85] },
+      "gradientEnd": { "light": [0.6, 0.35, 0.85], "dark": [0.7, 0.45, 0.95] }
+    }
+  },
+  "cli": "kiro-cli",
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "home", "label": "Signed-in Home Folder", "scope": "account", "kind": { "path": { "mustExist": true } } }
+  ],
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Asks `kiro-cli` for /usage",
+      "fetch": { "command": { "cli": "kiro-cli", "input": "/usage\n/quit\n", "timeout": 30 } },
+      "mapping": { "script": { "file": "kiro-usage.js" } },
+      "errors": { "cli.missing": { "cliNotFound": "kiro-cli" } }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "cli": {
+        "fetch": {
+          "command": {
+            "environment": {
+              "unset": ["KIRO_API_KEY"],
+              "set": {
+                "HOME": "{{account.home}}",
+                "KIRO_HOME": "{{account.home}}/.kiro",
+                "XDG_CONFIG_HOME": "{{account.home}}/.config",
+                "XDG_DATA_HOME": "{{account.home}}/.local/share",
+                "XDG_CACHE_HOME": "{{account.home}}/.cache"
+              }
+            }
+          }
+        },
+        "requiresFiles": ["{{account.home}}"]
+      }
+    }
+  }
+}

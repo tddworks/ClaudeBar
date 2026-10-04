@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Mockable
+import Providers
 @testable import Domain
 @testable import Infrastructure
 
@@ -44,12 +45,8 @@ struct QuotaDisplaySpec {
         @Test
         func `account email and tier are displayed after refresh`() async throws {
             // Given — CLI returns output with account metadata
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
+            let world = try ClaudeConfigSpec.World()
+            world.cliAnswers("""
                 Claude Code v1.0.27
 
                 Current session
@@ -59,13 +56,10 @@ struct QuotaDisplaySpec {
                 Account: user@example.com
                 Organization: Acme Corp
                 Login method: Claude Max
-                """, exitCode: 0))
+                """)
 
-            let mockResolver = MockAccountInfoResolving()
-            given(mockResolver).resolve().willReturn(Domain.AccountInfo(email: "user@example.com", organization: "Acme Corp"))
-
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: mockResolver)
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
+            try world.account(email: "user@example.com", organization: "Acme Corp")
+            let claude = try world.claude()
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()
@@ -102,12 +96,8 @@ struct QuotaDisplaySpec {
         @Test
         func `healthy session and warning weekly quotas display with correct status`() async throws {
             // Given — CLI returns 65% session (healthy) and 35% weekly (warning)
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
+            let world = try ClaudeConfigSpec.World()
+            world.cliAnswers("""
                 Current session
                 ████████████████░░░░ 65% left
                 Resets in 2h 15m
@@ -118,10 +108,9 @@ struct QuotaDisplaySpec {
 
                 Account: user@example.com
                 Login method: Claude Max
-                """, exitCode: 0))
+                """)
 
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
+            let claude = try world.claude()
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()
@@ -147,19 +136,14 @@ struct QuotaDisplaySpec {
         @Test
         func `exhausted session shows depleted status`() async throws {
             // Given — 0% left
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
+            let world = try ClaudeConfigSpec.World()
+            world.cliAnswers("""
                 Current session
                 ░░░░░░░░░░░░░░░░░░░░ 0% left
                 Resets in 30m
-                """, exitCode: 0))
+                """)
 
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
+            let claude = try world.claude()
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()
@@ -228,7 +212,7 @@ struct QuotaDisplaySpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()
@@ -246,14 +230,14 @@ struct QuotaDisplaySpec {
             // Given — API returns 401
             let probe = MockUsageProbe()
             given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willThrow(ProbeError.sessionExpired())
+            given(probe).probe().willThrow(UsageError.sessionExpired())
 
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
                 clock: TestClock()

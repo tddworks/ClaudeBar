@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 import Observation
 
@@ -22,6 +25,10 @@ public final class ObservationRenderSync<Content: Equatable> {
     private let render: @MainActor (Content) -> Void
     private var lastRendered: Content?
     private var isStarted = false
+    /// Identifies the one registration allowed to re-arm. A registration is
+    /// only torn down when it fires, so any older one still armed must not
+    /// start a second re-arm chain when it does.
+    private var armedGeneration = 0
 
     public init(
         read: @escaping @MainActor () -> Content,
@@ -46,21 +53,27 @@ public final class ObservationRenderSync<Content: Equatable> {
 
     /// Re-renders the current value even if unchanged — e.g. after system
     /// wake, when the menu bar may have been repainted with stale content.
+    ///
+    /// Does not arm a new observation registration: the menu bar calls this
+    /// on every background refresh and every appearance change, and each
+    /// extra registration stayed armed until the next observed change, then
+    /// re-armed itself — memory grew without bound (#313). The registration
+    /// from the last real `sync` already catches genuine state changes.
     public func renderNow() {
         guard isStarted else { return }
         lastRendered = nil
-        sync()
+        refreshNow()
     }
 
     /// Re-reads and renders *only if the value changed*, without arming a new
     /// observation registration.
     ///
     /// For callers that drive their own tick (the menu bar's countdown ticks
-    /// twice a second) and must not go through `renderNow`. Each `sync` arms a
-    /// fresh `withObservationTracking` registration, and a registration is only
-    /// torn down when it fires — so a ticking caller would accumulate one per
-    /// tick, all of them armed on the same properties, until some observed
-    /// value finally changed and fired the whole backlog at once.
+    /// twice a second). Only `sync` arms a `withObservationTracking`
+    /// registration, and a registration is only torn down when it fires — so
+    /// arming from a ticking caller would accumulate one per tick, all of them
+    /// armed on the same properties, until some observed value finally changed
+    /// and fired the whole backlog at once.
     ///
     /// Skipping the re-arm is safe: the registration from the last real `sync`
     /// is still armed and still catches genuine state changes. Reading the
@@ -76,13 +89,16 @@ public final class ObservationRenderSync<Content: Equatable> {
 
     private func sync() {
         guard isStarted else { return }
+        armedGeneration += 1
+        let generation = armedGeneration
         let content = withObservationTracking {
             read()
         } onChange: { [weak self] in
             // onChange fires on willSet; hop to the next main-actor turn so
             // the re-read below observes the *new* value, then re-arm.
             Task { @MainActor [weak self] in
-                self?.sync()
+                guard let self, self.armedGeneration == generation else { return }
+                self.sync()
             }
         }
         if content != lastRendered {

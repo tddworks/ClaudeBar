@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// An AIProvider backed by an extension manifest and script-based probes.
@@ -89,7 +92,7 @@ public final class ExtensionProvider: AIProvider {
         }
 
         guard !results.isEmpty else {
-            let error = ProbeError.noData
+            let error = UsageError.noData
             lastError = error
             throw error
         }

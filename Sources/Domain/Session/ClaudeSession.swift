@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Represents an active or recent Claude Code session.

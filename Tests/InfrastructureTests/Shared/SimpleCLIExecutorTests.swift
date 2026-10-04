@@ -83,7 +83,7 @@ struct SimpleCLIExecutorTests {
 
     @Test
     func `execute throws cliNotFound for a missing binary`() async {
-        await #expect(throws: ProbeError.self) {
+        await #expect(throws: UsageError.self) {
             try await SimpleCLIExecutor().execute(
                 binary: "claudebar-not-a-real-cli",
                 args: [],
@@ -99,7 +99,7 @@ struct SimpleCLIExecutorTests {
     func `execute times out rather than hanging on a long-running command`() async {
         let start = CFAbsoluteTimeGetCurrent()
 
-        await #expect(throws: ProbeError.self) {
+        await #expect(throws: UsageError.self) {
             try await SimpleCLIExecutor().execute(
                 binary: "/bin/sh",
                 args: ["-c", "sleep 30"],

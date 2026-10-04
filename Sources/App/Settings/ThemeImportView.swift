@@ -24,15 +24,16 @@ struct ThemeImportButton: View {
                     Text("Import Theme")
                         .font(theme.font(size: 11, weight: .medium))
                 }
-                .foregroundStyle(theme.accentPrimary)
+                .foregroundStyle(theme.isOutlined ? theme.textPrimary : theme.accentPrimary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(theme.accentPrimary.opacity(0.1))
+                    RoundedRectangle(cornerRadius: theme.isOutlined ? 999 : 8)
+                        .fill(theme.isOutlined ? theme.glassBackground : theme.accentPrimary.opacity(0.1))
+                        .themeShadow(theme, scale: 0.6)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(theme.accentPrimary.opacity(0.3), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: theme.isOutlined ? 999 : 8)
+                                .stroke(theme.isOutlined ? theme.glassBorder : theme.accentPrimary.opacity(0.3), lineWidth: theme.cardBorderWidth)
                         )
                 )
             }

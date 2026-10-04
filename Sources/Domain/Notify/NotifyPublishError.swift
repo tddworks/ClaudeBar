@@ -1,10 +1,13 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Why a publish to Notify! did not land.
 ///
-/// A dedicated type rather than a `ProbeError` case: every message here is
+/// A dedicated type rather than a `UsageError` case: every message here is
 /// shown in the Notify pane, and half of them name an action only the user can
-/// take on their phone. `ProbeError` speaks about fetching a quota from a
+/// take on their phone. `UsageError` speaks about fetching a quota from a
 /// provider, which is the opposite direction of travel.
 ///
 /// The gateway answers a missing token, a wrong token, an unknown device and

@@ -4,7 +4,29 @@
 
 Add API-based usage probing for Codex, following the same dual-probe pattern as Claude (CLI/API mode switching). The Codex API probe reads OAuth credentials from `~/.codex/auth.json`, refreshes tokens via OpenAI's OAuth endpoint, and fetches usage data from the ChatGPT backend API.
 
-## Architecture Diagram
+## Current shape: Codex is data
+
+Since `20be605` Codex has no Swift of its own. It is
+[`Modules/Providers/Resources/Providers/codex.json`](../../../Modules/Providers/Resources/Providers/codex.json),
+run by the one `Provider` and the `DataSources` workers
+([TARGET_ARCHITECTURE.md](../../architecture/TARGET_ARCHITECTURE.md) §3):
+
+| Data source | Credential | Fetch | Mapping | Fallback |
+|---|---|---|---|---|
+| `rpc` (default) | — | `jsonRpc`: `codex -s read-only -a never app-server` in the probe directory; `initialize` → `initialized` → `account/rateLimits/read` | `json`: `result.rateLimits.primary/secondary`, `rateLimitsByLimitId` (skipping `codex`), free-plan `whenEmpty` | `tty` |
+| `api` | `jsonFile` `~/.codex/auth.json`, `refresh.oauth2` every 8 days or on 401/403 | `http` `GET chatgpt.com/backend-api/wham/usage` | `json`: headers first, `rate_limit.*_window`, `additional_rate_limits[]`, `plan_type`, credits against 1000 | — |
+| `tty` (hidden) | — | `cli`: `codex -s read-only -a never`, types `/status`, answers the trust prompt with `1` | `text`: the three error phrases, `5h limit` / `Weekly limit` → `NN% left` within 12 lines | — |
+
+Every finding below is now a line in that file, pinned by
+`Modules/Providers/Tests/CodexDefinitionTests.swift`, which runs the old
+probes' fixtures through it. Two behaviours changed on purpose: when RPC and
+the terminal both fail, the **RPC** error is reported (the root cause, as for
+Claude); and `resetText` for a reset already passed reads "Resets soon" in
+both modes. The `CodexProvider`, `CodexUsageProbe`, `CodexAPIUsageProbe`,
+`DefaultCodexRPCClient` and `CodexCredentialLoader` named in the plan below
+no longer exist.
+
+## Architecture Diagram (the original plan)
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
@@ -172,6 +194,41 @@ This plan covered the API probe. What was learned afterwards, mostly about the R
 - **No windows**: `planType == "free"` gets one "Free plan" quota at 0% used. Any other plan throws "No rate limits available yet - make some API calls first".
 - **Approval flag (#259)**: Codex removed `untrusted` from `--ask-for-approval` (only `on-request` and `never` are left). An unknown value makes the CLI exit while parsing arguments, which broke the app-server *and* the TTY fallback, surfacing as "Could not find usage limits in Codex output". `never` is accepted by old and new builds and can't stall a non-interactive pipe on an approval prompt. `-s read-only` stays. Both paths share `baseArguments`.
 - **TTY fallback**: when RPC throws, run `codex -s read-only -a never` with `/status\n` as input, strip ANSI codes, and within 12 lines after the "5h limit" and "Weekly limit" labels find `NN% left`. That gives no reset timestamps, so there's no countdown on this path. `data not available yet`, `update available` + `codex`, and `not logged in` / `please log in` are mapped to errors.
+- **Directory-trust prompt (#267)**: Codex 0.150+ asks "Do you trust the contents of this directory?" before it does anything interactive, and it trust-checks the directory on **both** probe paths: the `app-server` RPC handshake and the TTY fallback. A probe that inherits the app's cwd (`/` from Finder/launchd) stalls until timeout, surfacing as "Could not find usage limits in Codex output". Unlike Claude, Codex 0.150 keeps trust state in SQLite with no file ClaudeBar can write, so both paths run in `Application Support/ClaudeBar/Probe` (`ProbeWorkingDirectory.resolve()`, shared with the Claude probes) and the TTY fallback auto-answers the prompt with `"1"` (the trust option's number). The answer persists once given.
 - **Process leak (#113)**: each refresh starts its own `app-server`. The transport the probe creates **must** be closed in a `defer`. Before this was fixed, thousands of orphaned `codex app-server` processes built up.
 - **API mode credits**: `x-codex-credits-balance` (header) or `credits.balance` (body) is shown against a hard-coded limit of 1000. The API doesn't return a limit. Headers `x-codex-primary-used-percent` / `x-codex-secondary-used-percent` take precedence. Reset times always come from `rate_limit.*_window`.
-- **No fallback between modes.** `CodexProvider` runs only the selected probe. Unlike Claude, a failing mode doesn't try the other.
+- **No fallback between the modes the person picks.** Only `rpc` falls back, to the hidden `tty`. A failing `api` doesn't try `rpc`.
+- **Extra buckets (#178)**: GPT-5.3-Codex-Spark (Pro research preview) has its own 5h + weekly windows, separate from the main limits. Both modes carry the data. RPC: `account/rateLimits/read` returns `result.rateLimitsByLimitId`, a map of `RateLimitSnapshot` keyed by limit id (`codex` is the main bucket and mirrors the top-level `rateLimits`; other keys are the extras). API: the body has `additional_rate_limits`, an array of `{limit_name, metered_feature, rate_limit}` where `rate_limit` is a `RateLimitStatusDetails` object that may be null and holds nested `primary_window` / `secondary_window` objects with the same `used_percent` / `reset_at` / `reset_after_seconds` fields as the main windows (plus `limit_window_seconds`, kept as the quota's `windowDuration`). Both paths append the extra quotas **after** the main session/weekly rows — the menu bar renders `quotas.first`, so the main limits must lead. Labels are trimmed for the menu (`Codex Spark` / `codex_spark` → "Spark"); the extra weekly window becomes "Spark 7d". Entries with no parseable window are skipped, and an absent map/field leaves the snapshot unchanged.
+- **Passive until verified (#216)**: spawning `codex app-server` (or the TTY fallback) while the CLI is unauthenticated can make the CLI open the ChatGPT browser login all by itself — ClaudeBar never runs `codex login`, the login flow is the CLI's own behavior. Two gates: (1) only `.interactive` refreshes — genuine clicks: the Refresh button, Touch Bar / notch refresh, `claudebar://refresh`, provider switch, probe-mode test — may run the RPC probe, and a success persists `codex.verifiedAtLeastOnce` via `CodexSettingsRepository`; `.background` (the menu-bar poll) and `.passive` (the popover-open refresh, a third `RefreshKind` case added for this) return the last snapshot without spawning, or surface "Codex CLI session not checked. Click Refresh or Connect to check Codex status." through `lastError`. The popover renders Claude's daily-usage cards, so `.passive` is deliberately not `.background`: Claude attaches the daily report for both `.interactive` and `.passive` and only skips the JSONL scan on the background poll (#204); the default implementation ignores the kind, so the other 18 providers are unaffected. (2) Defense in depth, `CodexUsageProbe.probe()` refuses to spawn the CLI at all when `~/.codex/auth.json` does not exist (throws `authenticationRequired`) — the file's *existence* is checked, not its contents, so API-key users keep working, and the API probe keeps its own OAuth gate on `loadCredentials()`. The loader resolves the auth path exactly like the CLI: `$CODEX_HOME/auth.json` when `CODEX_HOME` is set, `~/.codex/auth.json` otherwise. `isAvailable()` deliberately still only checks the binary — it answers "provider exists", not "allowed to actively probe"; the verified flag is the third state.
+
+
+## Independent Codex accounts
+
+Additional accounts reuse `ProviderAccountConfig` and `MultiAccountSettingsRepository`.
+`codex.json`'s `accounts` says how one is added (`folder`: saved as `codexHome`,
+its login's `account` claim saved as `chatgptAccountId`; `signIn`: `codex -c cli_auth_credentials_store="file" login` with `CODEX_HOME` set), and what an added login changes: `accounts.patch`, an RFC 7396 merge patch
+per data source kind (`"tty": null` leaves the terminal out). One Codex `Provider`
+(the product) owns its `Account`s (the logins, [CANONICAL_MODEL](../../architecture/CANONICAL_MODEL.md#1--the-tree));
+`provider.addAccount(signedInAt:)` checks a folder and adds it (`provider.signIn()` runs `codex login` into a new one first), compound ID
+`codex.<local UUID>`, the default keeping `codex`. Each login is its own pill,
+enable toggle and menu-bar choice — users pin two accounts at once instead of
+selecting one active account within Codex.
+
+Settings contain the email, canonical Codex directory and expected ChatGPT account
+ID, never tokens. Setup rejects duplicate directories (including symlinks), the
+default directory and duplicate ChatGPT account IDs. Email is a display identifier,
+not an authentication key; separate workspaces can share an email.
+
+The `identity` rule checks the expected account ID before and after a fetch.
+Both data sources read the account's own `{{account.codexHome}}/auth.json`; a
+refreshed API token is written back only there. RPC sets `CODEX_HOME` on the child
+process, unsets the other OpenAI auth variables, and forces file credential storage
+(`-c cli_auth_credentials_store="file"`) for added accounts, which have no TTY
+fallback — the terminal would read the global login. Missing or replaced credentials
+fail closed. A provider coalesces simultaneous refreshes so overlapping UI and
+background polls cannot rotate its refresh token twice.
+
+RPC identity comes from `account/read` with `refreshToken: false`, which also
+supports the default Keychain login. File credentials provide the email from the
+ID token as display metadata only; decoding that claim does not verify a token.
+Full email remains in menu-bar tooltips when a visible label is shortened.

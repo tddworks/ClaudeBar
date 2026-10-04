@@ -25,10 +25,10 @@ Turning the switch off removes ClaudeBar's hooks and stops the server.
 ## How it works
 
 - **Hooks**: turning it on adds a hook for `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`, `TaskCompleted`, `SubagentStart` and `SubagentStop` to `~/.claude/settings.json`. Hooks from other tools are kept. ClaudeBar recognizes its own entries by the `__claudebar_hook` marker in the command and only ever replaces or removes those.
-- **The command**: each hook pipes Claude Code's event JSON to `curl -X POST http://localhost:<port>/hook` in the background, so it never slows Claude Code down. If ClaudeBar isn't running, the request fails silently.
+- **The command**: each hook pipes Claude Code's event JSON to `curl -X POST http://localhost:<port>/hook` in the background, so it never slows Claude Code down. If ClaudeBar isn't running, the request fails silently. Sessions that ClaudeBar spawned itself (quota polls) carry a `CLAUDEBAR_PROBE` marker in their environment, and the command exits before POSTing when it sees one — polling never fires session notifications.
 - **Server and port**: ClaudeBar listens on the loopback interface only, on port **19847**, and accepts only `POST /hook`. On start it writes the port to `~/.claude/claudebar-hook-port`, which the hook reads (falling back to 19847), and deletes the file on stop.
 - **Upgrades**: at launch, if hooks are installed, ClaudeBar reinstalls them, so hook events added in newer versions register without toggling the switch.
-- **Its own probe is ignored.** ClaudeBar runs the Claude CLI to read your quota. Events from that probe (a working directory ending in `ClaudeBar/Probe`) are dropped, so they never show up as sessions or notifications.
+- **Its own probe is ignored.** ClaudeBar runs the Claude CLI to read your quota. Events from those probe sessions are dropped — ClaudeBar marks the sessions it spawns (`CLAUDEBAR_PROBE`) and also filters the working directory ending in `ClaudeBar/Probe` — so they never show up as sessions or notifications.
 
 ## Gotchas
 

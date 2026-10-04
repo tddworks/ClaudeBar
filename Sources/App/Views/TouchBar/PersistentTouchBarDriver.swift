@@ -118,7 +118,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
             // Fall back to the globally selected provider only for the primary slot
             guard let provider = monitor.provider(for: providerId) else { continue }
             let config = settings.menuBarConfiguration(for: providerId)
-            let snapshot = provider.snapshot
+            let snapshot = monitor.usage(of: provider)
             let quotas = snapshot?.quotas ?? []
 
             // Resolve primary quota: match by configured key or fallback to first quota
@@ -155,9 +155,8 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
                 )
                 let pct = quota.map { max(0, min(100, Double($0.displayPercent(mode: settings.usageDisplayMode)))) } ?? 0.0
                 let resetText = quota.flatMap { formatResetText(for: $0) }
-                let status = (settings.burnRateWarningEnabled
-                    ? quota?.paceAwareStatus(burnRateThreshold: settings.burnRateThreshold)
-                    : quota?.status) ?? snapshot?.overallStatus ?? .healthy
+                let status = quota?.status(under: settings.statusPolicy)
+                    ?? snapshot?.overallStatus(under: settings.statusPolicy) ?? .healthy
                 let hasQuota = (quota != nil)
 
                 gauges.append(TouchBarProviderGauge(

@@ -39,10 +39,10 @@ struct AccountManagementCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                .fill(theme.cardGradient)
+                .fill(theme.cardGradient).themeShadow(theme)
                 .overlay(
                     RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                        .stroke(theme.glassBorder, lineWidth: 1)
+                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                 )
         )
     }
@@ -122,7 +122,7 @@ struct AccountManagementCard: View {
 
             // Status from snapshot
             if let snapshot = provider.accountSnapshots[account.accountId] {
-                let status = snapshot.overallStatus
+                let status = snapshot.overallStatus(under: AppSettings.shared.statusPolicy)
                 Circle()
                     .fill(theme.statusColor(for: status))
                     .frame(width: 8, height: 8)

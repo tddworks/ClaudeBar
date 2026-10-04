@@ -46,11 +46,11 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
         )
 
         guard result.exitCode == 0 else {
-            throw ProbeError.executionFailed("Extension probe '\(scriptPath)' exited with code \(result.exitCode): \(result.output)")
+            throw UsageError.executionFailed("Extension probe '\(scriptPath)' exited with code \(result.exitCode): \(result.output)")
         }
 
         guard let data = result.output.data(using: .utf8) else {
-            throw ProbeError.parseFailed("Extension probe output is not valid UTF-8")
+            throw UsageError.parseFailed("Extension probe output is not valid UTF-8")
         }
 
         let sectionData = try SectionData.decode(from: data, type: sectionType, providerId: providerId)

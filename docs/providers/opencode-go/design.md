@@ -1,6 +1,15 @@
-# OpenCode Go: probe design
+# OpenCode Go: design
 
 Contributor research for the OpenCode Go provider (`opencode-go`). User-facing setup is in [README.md](README.md).
+
+## As data
+
+OpenCode Go is `Modules/Providers/Resources/Providers/opencode-go.json`, `opencode-api.js` and `opencode-local.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it.
+
+- **`api`** — `http` with the key from `OPENCODE_API_KEY`, then `auth.json`'s `opencode-go`, then its `opencode` entry (`${XDG_DATA_HOME:-~/.local/share}`). `errors` keeps 401 → *session expired* with the `opencode auth login` hint and 403 → *subscription required*; a 429 is a rate limit. `fallbackOn.authenticationRequired` hands a missing key — never a rejected one — to `local`.
+- **`local`** — a `command` running **one fixed read-only query**: `opencode db "<SQL>" --format json`, shown word for word on Import. SQLite works out every window itself from `'now'`: the 5-hour window and its oldest spend, the UTC Monday-to-Monday week, and the month anchored on the first opencode-go message. The anchor's day is clamped to each month's last day: a 31st anchor runs Apr 30 → May 31. The old probe's `Calendar` rolled such a day over instead, so anchors on the 29th–31st can differ by a day or two from before. No planner script computes arguments; the query is tested against a real SQLite database (`OpenCodeDefinitionTests`).
+- **Money** — each local cap is `left: { money, of }` ($12, $30, $60) to the cent. With no message yet there is no billing month: the monthly quota states no window rather than a guessed 30 days.
+- **Accounts** — an added account has its own saved key (`apiKey`, account scope) and never falls back to this Mac's database (`"local": null`).
 
 ## Sources and order
 

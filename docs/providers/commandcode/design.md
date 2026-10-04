@@ -1,6 +1,15 @@
-# Command Code: probe design
+# Command Code: design
 
 Contributor research for the Command Code provider (`commandcode`). User-facing setup is in [README.md](README.md). Added in ba390fc (2026-09).
+
+## As data
+
+Command Code is `Modules/Providers/Resources/Providers/commandcode.json` and `commandcode-credits.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it.
+
+- **Fetch** — `http.steps`: `whoami` keeps `orgId` from `$.data.org.id` or `$.org.id`, then `credits` calls `…/billing/credits?orgId={{orgId}}`, with `dropEmpty` leaving the parameter out when there is none. The mapping script reads both answers by name.
+- **Key** — `COMMAND_CODE_API_KEY`, `COMMANDCODE_API_KEY`, `~/.commandcode/auth.json`'s `apiKey`, then a key saved in ClaudeBar (`apiKey`, account scope). An added account uses only its own saved key.
+- **Errors** — `http.401` / `http.403` carry the `cmd login` hint; a 429 is a rate limit with its `Retry-After` (the old probe reported "HTTP error: 429"). A step that answers something other than a JSON object fails at the mapping step with the old message.
+- **Money** — the plan meter is `left: { money, of }`; an unknown plan's balance is money with no ceiling and no percentage (below, the probe's "fixed 100%" no longer applies).
 
 ## Sources
 
@@ -45,4 +54,4 @@ Environment variables come from the app's process environment.
 
 - The plan id is lowercased, `_` → `-`, and matched by prefix, **longest key first**, so `individual-pro-v1` doesn't match `individual-pro`.
 - Remaining = monthly + purchased + free. Cap = max(plan allowance, monthly) + purchased + free; the `max` guards against a balance above the known allowance.
-- Unknown plan: no cap, so a balance-only card at a fixed 100%, emitted **only** when there are no window quotas, so the card is never empty but a fake percentage never sits next to real ones.
+- Unknown plan: no cap, so a balance-only card (money only, no percentage, as data), emitted **only** when there are no window quotas, so the card is never empty but a fake percentage never sits next to real ones.

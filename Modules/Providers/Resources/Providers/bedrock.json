@@ -1,0 +1,45 @@
+{
+  "profile": {
+    "id": "bedrock",
+    "name": "AWS Bedrock",
+    "links": {
+      "dashboard": "https://console.aws.amazon.com/bedrock/home",
+      "status": "https://health.aws.amazon.com/health/status"
+    },
+    "look": {
+      "symbol": "cloud.fill",
+      "icon": "BedrockIcon",
+      "color": { "light": [0.92, 0.5, 0.15], "dark": [1.0, 0.6, 0.2] },
+      "gradientEnd": { "light": [0.75, 0.35, 0.1], "dark": [0.85, 0.45, 0.15] }
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    { "id": "awsProfile", "label": "AWS Profile" },
+    { "id": "regions", "label": "Regions", "default": "us-east-1",
+      "kind": { "text": { "pattern": "^[a-z0-9-]+(\\s*,\\s*[a-z0-9-]+)*$" } } },
+    { "id": "dailyBudget", "label": "Daily Budget (USD)",
+      "kind": { "text": { "pattern": "^[0-9]+(\\.[0-9]+)?$" } } }
+  ],
+  "defaultDataSource": "cloudWatch",
+  "dataSources": [
+    {
+      "kind": "cloudWatch",
+      "label": "CloudWatch",
+      "summary": "Prices today's Bedrock token use from CloudWatch with your AWS profile",
+      "fetch": {
+        "cloudWatch": {
+          "namespace": "AWS/Bedrock",
+          "dimension": "ModelId",
+          "metrics": ["InputTokenCount", "OutputTokenCount", "Invocations"],
+          "regions": "{{setting.regions}}",
+          "profile": "{{setting.awsProfile}}",
+          "prices": "AmazonBedrock"
+        }
+      },
+      "mapping": {
+        "script": { "file": "bedrock-cost.js", "values": { "dailyBudget": "{{setting.dailyBudget}}" } }
+      }
+    }
+  ]
+}

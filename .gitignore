@@ -17,3 +17,6 @@ build/
 
 # Personal Claude Code settings (per-project, never commit)
 .claude/settings.local.json
+
+# Local drafts that are never committed
+drafts/

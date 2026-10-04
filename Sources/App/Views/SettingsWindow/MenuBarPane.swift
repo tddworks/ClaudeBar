@@ -32,6 +32,21 @@ struct MenuBarPane: View {
                 SettingsRow(title: "Show Duration in Menu Bar", subtitle: "Time until each quota window resets.") {
                     SettingsSwitch(isOn: $settings.menuBarDurationEnabled)
                 }
+                SettingsRowDivider()
+                SettingsRow(title: "Show Provider Logo", subtitle: "Start the readout with the provider's logo, even when it's the only one.") {
+                    SettingsSwitch(isOn: $settings.menuBarProviderLogoEnabled)
+                        .accessibilityLabel("Show Provider Logo")
+                }
+                SettingsRowDivider()
+                SettingsRow(title: "Show Names for Multiple Accounts", subtitle: "Show account names beside provider icons when the same provider has more than one enabled account. Single accounts do not show a name.") {
+                    SettingsSwitch(isOn: $settings.menuBarAccountLabelsEnabled)
+                        .accessibilityLabel("Show Names for Multiple Accounts")
+                }
+                SettingsRowDivider()
+                SettingsRow(title: "Hide Account Emails", subtitle: "Mask emails as s•••@g•••.com in the menu bar and popover. The eye beside the account does the same.") {
+                    SettingsSwitch(isOn: $settings.hideAccountEmail)
+                        .accessibilityLabel("Hide Account Emails")
+                }
             }
 
             if settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled {

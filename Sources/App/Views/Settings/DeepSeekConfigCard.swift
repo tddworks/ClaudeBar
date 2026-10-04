@@ -37,7 +37,7 @@ struct DeepSeekConfigCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
+                .fill(theme.cardGradient).themeShadow(theme)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(
@@ -80,11 +80,11 @@ struct DeepSeekConfigCard: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("DeepSeek Configuration")
+                Text("Default Account")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Balance tracking")
+                Text("DeepSeek key and environment variable")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -133,7 +133,7 @@ struct DeepSeekConfigCard: View {
                             .fill(theme.glassBackground)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
+                                    .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                             )
                     )
 
@@ -170,7 +170,7 @@ struct DeepSeekConfigCard: View {
                             .fill(theme.glassBackground)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(theme.glassBorder, lineWidth: 1)
+                                    .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                             )
                     )
                     .onChange(of: deepSeekAuthEnvVarInput) { _, newValue in
@@ -248,9 +248,9 @@ struct DeepSeekConfigCard: View {
             if hasStoredDeepSeekApiKey {
                 Button {
                     settings.deepseek.deleteDeepSeekApiKey()
-                    hasStoredDeepSeekApiKey = false
+                    hasStoredDeepSeekApiKey = settings.deepseek.hasDeepSeekApiKey()
                     deepSeekApiKeyInput = ""
-                    deepSeekTestResult = nil
+                    deepSeekTestResult = hasStoredDeepSeekApiKey ? "Failed: ClaudeBar could not remove the API key securely." : nil
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "trash.fill")
@@ -277,6 +277,10 @@ struct DeepSeekConfigCard: View {
         if !apiKey.isEmpty {
             AppLog.credentials.info("Saving DeepSeek API key for connection test")
             settings.deepseek.saveDeepSeekApiKey(apiKey)
+            guard settings.deepseek.getDeepSeekApiKey() == apiKey else {
+                deepSeekTestResult = "Failed: ClaudeBar could not save the API key securely."
+                return
+            }
             hasStoredDeepSeekApiKey = true
             deepSeekApiKeyInput = ""
         }
@@ -296,7 +300,7 @@ struct DeepSeekConfigCard: View {
             _ = try await provider.refresh()
             AppLog.credentials.info("DeepSeek connection test succeeded")
             deepSeekTestResult = "Success: Connection verified"
-        } catch ProbeError.authenticationRequired {
+        } catch UsageError.authenticationRequired {
             let message = "DeepSeek rejected the API key. New keys may take a moment to activate."
             AppLog.credentials.error("DeepSeek connection test failed: \(message)")
             deepSeekTestResult = "Failed: \(message)"

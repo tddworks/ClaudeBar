@@ -26,6 +26,21 @@ struct ObservationRenderSyncTests {
         func record(_ value: String) { rendered.append(value) }
     }
 
+    /// Counts how many times the sync re-read its observed state.
+    @MainActor
+    final class ReadCounter {
+        private(set) var count = 0
+        func read(_ source: Source) -> String {
+            count += 1
+            return source.value
+        }
+    }
+
+    /// Yields the main actor enough turns for every queued re-arm hop to run.
+    private func drainMainActor() async {
+        for _ in 0..<100 { await Task.yield() }
+    }
+
     /// Yields the main actor until `condition` holds or ~2s elapse, so the
     /// re-armed observation's main-actor hop gets a chance to run without
     /// real-time sleeps.
@@ -150,6 +165,65 @@ struct ObservationRenderSyncTests {
         #expect(recorder.rendered == ["initial", "initial"])
     }
 
+    @Test
+    func `renderNow does not stack observation registrations`() async {
+        // Given — the menu bar calls renderNow on every appearance change,
+        // which on macOS 26 fires whenever the wallpaper behind the bar
+        // changes brightness. Each call used to arm another registration
+        // that was never released, growing memory without bound (#313).
+        let source = Source()
+        let reads = ReadCounter()
+        let sync = ObservationRenderSync(
+            read: { reads.read(source) },
+            render: { _ in }
+        )
+        sync.start()
+        sync.renderNow()
+        sync.renderNow()
+        sync.renderNow()
+
+        // When — two genuine state changes
+        let beforeFirst = reads.count
+        source.value = "first"
+        await waitUntil { reads.count > beforeFirst }
+        await drainMainActor()
+        let beforeSecond = reads.count
+        source.value = "second"
+        await waitUntil { reads.count > beforeSecond }
+        await drainMainActor()
+
+        // Then — a single armed registration: one re-read per change
+        #expect(beforeSecond - beforeFirst == 1)
+        #expect(reads.count - beforeSecond == 1)
+    }
+
+    @Test
+    func `restarting does not leave a second registration armed`() async {
+        // Given — stop leaves the in-flight registration armed; a start
+        // before it fires must not end up with two live re-arm chains.
+        let source = Source()
+        let reads = ReadCounter()
+        let sync = ObservationRenderSync(
+            read: { reads.read(source) },
+            render: { _ in }
+        )
+        sync.start()
+        sync.stop()
+        sync.start()
+
+        // When
+        source.value = "first"
+        await waitUntil { reads.count > 2 }
+        await drainMainActor()
+        let beforeSecond = reads.count
+        source.value = "second"
+        await waitUntil { reads.count > beforeSecond }
+        await drainMainActor()
+
+        // Then
+        #expect(reads.count - beforeSecond == 1)
+    }
+
     // MARK: - refreshNow (self-driven ticks)
 
     @Test
@@ -267,7 +341,7 @@ struct ObservationRenderSyncTests {
             quotas: [UsageQuota(percentRemaining: 64, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(
             providers: AIProviders(providers: [provider]),
             clock: NoOpClock()

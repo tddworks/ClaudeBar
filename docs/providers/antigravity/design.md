@@ -1,6 +1,16 @@
-# Antigravity probe design
+# Antigravity: design
 
 Contributor notes for the Antigravity provider. For setup, see the [README](README.md). The endpoints were reverse-engineered from the Antigravity app and can change without notice. The approach follows robinebers/openusage's Antigravity provider.
+
+## As data
+
+Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `antigravity-usage.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it. Ported from #396. The sections below are the research; the requests are unchanged.
+
+- **`local` is a `localServer` fetch**: the process found by name and command-line pattern (`pgrep -lf`), `csrfToken` and `extensionPort` read from its arguments, its listening ports from `lsof`, then the three language-server paths on each port over HTTPS (self-signed accepted on 127.0.0.1 only), the extension port over plain HTTP last. Readiness reads running executables' paths from the kernel, without starting a process.
+- **`cloud` is `http.steps`** over the daily and production Cloud Code hosts: the quota summary, then the per-model list unless a summary answered, then `loadCodeAssist` for the plan. Its key is the Keychain item `gemini` / `antigravity` (`encoding: goKeyringBase64`, `$.token.access_token`); a refused one is the `agy` hint.
+- **Not running hands over to `cloud`** (`fallbackOn.cliNotFound`), so with the app closed, the cloud's own failure is the one shown.
+- **Window law.** The 5-hour buckets, `3p-5h` included, are 5 hours; the weekly ones a week; a per-model quota is the 5-hour window (the probe said 7 days).
+- **Not taken:** the card and menu-bar titles and groups (`compactTitle`, `menuBarTitle`, `group`) — page fields, not usage; added accounts, until one can carry a refreshable login.
 
 ## Sources, best first
 

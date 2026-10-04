@@ -58,13 +58,14 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Area | What you can do |
 |---|---|
 | Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/menu-bar/README.md) |
+| [Multiple Codex accounts](docs/features/multi-account/README.md) | Separate logins, identified by email, with independent quotas |
 | Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/status-colors/README.md) |
 | Notch | Quota and live Claude Code sessions in the MacBook notch → [docs](docs/features/notch/README.md) |
 | Touch Bar | Quota gauges on a MacBook Pro Touch Bar → [docs](docs/features/touch-bar/README.md) |
 | Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/notify/README.md) |
 | Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/session-hooks/README.md) |
 | Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/daily-usage/README.md) |
-| Themes | Dark, Light, CLI, Christmas, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
+| Themes | Dark, Light, CLI, Christmas, Pop, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
 | Extensions | Add any quota source with a manifest and a script → [docs](docs/features/extensions/README.md) |
 | URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/url-schemes/README.md) |
 

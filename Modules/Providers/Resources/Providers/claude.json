@@ -1,0 +1,551 @@
+{
+  "profile": {
+    "id": "claude",
+    "name": "Claude",
+    "links": {
+      "dashboard": "https://claude.ai/new#settings/usage",
+      "dashboardByPlan": {
+        "claudeApi": "https://console.anthropic.com/settings/billing"
+      },
+      "status": "https://status.anthropic.com"
+    },
+    "look": {
+      "symbol": "brain.fill",
+      "icon": "ClaudeIcon",
+      "color": {
+        "light": [0.95, 0.48, 0.38],
+        "dark": [0.98, 0.55, 0.45]
+      },
+      "gradientEnd": {
+        "light": [0.92, 0.45, 0.72],
+        "dark": [0.85, 0.35, 0.65]
+      }
+    }
+  },
+  "cli": "claude",
+  "enabledByDefault": true,
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Runs `claude /usage` command. Works with any auth method.",
+      "fetch": {
+        "cli": {
+          "cli": "claude",
+          "args": ["/usage", "--allowed-tools", ""],
+          "input": "",
+          "timeout": 20,
+          "workingDirectory": "dedicated",
+          "environment": {
+            "unset": ["CLAUDE_CODE_OAUTH_TOKEN"],
+            "set": {
+              "CLAUDEBAR_PROBE": "1"
+            }
+          },
+          "readyWhen": [
+            {
+              "row": "Current session"
+            },
+            "% used",
+            "% left",
+            "rate limited",
+            "Error:",
+            "/usage is only available"
+          ],
+          "screen": "rendered",
+          "autoResponses": {
+            "Esc to cancel": "\r",
+            "Ready to code here?": "\r",
+            "Press Enter to continue": "\r",
+            "ctrl+t to disable": "\r",
+            "Yes, I trust this folder": "\r"
+          },
+          "session": {
+            "create": ["--session-id", "{{id}}", "--name", "ClaudeBar Probe"],
+            "resume": ["--resume", "{{id}}"],
+            "recreateOn": ["no conversation found", "no session found"],
+            "unsupportedOn": [
+              "unknown option '--session-id'",
+              "unknown option '--name'",
+              "unknown option '--resume'",
+              "unexpected argument '--session-id'",
+              "unexpected argument '--name'",
+              "unexpected argument '--resume'"
+            ]
+          }
+        }
+      },
+      "context": {
+        "account": {
+          "path": "${CLAUDE_CONFIG_DIR:-~}/.claude.json",
+          "email": "$.oauthAccount.emailAddress",
+          "organization": "$.oauthAccount.displayName",
+          "billingType": "$.oauthAccount.billingType"
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "claude-usage-screen.js"
+        }
+      },
+      "recover": {
+        "folderTrustRequired": {
+          "patchJSONFile": {
+            "path": "${CLAUDE_CONFIG_DIR:-~}/.claude.json",
+            "keys": ["projects", "{{cliDirectory}}", "hasTrustDialogAccepted"],
+            "value": true
+          }
+        }
+      },
+      "fallbackOn": {
+        "subscriptionRequired": "cliCost"
+      },
+      "fallback": "api"
+    },
+    {
+      "kind": "cliCost",
+      "label": "CLI cost",
+      "hidden": true,
+      "fetch": {
+        "cli": {
+          "cli": "claude",
+          "args": ["/cost", "--allowed-tools", ""],
+          "input": "",
+          "timeout": 20,
+          "workingDirectory": "dedicated",
+          "environment": {
+            "unset": ["CLAUDE_CODE_OAUTH_TOKEN"],
+            "set": {
+              "CLAUDEBAR_PROBE": "1"
+            }
+          },
+          "screen": "rendered",
+          "autoResponses": {
+            "Esc to cancel": "\r",
+            "Ready to code here?": "\r",
+            "Press Enter to continue": "\r",
+            "ctrl+t to disable": "\r",
+            "Yes, I trust this folder": "\r"
+          },
+          "session": {
+            "create": ["--session-id", "{{id}}", "--name", "ClaudeBar Probe"],
+            "resume": ["--resume", "{{id}}"],
+            "recreateOn": ["no conversation found", "no session found"],
+            "unsupportedOn": [
+              "unknown option '--session-id'",
+              "unknown option '--name'",
+              "unknown option '--resume'",
+              "unexpected argument '--session-id'",
+              "unexpected argument '--name'",
+              "unexpected argument '--resume'"
+            ]
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "claude-cost-screen.js"
+        }
+      },
+      "fallback": "api"
+    },
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Calls Anthropic API directly. Faster, uses OAuth credentials.",
+      "credential": {
+        "firstOf": [
+          {
+            "jsonFile": {
+              "path": "~/.claude/.credentials.json",
+              "token": "$.claudeAiOauth.accessToken",
+              "refreshToken": "$.claudeAiOauth.refreshToken",
+              "expiresAt": "$.claudeAiOauth.expiresAt",
+              "subscriptionType": "$.claudeAiOauth.subscriptionType"
+            }
+          },
+          {
+            "keychain": {
+              "service": "Claude Code-credentials",
+              "token": "$.claudeAiOauth.accessToken",
+              "refreshToken": "$.claudeAiOauth.refreshToken",
+              "expiresAt": "$.claudeAiOauth.expiresAt",
+              "subscriptionType": "$.claudeAiOauth.subscriptionType"
+            }
+          },
+          {
+            "environment": "CLAUDE_CODE_OAUTH_TOKEN"
+          }
+        ],
+        "refresh": {
+          "oauth2": {
+            "tokenURL": "https://platform.claude.com/v1/oauth/token",
+            "clientId": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+            "scope": "user:profile user:inference user:sessions:claude_code",
+            "bodyFormat": "json",
+            "dueWhen": {
+              "expiresAt": "expiresAt",
+              "unit": "milliseconds",
+              "skew": 300
+            },
+            "onStatus": [401, 403],
+            "hint": "Run `claude` in terminal to log in again."
+          }
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.anthropic.com/api/oauth/usage",
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "anthropic-beta": "oauth-2025-04-20",
+            "User-Agent": "ClaudeBar"
+          },
+          "timeout": 15
+        }
+      },
+      "cache": {
+        "ttl": 900
+      },
+      "mapping": {
+        "json": {
+          "notAnObject": "Failed to parse usage response",
+          "plan": {
+            "path": "$credential.subscriptionType",
+            "plans": {
+              "claude_max": "claudeMax",
+              "max": "claudeMax",
+              "claude_pro": "claudePro",
+              "pro": "claudePro",
+              "claude_api": "claudeApi",
+              "api": "claudeApi"
+            }
+          },
+          "quotas": [
+            {
+              "kind": "session",
+              "at": "$.five_hour",
+              "usedPercent": "utilization",
+              "resetsAt": {
+                "iso8601": "resets_at"
+              },
+              "overLimit": true,
+              "countdown": "hours",
+              "window": {
+                "hours": 5
+              }
+            },
+            {
+              "kind": "weekly",
+              "at": "$.seven_day",
+              "usedPercent": "utilization",
+              "resetsAt": {
+                "iso8601": "resets_at"
+              },
+              "overLimit": true,
+              "countdown": "hours",
+              "window": {
+                "days": 7
+              }
+            },
+            {
+              "kind": "model",
+              "name": "sonnet",
+              "at": "$.seven_day_sonnet",
+              "usedPercent": "utilization",
+              "resetsAt": {
+                "iso8601": "resets_at"
+              },
+              "overLimit": true,
+              "countdown": "hours",
+              "window": {
+                "days": 7
+              }
+            },
+            {
+              "kind": "model",
+              "name": "opus",
+              "at": "$.seven_day_opus",
+              "usedPercent": "utilization",
+              "resetsAt": {
+                "iso8601": "resets_at"
+              },
+              "overLimit": true,
+              "countdown": "hours",
+              "window": {
+                "days": 7
+              }
+            },
+            {
+              "kind": "model",
+              "each": "$.limits",
+              "where": {
+                "path": "kind",
+                "equals": "weekly_scoped"
+              },
+              "name": {
+                "firstOf": ["scope.model.display_name"],
+                "firstWord": true,
+                "lowercase": true
+              },
+              "usedPercent": "percent",
+              "resetsAt": {
+                "iso8601": "resets_at"
+              },
+              "overLimit": true,
+              "countdown": "hours",
+              "unique": true,
+              "window": {
+                "days": 7
+              }
+            }
+          ],
+          "cost": [
+            {
+              "kind": "extraUsage",
+              "when": {
+                "path": "$.spend.enabled",
+                "equals": true
+              },
+              "used": {
+                "amount": "$.spend.used.amount_minor",
+                "decimals": "$.spend.used.exponent"
+              },
+              "limit": {
+                "amount": "$.spend.limit.amount_minor",
+                "decimals": "$.spend.limit.exponent"
+              }
+            },
+            {
+              "kind": "extraUsage",
+              "when": {
+                "path": "$.extra_usage.is_enabled",
+                "equals": true
+              },
+              "used": {
+                "amount": "$.extra_usage.used_credits",
+                "decimals": ["$.extra_usage.decimal_places", 2]
+              },
+              "limit": {
+                "amount": "$.extra_usage.monthly_limit",
+                "decimals": ["$.extra_usage.decimal_places", 2]
+              }
+            }
+          ]
+        }
+      },
+      "fallback": {
+        "to": "cli",
+        "enabledBySetting": "cliFallbackEnabled"
+      }
+    }
+  ],
+  "usageHistory": {
+    "records": {
+      "files": "${CLAUDE_CONFIG_DIR:-~/.claude}/projects/**/*.jsonl",
+      "format": "jsonLines",
+      "where": { "path": "$.type", "equals": "assistant" },
+      "at": "$.timestamp",
+      "id": ["$.message.id", "$.requestId"],
+      "model": "$.message.model",
+      "tokens": {
+        "input": "$.message.usage.input_tokens",
+        "output": "$.message.usage.output_tokens",
+        "cacheWrite": "$.message.usage.cache_creation_input_tokens",
+        "cacheWrite1h": "$.message.usage.cache_creation.ephemeral_1h_input_tokens",
+        "cacheRead": "$.message.usage.cache_read_input_tokens"
+      }
+    },
+    "prices": { "file": "claude-prices.json" },
+    "freeWhen": {
+      "localEndpoint": {
+        "file": "${CLAUDE_CONFIG_DIR:-~}/.claude.json",
+        "url": ["$.env.ANTHROPIC_BASE_URL", ["$.providers[*].base_url", "$.providers[*].env.ANTHROPIC_BASE_URL"]]
+      }
+    },
+    "sessionGap": 1800
+  },
+  "accounts": {
+    "signIn": {
+      "cli": "claude",
+      "args": ["auth", "login", "--claudeai"],
+      "homeVariable": "CLAUDE_CONFIG_DIR",
+      "unset": [
+        "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE",
+        "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"
+      ]
+    },
+    "folder": {
+      "savedAs": "configDirectory",
+      "default": "${CLAUDE_CONFIG_DIR:-~/.claude}",
+      "accountId": { "field": "$context.account.email", "savedAs": "loginEmail" },
+      "email": "$context.account.email",
+      "derived": {
+        "credentialService": { "prefix": "Claude Code-credentials-", "sha256": 8 }
+      },
+      "notSignedIn": "No Claude login found in this folder. Run `CLAUDE_CONFIG_DIR=<folder> claude` and sign in, then choose the folder again."
+    },
+    "patch": {
+      "usageHistory": {
+        "records": { "files": "{{account.configDirectory}}/projects/**/*.jsonl" },
+        "freeWhen": { "localEndpoint": { "file": "{{account.configDirectory}}/.claude.json" } }
+      },
+      "cli": {
+        "fetch": {
+          "cli": {
+            "environment": {
+              "unset": [
+                "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE",
+                "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"
+              ],
+              "set": {
+                "CLAUDE_CONFIG_DIR": "{{account.configDirectory}}"
+              }
+            }
+          }
+        },
+        "credential": {
+          "firstOf": [
+            {
+              "jsonFile": {
+                "path": "{{account.configDirectory}}/.credentials.json",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            },
+            {
+              "keychain": {
+                "service": "{{account.credentialService}}",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            }
+          ]
+        },
+        "context": {
+          "account": {
+            "path": "{{account.configDirectory}}/.claude.json",
+            "email": "$.oauthAccount.emailAddress",
+            "organization": "$.oauthAccount.displayName",
+            "billingType": "$.oauthAccount.billingType"
+          }
+        },
+        "requiresFiles": ["{{account.configDirectory}}/.claude.json"],
+        "recover": {
+          "folderTrustRequired": {
+            "patchJSONFile": {
+              "path": "{{account.configDirectory}}/.claude.json",
+              "keys": ["projects", "{{cliDirectory}}", "hasTrustDialogAccepted"],
+              "value": true
+            }
+          }
+        },
+        "identity": {
+          "field": "$context.account.email",
+          "equals": "{{account.loginEmail}}",
+          "hint": "Reconnect the original Claude account in this folder, or remove it and add the new login."
+        }
+      },
+      "cliCost": {
+        "fetch": {
+          "cli": {
+            "environment": {
+              "unset": [
+                "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE",
+                "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"
+              ],
+              "set": {
+                "CLAUDE_CONFIG_DIR": "{{account.configDirectory}}"
+              }
+            }
+          }
+        },
+        "credential": {
+          "firstOf": [
+            {
+              "jsonFile": {
+                "path": "{{account.configDirectory}}/.credentials.json",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            },
+            {
+              "keychain": {
+                "service": "{{account.credentialService}}",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            }
+          ]
+        },
+        "context": {
+          "account": {
+            "path": "{{account.configDirectory}}/.claude.json",
+            "email": "$.oauthAccount.emailAddress",
+            "organization": "$.oauthAccount.displayName",
+            "billingType": "$.oauthAccount.billingType"
+          }
+        },
+        "requiresFiles": ["{{account.configDirectory}}/.claude.json"],
+        "identity": {
+          "field": "$context.account.email",
+          "equals": "{{account.loginEmail}}",
+          "hint": "Reconnect the original Claude account in this folder, or remove it and add the new login."
+        }
+      },
+      "api": {
+        "credential": {
+          "firstOf": [
+            {
+              "jsonFile": {
+                "path": "{{account.configDirectory}}/.credentials.json",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            },
+            {
+              "keychain": {
+                "service": "{{account.credentialService}}",
+                "token": "$.claudeAiOauth.accessToken",
+                "refreshToken": "$.claudeAiOauth.refreshToken",
+                "expiresAt": "$.claudeAiOauth.expiresAt",
+                "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              }
+            }
+          ]
+        },
+        "context": {
+          "account": {
+            "path": "{{account.configDirectory}}/.claude.json",
+            "email": "$.oauthAccount.emailAddress",
+            "organization": "$.oauthAccount.displayName",
+            "billingType": "$.oauthAccount.billingType"
+          }
+        },
+        "mapping": {
+          "json": {
+            "email": ["$context.account.email"]
+          }
+        },
+        "identity": {
+          "field": "$context.account.email",
+          "equals": "{{account.loginEmail}}",
+          "hint": "Reconnect the original Claude account in this folder, or remove it and add the new login."
+        }
+      }
+    }
+  }
+}

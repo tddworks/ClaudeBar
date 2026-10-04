@@ -1,228 +1,106 @@
 # Architecture Diagram Patterns
 
-ASCII diagrams for documenting feature architecture before implementation.
+ASCII diagrams for the design review. Draw what the feature touches in the
+**modules** ([MODULAR_DESIGN.md](../../../../docs/architecture/MODULAR_DESIGN.md)),
+not in layers. Use the words of [CANONICAL_MODEL.md](../../../../docs/architecture/CANONICAL_MODEL.md):
+Provider, DataSource, Fetch, Mapping, Usage, Quota, Plan, Cost.
 
-## Table of Contents
-
-- [Layered Architecture](#layered-architecture)
-- [Data Flow Diagrams](#data-flow-diagrams)
-- [Sequence Diagrams](#sequence-diagrams)
-- [Component Interaction Tables](#component-interaction-tables)
-
----
-
-## Layered Architecture
-
-### Three-Layer Pattern (ClaudeBar Standard)
+## The module map
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        FEATURE: [Feature Name]                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  EXTERNAL              INFRASTRUCTURE           DOMAIN               │
-│  ┌─────────────┐       ┌─────────────────┐     ┌─────────────────┐  │
-│  │  [Source]   │──────▶│  [Probe/Client] │────▶│  [Model]        │  │
-│  │  (CLI/API)  │       │  (implements    │     │  (value types)  │  │
-│  └─────────────┘       │   protocol)     │     └─────────────────┘  │
-│                        └─────────────────┘             │             │
-│                                                        ▼             │
-│                                              ┌─────────────────┐     │
-│                                              │  [Provider]     │     │
-│                                              │  (AIProvider)   │     │
-│                                              └─────────────────┘     │
-│                                                       │              │
-│                                                       ▼              │
-│                        ┌───────────────────────────────────────┐    │
-│                        │  APP LAYER                             │    │
-│                        │  ┌─────────────────────────────────┐   │    │
-│                        │  │  [Views/Registration]            │   │    │
-│                        │  └─────────────────────────────────┘   │    │
-│                        └───────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ ClaudeBar (App) — composition root: ClaudeBarApp, SwiftUI views       │
+└──────────┬──────────────────────────────┬────────────────────────────┘
+           │                              │
+           ▼                              ▼
+┌──────────────────────┐        ┌──────────────────────────────────────┐
+│ Domain               │        │ Providers                            │
+│ QuotaMonitor,        │──────▶ │ Provider (one lifecycle), Definition,│
+│ extension providers, │        │ AddedAccounts, settings contracts    │
+│ Notify!, sessions    │        │ Resources/Providers/<id>.json (+.js) │
+└──────────────────────┘        └──────────────────┬───────────────────┘
+                                                   ▼
+                                ┌──────────────────────────────────────┐
+                                │ DataSources                          │
+                                │ DataSource: lookup → fetch → mapping │
+                                │ Internal/: workers, process runners  │
+                                └──────────────────┬───────────────────┘
+                                                   ▼
+                                ┌──────────────────────────────────────┐
+                                │ Quotas — UsageSnapshot, UsageQuota,  │
+                                │ UsageError, plans, costs (no I/O)    │
+                                └──────────────────────────────────────┘
+                     (+ Diagnostics: AppLog, importable by anyone)
 ```
 
-### Full System Overview
+Arrows point at the supplier. A module never imports `Domain`.
+
+## Pattern: a provider needs something new
+
+Most provider features are a line of JSON plus, at most, one generic piece:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          ClaudeBar System                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                         Domain Layer                                │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │ │
-│  │  │ UsageQuota   │  │ UsageSnapshot│  │ QuotaMonitor (actor)     │  │ │
-│  │  │ QuotaStatus  │  │ AIProvider   │  │ QuotaAlerter             │  │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                                    ▲                                     │
-│                                    │ implements                          │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                      Infrastructure Layer                           │ │
-│  │  ┌────────────────────────────────────────────────────────────┐    │ │
-│  │  │                      CLI Probes                             │    │ │
-│  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐   │    │ │
-│  │  │  │ Claude   │ │ Codex    │ │ Gemini   │ │ [NewProbe]   │   │    │ │
-│  │  │  │ Probe    │ │ Probe    │ │ Probe    │ │              │   │    │ │
-│  │  │  └──────────┘ └──────────┘ └──────────┘ └──────────────┘   │    │ │
-│  │  └────────────────────────────────────────────────────────────┘    │ │
-│  │                                                                     │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │ │
-│  │  │ CLIExecutor  │  │ NetworkClient│  │ NotificationAlerter      │  │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                                    ▲                                     │
-│                                    │ uses                                │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                          App Layer                                  │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │ │
-│  │  │ AppState     │  │ Views        │  │ ClaudeBarApp             │  │ │
-│  │  │ (@Observable)│  │              │  │ (registration)           │  │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────┐    ┌───────────────────────────────┐    ┌──────────────┐
+│ <id>.json    │───▶│ DataSources                   │───▶│ UsageSnapshot│
+│ "where": …   │    │ JSONMapper learns `where`     │    │ (Quotas)     │
+│ (new rule)   │    │ (generic, tested in           │    └──────────────┘
+└──────────────┘    │  DataSourcesTests)            │
+                    └───────────────────────────────┘
 ```
 
----
-
-## Data Flow Diagrams
-
-### Probe Data Flow
+## Pattern: a refresh, end to end
 
 ```
-┌───────────┐     ┌───────────┐     ┌───────────┐     ┌───────────┐
-│  CLI/API  │────▶│  Probe    │────▶│  Parser   │────▶│ Snapshot  │
-│  Output   │     │  Execute  │     │  Logic    │     │  Model    │
-└───────────┘     └───────────┘     └───────────┘     └───────────┘
-     Raw               Fetch            Parse            Domain
-     Data              Data             Data             Model
+Timer / Refresh button
+  │
+  ▼
+QuotaMonitor.refresh(providerId:)
+  │
+  ▼
+Provider.refresh(kind)  ── verifyBeforeBackground? single flight
+  │   active data source ── fallbackOn[tag] ── fallback (if the setting allows)
+  ▼
+DataSource.fetchUsage()  ── cache.ttl / remembered rate limit
+  │  1 lookup   CredentialLookup (env · jsonFile · keychain · firstOf, OAuth2 refresh)
+  │  2 fetch    Fetch (http · jsonRpc · cli)                 ── identity checked
+  │  3 mapping  Mapping (json · text · script)
+  ▼
+UsageSnapshot ──▶ provider.snapshot ──▶ views
+        └─ on failure: DataSourceError(step, reason: UsageError) ─▶ lastError, lastFailedStep
 ```
-
-### Refresh Cycle Flow
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        REFRESH CYCLE                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Timer ──▶ QuotaMonitor ──▶ Provider.refresh() ──▶ Probe.probe()    │
-│                │                                        │            │
-│                │                                        ▼            │
-│                │                              ┌─────────────────┐   │
-│                │                              │ CLI/API Call    │   │
-│                │                              └─────────────────┘   │
-│                │                                        │            │
-│                │                                        ▼            │
-│                │                              ┌─────────────────┐   │
-│                │                              │ Parse Response  │   │
-│                │                              └─────────────────┘   │
-│                │                                        │            │
-│                ▼                                        ▼            │
-│       ┌─────────────────┐                   ┌─────────────────┐     │
-│       │ Notify Listener │◀──────────────────│ UsageSnapshot   │     │
-│       │ (status change) │                   │ (returned)      │     │
-│       └─────────────────┘                   └─────────────────┘     │
-│                │                                                     │
-│                ▼                                                     │
-│       ┌─────────────────┐                                           │
-│       │ Update UI/Alert │                                           │
-│       └─────────────────┘                                           │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Error Handling Flow
-
-```
-┌─────────┐     ┌───────────┐     ┌─────────────┐     ┌──────────────┐
-│  Probe  │────▶│ Try Fetch │────▶│   Success   │────▶│ Return Data  │
-└─────────┘     └───────────┘     └─────────────┘     └──────────────┘
-                      │
-                      ▼ (failure)
-               ┌─────────────┐     ┌─────────────────┐
-               │ Catch Error │────▶│ Map to ProbeErr │
-               └─────────────┘     └─────────────────┘
-                                          │
-                                          ▼
-                                   ┌─────────────────┐
-                                   │ Provider stores │
-                                   │ lastError       │
-                                   └─────────────────┘
-```
-
----
-
-## Sequence Diagrams
-
-### User Clicks Refresh
-
-```
-User          AppState        QuotaMonitor        Provider          Probe
- │                │                 │                │                 │
- │──refresh()────▶│                 │                │                 │
- │                │──refreshAll()──▶│                │                 │
- │                │                 │──refresh()────▶│                 │
- │                │                 │                │──probe()───────▶│
- │                │                 │                │                 │
- │                │                 │                │◀──snapshot──────│
- │                │                 │◀──snapshot─────│                 │
- │                │                 │                │                 │
- │                │                 │──notify()─────▶│ (if changed)    │
- │◀───UI update───│                 │                │                 │
- │                │                 │                │                 │
-```
-
-### Status Change Notification
-
-```
-Probe           Provider        Monitor         Alerter           UI
-  │                 │               │               │               │
-  │──snapshot──────▶│               │               │               │
-  │                 │──new status──▶│               │               │
-  │                 │               │──compare()───▶│               │
-  │                 │               │               │               │
-  │                 │               │ (status degraded)             │
-  │                 │               │──alert()─────▶│               │
-  │                 │               │               │──notify user──│
-  │                 │               │               │               │
-  │                 │               │──update()────────────────────▶│
-  │                 │               │               │               │
-```
-
----
 
 ## Component Interaction Tables
 
 ### Standard Table Format
 
 ```
-| Component        | Purpose                 | Inputs           | Outputs         | Dependencies      |
-|------------------|-------------------------|------------------|-----------------|-------------------|
-| NewUsageProbe    | Fetches usage from CLI  | CLI command      | UsageSnapshot   | CLIExecutor       |
-| NewProvider      | Manages probe lifecycle | UsageProbe       | snapshot state  | UsageProbe        |
-| ParsingLogic     | Converts raw to domain  | Raw CLI output   | UsageQuota[]    | None              |
+| Component          | Purpose                     | Inputs           | Outputs          | Dependencies   |
+|--------------------|-----------------------------|------------------|------------------|----------------|
+| acme.json          | Acme as data                | —                | ProviderDefinition | —            |
+| JSONMapper `where` | Filter `each` elements      | response, rule   | quotas           | JSONScope      |
+| Provider           | Lifecycle (unchanged)       | DataSources      | snapshot state   | settings       |
 ```
 
 ### Extended Table (for complex features)
 
 ```
-| Component        | Layer          | Protocol           | Creates/Modifies    | Test File                      |
-|------------------|----------------|--------------------|---------------------|--------------------------------|
-| NewUsageProbe    | Infrastructure | UsageProbe         | Creates             | NewUsageProbeTests.swift       |
-| NewUsageProbe    | Infrastructure | -                  | Parsing (internal)  | NewUsageProbeParsingTests.swift|
-| NewProvider      | Domain         | AIProvider         | Creates             | (integration only)             |
-| ProviderRegistry | App            | -                  | Modifies            | -                              |
+| Component          | Module      | Public?  | Creates/Modifies | Test File                          |
+|--------------------|-------------|----------|------------------|------------------------------------|
+| acme.json          | Providers   | resource | Creates          | AcmeDefinitionTests.swift          |
+| QuotaRule.where    | DataSources | yes      | Modifies         | DataSourceTests.swift              |
+| JSONMapper         | DataSources | internal | Modifies         | (through the rule's tests)         |
+| ClaudeBarApp       | App         | —        | Modifies         | AcceptanceTests (if user-visible)  |
 ```
 
 ### Files to Create/Modify Table
 
 ```
-| File Path                                    | Action   | Description                          |
-|----------------------------------------------|----------|--------------------------------------|
-| Sources/Infrastructure/CLI/NewProbe.swift    | Create   | Implements UsageProbe protocol       |
-| Sources/Domain/Provider/NewProvider.swift    | Create   | Implements AIProvider protocol       |
-| Tests/InfrastructureTests/NewProbeTests.swift| Create   | Probe behavior tests with mocks      |
-| Sources/App/ClaudeBarApp.swift               | Modify   | Register new provider                |
+| File Path                                              | Action | Description                     |
+|--------------------------------------------------------|--------|---------------------------------|
+| Modules/Providers/Resources/Providers/acme.json        | Create | The definition                  |
+| Modules/Providers/Tests/AcmeDefinitionTests.swift      | Create | Golden tests, stubbed connections |
+| Modules/DataSources/Sources/Mapping.swift              | Modify | The new rule                    |
+| Sources/App/ClaudeBarApp.swift                         | Modify | `Self.builtIn("acme", …)`       |
 ```
 
 ---
@@ -246,8 +124,8 @@ I've designed the architecture for [Feature Name]:
 
 ### Files to Create/Modify
 
-- `Sources/.../NewFile.swift` - [Description]
-- `Tests/.../NewTests.swift` - [Description]
+- `Modules/.../NewFile.swift` - [Description]
+- `Modules/.../Tests/NewTests.swift` - [Description]
 
 **Ready to proceed with TDD implementation?**
 ```

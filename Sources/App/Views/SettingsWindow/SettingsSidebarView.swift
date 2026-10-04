@@ -110,7 +110,12 @@ struct SettingsSidebarView: View {
         .padding(.horizontal, 10)
         .frame(width: 220)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color.black.opacity(0.15))
+        .background(theme.isOutlined ? AnyShapeStyle(theme.progressTrack.opacity(0.45)) : AnyShapeStyle(Color.black.opacity(0.15)))
+        .overlay(alignment: .trailing) {
+            if theme.isOutlined {
+                Rectangle().fill(theme.glassBorder).frame(width: theme.cardBorderWidth)
+            }
+        }
     }
 }
 
@@ -129,6 +134,8 @@ private struct SidebarItem: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(isSelected ? AnyShapeStyle(theme.accentGradient) : AnyShapeStyle(theme.glassBackground))
+                        .overlay(RoundedRectangle(cornerRadius: 6)
+                            .stroke(theme.isOutlined ? theme.glassBorder : .clear, lineWidth: theme.cardBorderWidth * 0.7))
                         .frame(width: 24, height: 24)
 
                     Image(systemName: section.symbolName)
@@ -137,8 +144,8 @@ private struct SidebarItem: View {
                 }
 
                 Text(section.title)
-                    .font(.system(size: 13, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(isSelected ? theme.textPrimary : theme.textSecondary)
+                    .font(.system(size: 13, weight: theme.isOutlined ? .bold : .medium, design: theme.fontDesign))
+                    .foregroundStyle(isSelected ? (theme.isOutlined ? theme.glassBackground : theme.textPrimary) : theme.textSecondary)
 
                 Spacer()
 
@@ -154,11 +161,13 @@ private struct SidebarItem: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(isSelected ? theme.accentPrimary.opacity(0.15) : (isHovering ? theme.hoverOverlay : Color.clear))
+                // An outlined theme inks the selected row; glass tints it.
+                RoundedRectangle(cornerRadius: theme.isOutlined ? 12 : 9)
+                    .fill(isSelected ? (theme.isOutlined ? theme.textPrimary : theme.accentPrimary.opacity(0.15))
+                                     : (isHovering ? theme.hoverOverlay : Color.clear))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(isSelected ? theme.accentPrimary.opacity(0.4) : Color.clear, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: theme.isOutlined ? 12 : 9)
+                            .stroke(isSelected && !theme.isOutlined ? theme.accentPrimary.opacity(0.4) : Color.clear, lineWidth: 1)
                     )
             )
             .contentShape(.rect)

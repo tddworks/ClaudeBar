@@ -1,0 +1,435 @@
+{
+  "profile": {
+    "id": "codex",
+    "name": "Codex",
+    "links": {
+      "dashboard": "https://platform.openai.com/usage",
+      "status": "https://status.openai.com"
+    },
+    "look": {
+      "symbol": "chevron.left.forwardslash.chevron.right",
+      "icon": "CodexIcon",
+      "color": {
+        "light": [0.18, 0.72, 0.68],
+        "dark": [0.35, 0.85, 0.78]
+      },
+      "gradientEnd": {
+        "light": [0.12, 0.52, 0.72],
+        "dark": [0.25, 0.65, 0.85]
+      }
+    }
+  },
+  "cli": "codex",
+  "enabledByDefault": true,
+  "defaultDataSource": "rpc",
+  "dataSources": [
+    {
+      "kind": "rpc",
+      "label": "RPC",
+      "summary": "Uses codex app-server via JSON-RPC. Default, works with any auth. ClaudeBar never starts the Codex login itself.",
+      "fetch": {
+        "jsonRpc": {
+          "cli": "codex",
+          "args": ["-s", "read-only", "-a", "never", "app-server"],
+          "workingDirectory": "dedicated",
+          "handshake": [
+            {
+              "request": "initialize",
+              "params": {
+                "clientInfo": {
+                  "name": "claudebar",
+                  "version": "1.0.0"
+                }
+              }
+            },
+            {
+              "notify": "initialized"
+            }
+          ],
+          "call": "account/rateLimits/read",
+          "then": [
+            {
+              "request": "account/read",
+              "params": {
+                "refreshToken": false
+              },
+              "as": "account"
+            }
+          ]
+        }
+      },
+      "mapping": {
+        "json": {
+          "quotas": [
+            {
+              "kind": "session",
+              "at": "$.result.rateLimits.primary",
+              "usedPercent": "usedPercent",
+              "resetsAt": {
+                "epochSeconds": "resetsAt"
+              },
+              "window": [
+                {
+                  "minutes": "windowDurationMins"
+                },
+                {
+                  "hours": 5
+                }
+              ]
+            },
+            {
+              "kind": "weekly",
+              "at": "$.result.rateLimits.secondary",
+              "usedPercent": "usedPercent",
+              "resetsAt": {
+                "epochSeconds": "resetsAt"
+              },
+              "window": [
+                {
+                  "minutes": "windowDurationMins"
+                },
+                {
+                  "days": 7
+                }
+              ]
+            },
+            {
+              "kind": "time",
+              "each": "$.result.rateLimitsByLimitId",
+              "skipKeys": ["codex"],
+              "name": {
+                "firstOf": ["limitName", "limitId", "$key"],
+                "dropPrefixes": [
+                  {
+                    "prefix": "codex_",
+                    "capitalize": true
+                  },
+                  {
+                    "prefix": "codex "
+                  }
+                ]
+              },
+              "windows": [
+                {
+                  "at": "primary"
+                },
+                {
+                  "at": "secondary",
+                  "suffix": " 7d"
+                }
+              ],
+              "usedPercent": "usedPercent",
+              "resetsAt": {
+                "epochSeconds": "resetsAt"
+              },
+              "window": [
+                {
+                  "minutes": "windowDurationMins"
+                },
+                {
+                  "days": 7
+                }
+              ]
+            }
+          ],
+          "whenEmpty": {
+            "if": {
+              "path": "$.result.rateLimits.planType",
+              "equals": "free"
+            },
+            "quotas": [
+              {
+                "kind": "session",
+                "usedPercent": 0,
+                "resetText": "Free plan"
+              }
+            ],
+            "otherwise": "No rate limits available yet - make some API calls first"
+          },
+          "email": ["$.account.result.account.email"]
+        }
+      },
+      "fallback": "tty",
+      "requiresFiles": ["${CODEX_HOME:-~/.codex}/auth.json"],
+      "verifyBeforeBackground": true,
+      "unverifiedMessage": "Codex CLI session not checked. Click Refresh or Connect to check Codex status."
+    },
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Calls ChatGPT API directly. Faster, uses OAuth credentials.",
+      "note": "API mode needs file-based ChatGPT credentials in each account’s Codex folder.",
+      "credential": {
+        "jsonFile": {
+          "path": "${CODEX_HOME:-~/.codex}/auth.json",
+          "token": "$.tokens.access_token",
+          "refreshToken": "$.tokens.refresh_token",
+          "account": "$.tokens.account_id",
+          "idToken": "$.tokens.id_token",
+          "refreshedAt": "$.last_refresh",
+          "email": "$.tokens.id_token#jwt.email"
+        },
+        "refresh": {
+          "oauth2": {
+            "tokenURL": "https://auth.openai.com/oauth/token",
+            "clientId": "app_EMoamEEZ73f0CkXaXp7hrann",
+            "every": 691200,
+            "onStatus": [401, 403],
+            "expiredCodes": ["refresh_token_expired", "refresh_token_reused", "refresh_token_invalidated"],
+            "hint": "Run `codex` in terminal to log in again."
+          }
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://chatgpt.com/backend-api/wham/usage",
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "ChatGPT-Account-Id": "{{account}}",
+            "Accept": "application/json",
+            "User-Agent": "OpenUsage"
+          },
+          "timeout": 15
+        }
+      },
+      "mapping": {
+        "json": {
+          "plan": "$.plan_type",
+          "quotas": [
+            {
+              "kind": "session",
+              "at": "$.rate_limit.primary_window",
+              "usedPercent": ["$header.x-codex-primary-used-percent", "used_percent"],
+              "resetsAt": [
+                {
+                  "epochSeconds": "reset_at"
+                },
+                {
+                  "secondsFromNow": "reset_after_seconds"
+                }
+              ],
+              "window": [
+                {
+                  "seconds": "limit_window_seconds"
+                },
+                {
+                  "hours": 5
+                }
+              ]
+            },
+            {
+              "kind": "weekly",
+              "at": "$.rate_limit.secondary_window",
+              "usedPercent": ["$header.x-codex-secondary-used-percent", "used_percent"],
+              "resetsAt": [
+                {
+                  "epochSeconds": "reset_at"
+                },
+                {
+                  "secondsFromNow": "reset_after_seconds"
+                }
+              ],
+              "window": [
+                {
+                  "seconds": "limit_window_seconds"
+                },
+                {
+                  "days": 7
+                }
+              ]
+            },
+            {
+              "kind": "time",
+              "each": "$.additional_rate_limits",
+              "name": {
+                "firstOf": ["limit_name", "metered_feature"],
+                "dropPrefixes": [
+                  {
+                    "prefix": "codex_",
+                    "capitalize": true
+                  },
+                  {
+                    "prefix": "codex "
+                  }
+                ]
+              },
+              "windows": [
+                {
+                  "at": "rate_limit.primary_window"
+                },
+                {
+                  "at": "rate_limit.secondary_window",
+                  "suffix": " 7d"
+                }
+              ],
+              "usedPercent": "used_percent",
+              "resetsAt": [
+                {
+                  "epochSeconds": "reset_at"
+                },
+                {
+                  "secondsFromNow": "reset_after_seconds"
+                }
+              ],
+              "window": [
+                {
+                  "seconds": "limit_window_seconds"
+                },
+                {
+                  "days": 7
+                }
+              ]
+            }
+          ],
+          "cost": {
+            "remaining": ["$header.x-codex-credits-balance", "$.credits.balance"],
+            "limit": 1000
+          },
+          "email": ["$credential.email"]
+        }
+      }
+    },
+    {
+      "kind": "tty",
+      "label": "Terminal",
+      "hidden": true,
+      "fetch": {
+        "cli": {
+          "cli": "codex",
+          "args": ["-s", "read-only", "-a", "never"],
+          "input": "/status\n",
+          "timeout": 20,
+          "workingDirectory": "dedicated",
+          "autoResponses": {
+            "Do you trust the contents of this directory?": "1"
+          }
+        }
+      },
+      "mapping": {
+        "text": {
+          "errors": [
+            {
+              "contains": ["data not available yet"],
+              "error": {
+                "parseFailed": "Data not available yet"
+              }
+            },
+            {
+              "contains": ["update available"],
+              "alsoContains": ["codex"],
+              "error": "updateRequired"
+            },
+            {
+              "contains": ["not logged in", "please log in"],
+              "error": "authenticationRequired"
+            }
+          ],
+          "quotas": [
+            {
+              "kind": "session",
+              "label": "5h limit",
+              "leftPercent": "([0-9]{1,3})%\\s+left",
+              "lookahead": 12
+            },
+            {
+              "kind": "weekly",
+              "label": "Weekly limit",
+              "leftPercent": "([0-9]{1,3})%\\s+left",
+              "lookahead": 12
+            }
+          ],
+          "whenEmpty": "Could not find usage limits in Codex output"
+        }
+      },
+      "requiresFiles": ["${CODEX_HOME:-~/.codex}/auth.json"]
+    }
+  ],
+  "accounts": {
+    "signIn": {
+      "cli": "codex",
+      "args": ["-c", "cli_auth_credentials_store=\"file\"", "login"],
+      "homeVariable": "CODEX_HOME",
+      "unset": [
+        "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_AUTH_TOKEN", "OPENAI_ACCESS_TOKEN",
+        "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_IDENTITY_PROVIDER_ID"
+      ],
+      "alsoAt": [
+        "/Applications/Codex.app/Contents/Resources/codex",
+        "~/Applications/Codex.app/Contents/Resources/codex"
+      ]
+    },
+    "folder": {
+      "savedAs": "codexHome",
+      "default": "${CODEX_HOME:-~/.codex}",
+      "accountId": {
+        "field": "account",
+        "savedAs": "chatgptAccountId"
+      },
+      "notSignedIn": "No ChatGPT account found in this folder. Sign in with Codex using file credential storage, then choose the folder again."
+    },
+    "patch": {
+      "rpc": {
+        "credential": {
+          "jsonFile": {
+            "path": "{{account.codexHome}}/auth.json",
+            "token": "$.tokens.access_token",
+            "account": "$.tokens.account_id",
+            "email": "$.tokens.id_token#jwt.email"
+          }
+        },
+        "fetch": {
+          "jsonRpc": {
+            "args": [
+              "-s",
+              "read-only",
+              "-a",
+              "never",
+              "-c",
+              "cli_auth_credentials_store=\"file\"",
+              "app-server"
+            ],
+            "environment": {
+              "set": {
+                "CODEX_HOME": "{{account.codexHome}}"
+              },
+              "unset": [
+                "OPENAI_API_KEY",
+                "CODEX_API_KEY",
+                "OPENAI_ACCESS_TOKEN",
+                "OPENAI_IDENTITY_TOKEN_FILE",
+                "OPENAI_IDENTITY_PROVIDER_ID"
+              ]
+            }
+          }
+        },
+        "mapping": {
+          "json": {
+            "email": ["$.account.result.account.email", "$credential.email"]
+          }
+        },
+        "requiresFiles": ["{{account.codexHome}}/auth.json"],
+        "identity": {
+          "field": "account",
+          "equals": "{{account.chatgptAccountId}}",
+          "hint": "Sign in to the original account in this Codex folder, or remove it and add the new account in Settings."
+        },
+        "verifyBeforeBackground": null,
+        "unverifiedMessage": null,
+        "fallback": null
+      },
+      "api": {
+        "credential": {
+          "jsonFile": {
+            "path": "{{account.codexHome}}/auth.json"
+          }
+        },
+        "identity": {
+          "field": "account",
+          "equals": "{{account.chatgptAccountId}}",
+          "hint": "Sign in to the original account in this Codex folder, or remove it and add the new account in Settings."
+        }
+      },
+      "tty": null
+    }
+  }
+}

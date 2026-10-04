@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 import Mockable
 
@@ -27,6 +30,14 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarDurationEnabled() -> Bool
     func setMenuBarDurationEnabled(_ enabled: Bool)
 
+    func menuBarAccountLabelsEnabled() -> Bool
+    func setMenuBarAccountLabelsEnabled(_ enabled: Bool)
+
+    /// The provider's logo even when it's the only readout (off: only when
+    /// readouts need telling apart).
+    func menuBarProviderLogoEnabled() -> Bool
+    func setMenuBarProviderLogoEnabled(_ enabled: Bool)
+
     func menuBarStackedEnabled() -> Bool
     func setMenuBarStackedEnabled(_ enabled: Bool)
 
@@ -51,6 +62,10 @@ public protocol AppSettingsRepository: Sendable {
 
     func showDailyUsageCards() -> Bool
     func setShowDailyUsageCards(_ show: Bool)
+
+    /// *Hide account email* (#375): emails show masked in the popover and menu bar.
+    func hideAccountEmail() -> Bool
+    func setHideAccountEmail(_ hide: Bool)
 
     // MARK: - Notch
 
@@ -92,6 +107,10 @@ public protocol AppSettingsRepository: Sendable {
 
     func burnRateThreshold() -> Double
     func setBurnRateThreshold(_ threshold: Double)
+
+    /// Monochrome provider marks in the menu bar; opt-in, across all accounts.
+    func nativeMenuBarIconsEnabled() -> Bool
+    func setNativeMenuBarIconsEnabled(_ enabled: Bool)
 
     // MARK: - Status Colors
 

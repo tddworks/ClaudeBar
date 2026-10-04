@@ -1,0 +1,44 @@
+{
+  "profile": {
+    "id": "vercel-gateway",
+    "name": "Vercel Gateway",
+    "links": { "dashboard": "https://vercel.com/dashboard/ai-gateway" },
+    "look": {
+      "symbol": "triangle.fill",
+      "icon": "VercelIcon",
+      "color": { "light": [0.08, 0.08, 0.08], "dark": [0.92, 0.92, 0.92] },
+      "gradientEnd": { "light": [0.45, 0.45, 0.45], "dark": [0.55, 0.55, 0.55] }
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    { "id": "apiKey", "label": "API key", "kind": "secret", "scope": "account" },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "AI_GATEWAY_API_KEY" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads the AI Gateway credits balance.",
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
+      "fetch": {
+        "http": {
+          "url": "https://ai-gateway.vercel.sh/v1/credits",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
+          "timeout": 30
+        }
+      },
+      "mapping": {
+        "json": {
+          "quotas": [ { "kind": "model", "name": "AI Gateway Credits", "left": { "money": "$.balance", "currency": "USD" } } ],
+          "whenEmpty": { "otherwise": "Invalid or missing balance" },
+          "notAnObject": "Invalid credits response"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": { "api": { "credential": { "firstOf": null, "setting": "apiKey" } } }
+  }
+}

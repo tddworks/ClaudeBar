@@ -11,29 +11,32 @@ Shows your GitHub Copilot AI credits (formerly premium requests) for the current
 Copilot is **off by default**, because it needs a token.
 
 1. Settings → Providers → Copilot: turn it on.
-2. Under **GitHub Copilot Configuration → Probe Mode**, pick a mode (see below).
-3. Create the token that mode needs. The pane links to **Create fine-grained token** or **Create classic token**.
-4. Paste it into **Personal Access Token**. In Billing mode, also fill in **GitHub Username**.
-5. Press **Save & Test Connection**.
+2. Signed in to the GitHub CLI (`gh auth login`)? That's enough: with no token saved, Copilot reads your AI credits through the Copilot API with `gh`'s login. macOS may ask once to let ClaudeBar read the `gh:github.com` Keychain item.
+3. Otherwise pick the **Data fetching method** under **Copilot Configuration** (see below), create the token it needs and paste it into **GitHub Token**. On Billing, also fill in **GitHub Username** and **Monthly AI Credits**.
 
-## Probe modes
+## Data sources
 
-| Mode | Needs | Pick it when |
+| Data source | Needs | Pick it when |
 |---|---|---|
-| Billing (default) | Fine-grained PAT with **Plan: read**, plus your GitHub username | Individual plans (Free, Pro, Pro+) |
-| Copilot API | Classic PAT with the **copilot** scope | Business or Enterprise, or whenever Billing mode shows no data |
+| Billing API (default) | Fine-grained token with **Plan: read**, plus your GitHub username | Individual plans (Free, Pro, Pro+) |
+| Copilot API | Classic token with the **copilot** scope, or the GitHub CLI's login | Business or Enterprise, or whenever Billing shows no usage |
 
-Billing mode counts the Copilot items in your monthly billing usage and compares them against **Monthly AI Credits Limit**: Free/Pro (50), Business (300), Enterprise (1000) or Pro+ (1500). Pick your plan's allowance, because the Billing API doesn't return one. Copilot API mode reads your allowance and remaining credits straight from GitHub, so those settings are hidden in that mode.
+Billing hands over to the Copilot API when it has no token or GitHub refuses it. Billing counts the Copilot items in this month's billing usage against **Monthly AI Credits**: Free/Pro (50), Business (300), Enterprise (1000) or Pro+ (1500). Enter your plan's allowance, because the Billing API doesn't return one. The Copilot API reads your allowance and remaining credits straight from GitHub, and shows your plan.
+
+## More than one account
+
+**Accounts → Add Account** asks for what the active data source needs: a token, plus a username and monthly allowance on Billing. An added account never reads the environment variable.
 
 ## Gotchas
 
-- **"API returned no usage data"** is common for org-provided Copilot Business subscriptions, where the Billing API has nothing to report. Switch to Copilot API mode. In Billing mode you can also turn on **Enable manual usage entry** and type the number from GitHub, as a count (`99`) or a percentage (`198%`). The manual value is cleared when a new billing month starts.
-- **Using an environment variable instead of pasting the token.** Put the variable's name in **Auth Token Env Var (Alternative)**. ClaudeBar checks that variable first and falls back to the pasted token. It reads ClaudeBar's own environment, so a variable exported only in your shell profile isn't visible when ClaudeBar starts from Finder or at login.
-- **"Forbidden - ensure PAT has 'Plan: read' permission"** (Billing) or **"Forbidden - ensure Classic PAT has 'copilot' scope"** (Copilot API) means the token type doesn't match the mode. A fine-grained token doesn't work for Copilot API mode.
-- **"No Copilot subscription found"** (Copilot API mode, HTTP 404) means the token's account has no Copilot seat.
-- **Unlimited or no AI credits quota** shows as 100% with "Unlimited AI credits" or "No AI credits quota".
-- **Over the limit.** Billing mode lets the remaining percentage go negative, so you can see how far over you are.
-- **The token is stored in ClaudeBar's app preferences (UserDefaults)**, not the Keychain and not `settings.json`. **Remove Token** deletes the token and the username.
+- **Billing shows 0 used on an organization seat.** The Billing API has nothing to report for org-provided Business seats. Switch to the Copilot API, or fill in **Used This Month** with the number from GitHub, as a count (`99`) or a percentage (`198%`). It's used only while GitHub reports no usage, and isn't cleared for you when a new month starts.
+- **"Authentication required" with a token saved** means GitHub refused it (expired or revoked). A saved token comes before the GitHub CLI's login, so **Clear** it to fall back to `gh`, or paste a new one.
+- **Using an environment variable instead of pasting the token.** ClaudeBar reads `COPILOT_TOKEN`, or the name you put in **Environment variable**, before the pasted token. It reads ClaudeBar's own environment, so a variable exported only in your shell profile isn't visible when ClaudeBar starts from Finder or at login.
+- **"Forbidden - ensure the token has 'Plan: read' permission"** (Billing) or **"Forbidden - ensure the classic token has the 'copilot' scope"** (Copilot API) means the token type doesn't match the data source. A fine-grained token doesn't work for the Copilot API.
+- **"No Copilot subscription found"** (Copilot API, HTTP 404) means the token's account has no Copilot seat.
+- **Unlimited, or no AI credits quota**, shows your plan and no card, rather than a 100% one.
+- **Over the limit.** Billing lets the remaining percentage go negative, so you can see how far over you are.
+- **The token lives in the Keychain** (moved there from app preferences the first time it's read).
 
 ## See also
 

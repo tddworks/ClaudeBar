@@ -1,0 +1,53 @@
+import Foundation
+import Observation
+@testable import Domain
+
+/// "Another provider" for tests about the monitor, the lineup and selection —
+/// Gemini's identity fed by a stubbed probe. Gemini itself is now a definition
+/// (`Modules/Providers/Resources/Providers/gemini.json`), tested end to end in
+/// `ProvidersTests`; these tests only need something with its id and name.
+@MainActor
+@Observable
+final class StubGeminiProvider: AIProvider {
+    let id = "gemini"
+    let name = "Gemini"
+    let cliCommand = "gemini"
+    var dashboardURL: URL? { URL(string: "https://aistudio.google.com") }
+    var statusPageURL: URL? { URL(string: "https://status.cloud.google.com") }
+
+    var isEnabled: Bool {
+        didSet { settingsRepository.setEnabled(isEnabled, forProvider: id) }
+    }
+
+    private(set) var isSyncing = false
+    private(set) var snapshot: UsageSnapshot?
+    private(set) var lastError: Error?
+
+    private let probe: any UsageProbe
+    private let settingsRepository: any ProviderSettingsRepository
+
+    init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
+        self.probe = probe
+        self.settingsRepository = settingsRepository
+        self.isEnabled = settingsRepository.isEnabled(forProvider: "gemini")
+    }
+
+    func isAvailable() async -> Bool {
+        await probe.isAvailable()
+    }
+
+    @discardableResult
+    func refresh() async throws -> UsageSnapshot {
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            let usage = try await probe.probe()
+            snapshot = usage
+            lastError = nil
+            return usage
+        } catch {
+            lastError = error
+            throw error
+        }
+    }
+}

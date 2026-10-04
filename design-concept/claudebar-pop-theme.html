@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar Pop Theme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#FDF5EA; --paper:#FFFFFF; --ink:#1B1613;
+  --mint:#8EE3B0; --mint-deep:#5CCB8C; --purple:#8B5CF6; --purple-soft:#E9DEFF;
+  --coral:#FF7A66; --coral-soft:#FFE1DA; --butter:#FFD966; --sky:#8FD3FF; --pink:#FFB5D8;
+  --muted:#6B625B; --dash:#e4d8ca;
+  --b:2.5px solid var(--ink); --sh:4px 4px 0 var(--ink); --sh-lg:6px 6px 0 var(--ink);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,sans-serif;
+  background-image:radial-gradient(#e9dccb 1.2px,transparent 1.2px);background-size:22px 22px;min-height:100vh}
+.display{font-family:"Lilita One",sans-serif;letter-spacing:.3px;font-weight:400}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 16px 80px}
+
+/* ---------- page intro ---------- */
+.intro{display:grid;grid-template-columns:1fr 280px;gap:20px}
+.hero{background:var(--mint);border:var(--b);border-radius:28px;box-shadow:8px 8px 0 var(--ink);padding:30px 34px;position:relative}
+.badge{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:999px;padding:7px 16px;font-weight:800;font-size:13px}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+.hero h1{font-family:"Lilita One";font-weight:400;font-size:clamp(34px,5vw,58px);line-height:1.05;margin-top:16px;color:#fff;
+  -webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink)}
+.hero h1 span{display:inline-block;background:var(--ink);color:#fff;-webkit-text-stroke:0;text-shadow:none;border-radius:14px;padding:2px 16px 6px;margin-top:6px}
+.hero p{max-width:600px;margin-top:14px;font-weight:600;color:#1f3a2a;line-height:1.55}
+.tag{display:inline-block;background:var(--coral);border:2px dashed var(--ink);border-radius:8px;padding:5px 10px;font-weight:800;transform:rotate(-5deg);box-shadow:3px 3px 0 var(--ink);font-size:13px}
+.swatches{display:flex;flex-direction:column;gap:10px}
+.sw{background:var(--paper);border:var(--b);border-radius:18px;box-shadow:var(--sh);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.sw b{width:34px;height:34px;border:var(--b);border-radius:11px;flex:none}
+.sw div{font-weight:800;font-size:14px}.sw small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+.section-title{font-family:"Lilita One";font-weight:400;font-size:30px;margin:36px 0 4px}
+.section-sub{color:var(--muted);font-weight:600;max-width:820px;line-height:1.5}
+
+/* ---------- desktop stage ---------- */
+.stage{margin-top:20px;display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.label{font-weight:800;background:var(--paper);border:var(--b);border-radius:999px;padding:5px 14px;box-shadow:3px 3px 0 var(--ink);font-size:13px}
+
+/* menu bar strip */
+.menubar{width:400px;height:30px;background:rgba(255,255,255,.75);border:var(--b);border-radius:10px;box-shadow:var(--sh);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px;font-size:12px;font-weight:700}
+.mb-item{display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:7px}
+.mb-item.on{background:var(--ink);color:#fff}
+.mb-dot{width:14px;height:14px;border-radius:5px;border:2px solid var(--ink);display:grid;place-items:center;font-size:8px}
+.mb-item.on .mb-dot{border-color:#fff}
+.mb-pct{font-family:"Lilita One";font-weight:400;font-size:13px}
+
+/* popover */
+.popover{width:400px;background:var(--cream);border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding:14px;position:relative;
+  background-image:radial-gradient(#ecdfcd 1.1px,transparent 1.1px);background-size:18px 18px}
+.popover::before{content:"";position:absolute;top:-11px;right:70px;width:18px;height:18px;background:var(--cream);border-left:3px solid var(--ink);border-top:3px solid var(--ink);transform:rotate(45deg)}
+.p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.p-brand{display:flex;align-items:center;gap:9px}
+.logo{width:32px;height:32px;border:var(--b);border-radius:10px;background:var(--coral);display:grid;place-items:center;font-size:16px;box-shadow:2px 2px 0 var(--ink)}
+.p-brand .display{font-size:22px}
+.p-brand small{display:block;font-size:10px;font-weight:700;color:var(--muted);margin-top:-2px}
+.status-chip{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:800;background:var(--mint);box-shadow:2px 2px 0 var(--ink);display:flex;align-items:center;gap:5px}
+.status-chip i{width:7px;height:7px;border-radius:50%;background:var(--ink)}
+.status-chip.warn{background:var(--butter)}.status-chip.crit{background:var(--coral)}
+
+/* provider pills */
+.pills{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.pill{flex:none;display:flex;align-items:center;gap:6px;border:var(--b);border-radius:999px;padding:5px 11px 5px 6px;font-weight:800;font-size:12px;background:var(--paper);box-shadow:2px 2px 0 var(--ink);cursor:pointer;transition:transform .1s,box-shadow .1s}
+.pill:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.pill.on{background:var(--ink);color:#fff}
+.pill .pi{width:20px;height:20px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--ink)}
+.pill.on .pi{border-color:#fff}
+.pill .dot{width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor}
+
+.card{background:var(--paper);border:var(--b);border-radius:var(--r);box-shadow:var(--sh)}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* account card */
+.account{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.avatar{width:36px;height:36px;border:var(--b);border-radius:12px;background:var(--pink);display:grid;place-items:center;font-family:"Lilita One";font-size:18px;flex:none}
+.acc-name{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;min-width:0}
+.acc-name .email{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc-meta{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:1px}
+.tier{font-size:9px;font-weight:800;border:2px solid var(--ink);border-radius:999px;padding:1px 7px;background:var(--purple);color:#fff;flex:none}
+.eye{width:24px;height:18px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;font-size:10px;cursor:pointer;background:var(--paper);flex:none}
+.eye.on{background:var(--ink);color:#fff}
+.stale{margin-left:auto;font-size:15px}
+
+/* quota cards */
+.quotas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quota{padding:10px 12px 11px;position:relative}
+.quota.wide{grid-column:span 2}
+.q-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.q-name{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.q-name .qi{width:18px;height:18px;border:2px solid var(--ink);border-radius:6px;display:grid;place-items:center;font-size:9px}
+.q-status{font-size:8.5px;font-weight:800;border:1.5px solid var(--ink);border-radius:999px;padding:1px 6px}
+.q-status.ok{background:var(--mint)}.q-status.warn{background:var(--butter)}.q-status.crit{background:var(--coral)}
+.q-pct{font-family:"Lilita One";font-size:34px;line-height:1.05;margin-top:4px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:2px 2px 0 var(--ink)}
+.q-pct small{font-family:"Plus Jakarta Sans";font-size:10px;font-weight:800;color:var(--muted);-webkit-text-stroke:0;text-shadow:none;margin-left:3px}
+.track{height:14px;border:2px solid var(--ink);border-radius:999px;background:repeating-linear-gradient(135deg,#F3EADD 0 4px,#E9DECF 4px 6px);overflow:hidden;margin-top:6px}
+.track i{display:block;height:100%;border-right:2px solid var(--ink);border-radius:999px 0 0 999px}
+.q-foot{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--muted);margin-top:6px}
+.q-foot b{color:var(--ink)}
+.pace{font-size:8.5px;font-weight:800;border:1.5px dashed var(--ink);border-radius:6px;padding:1px 5px;background:var(--sky)}
+
+/* cost card */
+.cost{background:var(--purple-soft);padding:12px;position:relative}
+.cost .tag{position:absolute;right:12px;top:-11px;font-size:10px;padding:3px 7px;background:var(--butter)}
+.cost-row{display:flex;justify-content:space-between;align-items:flex-end}
+.cost .amt{font-family:"Lilita One";font-size:28px;color:var(--purple);-webkit-text-stroke:1.5px var(--ink);paint-order:stroke fill}
+.cost small{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.budget{font-size:10.5px;font-weight:700;color:var(--muted);text-align:right}
+.budget b{display:block;font-family:"Lilita One";font-weight:400;font-size:15px;color:var(--ink)}
+
+/* today's usage */
+.subhead{font-family:"Lilita One";font-weight:400;font-size:17px;margin:2px 2px -2px;display:flex;justify-content:space-between;align-items:baseline}
+.subhead small{font-family:"Plus Jakarta Sans";font-size:10px;font-weight:700;color:var(--muted)}
+.today{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tcard{padding:10px 12px}
+.tcard.wide{grid-column:span 2;display:flex;align-items:center;gap:12px}
+.t-label{display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.t-label i{width:16px;height:16px;border:2px solid var(--ink);border-radius:5px}
+.t-val{font-family:"Lilita One";font-weight:400;font-size:24px;margin-top:3px}
+.t-sub{font-size:9.5px;font-weight:700;color:var(--muted)}
+.delta{display:inline-block;margin-top:5px;font-size:9.5px;font-weight:800;border:1.5px solid var(--ink);border-radius:999px;padding:1px 7px}
+.delta.up{background:var(--coral-soft)}.delta.down{background:#DDF6E7}
+
+/* 30-day chart */
+.chart{padding:12px}
+.ch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.ch-head small{font-size:9.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.ch-total{text-align:right}
+.ch-total b{display:block;font-family:"Lilita One";font-weight:400;font-size:20px}
+.ch-total span{font-size:9.5px;font-weight:700;color:var(--muted)}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;padding:2px;background:var(--paper);margin-top:8px}
+.seg span{font-size:10.5px;font-weight:800;padding:3px 11px;border-radius:999px;cursor:pointer}
+.seg span.on{background:var(--ink);color:#fff}
+.bars{display:flex;align-items:flex-end;gap:3px;height:110px;margin-top:10px;padding-top:18px;position:relative}
+.bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;position:relative}
+.bar i{display:block;width:100%;border:1.5px solid var(--ink);border-radius:4px 4px 2px 2px;transition:height .3s}
+.bar i + i{border-top:none;border-radius:0 0 2px 2px}
+.bar.today i:first-child{outline:2px solid var(--ink);outline-offset:1px}
+.bar .tip{position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:999px;white-space:nowrap;opacity:0;pointer-events:none;transition:.12s;z-index:2}
+.bar:hover .tip{opacity:1}
+.axis{display:flex;justify-content:space-between;font-size:9px;font-weight:800;color:var(--muted);margin-top:5px}
+.legend{display:flex;gap:6px;margin-top:8px}
+.legend span{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800;border:2px solid var(--ink);border-radius:999px;padding:2px 8px;background:var(--paper)}
+.legend i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink)}
+
+/* footer */
+.foot{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
+.fbtn{border:var(--b);border-radius:12px;background:var(--paper);box-shadow:3px 3px 0 var(--ink);padding:7px 0;font:800 10.5px "Plus Jakarta Sans";cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .1s,box-shadow .1s}
+.fbtn span{font-size:14px}
+.fbtn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.fbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.fbtn.primary{background:var(--mint)}
+.fbtn.quit{background:var(--coral-soft)}
+.updated{font-size:10px;font-weight:700;color:var(--muted);text-align:center;margin-top:8px}
+
+/* accounts view (multi-account tab) */
+.acc-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.acc-row .lbl{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--muted)}
+.achip{display:flex;align-items:center;gap:5px;border:2px solid var(--ink);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800;background:var(--paper);cursor:pointer}
+.achip i{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--ink)}
+.achip.off{background:transparent;color:var(--muted);border-style:dashed}
+.callout{border:2.5px dashed var(--ink);border-radius:14px;background:var(--coral-soft);padding:9px 11px;font-size:11.5px;font-weight:700;display:flex;gap:8px;align-items:center}
+.mini-acc{padding:10px 12px}
+.mini-acc .top{display:flex;align-items:center;gap:8px}
+.mini-acc .who{font-weight:800;font-size:12.5px}
+.mini-acc .bars2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.mini-acc .bars2 div{font-size:9.5px;font-weight:800;color:var(--muted)}
+.mini-acc .bars2 b{font-family:"Lilita One";font-weight:400;font-size:18px;color:var(--ink);margin-right:3px}
+
+/* settings window */
+.window{width:560px;background:var(--cream);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
+.titlebar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:var(--b);background:var(--paper)}
+.titlebar i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink)}
+.titlebar b{margin-left:10px;font-family:"Lilita One";font-weight:400;font-size:16px}
+.win-body{display:grid;grid-template-columns:150px 1fr}
+.side{border-right:var(--b);padding:12px 10px;display:flex;flex-direction:column;gap:6px;background:#FBF3E7}
+.side span{font-size:12px;font-weight:800;padding:6px 10px;border-radius:10px;border:2px solid transparent}
+.side span.on{background:var(--ink);color:#fff}
+.pane{padding:14px 16px}
+.group-label{font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:2px 2px 8px}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.theme{border:var(--b);border-radius:14px;padding:7px;background:var(--paper);box-shadow:3px 3px 0 var(--ink);position:relative;cursor:pointer}
+.theme.on{border:3px solid var(--purple);transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.theme .pv{height:50px;border:2px solid var(--ink);border-radius:9px;margin-bottom:5px;position:relative;overflow:hidden}
+.theme b{font-size:11.5px;font-weight:800}
+.theme .new{position:absolute;top:-9px;right:-6px;font-size:9px;padding:2px 6px}
+.rows{padding:2px 12px}
+.r{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:2px dashed var(--dash);font-weight:700;font-size:12.5px}
+.r:last-child{border:none}
+.r small{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
+.toggle{margin-left:auto;width:42px;height:24px;border:2px solid var(--ink);border-radius:999px;background:var(--mint);position:relative;cursor:pointer;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:19px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--ink);transition:left .15s}
+.toggle.off{background:var(--dash)}.toggle.off::after{left:2px}
+
+/* mapping table */
+.map{margin-top:16px;width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:var(--b);border-radius:18px;box-shadow:var(--sh);overflow:hidden;font-size:13px}
+.map th,.map td{text-align:left;padding:9px 12px;border-bottom:2px dashed var(--dash);vertical-align:top}
+.map tr:last-child td{border:none}
+.map th{background:var(--ink);color:#fff;font-weight:800}
+.map code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;border:1.5px solid var(--ink);border-radius:6px;padding:0 5px}
+.map .new{background:var(--butter);border:1.5px solid var(--ink);border-radius:999px;font-size:10px;font-weight:800;padding:1px 7px;margin-left:4px}
+.swatch{display:inline-block;width:14px;height:14px;border:2px solid var(--ink);border-radius:5px;vertical-align:-2px;margin-right:5px}
+
+.concept-badge{position:fixed;right:16px;bottom:16px;background:var(--ink);color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:12px;z-index:10;box-shadow:3px 3px 0 var(--purple)}
+@media (max-width:760px){.intro{grid-template-columns:1fr}.swatches{display:grid;grid-template-columns:1fr 1fr}.popover,.menubar,.window{width:100%}.win-body{grid-template-columns:1fr}.side{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <div class="hero">
+      <div class="badge"><i></i>NEW THEME · CONCEPT</div>
+      <h1>Your quotas,<br><span>the cute way.</span></h1>
+      <p><b>Pop</b> is a chunky, friendly ClaudeBar theme: cream paper, thick ink outlines, hard offset shadows and candy-coloured status. Quotas, today's usage and the 30-day chart read the same; they just have more personality.</p>
+      <div style="display:flex;gap:16px;align-items:center;margin-top:18px;flex-wrap:wrap">
+        <span class="tag">THEME #6 ✨</span>
+        <span style="font-weight:700;font-size:14px;color:#1f3a2a">Joins Light, Dark, System,<br>CLI &amp; Christmas.</span>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw"><b style="background:var(--mint)"></b><div>Mint<small>#8EE3B0 · healthy, primary</small></div></div>
+      <div class="sw"><b style="background:var(--butter)"></b><div>Butter<small>#FFD966 · warning, today</small></div></div>
+      <div class="sw"><b style="background:var(--coral)"></b><div>Coral<small>#FF7A66 · critical, depleted</small></div></div>
+      <div class="sw"><b style="background:var(--purple)"></b><div>Grape<small>#8B5CF6 · accent, plan badge</small></div></div>
+      <div class="sw"><b style="background:var(--cream)"></b><div>Cream + Ink<small>#FDF5EA / #1B1613 · paper, outlines</small></div></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">The popover</h2>
+  <p class="section-sub">Click the provider pills, the eye beside the account, the chart's Cost / Tokens / Cache chips and hover its bars. Everything mirrors today's popover: same cards, same order, only the theme changes.</p>
+
+  <div class="stage">
+
+    <!-- ============ 1. SINGLE ACCOUNT ============ -->
+    <div class="col">
+      <div class="label">01 · Claude, one account</div>
+      <div class="menubar">
+        <div class="mb-item on"><div class="mb-dot">✻</div><span class="mb-pct">62%</span><span>· 2h 5m</span></div>
+        <div class="mb-item"><div class="mb-dot">◎</div><span class="mb-pct">88%</span></div>
+        <span>🔋 Sat 16:42</span>
+      </div>
+      <div class="popover" style="margin-top:6px">
+        <div class="p-head">
+          <div class="p-brand"><div class="logo">✻</div><div><div class="display">ClaudeBar</div><small>AI quotas, at a glance</small></div></div>
+          <div class="status-chip" id="statusChip"><i></i>HEALTHY</div>
+        </div>
+
+        <div class="pills" id="pills">
+          <div class="pill on" data-p="claude"><div class="pi" style="background:var(--coral)">✻</div>Claude<span class="dot" style="background:var(--mint)"></span></div>
+          <div class="pill" data-p="codex"><div class="pi" style="background:var(--sky)">◎</div>Codex<span class="dot" style="background:var(--mint)"></span></div>
+          <div class="pill" data-p="gemini"><div class="pi" style="background:var(--purple-soft)">✦</div>Gemini<span class="dot" style="background:var(--butter)"></span></div>
+          <div class="pill" data-p="copilot"><div class="pi" style="background:var(--butter)">◆</div>Copilot<span class="dot" style="background:var(--coral)"></span></div>
+          <div class="pill" data-p="kimi"><div class="pi" style="background:var(--pink)">K</div>Kimi<span class="dot" style="background:var(--mint)"></span></div>
+        </div>
+
+        <div class="stack" id="providerBody">
+          <div class="card account">
+            <div class="avatar">S</div>
+            <div style="min-width:0">
+              <div class="acc-name"><span class="email" id="email">slamhan1987@gmail.com</span><span class="tier">MAX</span><span class="eye" id="eye" title="Hide account emails">👁</span></div>
+              <div class="acc-meta">Updated just now · via CLI</div>
+            </div>
+          </div>
+
+          <div class="quotas">
+            <div class="card quota">
+              <div class="q-head"><div class="q-name"><span class="qi">⏱</span>Session</div><span class="q-status ok">HEALTHY</span></div>
+              <div class="q-pct">62%<small>left</small></div>
+              <div class="track"><i style="width:62%;background:var(--mint)"></i></div>
+              <div class="q-foot"><span>Resets in <b>2h 5m</b></span><span class="pace">ON PACE</span></div>
+            </div>
+            <div class="card quota">
+              <div class="q-head"><div class="q-name"><span class="qi">📅</span>Weekly</div><span class="q-status warn">WARNING</span></div>
+              <div class="q-pct">35%<small>left</small></div>
+              <div class="track"><i style="width:35%;background:var(--butter)"></i></div>
+              <div class="q-foot"><span>Resets <b>Tue 9:00</b></span><span class="pace" style="background:var(--coral-soft)">AHEAD</span></div>
+            </div>
+            <div class="card quota wide">
+              <div class="q-head"><div class="q-name"><span class="qi">✻</span>Opus · weekly</div><span class="q-status crit">CRITICAL</span></div>
+              <div style="display:flex;align-items:baseline;gap:12px">
+                <div class="q-pct">9%<small>left</small></div>
+                <div class="track" style="flex:1"><i style="width:9%;background:var(--coral)"></i></div>
+              </div>
+              <div class="q-foot"><span>Resets <b>Tue 9:00</b></span><span>Switch to Sonnet to stretch it</span></div>
+            </div>
+          </div>
+
+          <div class="card cost">
+            <span class="tag">EXTRA USAGE</span>
+            <div class="cost-row">
+              <div><small>Spent this month</small><div class="amt">$12.40</div></div>
+              <div class="budget">of your budget<b>$50.00</b>On track</div>
+            </div>
+            <div class="track"><i style="width:25%;background:var(--purple)"></i></div>
+          </div>
+
+          <div class="subhead">Today's usage <small>vs yesterday</small></div>
+          <div class="today">
+            <div class="card tcard"><div class="t-label"><i style="background:var(--butter)"></i>Cost</div><div class="t-val">$178.89</div><div class="t-sub">Saved $129.40 by cache</div><span class="delta up">▲ $99.39 · 125%</span></div>
+            <div class="card tcard"><div class="t-label"><i style="background:var(--mint)"></i>Tokens</div><div class="t-val">1.5M</div><div class="t-sub">99% from cache</div><span class="delta up">▲ 0.9M</span></div>
+            <div class="card tcard wide"><div><div class="t-label"><i style="background:var(--purple)"></i>Working time</div><div class="t-val">5h 20m</div></div><span class="delta down" style="margin-left:auto">▼ 49m vs Oct 2</span></div>
+          </div>
+
+          <div class="card chart">
+            <div class="ch-head">
+              <div><small>📊 Daily usage — last 30 days</small><br>
+                <div class="seg" id="seg"><span class="on" data-m="cost">Cost</span><span data-m="tokens">Tokens</span><span data-m="cache">Cache</span></div>
+              </div>
+              <div class="ch-total"><b id="chTotal">$6,461.97</b><span id="chCaption">30-day total</span></div>
+            </div>
+            <div class="bars" id="bars"></div>
+            <div class="axis"><span>Sep 4</span><span>Sep 11</span><span>Sep 18</span><span>Sep 25</span><span>Oct 3</span></div>
+            <div class="legend" id="legend"></div>
+          </div>
+
+          <div class="foot">
+            <button class="fbtn primary"><span>↻</span>Refresh</button>
+            <button class="fbtn"><span>🌐</span>Dashboard</button>
+            <button class="fbtn"><span>⚙️</span>Settings</button>
+            <button class="fbtn quit"><span>⏻</span>Quit</button>
+          </div>
+          <div class="updated">⌘1–9 switch providers · ⌘R refresh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2. MULTI ACCOUNT ============ -->
+    <div class="col">
+      <div class="label">02 · Codex, three accounts</div>
+      <div class="popover">
+        <div class="p-head">
+          <div class="p-brand"><div class="logo" style="background:var(--sky)">◎</div><div><div class="display">Codex</div><small>3 accounts</small></div></div>
+          <div class="status-chip warn"><i></i>WARNING</div>
+        </div>
+        <div class="stack">
+          <div class="acc-row">
+            <span class="lbl">ACCOUNTS</span>
+            <span class="achip"><i style="background:var(--mint)"></i>Personal</span>
+            <span class="achip"><i style="background:var(--butter)"></i>w•••@c•••.com</span>
+            <span class="achip off"><i style="background:var(--dash)"></i>Side project</span>
+          </div>
+          <div class="callout">⚠️ <span><b>w•••@c•••.com</b> is at 18% Session — causing Warning</span></div>
+          <div class="card mini-acc">
+            <div class="top"><div class="avatar" style="width:28px;height:28px;font-size:14px;background:var(--mint)">P</div><div class="who">Personal</div><span class="tier" style="background:var(--sky);color:var(--ink)">PLUS</span><span class="q-status ok" style="margin-left:auto">HEALTHY</span></div>
+            <div class="bars2">
+              <div><b>74%</b>session<div class="track"><i style="width:74%;background:var(--mint)"></i></div></div>
+              <div><b>58%</b>weekly<div class="track"><i style="width:58%;background:var(--mint)"></i></div></div>
+            </div>
+          </div>
+          <div class="card mini-acc">
+            <div class="top"><div class="avatar" style="width:28px;height:28px;font-size:14px;background:var(--butter)">W</div><div class="who">w•••@c•••.com</div><span class="tier">PRO</span><span class="q-status warn" style="margin-left:auto">WARNING</span></div>
+            <div class="bars2">
+              <div><b>18%</b>session<div class="track"><i style="width:18%;background:var(--butter)"></i></div></div>
+              <div><b>41%</b>weekly<div class="track"><i style="width:41%;background:var(--mint)"></i></div></div>
+            </div>
+          </div>
+          <div class="foot">
+            <button class="fbtn primary"><span>↻</span>Refresh</button>
+            <button class="fbtn"><span>🌐</span>Dashboard</button>
+            <button class="fbtn"><span>⚙️</span>Settings</button>
+            <button class="fbtn quit"><span>⏻</span>Quit</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="label" style="margin-top:20px">03 · Settings → Appearance</div>
+      <div class="window">
+        <div class="titlebar"><i style="background:var(--coral)"></i><i style="background:var(--butter)"></i><i style="background:var(--mint)"></i><b>Settings</b></div>
+        <div class="win-body">
+          <div class="side"><span>General</span><span class="on">Appearance</span><span>Menu Bar</span><span>Providers</span><span>Notify!</span><span>About</span></div>
+          <div class="pane">
+            <div class="group-label">Theme</div>
+            <div class="themes" id="themes">
+              <div class="theme on" data-t="pop"><span class="tag new">NEW</span>
+                <div class="pv" style="background:#FDF5EA">
+                  <div style="position:absolute;left:6px;top:7px;right:8px;height:17px;background:#8EE3B0;border:2px solid #1B1613;border-radius:6px;box-shadow:2px 2px 0 #1B1613"></div>
+                  <div style="position:absolute;left:6px;bottom:6px;width:28px;height:11px;background:#8B5CF6;border:2px solid #1B1613;border-radius:99px"></div>
+                </div><b>Pop</b></div>
+              <div class="theme" data-t="dark">
+                <div class="pv" style="background:linear-gradient(135deg,#1a1033,#3b1d5c)">
+                  <div style="position:absolute;left:6px;top:7px;right:8px;height:17px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px"></div>
+                  <div style="position:absolute;left:6px;bottom:6px;width:28px;height:11px;background:linear-gradient(90deg,#ff6b6b,#ff8fb1);border-radius:99px"></div>
+                </div><b>Dark</b></div>
+              <div class="theme" data-t="cli">
+                <div class="pv" style="background:#0c0c0c">
+                  <div style="position:absolute;left:6px;top:7px;right:8px;height:17px;border:1px solid #33ff66;border-radius:3px"></div>
+                  <div style="position:absolute;left:6px;bottom:6px;font:700 9px ui-monospace;color:#33ff66">&gt; 62%_</div>
+                </div><b>CLI</b></div>
+            </div>
+            <div class="card rows">
+              <div class="r"><div>High contrast<small>Thicker outlines, stronger status colours</small></div><div class="toggle off"></div></div>
+              <div class="r"><div>Hide account emails<small>Mask as s•••@g•••.com</small></div><div class="toggle" id="hideToggle"></div></div>
+              <div class="r"><div>Daily usage cards<small>Today's usage and the 30-day chart</small></div><div class="toggle"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">How it maps onto ClaudeBar's theme</h2>
+  <p class="section-sub">Most of Pop is existing <code>AppThemeProvider</code> properties set to new values. Two things the protocol can't say yet, a border <i>width</i> and a hard offset <i>shadow</i>, become new properties whose defaults keep every current theme exactly as it is.</p>
+  <table class="map">
+    <tr><th>Theme property</th><th>Pop value</th><th>Where it shows</th></tr>
+    <tr><td><code>backgroundGradient</code></td><td><span class="swatch" style="background:#FDF5EA"></span>flat cream #FDF5EA + a dot grid (<code>overlayView</code>)</td><td>popover, settings</td></tr>
+    <tr><td><code>cardGradient</code> · <code>glassBackground</code></td><td><span class="swatch" style="background:#fff"></span>flat white paper</td><td>every card</td></tr>
+    <tr><td><code>glassBorder</code></td><td><span class="swatch" style="background:#1B1613"></span>ink #1B1613</td><td>card, pill and chip outlines</td></tr>
+    <tr><td><code>cardBorderWidth</code><span class="new">NEW</span></td><td>2.5 (default 1)</td><td>cards, pills, buttons, chart bars</td></tr>
+    <tr><td><code>cardShadow</code><span class="new">NEW</span></td><td>ink, x 4 y 4, no blur (default: today's soft shadow)</td><td>cards; buttons press into it</td></tr>
+    <tr><td><code>cardCornerRadius</code> · <code>pillCornerRadius</code></td><td>16 · 999</td><td>cards · pills, chips</td></tr>
+    <tr><td><code>textPrimary</code> / <code>Secondary</code> / <code>Tertiary</code></td><td>#1B1613 / #3A322D / #6B625B</td><td>all text</td></tr>
+    <tr><td><code>customFontName</code> · <code>fontDesign</code></td><td>Lilita One (display numbers, bundled, OFL) · <code>.rounded</code> for body</td><td>percentages, totals, headings</td></tr>
+    <tr><td><code>statusHealthy</code> / <code>Warning</code> / <code>Critical</code> / <code>Depleted</code></td><td><span class="swatch" style="background:#8EE3B0"></span>mint <span class="swatch" style="background:#FFD966"></span>butter <span class="swatch" style="background:#FF7A66"></span>coral <span class="swatch" style="background:#6B625B"></span>ink-grey</td><td>badges, bars, the menu-bar dot</td></tr>
+    <tr><td><code>accentPrimary</code> · <code>accentGradient</code> · <code>pillGradient</code></td><td><span class="swatch" style="background:#8B5CF6"></span>grape, flat (no gradient)</td><td>plan badge, selected pill, cost</td></tr>
+    <tr><td><code>progressTrack</code></td><td>hatched cream stripes</td><td>quota bars</td></tr>
+    <tr><td><code>statusBarIconName</code></td><td>a chunky outlined icon</td><td>menu bar</td></tr>
+  </table>
+</div>
+<div class="concept-badge">CONCEPT · not built yet</div>
+
+<script>
+// ---------- the 30-day chart (real shape of a month of logs) ----------
+const cost=[38,29,187,297,321,215,373,132,163,205,296,163,284,236,171,374,294,366,265,154,317,104,0,190,388,276,145,166,78,179];
+const input=cost.map(c=>Math.round(c*1100+20000)), output=cost.map(c=>Math.round(c*3600+150000));
+const cacheW=cost.map(c=>Math.round(c*120000)), cacheR=cost.map(c=>Math.round(c*1700000+20000000));
+const start=new Date(2026,8,4);
+const fmt=n=>n>=1e9?(n/1e9).toFixed(1).replace('.0','')+'B':n>=1e6?(n/1e6).toFixed(1).replace('.0','')+'M':n>=1e3?(n/1e3).toFixed(1).replace('.0','')+'K':''+n;
+const money=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const modes={
+  cost:{parts:[cost],colors:['var(--butter)'],names:['Cost'],total:money(cost.reduce((a,b)=>a+b,0)+.97),show:v=>money(v)},
+  tokens:{parts:[input,output],colors:['var(--mint)','var(--mint-deep)'],names:['Input','Output'],total:fmt(input.reduce((a,b)=>a+b,0)+output.reduce((a,b)=>a+b,0)),show:fmt},
+  cache:{parts:[cacheW,cacheR],colors:['var(--purple)','var(--sky)'],names:['Cache write','Cache read'],total:fmt(cacheW.reduce((a,b)=>a+b,0)+cacheR.reduce((a,b)=>a+b,0)),show:fmt}
+};
+function drawChart(m){
+  const mode=modes[m], sums=cost.map((_,i)=>mode.parts.reduce((a,p)=>a+p[i],0)), max=Math.max(...sums);
+  document.getElementById('bars').innerHTML=sums.map((s,i)=>{
+    const d=new Date(start); d.setDate(d.getDate()+i);
+    const label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const segs=mode.parts.map((p,k)=>`<i style="height:${max?p[i]/max*100:0}%;background:${mode.colors[k]}"></i>`).reverse().join('');
+    return `<div class="bar ${i===29?'today':''}" data-i="${i}"><span class="tip">${label} · ${mode.show(s)}</span>${segs}</div>`;
+  }).join('');
+  document.getElementById('chTotal').textContent=mode.total;
+  document.getElementById('legend').innerHTML=mode.names.length>1?mode.names.map((n,k)=>`<span><i style="background:${mode.colors[k]}"></i>${n}</span>`).join(''):'';
+  document.querySelectorAll('#bars .bar').forEach(b=>{
+    b.onmouseenter=()=>{document.getElementById('chTotal').textContent=b.querySelector('.tip').textContent.split(' · ')[1];document.getElementById('chCaption').textContent=b.querySelector('.tip').textContent.split(' · ')[0]};
+    b.onmouseleave=()=>{document.getElementById('chTotal').textContent=mode.total;document.getElementById('chCaption').textContent='30-day total'};
+  });
+}
+document.querySelectorAll('#seg span').forEach(s=>s.onclick=()=>{document.querySelectorAll('#seg span').forEach(x=>x.classList.remove('on'));s.classList.add('on');drawChart(s.dataset.m)});
+drawChart('cost');
+
+// ---------- hide account email ----------
+const full='slamhan1987@gmail.com', masked='s•••@g•••.com';
+function setHidden(h){
+  document.getElementById('email').textContent=h?masked:full;
+  document.getElementById('eye').classList.toggle('on',h);
+  document.getElementById('eye').textContent=h?'🙈':'👁';
+  document.getElementById('hideToggle').classList.toggle('off',!h);
+}
+let hidden=false;
+document.getElementById('eye').onclick=()=>setHidden(hidden=!hidden);
+document.getElementById('hideToggle').onclick=()=>setHidden(hidden=!hidden);
+setHidden(false);
+
+// ---------- pills, themes, toggles ----------
+document.querySelectorAll('#pills .pill').forEach(p=>p.onclick=()=>{document.querySelectorAll('#pills .pill').forEach(x=>x.classList.remove('on'));p.classList.add('on')});
+document.querySelectorAll('#themes .theme').forEach(t=>t.onclick=()=>{document.querySelectorAll('#themes .theme').forEach(x=>x.classList.remove('on'));t.classList.add('on')});
+document.querySelectorAll('.toggle:not(#hideToggle)').forEach(t=>t.onclick=()=>t.classList.toggle('off'));
+</script>
+</body>
+</html>

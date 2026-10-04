@@ -1,0 +1,163 @@
+{
+  "profile": {
+    "id": "gemini",
+    "name": "Gemini",
+    "links": {
+      "dashboard": "https://aistudio.google.com",
+      "status": "https://status.cloud.google.com"
+    },
+    "look": {
+      "symbol": "sparkles",
+      "icon": "GeminiIcon",
+      "color": {
+        "light": [
+          0.92,
+          0.72,
+          0.28
+        ],
+        "dark": [
+          0.98,
+          0.78,
+          0.35
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.85,
+          0.45,
+          0.25
+        ],
+        "dark": [
+          0.95,
+          0.55,
+          0.35
+        ]
+      }
+    }
+  },
+  "cli": "gemini",
+  "enabledByDefault": true,
+  "settings": [
+    {
+      "id": "home",
+      "label": "Signed-in Gemini Home",
+      "scope": "account",
+      "kind": {
+        "path": {
+          "mustExist": true
+        }
+      }
+    }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads your Gemini Code Assist quota with the Gemini CLI's login",
+      "credential": {
+        "jsonFile": {
+          "path": "~/.gemini/oauth_creds.json",
+          "token": "$.access_token"
+        },
+        "refresh": {
+          "cli": {
+            "cli": "gemini",
+            "input": "/quit\n",
+            "timeout": 15,
+            "environment": {
+              "unset": [
+                "GEMINI_CLI_HOME",
+                "GEMINI_API_KEY",
+                "GOOGLE_API_KEY",
+                "GOOGLE_GENAI_USE_VERTEXAI",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+                "GOOGLE_CLOUD_PROJECT",
+                "GCLOUD_PROJECT"
+              ]
+            }
+          }
+        }
+      },
+      "fetch": {
+        "http": {
+          "steps": [
+            {
+              "name": "project",
+              "optional": true,
+              "attempts": 3,
+              "request": {
+                "url": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+                "method": "POST",
+                "timeout": 10,
+                "headers": {
+                  "Authorization": "Bearer {{token}}",
+                  "Content-Type": "application/json"
+                },
+                "body": "{\"metadata\":{\"pluginType\":\"GEMINI\"}}"
+              },
+              "keep": {
+                "project": "$.cloudaicompanionProject"
+              }
+            },
+            {
+              "name": "quota",
+              "dropEmpty": [
+                "project"
+              ],
+              "request": {
+                "url": "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota",
+                "method": "POST",
+                "timeout": 10,
+                "headers": {
+                  "Authorization": "Bearer {{token}}",
+                  "Content-Type": "application/json"
+                },
+                "body": "{\"project\":\"{{project}}\"}"
+              }
+            }
+          ]
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "gemini-quota.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "api": {
+        "credential": {
+          "jsonFile": {
+            "path": "{{account.home}}/.gemini/oauth_creds.json"
+          },
+          "refresh": {
+            "cli": {
+              "workingDirectory": "dedicated",
+              "environment": {
+                "unset": [
+                  "GEMINI_API_KEY",
+                  "GOOGLE_API_KEY",
+                  "GOOGLE_GENAI_USE_VERTEXAI",
+                  "GOOGLE_APPLICATION_CREDENTIALS",
+                  "GOOGLE_CLOUD_PROJECT",
+                  "GCLOUD_PROJECT"
+                ],
+                "set": {
+                  "GEMINI_CLI_HOME": "{{account.home}}"
+                }
+              }
+            }
+          }
+        },
+        "requiresFiles": [
+          "{{account.home}}/.gemini/oauth_creds.json"
+        ],
+        "verifyBeforeBackground": true,
+        "unverifiedMessage": "Refresh this Gemini account once to check its separate login."
+      }
+    }
+  }
+}

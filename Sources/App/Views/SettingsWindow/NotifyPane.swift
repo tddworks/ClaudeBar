@@ -203,7 +203,7 @@ struct NotifyPane: View {
             .fill(theme.glassBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(theme.glassBorder, lineWidth: 1)
+                    .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
             )
     }
 
@@ -491,7 +491,7 @@ struct NotifyPane: View {
                                     .fill(theme.glassBackground)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                                            .stroke(theme.glassBorder, lineWidth: 1)
+                                            .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                                     )
                             )
                     } else {
@@ -828,7 +828,7 @@ private struct NotifyPaneButton: View {
                 Capsule().fill(theme.glassBackground)
             }
 
-            Capsule().stroke(isProminent ? Color.clear : theme.glassBorder, lineWidth: 1)
+            Capsule().stroke(isProminent ? Color.clear : theme.glassBorder, lineWidth: theme.cardBorderWidth)
         }
     }
 }

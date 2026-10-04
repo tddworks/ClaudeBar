@@ -3,6 +3,7 @@ import CoreText
 import SwiftUI
 import Domain
 import Infrastructure
+import Providers
 
 /// Drives the menu-bar status item imperatively (AppKit), bypassing SwiftUI's
 /// `MenuBarExtra` label hosting entirely.
@@ -75,6 +76,9 @@ final class StatusItemLabelDriver {
         var additionalLabels: [MenuBarProviderLabel] = []
         var primaryProviderId: String? = nil
         var primaryProviderName: String? = nil
+        /// Short account names by lineup id, for providers with several
+        /// enabled logins — `MenuBarAccountName`.
+        var accountNames: [String: String] = [:]
         var fallbackStatus: QuotaStatus
         var sessionPhase: ClaudeSession.Phase?
         var themeModeId: String
@@ -90,6 +94,8 @@ final class StatusItemLabelDriver {
         /// The High Contrast palette is per-appearance and `render` skips
         /// identical content, so an appearance flip must change the content.
         var isDarkAppearance: Bool = true
+        /// Global Appearance preference, included so toggling repaints immediately.
+        var nativeMenuBarIconsEnabled: Bool = false
         /// Blink phase for an H:MM countdown's separator colon. Only alternates
         /// while the label actually holds a countdown colon, so a "2d" or "45m"
         /// label keeps comparing equal across ticks and never repaints for the
@@ -179,7 +185,7 @@ final class StatusItemLabelDriver {
 
     private func currentLabelContent() -> LabelContent {
         let primaryQuotaKey = settings.menuBarPercentageQuotaKey.isEmpty
-            ? (monitor.provider(for: settings.menuBarPercentageProviderId)?.snapshot?.quotas.first?.quotaType.quotaKey ?? "session")
+            ? (monitor.provider(for: settings.menuBarPercentageProviderId).flatMap { monitor.usage(of: $0) }?.quotas.first?.quotaType.quotaKey ?? "session")
             : settings.menuBarPercentageQuotaKey
         let freshLabel = monitor.menuBarLabel(
             providerId: settings.menuBarPercentageProviderId,
@@ -210,14 +216,27 @@ final class StatusItemLabelDriver {
         )
         let hasCountdownColon = ([label].compactMap { $0 } + additionalLabels.map(\.label))
             .contains { !CountdownColon.ranges(in: $0.text).isEmpty }
-        let primaryProviderName = additionalLabels.isEmpty ? nil : monitor.enabledProviders
-            .first { $0.id == settings.menuBarPercentageProviderId }?.name
+        let primaryProvider = monitor.enabledProviders.first { $0.id == settings.menuBarPercentageProviderId }
+        let showsQuota = settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled
+        let shownIds = [settings.menuBarPercentageProviderId] + additionalLabels.map(\.providerId)
+        let accountNames = MenuBarAccountName.names(Dictionary(uniqueKeysWithValues: Set(shownIds).compactMap { id in
+            (monitor.enabledProviders.first { $0.id == id } as? Account)
+                .flatMap { $0.provider.hasSeveralAccounts ? (id, settings.shown($0.displayName)) : nil }
+        }))
+        let primaryProviderName = Self.showsPrimaryLogo(
+            showsQuota: showsQuota,
+            hasOtherReadouts: !additionalLabels.isEmpty,
+            hasAccountName: accountNames[settings.menuBarPercentageProviderId] != nil,
+            logoAlways: settings.menuBarProviderLogoEnabled
+        ) ? primaryProvider.map { settings.shown($0.name) } : nil
 
         return LabelContent(
             label: label,
             additionalLabels: additionalLabels,
             primaryProviderId: primaryProviderName == nil ? nil : settings.menuBarPercentageProviderId,
             primaryProviderName: primaryProviderName,
+            // Hidden labels still keep the icon: the full names decide that above.
+            accountNames: settings.menuBarAccountLabelsEnabled ? accountNames : [:],
             fallbackStatus: effectiveSelectedProviderStatus,
             sessionPhase: sessionMonitor.activeSession?.phase,
             themeModeId: settings.themeMode,
@@ -225,6 +244,7 @@ final class StatusItemLabelDriver {
             stackedSize: settings.menuBarStackedSize,
             statusColors: settings.statusColorPolicy,
             isDarkAppearance: isDarkAppearance,
+            nativeMenuBarIconsEnabled: settings.nativeMenuBarIconsEnabled,
             colonVisible: hasCountdownColon ? blinkPhase : true
         )
     }
@@ -254,11 +274,7 @@ final class StatusItemLabelDriver {
     /// Status of the selected provider, considering the burn-rate setting.
     /// Mirrors the dropdown's status logic for the icon-only fallback.
     private var effectiveSelectedProviderStatus: QuotaStatus {
-        guard let snapshot = monitor.selectedProvider?.snapshot else { return .healthy }
-        if settings.burnRateWarningEnabled {
-            return snapshot.paceAwareOverallStatus(burnRateThreshold: settings.burnRateThreshold)
-        }
-        return snapshot.overallStatus
+        monitor.selectedProvider.flatMap { monitor.usage(of: $0) }?.overallStatus(under: settings.statusPolicy) ?? .healthy
     }
 
     private func render(_ content: LabelContent) {
@@ -281,11 +297,9 @@ final class StatusItemLabelDriver {
         lastImage = image
         button.image = image
         button.imagePosition = .imageOnly
-        let primaryText = content.label.map {
-            [content.primaryProviderName, $0.text].compactMap { $0 }.joined(separator: " ")
-        }
-        let tooltip = ([primaryText].compactMap { $0 } + content.additionalLabels.map(\.text))
-            .joined(separator: " | ")
+        let primaryText = [content.primaryProviderName, content.label?.text].compactMap { $0 }.joined(separator: " ")
+        let tooltip = settings.shown(([primaryText].filter { !$0.isEmpty } + content.additionalLabels.map(\.text))
+            .joined(separator: " | "))
         button.toolTip = tooltip.isEmpty ? nil : tooltip
         button.setAccessibilityLabel(tooltip.isEmpty ? "ClaudeBar" : tooltip)
     }
@@ -296,6 +310,13 @@ final class StatusItemLabelDriver {
             systemColorScheme: content.isDarkAppearance ? .dark : .light,
             statusColors: content.statusColors
         )
+    }
+
+    /// Whether the primary readout starts with its provider's logo: when
+    /// there are readouts to tell apart — another provider, or an account
+    /// name — or when the person asked for it always. Never without a readout.
+    static func showsPrimaryLogo(showsQuota: Bool, hasOtherReadouts: Bool, hasAccountName: Bool, logoAlways: Bool) -> Bool {
+        showsQuota && (hasOtherReadouts || hasAccountName || logoAlways)
     }
 
     // MARK: - Image Composition
@@ -310,55 +331,102 @@ final class StatusItemLabelDriver {
         // finished/idle (.stopped) or .ended session must not leave a lone
         // orange glyph sitting in the menu bar — that reads as a frozen crash
         // (the user's report) since `Stop` fires at the end of every turn.
+        var showsSessionGlyph = false
         if let phase = content.sessionPhase, phase == .active || phase == .subagentsWorking {
-            parts.append(symbolImage("terminal.fill", color: NSColor(phase.color)))
+            let color = sessionGlyphColor(
+                phase: phase, theme: theme, status: content.fallbackStatus,
+                showsUsageText: content.label != nil, darkMenuBar: content.isDarkAppearance
+            )
+            parts.append(symbolImage(sessionGlyphSymbol, color: NSColor(color)))
+            showsSessionGlyph = true
         }
 
         if let providerId = content.primaryProviderId {
-            parts.append(providerIcon(for: providerId))
+            parts.append(providerIcon(for: providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance))
+        }
+
+        if let id = content.primaryProviderId, let name = content.accountNames[id] {
+            parts.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
         }
 
         if let label = content.label {
             parts.append(quotaImage(label, stacked: content.stacked, size: content.stackedSize,
-                                    colonVisible: content.colonVisible, theme: theme))
+                                    colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
         } else {
-            let symbolName = theme.statusBarIconName ?? fallbackIconName(for: content.fallbackStatus)
-            parts.append(symbolImage(
-                symbolName,
-                color: NSColor(theme.statusColor(for: content.fallbackStatus))
-            ))
+            if let symbolName = statusIconSymbol(
+                theme: theme, status: content.fallbackStatus, besideSessionGlyph: showsSessionGlyph
+            ) {
+                parts.append(symbolImage(
+                    symbolName,
+                    color: NSColor(theme.menuBarStatusColor(for: content.fallbackStatus, darkMenuBar: content.isDarkAppearance))
+                ))
+            }
         }
 
         for label in content.additionalLabels {
-            parts.append(StatusBarPercentageImageRenderer.image(
-                text: " | ", color: theme.statusColor(for: label.status)
-            ))
-            parts.append(providerIcon(for: label.providerId))
+            // Chips stand apart on their own; text needs a separator.
+            if !theme.isOutlined || label.stacked {
+                parts.append(StatusBarPercentageImageRenderer.image(
+                    text: " | ", color: theme.menuBarStatusColor(for: label.status, darkMenuBar: content.isDarkAppearance)
+                ))
+            }
+            parts.append(providerIcon(for: label.providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance))
+            if let name = content.accountNames[label.providerId] {
+                parts.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
+            }
             parts.append(quotaImage(label.label, stacked: label.stacked, size: label.stackedSize,
-                                    colonVisible: content.colonVisible, theme: theme))
+                                    colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
         }
         return hStack(parts, spacing: 3)
     }
 
     private static func quotaImage(_ label: MenuBarLabel, stacked: Bool, size: MenuBarStackedSize,
-                                   colonVisible: Bool, theme: any AppThemeProvider) -> NSImage {
+                                   colonVisible: Bool, theme: any AppThemeProvider, dark: Bool) -> NSImage {
         if stacked, label.segments.count == 2 {
             return StatusBarStackedImageRenderer.image(
-                top: (label.segments[0].text, theme.statusColor(for: label.segments[0].status)),
-                bottom: (label.segments[1].text, theme.statusColor(for: label.segments[1].status)),
+                top: (label.segments[0].text, theme.menuBarStatusColor(for: label.segments[0].status, darkMenuBar: dark)),
+                bottom: (label.segments[1].text, theme.menuBarStatusColor(for: label.segments[1].status, darkMenuBar: dark)),
                 size: size, colonVisible: colonVisible
             )
         }
+        if theme.isOutlined {
+            // A printed theme's quota is a candy chip: its status colour,
+            // inked, ink text — readable on a light or dark menu bar alike.
+            let text = StatusBarPercentageImageRenderer.image(
+                text: label.text, color: theme.textOnStatus, colonVisible: colonVisible
+            )
+            return StatusBarChipRenderer.chip(text, fill: theme.statusColor(for: label.status),
+                                              ink: theme.glassBorder, shadow: theme.cardShadow != nil)
+        }
         return StatusBarPercentageImageRenderer.image(
-            text: label.text, color: theme.statusColor(for: label.status), colonVisible: colonVisible
+            text: label.text, color: theme.menuBarStatusColor(for: label.status, darkMenuBar: dark), colonVisible: colonVisible
         )
     }
 
-    private static func providerIcon(for providerId: String) -> NSImage {
+    /// Template assets contain only the mark, never the colored tile. Custom or
+    /// future providers without one use their configured SF Symbol. Account IDs
+    /// resolve through the same visual identity lookup as colored icons.
+    static func providerIcon(for providerId: String, native: Bool, dark: Bool) -> NSImage {
         let assetName = ProviderVisualIdentityLookup.iconAssetName(for: providerId)
+        let ink: NSColor = dark ? .white : .black
+        if native {
+            if let mask = NSImage(named: assetName + "MenuBar") {
+                return fittedProviderIcon(mask, ink: ink)
+            }
+            return symbolImage(ProviderVisualIdentityLookup.symbolIcon(for: providerId), color: ink)
+        }
         guard let source = NSImage(named: assetName), source.size.width > 0, source.size.height > 0 else {
             return symbolImage(ProviderVisualIdentityLookup.symbolIcon(for: providerId), color: .labelColor)
         }
+        return fittedProviderIcon(source)
+    }
+
+    /// Draw into our non-template composite: making only a child NSImage a
+    /// template does not tint it once flattened with colored quota text. Fixed
+    /// ink comes from the status button's actual appearance, not the app theme.
+    /// Do not mutate NSImage(named:) instances shared by the popover.
+    static func fittedProviderIcon(_ source: NSImage, ink: NSColor? = nil) -> NSImage {
+        guard source.size.width > 0, source.size.height > 0 else { return NSImage(size: .zero) }
         let size = NSSize(width: 16, height: 16)
         let scale = min(size.width / source.size.width, size.height / source.size.height)
         let fitted = NSSize(width: source.size.width * scale, height: source.size.height * scale)
@@ -367,10 +435,52 @@ final class StatusItemLabelDriver {
                               y: (bounds.height - fitted.height) / 2,
                               width: fitted.width, height: fitted.height)
             source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            if let ink {
+                ink.setFill()
+                bounds.fill(using: .sourceIn)
+            }
             return true
         }
         icon.isTemplate = false
         return icon
+    }
+
+    /// The glyph shown while a Claude Code session is working.
+    static let sessionGlyphSymbol = "terminal.fill"
+
+    /// The symbol for the status icon drawn when there is no usage text, or
+    /// nil when the session glyph stands in for it. A theme whose icon is the
+    /// outline of the glyph (CLI's `terminal`) gets one terminal that fills in
+    /// while Claude works, instead of an outline beside a filled copy.
+    static func statusIconSymbol(theme: any AppThemeProvider, status: QuotaStatus,
+                                 besideSessionGlyph: Bool) -> String? {
+        guard let themeIcon = theme.statusBarIconName else {
+            return fallbackIconName(for: status)
+        }
+        if besideSessionGlyph, sessionGlyphFillsIn(themeIcon) {
+            return nil
+        }
+        return themeIcon
+    }
+
+    /// The session glyph's colour. It is the session phase colour, except when
+    /// the glyph stands in for the theme's status icon: that one terminal is
+    /// then the only place the quota status shows, so its shape says Claude is
+    /// working and its colour keeps saying how the quota is doing. Otherwise a
+    /// critical quota would look healthy for as long as a session runs.
+    static func sessionGlyphColor(phase: ClaudeSession.Phase, theme: any AppThemeProvider,
+                                  status: QuotaStatus, showsUsageText: Bool,
+                                  darkMenuBar: Bool) -> Color {
+        guard !showsUsageText, let themeIcon = theme.statusBarIconName,
+              sessionGlyphFillsIn(themeIcon) else {
+            return phase.color
+        }
+        return theme.menuBarStatusColor(for: status, darkMenuBar: darkMenuBar)
+    }
+
+    /// Whether a theme's icon is the outline of the session glyph.
+    private static func sessionGlyphFillsIn(_ themeIcon: String) -> Bool {
+        themeIcon + ".fill" == sessionGlyphSymbol
     }
 
     private static func fallbackIconName(for status: QuotaStatus) -> String {
@@ -533,9 +643,8 @@ final class StatusItemLabelDriver {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.blinkPhase.toggle()
-                // refreshNow, not renderNow: the tick must not arm a new
-                // observation registration twice a second, and must keep the
-                // equality check so a colon-less label ("2d") never repaints.
+                // refreshNow, not renderNow: the tick must keep the equality
+                // check so a colon-less label ("2d") never repaints.
                 self.labelSync?.refreshNow()
             }
         }
@@ -655,6 +764,42 @@ enum CountdownColonStyle {
 
 /// Renders status text as an original-color image because macOS can ignore
 /// `Text.foregroundStyle` inside a menu bar item.
+/// A label drawn as a printed chip: a pill in `fill`, outlined in `ink`,
+/// on a small hard shadow — sized to stay inside the menu bar's 22 pt.
+enum StatusBarChipRenderer {
+    static let outline: CGFloat = 1.5
+    static let shadowOffset: CGFloat = 1.5
+
+    @MainActor
+    static func chip(_ content: NSImage, fill: Color, ink: Color, shadow: Bool) -> NSImage {
+        let horizontalPadding: CGFloat = 6
+        let pillHeight = min(content.size.height + 4, 19)
+        let pillWidth = ceil(content.size.width) + horizontalPadding * 2
+        let lift = shadow ? shadowOffset : 0
+        let size = NSSize(width: pillWidth + lift + outline, height: pillHeight + lift + outline)
+        let image = NSImage(size: size, flipped: false) { _ in
+            // The pill sits top-left; its shadow falls down and to the right.
+            let pill = NSRect(x: outline / 2, y: lift + outline / 2, width: pillWidth, height: pillHeight)
+            let radius = pillHeight / 2
+            if shadow {
+                NSColor(ink).setFill()
+                NSBezierPath(roundedRect: pill.offsetBy(dx: lift, dy: -lift), xRadius: radius, yRadius: radius).fill()
+            }
+            let path = NSBezierPath(roundedRect: pill, xRadius: radius, yRadius: radius)
+            NSColor(fill).setFill()
+            path.fill()
+            path.lineWidth = outline
+            NSColor(ink).setStroke()
+            path.stroke()
+            let origin = NSPoint(x: pill.midX - content.size.width / 2, y: pill.midY - content.size.height / 2)
+            content.draw(at: origin, from: .zero, operation: .sourceOver, fraction: 1)
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+}
+
 enum StatusBarPercentageImageRenderer {
     @MainActor
     static func image(text: String, color: Color, colonVisible: Bool = true) -> NSImage {

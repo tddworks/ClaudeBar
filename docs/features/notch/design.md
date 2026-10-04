@@ -4,7 +4,7 @@ description: Contributor research behind the notch Live Activity. Covers why the
 
 # Notch Live Activity: design
 
-User guide: [README.md](README.md). Mockup: [notch-live-activity.html](../../mockups/notch-live-activity.html).
+User guide: [README.md](README.md). Mockup: [notch-live-activity.html](../../../design-concept/notch-live-activity.html).
 
 The notch is a **view**, not a new source of truth. `QuotaMonitor` and `SessionMonitor` stay authoritative, per the single-source-of-truth rule in [ARCHITECTURE.md](../../architecture/ARCHITECTURE.md).
 

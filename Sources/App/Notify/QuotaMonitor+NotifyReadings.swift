@@ -17,7 +17,7 @@ extension QuotaMonitor {
     /// inheritance is exactly right: the caller is a driver on the main actor.
     func notifyReadings() -> [NotifyQuotaReading] {
         enabledProviders.flatMap { provider in
-            (provider.snapshot?.quotas ?? []).map { quota in
+            (usage(of: provider)?.quotas ?? []).map { quota in
                 NotifyQuotaReading(
                     providerId: provider.id,
                     providerName: provider.name,

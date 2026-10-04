@@ -1,0 +1,210 @@
+{
+  "profile": {
+    "id": "copilot",
+    "name": "Copilot",
+    "links": {
+      "dashboard": "https://github.com/settings/copilot/features",
+      "status": "https://www.githubstatus.com"
+    },
+    "look": {
+      "symbol": "chevron.left.forwardslash.chevron.right",
+      "icon": "CopilotIcon",
+      "color": {
+        "light": [
+          0.26,
+          0.43,
+          0.82
+        ],
+        "dark": [
+          0.38,
+          0.55,
+          0.93
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.45,
+          0.3,
+          0.8
+        ],
+        "dark": [
+          0.55,
+          0.4,
+          0.9
+        ]
+      }
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    {
+      "id": "token",
+      "label": "GitHub Token",
+      "kind": "secret",
+      "scope": "account"
+    },
+    {
+      "id": "username",
+      "label": "GitHub Username",
+      "scope": "account",
+      "for": [
+        "billing"
+      ],
+      "kind": {
+        "text": {
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+        }
+      }
+    },
+    {
+      "id": "monthlyLimit",
+      "label": "Monthly AI Credits",
+      "scope": "account",
+      "for": [
+        "billing"
+      ],
+      "default": "50",
+      "kind": {
+        "text": {
+          "pattern": "^[1-9][0-9]*$"
+        }
+      }
+    },
+    {
+      "id": "manualUsage",
+      "label": "Used This Month (when GitHub shows none)",
+      "for": [
+        "billing"
+      ],
+      "kind": {
+        "text": {
+          "pattern": "^[0-9]+(\\.[0-9]+)?%?$"
+        }
+      }
+    },
+    {
+      "id": "authEnvVar",
+      "label": "Environment variable",
+      "default": "COPILOT_TOKEN"
+    }
+  ],
+  "defaultDataSource": "billing",
+  "dataSources": [
+    {
+      "kind": "billing",
+      "label": "Billing API",
+      "summary": "Reads this month's AI credits from GitHub billing with a fine-grained token",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "{{setting.authEnvVar}}"
+          },
+          {
+            "setting": "token"
+          }
+        ],
+        "with": {
+          "username": "{{setting.username}}"
+        },
+        "match": {
+          "username": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.github.com/users/{{username}}/settings/billing/premium_request/usage",
+          "timeout": 30,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
+        }
+      },
+      "errors": {
+        "http.403": {
+          "executionFailed": "Forbidden - ensure the token has 'Plan: read' permission"
+        },
+        "http.404": {
+          "executionFailed": "User not found or no billing access"
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "copilot-billing.js",
+          "credential": [
+            "username"
+          ],
+          "values": {
+            "monthlyLimit": "{{setting.monthlyLimit}}",
+            "manualUsage": "{{setting.manualUsage}}"
+          }
+        }
+      },
+      "fallbackOn": {
+        "authenticationRequired": "copilotAPI"
+      }
+    },
+    {
+      "kind": "copilotAPI",
+      "label": "Copilot API",
+      "summary": "Reads your Copilot plan's AI credits with a classic token or the GitHub CLI's login",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "{{setting.authEnvVar}}"
+          },
+          {
+            "setting": "token"
+          },
+          {
+            "keychain": {
+              "service": "gh:github.com",
+              "encoding": "goKeyringBase64",
+              "token": "$"
+            }
+          }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.github.com/copilot_internal/user",
+          "timeout": 30,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json"
+          }
+        }
+      },
+      "errors": {
+        "http.403": {
+          "executionFailed": "Forbidden - ensure the classic token has the 'copilot' scope"
+        },
+        "http.404": {
+          "executionFailed": "No Copilot subscription found"
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "copilot-user.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "billing": {
+        "credential": {
+          "firstOf": null,
+          "setting": "token"
+        }
+      },
+      "copilotAPI": {
+        "credential": {
+          "firstOf": null,
+          "setting": "token"
+        }
+      }
+    }
+  }
+}

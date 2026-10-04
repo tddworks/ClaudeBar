@@ -1,3 +1,6 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
 /// Represents a parsed extension manifest (manifest.json).

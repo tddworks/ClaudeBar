@@ -46,146 +46,99 @@ struct UsageQuotaTests {
 
 ## Mocking with @Mockable (Chicago Style)
 
-Define mockable protocols for external dependencies:
+Ports — what lies outside the app — are `@Mockable` protocols at a module's
+root:
 
 ```swift
-import Mockable
-
 @Mockable
-public protocol UsageProbe: Sendable {
-    func probe() async throws -> UsageSnapshot
-    func isAvailable() async -> Bool
+public protocol NetworkClient: Sendable {
+    func request(_ request: URLRequest) async throws -> (Data, URLResponse)
 }
 
 @Mockable
 public protocol CLIExecutor: Sendable {
-    func execute(_ command: String, timeout: TimeInterval) async throws -> CLIResult
-    func locateBinary(named: String) async -> URL?
+    func locate(_ binary: String) -> String?
+    func execute(binary: String, args: [String], input: String?, timeout: TimeInterval,
+                 workingDirectory: URL?, autoResponses: [String: String]) async throws -> CLIResult
 }
 ```
 
-**Chicago school mock usage** - stub return values, verify resulting state:
+**Chicago school mock usage** — stub what the port answers, assert on the
+resulting state. A provider's tests run its **real definition** through the real
+`Provider` and `DataSource`, with only the connections stubbed:
 
 ```swift
-import Mockable
-
+@MainActor
 @Suite
-struct QuotaMonitorTests {
-    @Test func `monitor can refresh a provider by ID`() async throws {
-        // Given - STUB dependencies to return data
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let provider = ClaudeProvider(probe: probe)
-        let monitor = QuotaMonitor(providers: [provider])
+struct CodexDefinitionTests {
+    @Test
+    func `rpc reads the session and weekly windows`() async throws {
+        // Given - STUB the connection to answer with a captured response
+        let stub = try StubbedProvider(providerId: "codex")
+        defer { stub.cleanUp() }
+        stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":30},"secondary":{"usedPercent":50}}}}"#)
+        let codex = try stub.make("codex")
 
         // When
-        await monitor.refresh(providerId: "claude")
+        let usage = try await codex.refresh()
 
         // Then - verify STATE, not that methods were called
-        #expect(provider.snapshot != nil)
-        #expect(provider.snapshot?.quotas.count == 1)
-        // ❌ AVOID: verify(probe).probe().called(1)  // London school - don't do this
+        #expect(usage.quota(for: .session)?.percentRemaining == 70)
+        #expect(codex.answeredBy == "rpc")
+        #expect(codex.lastError == nil)
+        // ❌ AVOID: verify(stub.transport).send(.any).called(2)  // London school
     }
 }
 ```
 
-**Key principle**: Use `given().willReturn()` to stub data. Avoid `verify().called()` for interactions.
+**Key principle**: Use `given().willReturn()` / `willProduce` to stub data.
+Avoid `verify().called()`. In `@MainActor` suites, mark `willProduce` and
+`.matching` closures `@Sendable` — Mockable calls them off the main actor.
 
-## Parsing Tests
+## Mapping Tests
 
-Test parsing logic separately from behavior:
+A mapping is tested by the response it reads, through the definition — never
+by calling a parser directly:
 
 ```swift
-@Suite
-struct ClaudeUsageProbeParsingTests {
-    static let sampleOutput = """
-        Session: 65% remaining
-        Weekly: 35% remaining
-        Resets: 11am
-        """
+@Test
+func `api without a key says so at the lookup step`() async throws {
+    let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
+    defer { stub.cleanUp() }
+    let codex = try stub.make("codex")
 
-    @Test func `parses session quota from CLI output`() throws {
-        let data = Data(Self.sampleOutput.utf8)
-        let snapshot = try ClaudeUsageProbe.parseResponse(data, providerId: "claude")
-
-        #expect(snapshot.quotas.count >= 1)
-        #expect(snapshot.quota(for: .session)?.percentRemaining == 65)
-    }
-
-    @Test func `handles missing data gracefully`() throws {
-        let data = Data("Invalid output".utf8)
-
-        #expect(throws: ProbeError.parseFailed) {
-            try ClaudeUsageProbe.parseResponse(data, providerId: "claude")
-        }
-    }
+    await #expect(throws: UsageError.self) { try await codex.refresh() }
+    #expect(codex.lastFailedStep == .lookup)
 }
 ```
 
-## Async Test Patterns
-
-```swift
-@Test func `probe returns snapshot on success`() async throws {
-    // Given
-    let mockExecutor = MockCLIExecutor()
-    given(mockExecutor).execute(any(), timeout: any()).willReturn(
-        CLIResult(output: "65% remaining", exitCode: 0)
-    )
-    let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
-
-    // When
-    let snapshot = try await probe.probe()
-
-    // Then
-    #expect(snapshot.providerId == "claude")
-}
-
-@Test func `probe throws when unavailable`() async {
-    // Given
-    let mockExecutor = MockCLIExecutor()
-    given(mockExecutor).locateBinary(named: any()).willReturn(nil)
-    let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
-
-    // When/Then
-    await #expect(throws: ProbeError.cliNotFound) {
-        try await probe.probe()
-    }
-}
-```
+A mapping script (`*.js`) is tested the same way, with real captured screens
+(`ClaudeUsageScreenTests` reads 60+ of them through `ClaudeHarness`). A new
+generic rule is tested in `Modules/DataSources/Tests/` against a small
+inline definition.
 
 ## Test Organization
 
 ```
+Modules/
+├── DataSources/Tests/        # DataSource, workers, OAuth, HTTP, process runners
+└── Providers/Tests/          # golden tests per definition: CodexDefinitionTests, ClaudeAPITests …
+    └── Support/              # StubbedProvider, ClaudeHarness, InMemoryProviderSettings
 Tests/
-├── DomainTests/
-│   ├── Provider/
-│   │   ├── UsageQuotaTests.swift      # Domain model behavior
-│   │   ├── QuotaStatusTests.swift     # Enum behavior
-│   │   └── UsageSnapshotTests.swift   # Aggregate behavior
-│   └── Monitor/
-│       └── QuotaMonitorTests.swift    # Actor behavior
-└── InfrastructureTests/
-    └── CLI/
-        ├── ClaudeUsageProbeParsingTests.swift  # Parsing logic
-        └── ClaudeUsageProbeTests.swift         # Probe behavior
+├── DomainTests/              # QuotaMonitor, legacy providers, the kernel's behaviour
+├── InfrastructureTests/      # legacy probes, storage, notifications
+├── AppTests/                 # view logic
+└── AcceptanceTests/          # specs composing real modules with stubbed ports
 ```
 
 ## Running Tests
 
 ```bash
-# Run all tests
-swift test
-
-# Run specific test file
-swift test --filter DomainTests
-
-# Run specific test
-swift test --filter "UsageQuotaTests/quota at zero percent is depleted"
+tuist test Providers         # one module's tests (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test                     # everything
+# tuist caches results; to force a re-run of one suite:
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
+  -destination 'platform=macOS,arch=arm64' -only-testing:ProvidersTests/ClaudeAPITests
 ```
 
 ## Chicago School Summary

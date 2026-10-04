@@ -12,7 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
 # Pages and assets under docs/ that are not docs (see the design's Layout section).
-SKIP_PREFIXES = ("docs/mockups/", "docs/screenshots/", "docs/sponsors/")
+SKIP_PREFIXES = ("docs/screenshots/", "docs/sponsors/")
 
 LINE_BUDGETS = {"README.md": 150, "AGENTS.md": 100}
 FEATURE_README_BUDGET = 200

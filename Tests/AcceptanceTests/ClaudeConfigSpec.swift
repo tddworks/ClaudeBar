@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import Mockable
+import DataSources
+import Providers
 @testable import Domain
 @testable import Infrastructure
 
@@ -9,6 +11,10 @@ import Mockable
 /// Users switch Claude between CLI and API probe modes.
 /// API mode uses OAuth credentials for direct HTTP calls.
 ///
+/// Claude is a definition (`claude.json`) run by the one `Provider`; these
+/// scenarios run that real definition, its mapping scripts and the Claude
+/// card's settings keys over a stubbed terminal, network and home folder.
+///
 /// Behaviors covered:
 /// - #28: User switches Claude to API mode → uses OAuth HTTP API instead of CLI
 /// - #29: API mode shows credential status (found / not found)
@@ -16,9 +22,94 @@ import Mockable
 @Suite("Feature: Claude Configuration")
 struct ClaudeConfigSpec {
 
-    private struct TestClock: Clock {
+    struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}
         func sleep(nanoseconds: UInt64) async throws {}
+    }
+
+    static let usageScreen = """
+    Current session
+    ████████████████░░░░ 80% left
+    Resets in 2h 15m
+    """
+
+    static let apiUsage = #"{"five_hour":{"utilization":55}}"#
+
+    /// A fresh home folder, isolated settings, a stubbed terminal and network.
+    final class World {
+        let home: URL
+        let settings: UserDefaultsProviderSettingsRepository
+        let cli = MockCLIExecutor()
+        let network = MockNetworkClient()
+
+        init() throws {
+            home = FileManager.default.temporaryDirectory.appendingPathComponent("claude-spec-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+            settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
+            settings.setEnabled(true, forProvider: "claude")
+        }
+
+        deinit { try? FileManager.default.removeItem(at: home) }
+
+        @MainActor
+        func claude() throws -> Account {
+            let definition = try Providers.builtIn("claude")
+            let home = self.home
+            let cli = self.cli
+            let network = self.network
+            return Provider(
+                definition: definition,
+                settings: settings,
+                makeDataSource: {
+                    DataSources.make(
+                        $0,
+                        providerId: "claude",
+                        cliExecutor: cli,
+                        network: network,
+                        makeTransport: { _, _, _, _ in MockRPCTransport() },
+                        scripts: Providers.builtInScripts,
+                        environment: { _ in nil },
+                        homeDirectory: home,
+                        now: { Date() }
+                    )
+                }
+            ).defaultAccount
+        }
+
+        func cliAnswers(_ screen: String) {
+            given(cli).locate(.any).willReturn("/usr/local/bin/claude")
+            given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+                .willReturn(CLIResult(output: screen))
+        }
+
+        func apiAnswers(_ body: String, status: Int = 200) {
+            given(network).request(.any).willReturn((
+                Data(body.utf8),
+                HTTPURLResponse(url: URL(string: "https://api.anthropic.com")!, statusCode: status, httpVersion: nil, headerFields: nil)!
+            ))
+        }
+
+        /// `~/.claude.json`'s account, as Claude Code keeps it.
+        func account(email: String, organization: String? = nil) throws {
+            var account: [String: Any] = ["emailAddress": email]
+            if let organization { account["displayName"] = organization }
+            try JSONSerialization.data(withJSONObject: ["oauthAccount": account])
+                .write(to: home.appendingPathComponent(".claude.json"))
+        }
+
+        /// `~/.claude/.credentials.json`, as `claude login` leaves it.
+        func loggedIn() throws {
+            let directory = home.appendingPathComponent(".claude")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let oauth: [String: Any] = [
+                "accessToken": "token",
+                "refreshToken": "refresh",
+                "expiresAt": Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000,
+                "subscriptionType": "claude_max",
+            ]
+            try JSONSerialization.data(withJSONObject: ["claudeAiOauth": oauth])
+                .write(to: directory.appendingPathComponent(".credentials.json"))
+        }
     }
 
     // MARK: - #28: Switch Claude to API mode
@@ -26,213 +117,106 @@ struct ClaudeConfigSpec {
     @Suite("Scenario: Switch probe mode")
     @MainActor
     struct SwitchProbeMode {
-        private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
-        }
 
         @Test
-        func `switching to API mode uses API probe for refresh`() async throws {
-            // Given — dual probe setup
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            settings.setEnabled(true, forProvider: "claude")
+        func `switching to API mode uses the API for refresh`() async throws {
+            // Given — the CLI says 80% left, the API 45% left
+            let world = try World()
+            world.cliAnswers(ClaudeConfigSpec.usageScreen)
+            world.apiAnswers(ClaudeConfigSpec.apiUsage)
+            try world.loggedIn()
+            let claude = try world.claude()
+            #expect(claude.provider.activeKind == "cli")
 
-            let cliProbe = MockUsageProbe()
-            given(cliProbe).isAvailable().willReturn(true)
-            given(cliProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-
-            let apiProbe = MockUsageProbe()
-            given(apiProbe).isAvailable().willReturn(true)
-            given(apiProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 55, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-
-            let claude = ClaudeProvider(
-                cliProbe: cliProbe,
-                apiProbe: apiProbe,
-                settingsRepository: settings
-            )
-
-            // Default is CLI mode
-            #expect(claude.probeMode == .cli)
-
-            // When — user switches to API mode
-            claude.probeMode = .api
-
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
+            // When — the Claude card saves API mode
+            world.settings.setClaudeProbeMode(.api)
+            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
             await monitor.refresh(providerId: "claude")
 
-            // Then — API probe result (55%) used, not CLI (70%)
-            #expect(claude.probeMode == .api)
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 55)
+            // Then — the API's answer is shown
+            #expect(claude.provider.activeKind == "api")
+            #expect(claude.snapshot?.quotas.first?.percentRemaining == 45)
         }
 
         @Test
         func `probe mode is persisted in UserDefaults`() {
-            // Given
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-
-            // Default is CLI
+            let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             #expect(settings.claudeProbeMode() == .cli)
 
-            // When
             settings.setClaudeProbeMode(.api)
 
-            // Then — persisted
             #expect(settings.claudeProbeMode() == .api)
+            #expect(settings.dataSourceKind(forProvider: "claude") == "api")
         }
 
         @Test
         func `api mode falls back to CLI when OAuth API is unavailable`() async throws {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            settings.setEnabled(true, forProvider: "claude")
-            settings.setClaudeProbeMode(.api)
+            // Given — API mode, nobody logged in, the CLI works
+            let world = try World()
+            world.cliAnswers(ClaudeConfigSpec.usageScreen)
+            world.settings.setClaudeProbeMode(.api)
+            let claude = try world.claude()
+            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
 
-            let cliProbe = MockUsageProbe()
-            given(cliProbe).isAvailable().willReturn(true)
-            given(cliProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 63, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-
-            let apiProbe = MockUsageProbe()
-            given(apiProbe).isAvailable().willReturn(false)
-            given(apiProbe).probe().willThrow(ProbeError.authenticationRequired)
-
-            let claude = ClaudeProvider(
-                cliProbe: cliProbe,
-                apiProbe: apiProbe,
-                settingsRepository: settings
-            )
-
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
+            // When
             await monitor.refresh(providerId: "claude")
 
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 63)
-            #expect(claude.lastError == nil)
+            // Then — the CLI answered
+            #expect(claude.snapshot?.quotas.first?.percentRemaining == 80)
+            #expect(claude.answeredBy == "cli")
         }
 
         @Test
         func `api mode does not fall back to CLI when cli fallback is disabled`() async throws {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            settings.setEnabled(true, forProvider: "claude")
-            settings.setClaudeProbeMode(.api)
-            settings.setClaudeCliFallbackEnabled(false)
+            // Given — API mode with the card's "CLI fallback" off
+            let world = try World()
+            world.cliAnswers(ClaudeConfigSpec.usageScreen)
+            world.settings.setClaudeProbeMode(.api)
+            world.settings.setClaudeCliFallbackEnabled(false)
+            let claude = try world.claude()
 
-            let cliProbe = MockUsageProbe()
-            // CLI probe must not be consulted — if it is, probe() would succeed
-            // and we'd get snapshot data, which would fail the assertion below
-            given(cliProbe).isAvailable().willReturn(true)
-            given(cliProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 99, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-
-            let apiProbe = MockUsageProbe()
-            // API probe is available but fails — fallback to CLI must not happen
-            given(apiProbe).isAvailable().willReturn(true)
-            given(apiProbe).probe().willThrow(ProbeError.authenticationRequired)
-
-            let claude = ClaudeProvider(
-                cliProbe: cliProbe,
-                apiProbe: apiProbe,
-                settingsRepository: settings
-            )
-
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
-            await monitor.refresh(providerId: "claude")
-
-            // Error propagated — CLI fallback was not used
-            #expect(claude.lastError != nil)
+            // Then — nothing is available, and a refresh reports the API's failure
+            #expect(await claude.isAvailable() == false)
+            await #expect(throws: UsageError.authenticationRequired) { try await claude.refresh() }
             #expect(claude.snapshot == nil)
         }
 
         @Test
         func `cli mode falls back to API when CLI parsing fails and OAuth is available`() async throws {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            settings.setEnabled(true, forProvider: "claude")
-            settings.setClaudeProbeMode(.cli)
+            // Given — the CLI screen has no usage, the API answers
+            let world = try World()
+            world.cliAnswers("Claude Code v2.1.0\nSomething unexpected")
+            world.apiAnswers(ClaudeConfigSpec.apiUsage)
+            try world.loggedIn()
+            let claude = try world.claude()
+            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
 
-            let cliProbe = MockUsageProbe()
-            given(cliProbe).isAvailable().willReturn(true)
-            given(cliProbe).probe().willThrow(ProbeError.parseFailed("could not find Current session"))
-
-            let apiProbe = MockUsageProbe()
-            given(apiProbe).isAvailable().willReturn(true)
-            given(apiProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [
-                    UsageQuota(percentRemaining: 81, quotaType: .session, providerId: "claude"),
-                    UsageQuota(percentRemaining: 74, quotaType: .weekly, providerId: "claude")
-                ],
-                capturedAt: Date()
-            ))
-
-            let claude = ClaudeProvider(
-                cliProbe: cliProbe,
-                apiProbe: apiProbe,
-                settingsRepository: settings
-            )
-
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
+            // When
             await monitor.refresh(providerId: "claude")
 
-            #expect(claude.snapshot?.quotas.count == 2)
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 81)
+            // Then
+            #expect(claude.snapshot?.quotas.first?.percentRemaining == 45)
+            #expect(claude.answeredBy == "api")
             #expect(claude.lastError == nil)
         }
     }
 
-    // MARK: - #29: API mode credential status
+    // MARK: - #29: API mode credential availability
 
     @Suite("Scenario: API mode credential availability")
     @MainActor
     struct CredentialStatus {
 
         @Test
-        func `supportsApiMode is true when API probe is provided`() {
-            // Given
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+        func `OAuth credentials are found once claude has logged in`() throws {
+            let world = try World()
+            let claude = try world.claude()
 
-            // CLI-only provider
-            let cliOnly = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(cliOnly.supportsApiMode == false)
+            #expect(claude.hasKey(for: "api") == false)
+
+            try world.loggedIn()
+
+            #expect(claude.hasKey(for: "api") == true)
         }
     }
 
@@ -241,34 +225,22 @@ struct ClaudeConfigSpec {
     @Suite("Scenario: Expired session shows user-friendly error")
     @MainActor
     struct SessionExpired {
-        private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
-        }
 
         @Test
-        func `sessionExpired error has user-friendly description`() async {
-            // Given
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+        func `sessionExpired error has user-friendly description`() async throws {
+            // Given — API mode, the token is refused and so is its refresh
+            let world = try World()
+            world.settings.setClaudeProbeMode(.api)
+            world.settings.setClaudeCliFallbackEnabled(false)
+            world.apiAnswers("", status: 401)
+            try world.loggedIn()
+            let claude = try world.claude()
+            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
 
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willThrow(ProbeError.sessionExpired(hint: "Run `claude` in terminal to log in again."))
-
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
-            // When — API returns 401
+            // When
             await monitor.refresh(providerId: "claude")
 
             // Then — user sees actionable error with provider-specific hint
-            #expect(claude.lastError != nil)
             let description = claude.lastError?.localizedDescription ?? ""
             #expect(description.contains("Session expired"))
             #expect(description.contains("claude"))

@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Mockable
 @testable import Domain
 
 /// Tests for user-configured below-threshold alerts flowing through
@@ -74,13 +75,14 @@ struct QuotaMonitorThresholdAlertTests {
         func isAvailable() async -> Bool { true }
     }
 
-    /// Provider settings with everything enabled.
-    private struct AlwaysEnabledSettings: ProviderSettingsRepository {
-        func isEnabled(forProvider id: String) -> Bool { true }
-        func setEnabled(_ enabled: Bool, forProvider id: String) {}
-        func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool { defaultValue }
-        func customCardURL(forProvider id: String) -> String? { nil }
-        func setCustomCardURL(_ url: String?, forProvider id: String) {}
+    /// Settings mock: the provider enabled. The monitor itself gets no
+    /// settings repository, so only the provider reads this.
+    private func makeSettingsRepository() -> MockProviderSettingsRepository {
+        let mock = MockProviderSettingsRepository()
+        given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
+        given(mock).isEnabled(forProvider: .any).willReturn(true)
+        given(mock).setEnabled(.any, forProvider: .any).willReturn()
+        return mock
     }
 
     /// In-memory stand-in for the threshold settings repository.
@@ -93,17 +95,6 @@ struct QuotaMonitorThresholdAlertTests {
         func setAlertThresholds(_ thresholds: [QuotaAlertThreshold]) { self.thresholds = thresholds }
     }
 
-    /// In-memory provider repository, so the test needs no Infrastructure.
-    private final class StubProviders: AIProviderRepository, @unchecked Sendable {
-        private var providers: [any AIProvider]
-        init(_ providers: [any AIProvider]) { self.providers = providers }
-        var all: [any AIProvider] { providers }
-        var enabled: [any AIProvider] { providers.filter(\.isEnabled) }
-        func provider(id: String) -> (any AIProvider)? { providers.first { $0.id == id } }
-        func add(_ provider: any AIProvider) { providers.append(provider) }
-        func remove(id: String) { providers.removeAll { $0.id == id } }
-    }
-
     private func makeMonitor(
         percentRemaining: Double,
         thresholds: [Double],
@@ -114,9 +105,9 @@ struct QuotaMonitorThresholdAlertTests {
             quotas: [UsageQuota(percentRemaining: percentRemaining, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let provider = ClaudeProvider(probe: probe, settingsRepository: AlwaysEnabledSettings())
+        let provider = StubClaudeProvider(probe: probe, settingsRepository: makeSettingsRepository())
         return QuotaMonitor(
-            providers: StubProviders([provider]),
+            providers: AIProviders(providers: [provider]),
             alerter: alerter,
             clock: TestClock(),
             alertThresholds: StubThresholdSettings(thresholds)
@@ -161,9 +152,9 @@ struct QuotaMonitorThresholdAlertTests {
     func `multiple thresholds each alert once as they are crossed`() async {
         let alerter = RecordingAlerter()
         let probe = SteppedProbe(percent: 65)
-        let provider = ClaudeProvider(probe: probe, settingsRepository: AlwaysEnabledSettings())
+        let provider = StubClaudeProvider(probe: probe, settingsRepository: makeSettingsRepository())
         let monitor = QuotaMonitor(
-            providers: StubProviders([provider]),
+            providers: AIProviders(providers: [provider]),
             alerter: alerter,
             clock: TestClock(),
             alertThresholds: StubThresholdSettings([60, 35, 10])
@@ -227,9 +218,9 @@ struct QuotaMonitorThresholdAlertTests {
             quotas: [UsageQuota(percentRemaining: 10, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let provider = ClaudeProvider(probe: probe, settingsRepository: AlwaysEnabledSettings())
+        let provider = StubClaudeProvider(probe: probe, settingsRepository: makeSettingsRepository())
         let monitor = QuotaMonitor(
-            providers: StubProviders([provider]),
+            providers: AIProviders(providers: [provider]),
             alerter: alerter,
             clock: TestClock()
         )

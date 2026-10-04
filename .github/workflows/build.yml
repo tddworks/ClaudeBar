@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, develop]
 
+# A newer push to the same branch or PR replaces this run, so a queued or
+# running one is cancelled instead of waiting for a scarce macOS runner.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

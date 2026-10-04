@@ -1,6 +1,8 @@
 import SwiftUI
 import Domain
 import Infrastructure
+import Providers
+import AWSClients
 import MenuBarExtraAccess
 #if ENABLE_SPARKLE
 import Sparkle
@@ -17,6 +19,26 @@ extension Notification.Name {
 
 @main
 struct ClaudeBarApp: App {
+    /// A built-in provider from its bundled definition. A definition that fails
+    /// to load is a packaging bug the catalog tests catch before release.
+    @MainActor
+    private static func builtIn(
+        _ id: String,
+        settings: any MultiAccountSettingsRepository,
+        accounts: [ProviderAccountConfig] = [],
+        secrets: (any SecretVault)? = nil,
+        guestPasses: GuestPasses? = nil,
+        usageHistory: UsageHistory? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
+    ) -> Provider {
+        do {
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses,
+                                      usageHistory: usageHistory, environment: environment)
+        } catch {
+            preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
+        }
+    }
+
     /// The main domain service - monitors all AI providers
     /// This is the single source of truth for providers and their state
     @State private var monitor: QuotaMonitor
@@ -56,7 +78,7 @@ struct ClaudeBarApp: App {
     @State private var hookServerTask: Task<Void, Never>?
 
     /// Alerts users when quota status degrades
-    private let quotaAlerter = NotificationAlerter()
+    private let quotaAlerter = NotificationAlerter(accountSettings: JSONSettingsRepository.shared)
 
     /// Sends session start/end notifications
     private let sessionAlertSender = SystemAlertSender()
@@ -79,91 +101,136 @@ struct ClaudeBarApp: App {
         // - QuotaAlertSettingsRepository (below-threshold alert thresholds)
         let settingsRepository = JSONSettingsRepository.shared
 
-        // Create all providers with their probes (rich domain models)
+        // Claude is data: Modules/Providers/Resources/Providers/claude.json
+        // and the mapping scripts beside it. Guest passes ride along, the
+        // default login's. Logins added beside it live in their own config
+        // folders.
+        let claude = Self.builtIn(
+            "claude",
+            settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "claude"),
+            // Guest passes run the same Claude CLI, at its CLI location (#210).
+            guestPasses: GuestPasses(source: ClaudeGuestPassSource(
+                claudeBinary: { settingsRepository.cliPath(forProvider: "claude") ?? "claude" }
+            ))
+        )
+        // Codex is data: Modules/Providers/Resources/Providers/codex.json — the
+        // product once, with the logins added beside the default one (#326).
+        let codex = Self.builtIn("codex", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "codex"))
+
+        let vault = ProviderVault()
+        // These are data: their keys, regions and environment variables are
+        // settings in their JSON, so nothing here is theirs.
+        let minimax = Self.builtIn("minimax", settings: settingsRepository,
+                                   accounts: settingsRepository.accounts(forProvider: "minimax"), secrets: vault)
+        let vercel = Self.builtIn("vercel-gateway", settings: settingsRepository,
+                                  accounts: settingsRepository.accounts(forProvider: "vercel-gateway"), secrets: vault)
+        let commandCode = Self.builtIn("commandcode", settings: settingsRepository,
+                                       accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: vault)
+        let amp = Self.builtIn("ampcode", settings: settingsRepository,
+                               accounts: settingsRepository.accounts(forProvider: "ampcode"), secrets: vault)
+        let kiro = Self.builtIn("kiro", settings: settingsRepository,
+                                accounts: settingsRepository.accounts(forProvider: "kiro"), secrets: vault)
+        let cursor = Self.builtIn("cursor", settings: settingsRepository,
+                                  accounts: settingsRepository.accounts(forProvider: "cursor"), secrets: vault)
+        let grok = Self.builtIn("grok", settings: settingsRepository,
+                                accounts: settingsRepository.accounts(forProvider: "grok"), secrets: vault)
+        let copilot = Self.builtIn("copilot", settings: settingsRepository,
+                                   accounts: settingsRepository.accounts(forProvider: "copilot"), secrets: vault)
+        let alibaba = Self.builtIn("alibaba", settings: settingsRepository,
+                                   accounts: settingsRepository.accounts(forProvider: "alibaba"), secrets: vault)
+        let gemini = Self.builtIn("gemini", settings: settingsRepository,
+                                  accounts: settingsRepository.accounts(forProvider: "gemini"))
+        let antigravity = Self.builtIn("antigravity", settings: settingsRepository)
+        // Bedrock's metrics and prices come from the AWS SDK, linked by AWSClients alone.
+        let bedrock: Provider = {
+            do {
+                return try Providers.make("bedrock", settings: settingsRepository,
+                                          cloudWatch: AWSClients.makeCloudWatch(), priceCatalog: AWSClients.makePriceCatalog())
+            } catch {
+                preconditionFailure("Built-in provider 'bedrock' failed to load: \(error.localizedDescription)")
+            }
+        }()
+        let omp = Self.builtIn("omp", settings: settingsRepository)
+        let mistral = Self.builtIn("mistral", settings: settingsRepository)
+        let kimi = Self.builtIn("kimi", settings: settingsRepository,
+                                accounts: settingsRepository.accounts(forProvider: "kimi"), secrets: vault)
+        let openCodeGo = Self.builtIn("opencode-go", settings: settingsRepository,
+                                      accounts: settingsRepository.accounts(forProvider: "opencode-go"), secrets: vault)
+
+        // Keep the existing default login's configurable environment name until
+        // provider settings forms move to definitions. Added logins use only
+        // their own saved key, as deepseek.json's accounts.patch declares.
+        // A variable the person named for Z.ai is also read from their login
+        // shell (#170). Z.ai reads it last, after the saved key and Claude
+        // Code's settings, and no one else's lookup waits for a shell.
+        let shellEnvironment = ShellEnvironment()
+        let zai = Self.builtIn("zai", settings: settingsRepository,
+                               accounts: settingsRepository.accounts(forProvider: "zai"), secrets: vault,
+                               environment: { name in
+            let named = settingsRepository.value("glmAuthEnvVar", forProvider: "zai")
+            return name == named ? shellEnvironment.value(name) : ProcessInfo.processInfo.environment[name]
+        })
+        let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
+                                   accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: vault,
+                                   environment: { name in
+            let configured = settingsRepository.deepseekAuthEnvVar()
+            let variable = name == "DEEPSEEK_API_KEY" && !configured.isEmpty ? configured : name
+            return ProcessInfo.processInfo.environment[variable]
+        })
+
+        // The lineup: each login is its own pill. Legacy providers are their
+        // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
-        // Each probe checks isAvailable() for credentials/prerequisites
         let repository = AIProviders(providers: [
-            ClaudeProvider(
-                cliProbe: ClaudeUsageProbe(),
-                apiProbe: ClaudeAPIUsageProbe(),
-                passProbe: ClaudePassProbe(),
-                settingsRepository: settingsRepository,
-                dailyUsageAnalyzer: ClaudeDailyUsageAnalyzer()
-            ),
-            CodexProvider(
-                rpcProbe: CodexUsageProbe(),
-                apiProbe: CodexAPIUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
-            AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
-            ZaiProvider(
-                probe: ZaiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            CopilotProvider(
-                billingProbe: CopilotUsageProbe(settingsRepository: settingsRepository),
-                internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            BedrockProvider(
-                probe: BedrockUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
-            KimiProvider(
-                cliProbe: KimiCLIUsageProbe(),
-                apiProbe: KimiUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
-            CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            MiniMaxProvider(
-                probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            DeepSeekProvider(
-                probe: DeepSeekUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            VercelProvider(
-                probe: VercelUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            AlibabaProvider(
-                probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
-                settingsRepository: settingsRepository
-            ),
-            MistralProvider(
-                probe: MistralUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            OpenCodeProvider(
-                probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
-                settingsRepository: settingsRepository
-            ),
-            OmpProvider(
-                probe: OmpUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            GrokProvider(
-                probe: GrokUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            CommandCodeProvider(
-                probe: CommandCodeUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
+            claude.defaultAccount,
+            codex.defaultAccount,
+            gemini.defaultAccount,
+            antigravity.defaultAccount,
+            zai.defaultAccount,
+            copilot.defaultAccount,
+            bedrock.defaultAccount,
+            amp.defaultAccount,
+            kimi.defaultAccount,
+            kiro.defaultAccount,
+            cursor.defaultAccount,
+            minimax.defaultAccount,
+            deepseek.defaultAccount,
+            vercel.defaultAccount,
+            alibaba.defaultAccount,
+            mistral.defaultAccount,
+            openCodeGo.defaultAccount,
+            omp.defaultAccount,
+            grok.defaultAccount,
+            commandCode.defaultAccount,
         ])
+        // Added logins follow the built-in lineup, as they always have.
+        for account in (claude.accounts + codex.accounts + minimax.accounts + deepseek.accounts + vercel.accounts + commandCode.accounts + amp.accounts + kiro.accounts + cursor.accounts + grok.accounts + openCodeGo.accounts + zai.accounts + kimi.accounts + copilot.accounts + alibaba.accounts + gemini.accounts).filter({ !$0.isDefault }) {
+            repository.add(account)
+        }
+        // Providers people made in Add Provider (~/.claudebar/providers), after
+        // the built-ins; their keys come from ClaudeBar's vault.
+        for definition in ProviderCatalog().custom() {
+            Providers.register(custom: definition)
+            let custom = Providers.make(definition, settings: settingsRepository,
+                                        accounts: settingsRepository.accounts(forProvider: definition.id), secrets: vault)
+            for account in custom.accounts { repository.add(account) }
+        }
         AppLog.providers.info("Created \(repository.all.count) providers")
 
         // Initialize the domain service with quota alerter
         // QuotaMonitor automatically validates selected provider on init.
-        // The shared settings repository also supplies the user's configured
+        // The settings repository carries the user's provider order (issue #141),
+        // so the popover, overview and ⌘1–⌘9 follow it.
+        // Alerts and every status follow the person's burn-rate setting (#357).
+        // Hidden quotas (#140) are read from the same settings, per product.
+        // The same repository also supplies the user's configured
         // below-threshold alert thresholds (issue #68).
         let monitor = QuotaMonitor(
             providers: repository,
             alerter: quotaAlerter,
+            settingsRepository: settingsRepository,
+            statusPolicy: { AppSettings.shared.statusPolicy },
             alertThresholds: settingsRepository
         )
         self.monitor = monitor
@@ -330,13 +397,13 @@ struct ClaudeBarApp: App {
         MenuBarExtra {
             Group {
                 #if ENABLE_SPARKLE
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
                     .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)

@@ -30,14 +30,24 @@ Every report feature follows this data flow:
 Data Source → Parser → Analyzer → Report Model → UsageSnapshot → Card View
 ```
 
-Mapped to the codebase layers:
+Mapped to where the code lives today. **First ask: is it usage history for
+another tool?** Then it is no Swift at all — a `usageHistory` block in that
+provider's definition, run by `DataSources`' `UsageLog`
+([TARGET_ARCHITECTURE §10](../../../docs/architecture/TARGET_ARCHITECTURE.md#10--usage-history-as-data)).
+A genuinely new kind of report is a capability a login offers (CANONICAL §2.1):
 
-| Layer | Location | What to Create |
+| Piece | Location | What to Create |
 |-------|----------|----------------|
-| **Domain** | `Sources/Domain/{Feature}/` | Rich models + `@Mockable` protocol |
-| **Infrastructure** | `Sources/Infrastructure/{Provider}/` | Parser + Analyzer implementation |
-| **App** | `Sources/App/Views/` | Card view(s) |
-| **Integration** | Provider class + `statsGrid` | Wire analyzer → snapshot → UI |
+| **Report models** | `Modules/Quotas` (values) | Rich models (`{Name}Stat`, `{Name}Report`), formatting included |
+| **Reading** | `Modules/DataSources/Sources/Internal/` | Workers named for the format, never a vendor; what differs per tool is the definition's data |
+| **Account capability** | `Modules/Providers` | An `@Observable` handle on `Account`, `nil` when the definition doesn't declare it, like `usageHistory` and `guestPasses` |
+| **App** | `Sources/App/Views/` | Card view(s), wired in `ClaudeBarApp` |
+
+**Don't add a field to `UsageSnapshot`.** The usage kernel (`Modules/Quotas`) is
+shrinking toward the canonical `Usage`; `dailyUsageReport` on it is interim
+([CANONICAL_MODEL §6](../../../docs/architecture/CANONICAL_MODEL.md#6--what-is-deliberately-not-in-the-tree)).
+A new report is a capability the `Provider` holds and a view reads, as
+`GuestPasses` does.
 
 > **Reference implementation:** See `references/daily-usage-pattern.md` for the complete
 > DailyUsage feature as a working example of this pattern.
@@ -312,57 +322,36 @@ struct {Name}CardView: View {
 - Hover scale effect (1.015)
 - Animated progress bar with `delay` parameter
 
-### 3b. Add to UsageSnapshot
+### 3b. Give the Provider the capability
 
-Add an optional field for the report:
+The generic `Provider` (`Modules/Providers/Sources/Provider.swift`) holds
+optional capabilities beside its data sources, handed to its logins:
+`usageHistory` (read when the popover opens, never in the background, #204)
+and `guestPasses`. A new report is one more: an `@Observable` value holding the
+latest report, fetched when the provider's popover refreshes. Write its tests in
+`Modules/Providers/Tests/` first. Agree its shape in Phase 0: it is a change to
+the shared `Provider`.
 
-```swift
-// In Sources/Domain/Provider/UsageSnapshot.swift
-public let {name}Report: {Name}Report?
-// Add to init with default nil
-```
+### 3c. Render it
 
-### 3c. Wire into Provider
-
-Inject the analyzer into the provider that owns this data:
-
-```swift
-// In the provider's init:
-private let {name}Analyzer: (any {Name}Analyzing)?
-
-// In refresh():
-snapshot = await attach{Name}Report(to: newSnapshot)
-
-// Helper method:
-private func attach{Name}Report(to snapshot: UsageSnapshot) async -> UsageSnapshot {
-    guard let analyzer = {name}Analyzer,
-          let report = try? await analyzer.analyze(),
-          !report.current.isEmpty else { return snapshot }
-    return UsageSnapshot(/* copy all fields, add report */)
-}
-```
-
-### 3d. Render in statsGrid
-
-Add to `MenuContentView.statsGrid(snapshot:)`:
+The view reads it through the provider, as the popover reads guest passes:
 
 ```swift
-if let report = snapshot.{name}Report {
+if let report = (provider as? Account)?.{name}?.report {
     let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
     // Render card(s) in LazyVGrid or standalone
 }
 ```
 
-### 3e. Register in ClaudeBarApp
+### 3d. Register in ClaudeBarApp
 
-Pass the analyzer when creating the provider:
+A capability the definition declares is built by `Providers.make` — as
+`usageHistory` is from a definition's `usageHistory` block — so the App
+passes nothing. Only a capability not yet expressible as data is handed in:
 
 ```swift
-{Provider}Provider(
-    probe: ...,
-    settingsRepository: settingsRepository,
-    {name}Analyzer: {Provider}{Name}Analyzer()
-)
+Self.builtIn("claude", settings: settingsRepository,
+             guestPasses: GuestPasses(source: ClaudeGuestPassSource(…)))
 ```
 
 ---
@@ -370,7 +359,7 @@ Pass the analyzer when creating the provider:
 ## Phase 4: Verify
 
 1. `tuist generate`
-2. Run all tests: `xcodebuild test -scheme ClaudeBar-Workspace ...`
+2. Run all tests: `tuist test` (or `xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace -destination 'platform=macOS,arch=arm64'` to bypass the cache)
 3. Build the app and verify the cards appear
 4. Check logs for analyzer output
 
@@ -399,10 +388,9 @@ Pass the analyzer when creating the provider:
 
 ### Phase 3: Integration
 - [ ] Create `{Name}CardView` matching glassmorphism style
-- [ ] Add `{name}Report` field to `UsageSnapshot`
-- [ ] Wire analyzer into provider's `refresh()` via `attach{Name}Report`
-- [ ] Render cards in `statsGrid`
-- [ ] Register analyzer in `ClaudeBarApp`
+- [ ] Add the report capability to `Provider` (tests in `Modules/Providers/Tests/`), never a `UsageSnapshot` field
+- [ ] Render cards from `(provider as? Provider)?.{name}`
+- [ ] Pass the analyzer in `ClaudeBarApp` via `Self.builtIn(…)`
 
 ### Phase 4: Verify
 - [ ] `tuist generate` succeeds

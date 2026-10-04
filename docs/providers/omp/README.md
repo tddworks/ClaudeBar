@@ -17,8 +17,8 @@ There are no Oh My Pi-specific settings. ClaudeBar reads only what `omp usage` r
 ## Gotchas
 
 - **"No usage reported"** under an account means `omp` holds a sign-in for it but produced no usable quota: an expired session, a failed fetch, or a provider with no quota API (Ollama, for example). Fix it inside `omp`, then refresh.
-- **Background refresh is at most every 5 minutes.** `omp usage` caches upstream reports and each run starts a Bun process, so faster polling would only repeat the same data. Clicking refresh is not limited. If Oh My Pi is one of the providers refreshed in the background, the whole background cycle slows to 5 minutes.
-- **Several accounts on one upstream provider** get a short account tag in their labels ("Claude 7d · jkjk987…"). The menu bar shortens long tags; the full tag keeps saved menu-bar selections stable.
+- **Oh My Pi refreshes at most every 5 minutes.** `omp usage` caches upstream reports and each run starts a Bun process, so faster polling would only repeat the same data. Within 5 minutes, clicking refresh shows the same report. If Oh My Pi is one of the providers refreshed in the background, the whole background cycle slows to 5 minutes.
+- **Several accounts on one upstream provider** get a short account tag in their labels ("Claude 7d · jkjk987").
 - A USD limit with no cap shows as a note ("$X spent · no cap"), not as a percentage.
 - Error messages never include `omp`'s raw output, because it contains account emails and ids. Run `omp usage --json` yourself to see what failed.
 

@@ -1,0 +1,37 @@
+{
+  "profile": {
+    "id": "ampcode",
+    "name": "Amp",
+    "links": { "dashboard": "https://ampcode.com/settings" },
+    "look": {
+      "symbol": "bolt.fill",
+      "icon": "AmpCodeIcon",
+      "color": { "light": [0.9, 0.25, 0.2], "dark": [0.95, 0.3, 0.25] },
+      "gradientEnd": { "light": [0.8, 0.15, 0.1], "dark": [0.85, 0.2, 0.15] }
+    }
+  },
+  "cli": "amp",
+  "enabledByDefault": true,
+  "settings": [
+    { "id": "apiKey", "label": "Access Token", "kind": "secret", "scope": "account" }
+  ],
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Runs `amp usage` with your Amp sign-in",
+      "fetch": { "command": { "cli": "amp", "args": ["usage", "--no-color"], "timeout": 8 } },
+      "mapping": { "script": { "file": "amp-usage.js" } },
+      "errors": { "cli.missing": { "cliNotFound": "AmpCode" } }
+    }
+  ],
+  "accounts": {
+    "patch": {
+      "cli": {
+        "credential": { "setting": "apiKey" },
+        "fetch": { "command": { "environment": { "set": { "AMP_API_KEY": "{{token}}" } } } }
+      }
+    }
+  }
+}

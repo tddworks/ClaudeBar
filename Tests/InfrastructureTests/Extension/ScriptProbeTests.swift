@@ -138,7 +138,7 @@ struct ScriptProbeTests {
             cliExecutor: executor
         )
 
-        await #expect(throws: ProbeError.self) {
+        await #expect(throws: UsageError.self) {
             try await probe.probe()
         }
     }

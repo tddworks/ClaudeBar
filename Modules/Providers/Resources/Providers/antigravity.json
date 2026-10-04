@@ -1,0 +1,251 @@
+{
+  "profile": {
+    "id": "antigravity",
+    "name": "Antigravity",
+    "links": {},
+    "look": {
+      "symbol": "wand.and.stars",
+      "icon": "AntigravityIcon",
+      "color": {
+        "light": [
+          0.58,
+          0.22,
+          0.72
+        ],
+        "dark": [
+          0.72,
+          0.35,
+          0.85
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.35,
+          0.15,
+          0.65
+        ],
+        "dark": [
+          0.45,
+          0.25,
+          0.75
+        ]
+      }
+    }
+  },
+  "enabledByDefault": true,
+  "defaultDataSource": "local",
+  "dataSources": [
+    {
+      "kind": "local",
+      "label": "App",
+      "summary": "Asks the running Antigravity app on this Mac",
+      "fetch": {
+        "localServer": {
+          "app": "Antigravity",
+          "process": {
+            "names": [
+              "language_server",
+              "language_server_macos",
+              "language_server_macos_arm",
+              "agy"
+            ],
+            "match": [
+              "(^|/|\\s)agy(\\s|$)",
+              "--app_data_dir.*antigravity",
+              "antigravity.*--app_data_dir",
+              "/antigravity/",
+              "\\.antigravity/"
+            ]
+          },
+          "values": {
+            "csrfToken": "--csrf_token[=\\s]+([^\\s]+)",
+            "extensionPort": "--extension_server_port[=\\s]+([^\\s]+)"
+          },
+          "required": [
+            "csrfToken"
+          ],
+          "paths": [
+            "/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary",
+            "/exa.language_server_pb.LanguageServerService/GetUserStatus",
+            "/exa.language_server_pb.LanguageServerService/GetCommandModelConfigs"
+          ],
+          "plainHTTPPort": "extensionPort",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Codeium-Csrf-Token": "{{csrfToken}}",
+            "Connect-Protocol-Version": "1"
+          },
+          "body": "{\"metadata\":{\"ideName\":\"antigravity\",\"extensionName\":\"antigravity\",\"ideVersion\":\"unknown\",\"locale\":\"en\"}}",
+          "timeout": 8
+        }
+      },
+      "fallback": "cloud",
+      "mapping": {
+        "script": {
+          "file": "antigravity-usage.js"
+        }
+      },
+      "fallbackOn": {
+        "cliNotFound": "cloud"
+      }
+    },
+    {
+      "kind": "cloud",
+      "label": "Cloud",
+      "summary": "Reads your quota from Google with the login Antigravity saved, while the app is closed",
+      "credential": {
+        "keychain": {
+          "service": "gemini",
+          "account": "antigravity",
+          "encoding": "goKeyringBase64",
+          "token": "$.token.access_token"
+        }
+      },
+      "fetch": {
+        "http": {
+          "steps": [
+            {
+              "name": "summaryDaily",
+              "optional": true,
+              "request": {
+                "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "keep": {
+                "answered": {
+                  "pattern": "^\\s*(\\{)"
+                }
+              }
+            },
+            {
+              "name": "summary",
+              "optional": true,
+              "request": {
+                "url": "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "unless": "answered",
+              "keep": {
+                "answered": {
+                  "pattern": "^\\s*(\\{)"
+                }
+              }
+            },
+            {
+              "name": "modelsDaily",
+              "optional": true,
+              "request": {
+                "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "unless": "answered",
+              "keep": {
+                "answered": {
+                  "pattern": "^\\s*(\\{)"
+                }
+              }
+            },
+            {
+              "name": "models",
+              "optional": true,
+              "request": {
+                "url": "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "unless": "answered",
+              "keep": {
+                "answered": {
+                  "pattern": "^\\s*(\\{)"
+                }
+              }
+            },
+            {
+              "name": "planDaily",
+              "optional": true,
+              "request": {
+                "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "keep": {
+                "plan": [
+                  "$.paidTier.name",
+                  "$.currentTier.name"
+                ]
+              }
+            },
+            {
+              "name": "plan",
+              "optional": true,
+              "request": {
+                "url": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+                "method": "POST",
+                "timeout": 15,
+                "body": "{}",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": "Bearer {{token}}",
+                  "User-Agent": "antigravity"
+                }
+              },
+              "unless": "plan"
+            }
+          ]
+        }
+      },
+      "errors": {
+        "http.401": {
+          "sessionExpired": "Sign in to Antigravity or run `agy` again."
+        },
+        "http.403": {
+          "sessionExpired": "Sign in to Antigravity or run `agy` again."
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "antigravity-usage.js"
+        }
+      }
+    }
+  ]
+}

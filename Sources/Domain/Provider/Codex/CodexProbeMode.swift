@@ -1,6 +1,10 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
-/// The mode used by CodexProvider to fetch usage data.
+/// Codex's data source, as the Codex card names it — the `kind` of one of
+/// the data sources in `codex.json`, saved as `codex.probeMode`.
 /// Users can switch between RPC (default) and API modes in Settings.
 public enum CodexProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Use the Codex RPC client (`codex app-server`) to fetch usage data.

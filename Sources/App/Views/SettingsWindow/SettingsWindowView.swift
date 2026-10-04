@@ -28,8 +28,9 @@ struct SettingsWindowView: View {
             VisualEffectView(material: .hudWindow, blending: .behindWindow)
                 .ignoresSafeArea()
 
+            // An outlined theme is paper, not glass: nothing shows through.
             theme.backgroundGradient
-                .opacity(0.82)
+                .opacity(theme.isOutlined ? 1 : 0.82)
                 .ignoresSafeArea()
 
             if theme.showBackgroundOrbs {
@@ -135,7 +136,7 @@ struct SettingsWindowView: View {
                 .fill(theme.glassBackground.opacity(0.5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(theme.glassBorder, lineWidth: 1)
+                        .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth)
                 )
         )
     }

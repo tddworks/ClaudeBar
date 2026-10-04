@@ -1,6 +1,15 @@
-# Oh My Pi: probe design
+# Oh My Pi: design
 
 Contributor research for the Oh My Pi provider (`omp`). User-facing setup is in [README.md](README.md).
+
+## As data
+
+Oh My Pi is `Modules/Providers/Resources/Providers/omp.json` and `omp-usage.js`, run by the generic engine (TARGET_ARCHITECTURE §8.2); no Swift names it. Ported from #387. The sections below are the research; the payload and the labels are unchanged.
+
+- **A `command` fetch** runs `omp usage --json` over pipes; a non-zero exit is `cli.nonzero`, which never carries the output (it holds account emails and ids). The script slices the first `{` to the last `}` and reads numbers as exact texts (`jsonDecimal`).
+- **Each limit is a quota with its `group`** — the provider, and the account tag when one provider has several. A capped USD limit is money left of its cap (`left: {money, of}`), its share following the cents shown.
+- **`notes`** carry what has nothing to measure: an account with no usage, and spend with no cap. Each is a row under its group, named by its own `label`.
+- **Not taken:** card and menu-bar titles (`compactTitle`, `menuBarTitle`), which are the page's. The 5-minute floor is `cache.ttl: 300`, so a click within 5 minutes shows the cached report too.
 
 ## Source
 

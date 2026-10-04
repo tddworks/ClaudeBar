@@ -111,6 +111,97 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.customCardURL(forProvider: "gemini") == nil)
     }
 
+    // MARK: - Provider Order
+
+    @Test
+    func `providerOrder defaults to empty`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.providerOrder() == [])
+    }
+
+    @Test
+    func `setProviderOrder persists value`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setProviderOrder(["gemini", "claude", "codex"])
+
+        // Read back through a fresh repository over the same file, so the
+        // value really hit settings.json and not just memory.
+        let store = JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json"))
+        let reloaded = JSONSettingsRepository(store: store)
+        #expect(reloaded.providerOrder() == ["gemini", "claude", "codex"])
+    }
+
+    @Test
+    func `setProviderOrder empty clears the stored order`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setProviderOrder(["gemini", "claude", "codex"])
+        repo.setProviderOrder([])
+        #expect(repo.providerOrder() == [])
+    }
+
+    @Test
+    func `providerOrder round-trips a partial order`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setProviderOrder(["codex"])
+        #expect(repo.providerOrder() == ["codex"])
+    }
+
+    // MARK: - Hidden Quota Keys (issue #140)
+
+    @Test
+    func `hiddenQuotaKeys defaults to empty`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.hiddenQuotaKeys(forProvider: "gemini") == [])
+    }
+
+    @Test
+    func `setHiddenQuotaKeys persists across store reopen`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setHiddenQuotaKeys(["model:gemini-2.0-flash", "time:mcp"], forProvider: "gemini")
+
+        // Reopen the same settings file as a fresh repository
+        let store = JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json"))
+        let reopened = JSONSettingsRepository(store: store)
+
+        #expect(reopened.hiddenQuotaKeys(forProvider: "gemini") == ["model:gemini-2.0-flash", "time:mcp"])
+    }
+
+    @Test
+    func `hiddenQuotaKeys is per provider`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setHiddenQuotaKeys(["model:gemini-2.0-flash"], forProvider: "gemini")
+        repo.setHiddenQuotaKeys(["weekly"], forProvider: "codex")
+
+        #expect(repo.hiddenQuotaKeys(forProvider: "gemini") == ["model:gemini-2.0-flash"])
+        #expect(repo.hiddenQuotaKeys(forProvider: "codex") == ["weekly"])
+        #expect(repo.hiddenQuotaKeys(forProvider: "claude") == [])
+    }
+
+    @Test
+    func `setHiddenQuotaKeys with empty set clears the stored keys`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setHiddenQuotaKeys(["model:gemini-2.0-flash"], forProvider: "gemini")
+        repo.setHiddenQuotaKeys([], forProvider: "gemini")
+
+        #expect(repo.hiddenQuotaKeys(forProvider: "gemini") == [])
+    }
+
     // MARK: - Claude Settings
 
     @Test
@@ -166,147 +257,24 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.codexProbeMode() == .api)
     }
 
-    // MARK: - Kimi Settings
-
     @Test
-    func `kimiProbeMode defaults to cli`() {
+    func `codexVerifiedAtLeastOnce defaults to false`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        #expect(repo.kimiProbeMode() == .cli)
+        #expect(repo.codexVerifiedAtLeastOnce() == false)
     }
 
     @Test
-    func `setKimiProbeMode persists value`() {
+    func `setCodexVerifiedAtLeastOnce persists value`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        repo.setKimiProbeMode(.api)
-        #expect(repo.kimiProbeMode() == .api)
-    }
+        repo.setCodexVerifiedAtLeastOnce(true)
+        #expect(repo.codexVerifiedAtLeastOnce() == true)
 
-    // MARK: - Zai Settings
-
-    @Test
-    func `zaiConfigPath defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.zaiConfigPath() == "")
-    }
-
-    @Test
-    func `setZaiConfigPath persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setZaiConfigPath("/custom/path")
-        #expect(repo.zaiConfigPath() == "/custom/path")
-    }
-
-    @Test
-    func `glmAuthEnvVar defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.glmAuthEnvVar() == "")
-    }
-
-    @Test
-    func `setGlmAuthEnvVar persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setGlmAuthEnvVar("GLM_TOKEN")
-        #expect(repo.glmAuthEnvVar() == "GLM_TOKEN")
-    }
-
-    // MARK: - Copilot Settings
-
-    @Test
-    func `copilotProbeMode defaults to billing`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotProbeMode() == .billing)
-    }
-
-    @Test
-    func `setCopilotProbeMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCopilotProbeMode(.copilotAPI)
-        #expect(repo.copilotProbeMode() == .copilotAPI)
-    }
-
-    @Test
-    func `copilotAuthEnvVar defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotAuthEnvVar() == "")
-    }
-
-    @Test
-    func `copilotMonthlyLimit defaults to nil`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotMonthlyLimit() == nil)
-    }
-
-    @Test
-    func `setCopilotMonthlyLimit persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCopilotMonthlyLimit(100)
-        #expect(repo.copilotMonthlyLimit() == 100)
-    }
-
-    // MARK: - Bedrock Settings
-
-    @Test
-    func `awsProfileName defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.awsProfileName() == "")
-    }
-
-    @Test
-    func `bedrockRegions defaults to us-east-1`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.bedrockRegions() == ["us-east-1"])
-    }
-
-    @Test
-    func `setBedrockRegions persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setBedrockRegions(["us-west-2", "eu-west-1"])
-        #expect(repo.bedrockRegions() == ["us-west-2", "eu-west-1"])
-    }
-
-    @Test
-    func `bedrockDailyBudget defaults to nil`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.bedrockDailyBudget() == nil)
-    }
-
-    @Test
-    func `setBedrockDailyBudget persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setBedrockDailyBudget(25.50)
-        #expect(repo.bedrockDailyBudget() == 25.50)
+        repo.setCodexVerifiedAtLeastOnce(false)
+        #expect(repo.codexVerifiedAtLeastOnce() == false)
     }
 
     // MARK: - Hook Settings
@@ -343,25 +311,6 @@ struct JSONSettingsRepositoryProviderTests {
 
         repo.setHookPort(8080)
         #expect(repo.hookPort() == 8080)
-    }
-
-    // MARK: - MiniMax Settings
-
-    @Test
-    func `minimaxRegion defaults to china`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.minimaxRegion() == .china)
-    }
-
-    @Test
-    func `setMinimaxRegion persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setMinimaxRegion(.international)
-        #expect(repo.minimaxRegion() == .international)
     }
 
 }

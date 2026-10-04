@@ -191,7 +191,7 @@ Most providers stop at this one file.
 
 This is ClaudeBar's hard-won knowledge. It isn't in the code, because it's about other people's CLIs and endpoints. Each file holds:
 
-- **The sources**: the CLI command, RPC method or endpoint for each probe mode, and the order the fallbacks run in.
+- **The sources**: the CLI command, RPC method or endpoint for each data source, and the order the fallbacks run in.
 - **The fields that matter**, with the version where each was seen, for example Codex `account/rateLimits/read` → `primary.resetsAt` (epoch seconds) and `windowDurationMins` (a weekly window showed up as the *primary* window in 2026-09).
 - **Parsing rules and why**: screen scraping with the scrollback read, because `/usage` grew past 50 rows in Claude Code 2.1.170; dedup by `(message.id, requestId)`.
 - **Dead ends**: what was tried and why it doesn't work, so nobody tries it again.

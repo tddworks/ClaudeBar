@@ -1,6 +1,10 @@
+import Quotas
+import DataSources
+import Providers
 import Foundation
 
-/// The mode used by ClaudeProvider to fetch usage data.
+/// Claude's data source, as the Claude card names it — the `kind` of one of
+/// the data sources in `claude.json`, saved as `claude.probeMode`.
 /// Users can switch between CLI (default) and API modes in Settings.
 public enum ClaudeProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Use the Claude CLI (`claude /usage`) to fetch usage data.

@@ -13,7 +13,8 @@ struct MenuBarDurationDisplayTests {
             percentRemaining: percentRemaining,
             quotaType: .session,
             providerId: "claude",
-            resetsAt: resetsAt
+            resetsAt: resetsAt,
+            windowDuration: QuotaType.session.conventionalWindow.seconds
         )
     }
 

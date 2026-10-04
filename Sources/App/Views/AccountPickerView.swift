@@ -53,7 +53,7 @@ struct AccountPill: View {
                         .foregroundStyle(isActive ? .white : theme.textSecondary)
                 }
 
-                Text(account.displayName)
+                Text(AppSettings.shared.shown(account.displayName))
                     .font(.system(size: 10, weight: isActive ? .semibold : .medium, design: theme.fontDesign))
                     .foregroundStyle(isActive ? theme.textPrimary : theme.textSecondary)
                     .lineLimit(1)
