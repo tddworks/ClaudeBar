@@ -14,6 +14,7 @@ final class Leaderboard {
     let boardPage = URL(string: "https://tddworks.github.io/ClaudeBar/leaderboard/")!
 
     @ObservationIgnored private let api: any LeaderboardAPI
+    @ObservationIgnored private let logs: MonitorTokenLogs
     @ObservationIgnored private var timer: Timer?
 
     init(monitor: QuotaMonitor,
@@ -22,6 +23,7 @@ final class Leaderboard {
          settings: any LeaderboardSettingsRepository = JSONSettingsRepository.shared) {
         let logs = MonitorTokenLogs(monitor: monitor)
         self.api = api
+        self.logs = logs
         membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs)
         uploader = LeaderboardUploader(membership: membership, logs: logs, api: api)
     }
@@ -38,11 +40,18 @@ final class Leaderboard {
         }
     }
 
-    /// Joins, then sends the last thirty days straight away so the first
-    /// rank shows without waiting an hour.
+    /// Joins, then sends the last thirty days in the background so the first
+    /// rank shows without waiting an hour, and the tab switches at once.
     func join(as username: Username, sharing: Set<String>) async throws {
         try await membership.join(as: username, sharing: sharing)
-        await uploader.uploadDue()
+        Task { await uploader.uploadDue() }
+    }
+
+    /// Today's days for `providers`, exactly as an upload would send them —
+    /// for the join form's preview.
+    func preview(sharing providers: Set<String>) async -> [DailyTokens] {
+        let today = DateRange.last(1)
+        return DailyTokens.summed(await logs.days(in: today), providers: providers)
     }
 
     func board(in view: BoardView) async throws -> [Standing] {

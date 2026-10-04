@@ -44,11 +44,12 @@ struct LeaderboardPane: View {
         SettingsCard {
             SettingsRow(title: "Username", subtitle: membership.username?.description) {
                 HStack(spacing: 6) {
-                    TextField("", text: $newName, prompt: Text("new-name"))
-                        .textFieldStyle(.roundedBorder)
+                    SettingsTextField(placeholder: "new-name", text: $newName)
                         .frame(width: 140)
-                    Button("Rename") { run { try await membership.rename(to: Username(newName)!); newName = "" } }
-                        .disabled(Username(newName) == nil || isWorking)
+                    SettingsActionButton(title: "Rename", iconName: "pencil", style: .secondary) {
+                        run { try await membership.rename(to: Username(newName)!); newName = "" }
+                    }
+                    .disabled(Username(newName) == nil || isWorking)
                 }
             }
             SettingsRowDivider()
@@ -87,12 +88,18 @@ struct LeaderboardPane: View {
     private var dataCard: some View {
         SettingsCard {
             SettingsRow(title: "Export my data", subtitle: "Everything the server holds about you, as JSON.") {
-                Button("Export…") { run { try await export() } }.disabled(isWorking)
+                SettingsActionButton(title: "Export…", iconName: "square.and.arrow.down", style: .secondary) {
+                    run { try await export() }
+                }
+                .disabled(isWorking)
             }
             SettingsRowDivider()
             SettingsRow(title: "Leave and delete my data",
                         subtitle: "Removes your username and every uploaded day from the server, then this Mac's key.") {
-                Button("Leave…", role: .destructive) { confirmLeave = true }.disabled(isWorking)
+                SettingsActionButton(title: "Leave…", iconName: "rectangle.portrait.and.arrow.right", style: .destructive) {
+                    confirmLeave = true
+                }
+                .disabled(isWorking)
             }
             .confirmationDialog("Leave the leaderboard?", isPresented: $confirmLeave) {
                 Button("Leave and delete my data", role: .destructive) {

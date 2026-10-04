@@ -36,6 +36,19 @@ struct DailyTokensTests {
         #expect(work.adding(personal).total == 165)
     }
 
+    @Test func `only the given providers are summed, each one's logins per day`() {
+        let day = calendar.date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 9))!
+        let stat = { (input: Int) in DailyUsageStat(date: day, totalCost: 0, totalTokens: input, workingTime: 0, sessionCount: 1, inputTokens: input) }
+        let days = DailyTokens.summed([
+            LoginDays(providerId: "claude", days: [stat(10)]),
+            LoginDays(providerId: "claude", days: [stat(5)]),
+            LoginDays(providerId: "codex", days: [stat(99)])
+        ], providers: ["claude"], calendar: calendar)
+
+        #expect(days.map(\.input) == [15])
+        #expect(days.map(\.provider) == ["claude"])
+    }
+
     @Test func `the wire form names each count`() throws {
         let tokens = DailyTokens(provider: "codex", day: "2026-10-04", input: 1, output: 2, cacheWrite: 3, cacheRead: 4, unsplit: 0)
         let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(tokens)) as? [String: Any]

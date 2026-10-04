@@ -89,15 +89,7 @@ public final class LeaderboardMembership {
     /// provider's logins added up per day, days without tokens left out.
     public func dailyTokens(from logins: [LoginDays]) -> [DailyTokens] {
         guard isJoined else { return [] }
-        var byDay: [String: DailyTokens] = [:]
-        for login in logins where sharing.contains(login.providerId) {
-            for stat in login.days {
-                let tokens = DailyTokens(provider: login.providerId, stat: stat, calendar: calendar)
-                let key = tokens.provider + "|" + tokens.day
-                byDay[key] = byDay[key].map { $0.adding(tokens) } ?? tokens
-            }
-        }
-        return byDay.values.filter { $0.total > 0 }.sorted { ($0.day, $0.provider) < ($1.day, $1.provider) }
+        return DailyTokens.summed(logins, providers: sharing, calendar: calendar)
     }
 
     func recordUpload(at date: Date) {

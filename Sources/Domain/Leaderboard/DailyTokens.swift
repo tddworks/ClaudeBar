@@ -43,6 +43,21 @@ public struct DailyTokens: Sendable, Equatable, Codable {
                     unsplit: unsplit + other.unsplit)
     }
 
+    /// The days of `providers` in `logins`: each provider's logins added up
+    /// per day, days without tokens left out, oldest first. What an upload
+    /// sends and what its preview shows are both this.
+    public static func summed(_ logins: [LoginDays], providers: Set<String>, calendar: Calendar = .current) -> [DailyTokens] {
+        var byDay: [String: DailyTokens] = [:]
+        for login in logins where providers.contains(login.providerId) {
+            for stat in login.days {
+                let tokens = DailyTokens(provider: login.providerId, stat: stat, calendar: calendar)
+                let key = tokens.provider + "|" + tokens.day
+                byDay[key] = byDay[key].map { $0.adding(tokens) } ?? tokens
+            }
+        }
+        return byDay.values.filter { $0.total > 0 }.sorted { ($0.day, $0.provider) < ($1.day, $1.provider) }
+    }
+
     public static func day(of date: Date, calendar: Calendar = .current) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
