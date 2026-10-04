@@ -1,5 +1,5 @@
 ---
-description: Track Claude 5-hour session, weekly and per-model (Opus, Sonnet, Fable) limits plus Extra Usage spend, via `claude /usage` or the OAuth usage API. Use when setting up Claude or when it shows an error.
+description: Track Claude 5-hour session, weekly and per-model (Opus, Sonnet, Fable) limits plus Extra Usage spend, via `claude /usage`, the OAuth usage API, or Claude Desktop's buddy-tokens.json. Use when setting up Claude or when it shows an error.
 ---
 
 # Claude
