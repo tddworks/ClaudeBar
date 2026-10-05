@@ -27,8 +27,8 @@ const totalled = (c: Placed): c is Totalled => c.members !== undefined;
 const R = 1;
 // No mint: it would vanish on green land.
 const CANDY = [0xFFD84D, 0xFFB3C7, 0xA9D8FF, 0xC9B8FF, 0xFFC98A, 0xFF8A8A];
-// A country with one or two members: a short cream pin, the same for all.
-const FEW = { height: 0.04, color: 0xFFF8EC };
+// A country with one or two members: a pink dot with a soft halo, the same for all.
+const FEW = 0xFFB3C7;
 const names = new Intl.DisplayNames(["en"], { type: "region" });
 
 const $ = (id: string) => document.getElementById(id);
@@ -141,13 +141,67 @@ async function start(): Promise<void> {
     return g;
   }
 
+  /** A glowing dot on the surface: where members are, without a number. */
+  function dot(c: Placed): THREE.Group {
+    const g = new THREE.Group();
+    const halo = new THREE.MeshBasicMaterial({ color: FEW, transparent: true, opacity: 0.35, depthWrite: false });
+    const parts: [THREE.BufferGeometry, THREE.Material][] = [
+      [new THREE.SphereGeometry(0.05, 20, 20), halo],
+      [new THREE.SphereGeometry(0.022, 16, 16), new THREE.MeshBasicMaterial({ color: FEW })],
+      [new THREE.SphereGeometry(0.03, 16, 16), new THREE.MeshBasicMaterial({ color: 0x1E1B2E, side: THREE.BackSide })],
+    ];
+    for (const [geometry, material] of parts) g.add(new THREE.Mesh(geometry, material));
+    const base = toVec(c.centre[0], c.centre[1], R);
+    g.position.copy(base.clone().multiplyScalar(1.01));
+    g.userData = c;
+    return g;
+  }
+
+  // Each pin's flag and name, kept beside it on screen and hidden on the far side.
+  const card = host.parentElement!;
+  let labels: { at: THREE.Vector3; node: HTMLElement }[] = [];
+  const facing = new THREE.Vector3(), screen = new THREE.Vector3();
+  function placeLabels(): void {
+    const w = host!.clientWidth, h = host!.clientHeight;
+    facing.copy(camera.position).normalize();
+    for (const { at, node } of labels) {
+      const front = at.clone().normalize().dot(facing) > 0.2;
+      node.style.opacity = front ? "1" : "0";
+      if (!front) continue;
+      screen.copy(at).project(camera);
+      const x = (screen.x + 1) / 2 * w, y = (1 - screen.y) / 2 * h;
+      const left = x > w * 0.7;
+      node.style.transform = `translate(${left ? `calc(${x - 12}px - 100%)` : `${x + 12}px`}, ${y - 10}px)`;
+    }
+  }
+
+  /** Turn the globe to face where members are, kept near the equator so it reads. */
+  function faceMembers(): void {
+    if (placed.length === 0) return;
+    const mean = new THREE.Vector3();
+    for (const c of placed) mean.add(toVec(c.centre[0], c.centre[1], 1));
+    if (mean.lengthSq() < 1e-6) return;
+    mean.normalize();
+    const lat = Math.min(25, Math.max(-15, Math.asin(mean.y) * 180 / Math.PI)) * Math.PI / 180;
+    const flat = Math.hypot(mean.x, mean.z);
+    const view = new THREE.Vector3(mean.x / flat * Math.cos(lat), Math.sin(lat), mean.z / flat * Math.cos(lat));
+    camera.position.copy(view.multiplyScalar(camera.position.length()));
+    controls.update();
+  }
+
   function draw(): void {
     markers.clear();
+    for (const { node } of labels) node.remove();
     const shown = placed.filter(totalled).sort((a, b) => b.tokens - a.tokens);
     const few = placed.filter((c) => !totalled(c));
     const max = Math.max(1, ...shown.map((c) => c.tokens));
     shown.forEach((c, i) => markers.add(pin(c, 0.04 + 0.26 * (c.tokens / max), CANDY[i % CANDY.length])));
-    few.forEach((c) => markers.add(pin(c, FEW.height, FEW.color)));
+    few.forEach((c) => markers.add(dot(c)));
+    labels = placed.map((c) => {
+      const node = el("span", { class: "globe-label", text: `${flag(c.country)} ${nameOf(c.country)}` });
+      card.append(node);
+      return { at: toVec(c.centre[0], c.centre[1], R * 1.02), node };
+    });
     const row = (c: Placed, width: number, num: string) => el("li", {},
       el("span", { class: "fill", style: `width:${width}%` }),
       el("span", { text: flag(c.country) }),
@@ -160,8 +214,9 @@ async function start(): Promise<void> {
     );
   }
 
+  // Hover with a mouse, tap on a touch screen: the same tooltip.
   const ray = new THREE.Raycaster(), pointer = new THREE.Vector2();
-  renderer.domElement.addEventListener("pointermove", (event) => {
+  function point(event: PointerEvent | MouseEvent): void {
     const box = renderer.domElement.getBoundingClientRect();
     pointer.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
     ray.setFromCamera(pointer, camera);
@@ -175,7 +230,9 @@ async function start(): Promise<void> {
       tip.style.left = `${event.clientX - box.left}px`; tip.style.top = `${event.clientY - box.top}px`; tip.style.opacity = "1";
       controls.autoRotate = false;
     } else { tip.style.opacity = "0"; controls.autoRotate = true; }
-  });
+  }
+  renderer.domElement.addEventListener("pointermove", (event) => { if (event.pointerType === "mouse") point(event); });
+  renderer.domElement.addEventListener("click", point);
   renderer.domElement.addEventListener("pointerleave", () => { tip.style.opacity = "0"; controls.autoRotate = true; });
 
   const resize = () => {
@@ -185,7 +242,7 @@ async function start(): Promise<void> {
     camera.aspect = w / h; camera.updateProjectionMatrix();
   };
   new ResizeObserver(resize).observe(host); resize();
-  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); placeLabels(); });
 
   try {
     const response = await fetch("https://claudebar-api.tddworks.com/globe?period=30d");
@@ -206,6 +263,7 @@ async function start(): Promise<void> {
       empty.removeAttribute("hidden");
     }
     draw();
+    faceMembers();
   } catch {
     if (loading) loading.textContent = "The globe can't be reached right now.";
   }
