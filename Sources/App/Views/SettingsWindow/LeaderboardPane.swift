@@ -86,7 +86,7 @@ struct LeaderboardPane: View {
             return "Your country, from where your requests come from, shown on the web board's globe. Never your city or IP; a country's tokens show once three members there share it."
         }
         let kept = storedCountry.map { "On the globe as \(leaderboardCountryLabel($0))." }
-            ?? "On. Your country is recorded with your next request."
+            ?? "On, but your country couldn't be told from where you connect. Turn this off and on again from another network."
         return kept + " Turn this off to remove it from the globe at once."
     }
 
