@@ -62,7 +62,7 @@ The web board's globe shows where ClaudeBar is used, by country, from members wh
 
 ## Gotchas
 
-- **On a VPN?** The globe counts the country your VPN connects from.
+- **On a VPN?** Your country is taken once, when you turn the globe on, so a VPN's country then is the one kept. To change it, turn **Show my country on the globe** off and on again without the VPN.
 
 - **"That username is taken."** Names are unique ignoring case, and names that would read as official (`admin`, `claudebar`, `anthropic`…) are reserved.
 - **"This Mac's clock is more than five minutes off."** Uploads are signed with the time. Fix the clock in System Settings → General → Date & Time.
