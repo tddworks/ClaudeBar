@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(`../public/${path}`, import.meta.url), "utf8");
 const headers = read("_headers");
-const policy = headers.split("/leaderboard/globe.js")[0];
+const policy = headers;
 const pages = { landing: read("index.html"), board: read("leaderboard/index.html") };
 
 test("every page has a strict policy: its own scripts, and only the API to talk to", () => {
