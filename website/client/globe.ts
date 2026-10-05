@@ -28,7 +28,7 @@ const R = 1;
 // No mint: it would vanish on green land.
 const CANDY = [0xFFD84D, 0xFFB3C7, 0xA9D8FF, 0xC9B8FF, 0xFFC98A, 0xFF8A8A];
 // A country with one or two members: a pink dot with a soft halo, the same for all.
-const FEW = 0xFFB3C7;
+const FEW = 0xFFB3C7, GLOW = 0xFF5C93;
 const names = new Intl.DisplayNames(["en"], { type: "region" });
 
 const $ = (id: string) => document.getElementById(id);
@@ -144,7 +144,7 @@ async function start(): Promise<void> {
   /** A glowing dot on the surface: where members are, without a number. */
   function dot(c: Placed): THREE.Group {
     const g = new THREE.Group();
-    const halo = new THREE.MeshBasicMaterial({ color: FEW, transparent: true, opacity: 0.35, depthWrite: false });
+    const halo = new THREE.MeshBasicMaterial({ color: GLOW, transparent: true, opacity: 0.5, depthWrite: false });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [
       [new THREE.SphereGeometry(0.05, 20, 20), halo],
       [new THREE.SphereGeometry(0.022, 16, 16), new THREE.MeshBasicMaterial({ color: FEW })],
@@ -160,19 +160,32 @@ async function start(): Promise<void> {
   // Each pin's flag and name, kept beside it on screen and hidden on the far side.
   const card = host.parentElement!;
   let labels: { at: THREE.Vector3; node: HTMLElement }[] = [];
+  let tipAt: THREE.Vector3 | null = null;
+  // Shown only while well in front: at the rim a label would point at nothing.
+  const inFront = (at: THREE.Vector3) => at.clone().normalize().dot(facing) > 0.4;
+  const hideTip = () => { tip.style.opacity = "0"; tipAt = null; controls.autoRotate = true; };
   const facing = new THREE.Vector3(), screen = new THREE.Vector3();
   function placeLabels(): void {
     const w = host!.clientWidth, h = host!.clientHeight;
     facing.copy(camera.position).normalize();
-    for (const { at, node } of labels) {
-      const front = at.clone().normalize().dot(facing) > 0.2;
+    // Top to bottom; a label that would sit on one already placed moves down.
+    const shown = labels.flatMap(({ at, node }) => {
+      const front = inFront(at);
       node.style.opacity = front ? "1" : "0";
-      if (!front) continue;
+      if (!front) return [];
       screen.copy(at).project(camera);
-      const x = (screen.x + 1) / 2 * w, y = (1 - screen.y) / 2 * h;
-      const left = x > w * 0.7;
-      node.style.transform = `translate(${left ? `calc(${x - 12}px - 100%)` : `${x + 12}px`}, ${y - 10}px)`;
+      return [{ node, x: (screen.x + 1) / 2 * w, y: (1 - screen.y) / 2 * h }];
+    }).sort((a, b) => a.y - b.y);
+    const taken: { left: number; right: number; top: number }[] = [];
+    for (const { node, x, y } of shown) {
+      const width = node.offsetWidth, height = node.offsetHeight + 2;
+      const left = x > w * 0.7 ? x - 12 - width : x + 12;
+      let top = y - height / 2;
+      while (taken.some((t) => left < t.right && left + width > t.left && Math.abs(top - t.top) < height)) top += height;
+      taken.push({ left, right: left + width, top });
+      node.style.transform = `translate(${left}px, ${top}px)`;
     }
+    if (tipAt && !inFront(tipAt)) hideTip();
   }
 
   /** Turn the globe to face where members are, kept near the equator so it reads. */
@@ -228,12 +241,15 @@ async function start(): Promise<void> {
       tip.replaceChildren(el("b", { text: `${flag(c.country)} ${nameOf(c.country)}` }), el("br"),
         totalled(c) ? `${fmt(c.tokens)} tokens · 30 days` : "Tokens show once 3 members there share it");
       tip.style.left = `${event.clientX - box.left}px`; tip.style.top = `${event.clientY - box.top}px`; tip.style.opacity = "1";
+      tipAt = toVec(c.centre[0], c.centre[1], R);
       controls.autoRotate = false;
-    } else { tip.style.opacity = "0"; controls.autoRotate = true; }
+    } else hideTip();
   }
   renderer.domElement.addEventListener("pointermove", (event) => { if (event.pointerType === "mouse") point(event); });
   renderer.domElement.addEventListener("click", point);
-  renderer.domElement.addEventListener("pointerleave", () => { tip.style.opacity = "0"; controls.autoRotate = true; });
+  renderer.domElement.addEventListener("pointerleave", hideTip);
+  // A drag turns the globe under the tooltip: let it go.
+  controls.addEventListener("start", hideTip);
 
   const resize = () => {
     const w = host.clientWidth, h = host.clientHeight;
