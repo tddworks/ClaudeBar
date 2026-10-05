@@ -1,6 +1,6 @@
 // The board page's globe: where opted-in members are, by country, from the
 // API's GET /globe. Every shared country gets a pin; only countries with three
-// or more members carry numbers, the rest are "a few". Bundled by `npm run build` into public/leaderboard/globe.js.
+// or more members show their tokens; the rest show none. Bundled by `npm run build` into public/leaderboard/globe.js.
 // Every value from the server is written with textContent, never as HTML.
 
 import * as THREE from "three/webgpu";
@@ -85,7 +85,6 @@ async function start(): Promise<void> {
   if (!host) return;
   const tip = $("globe-tip")!;
   const loading = $("globe-loading");
-  let metric: "members" | "tokens" = "members";
 
   const renderer = new THREE.WebGPURenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, devicePixelRatio));
@@ -144,10 +143,10 @@ async function start(): Promise<void> {
 
   function draw(): void {
     markers.clear();
-    const shown = placed.filter(totalled).sort((a, b) => b[metric] - a[metric]);
+    const shown = placed.filter(totalled).sort((a, b) => b.tokens - a.tokens);
     const few = placed.filter((c) => !totalled(c));
-    const max = Math.max(1, ...shown.map((c) => c[metric]));
-    shown.forEach((c, i) => markers.add(pin(c, 0.04 + 0.26 * (c[metric] / max), CANDY[i % CANDY.length])));
+    const max = Math.max(1, ...shown.map((c) => c.tokens));
+    shown.forEach((c, i) => markers.add(pin(c, 0.04 + 0.26 * (c.tokens / max), CANDY[i % CANDY.length])));
     few.forEach((c) => markers.add(pin(c, FEW.height, FEW.color)));
     const row = (c: Placed, width: number, num: string) => el("li", {},
       el("span", { class: "fill", style: `width:${width}%` }),
@@ -156,18 +155,10 @@ async function start(): Promise<void> {
       el("span", { class: "num", text: num }));
     const list = $("globe-list");
     list?.replaceChildren(
-      ...shown.map((c) => row(c, (c[metric] / max) * 100, metric === "members" ? String(c.members) : fmt(c.tokens))),
-      ...few.map((c) => row(c, 0, "a few")),
+      ...shown.map((c) => row(c, (c.tokens / max) * 100, fmt(c.tokens))),
+      ...few.map((c) => row(c, 0, "—")),
     );
-    const title = $("globe-list-title");
-    if (title) title.textContent = `Countries · ${metric}`;
   }
-
-  document.querySelectorAll<HTMLButtonElement>("[data-globe-metric]").forEach((button) => button.addEventListener("click", () => {
-    metric = button.dataset.globeMetric === "tokens" ? "tokens" : "members";
-    document.querySelectorAll("[data-globe-metric]").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
-    draw();
-  }));
 
   const ray = new THREE.Raycaster(), pointer = new THREE.Vector2();
   renderer.domElement.addEventListener("pointermove", (event) => {
@@ -180,7 +171,7 @@ async function start(): Promise<void> {
       while (group.parent !== markers) group = group.parent!;
       const c = group.userData as Placed;
       tip.replaceChildren(el("b", { text: `${flag(c.country)} ${nameOf(c.country)}` }), el("br"),
-        totalled(c) ? `${c.members} members · ${fmt(c.tokens)} tokens · 30 days` : "A few members · numbers show from 3");
+        totalled(c) ? `${fmt(c.tokens)} tokens · 30 days` : "Tokens show once 3 members there share it");
       tip.style.left = `${event.clientX - box.left}px`; tip.style.top = `${event.clientY - box.top}px`; tip.style.opacity = "1";
       controls.autoRotate = false;
     } else { tip.style.opacity = "0"; controls.autoRotate = true; }

@@ -46,9 +46,6 @@ a{color:var(--violet)}
 #globe canvas{display:block;cursor:grab}
 .globe-head{position:absolute;left:16px;top:14px;right:16px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;pointer-events:none}
 .globe-head h2{margin:0;color:#FFF8EC;font-size:20px;font-weight:800}
-.globe-seg{pointer-events:auto;display:flex;border:2px solid #FFF8EC;border-radius:999px;overflow:hidden}
-.globe-seg button{border:0;background:transparent;color:#FFF8EC;font:800 12px "Bricolage Grotesque",sans-serif;padding:6px 12px;cursor:pointer;min-height:32px}
-.globe-seg button[aria-pressed="true"]{background:#FFF8EC;color:#1E1B2E}
 .globe-legend{position:absolute;left:16px;bottom:14px;right:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:#D9D2EE;font-size:12px;pointer-events:none}
 .globe-legend .gchip{border:1.5px solid rgba(255,248,236,.5);border-radius:999px;padding:2px 10px;color:#FFF8EC}
 .globe-tip{position:absolute;pointer-events:none;background:#FFF8EC;color:#1E1B2E;border:var(--line);border-radius:12px;box-shadow:3px 3px 0 #1E1B2E;padding:8px 12px;font-size:13px;transform:translate(-50%,calc(-100% - 14px));white-space:nowrap;opacity:0;transition:opacity .12s}
@@ -99,21 +96,17 @@ a.plink svg{width:14px;height:14px}
       <div class="globe-msg" id="globe-empty" hidden>No one has shared their country yet.</div>
       <div class="globe-head">
         <h2 id="globe-title">Where ClaudeBar is used</h2>
-        <div class="globe-seg" role="group" aria-label="Size markers by">
-          <button type="button" data-globe-metric="members" aria-pressed="true">Members</button>
-          <button type="button" data-globe-metric="tokens" aria-pressed="false">Tokens</button>
-        </div>
       </div>
       <div class="globe-legend">
-        <span class="gchip">Country only</span><span class="gchip">Opt-in</span><span class="gchip">Numbers from 3 members</span>
+        <span class="gchip">Country only</span><span class="gchip">Opt-in</span><span class="gchip">Tokens from 3 members</span>
         <span>Last 30 days · drag to turn</span>
       </div>
       <div class="globe-tip" id="globe-tip"></div>
     </div>
     <div class="globe-side">
       <div class="card"><div class="label">Countries on the globe</div><div class="big" id="globe-count">0</div></div>
-      <div class="card"><div class="label" id="globe-list-title">Countries · members</div><ol id="globe-list"></ol></div>
-      <p class="note"><b>A country shows from its first member.</b> Its numbers show once 3 members there share it, so no number is one person's own. <b>Add or remove your country:</b> ClaudeBar → Settings → Leaderboard → Show my country on the globe. Only your country is kept, never your city or IP, and turning it off removes it at once.</p>
+      <div class="card"><div class="label">Countries · tokens</div><ol id="globe-list"></ol></div>
+      <p class="note"><b>A country shows from its first member.</b> Its tokens show once 3 members there share it, so no total is one person's own. <b>Add or remove your country:</b> ClaudeBar → Settings → Leaderboard → Show my country on the globe. Only your country is kept, never your city or IP, and turning it off removes it at once.</p>
     </div>
   </section>
 
