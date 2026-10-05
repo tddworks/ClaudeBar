@@ -83,7 +83,7 @@ struct LeaderboardPane: View {
     /// Off: what turning it on keeps. On: what is kept now, and how to remove it.
     private var globeSubtitle: String {
         guard membership.sharesCountry else {
-            return "Your country, from where your requests come from, shown on the web board's globe. Never your city or IP; a country's numbers show once three members there share it."
+            return "Your country, from where your requests come from, shown on the web board's globe. Never your city or IP; a country's tokens show once three members there share it."
         }
         let kept = storedCountry.map { "On the globe as \(leaderboardCountryLabel($0))." }
             ?? "On. Your country is recorded with your next request."

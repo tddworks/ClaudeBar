@@ -176,7 +176,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Standings rank by total tokens (the five counts summed); ties by username | Server |
 | A member's period ends on their own date, the one their Mac sent with its last upload, while it is within a day of UTC's | Server |
 | A hidden member is absent from the public board and still sees their own standing | Server |
-| The globe shows only countries, only for members who opted in; numbers only where at least three are | Server |
+| The globe shows only countries, only for members who opted in; tokens only where at least three are | Server |
 | A member who hasn't opted in sees the globe offered once, until they opt in or dismiss it | `LeaderboardMembership.showsGlobeHint` |
 | A profile link is a platform and a handle that fits its rules, never a URL | `ProfileLink` (the app, as you type) and the server (the authority); one `vectors.json` |
 | Leaving deletes the member and every row, on the server | Server — the app forgets the key only after a 2xx |

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Leaderboard globe**: your country shows on the globe from the first member there who shares it, so the globe is no longer empty while members are spread out. Members and tokens for a country still show only once three members there share it, so no number is one person's own. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md) ([#480](https://github.com/tddworks/ClaudeBar/pull/480))
+- **Leaderboard globe**: your country shows from the first member there who shares it, so the globe isn't empty while members are spread out. Its tokens show once three members there share it, so no total is one person's own. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md) ([#480](https://github.com/tddworks/ClaudeBar/pull/480))
 
 ### Fixed
 - **Leaderboard**: your row no longer shows twice. The copy under the board appears only while your place is scrolled out of sight. ([#477](https://github.com/tddworks/ClaudeBar/pull/477))
