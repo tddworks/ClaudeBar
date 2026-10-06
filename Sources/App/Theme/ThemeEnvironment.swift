@@ -52,7 +52,8 @@ public struct AppThemeProviderModifier: ViewModifier {
             for: themeModeId,
             systemColorScheme: systemColorScheme,
             statusColors: AppSettings.shared.statusColorPolicy,
-            textStyle: AppSettings.shared.themeTextStyle
+            textStyle: AppSettings.shared.themeTextStyle,
+            showsRunner: AppSettings.shared.themeRunnerShown
         )
     }
 

@@ -97,7 +97,8 @@ public final class ThemeRegistry {
         for id: String,
         systemColorScheme: ColorScheme,
         statusColors: StatusColorPolicy = .default,
-        textStyle: ThemeTextStyle = .themed
+        textStyle: ThemeTextStyle = .themed,
+        showsRunner: Bool = true
     ) -> any AppThemeProvider {
         let registered: any AppThemeProvider
         if id == "system" {
@@ -105,7 +106,7 @@ public final class ThemeRegistry {
         } else {
             registered = themes[id] ?? defaultTheme
         }
-        let base = registered.styled(textStyle)
+        let base = registered.styled(textStyle).walking(showsRunner)
         guard statusColors.isActive else { return base }
         return StatusColorOverridingTheme(
             base: base,

@@ -34,6 +34,13 @@ public final class AppSettings {
         }
     }
 
+    /// Whether a theme's runner walks its floor.
+    public var themeRunnerShown: Bool {
+        didSet {
+            repository.setThemeRunnerShown(themeRunnerShown)
+        }
+    }
+
     /// Whether the user has explicitly chosen a theme (vs auto-enabled Christmas)
     public var userHasChosenTheme: Bool {
         didSet {
@@ -440,6 +447,7 @@ public final class AppSettings {
         self.themeMode = repository.themeMode()
         self.userHasChosenTheme = repository.userHasChosenTheme()
         self.themeTextStyle = ThemeTextStyle(rawValue: repository.themeTextStyle()) ?? .themed
+        self.themeRunnerShown = repository.themeRunnerShown()
         self.claudeApiBudgetEnabled = repository.claudeApiBudgetEnabled()
         self.claudeApiBudget = Decimal(repository.claudeApiBudget())
         self.receiveBetaUpdates = repository.receiveBetaUpdates()

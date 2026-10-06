@@ -102,6 +102,23 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `should put a theme's runner on its floor until the person turns it off`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.themeRunnerShown())
+    }
+
+    @Test
+    func `should remember that the runner is turned off`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setThemeRunnerShown(false)
+        #expect(!repo.themeRunnerShown())
+    }
+
+    @Test
     func `should know the person has not chosen a theme yet`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

@@ -181,6 +181,12 @@ public protocol AppThemeProvider {
     /// What heads the popover.
     var headerStyle: HeaderStyle { get }
 
+    /// The runner on the floor, in its own lane; `nil` for none.
+    var runner: GroundRunner? { get }
+
+    /// This theme with its runner on the floor, or taken off it.
+    func walking(_ shown: Bool) -> any AppThemeProvider
+
     /// Whether a badge for `status` blinks to catch the eye.
     func blinks(_ status: QuotaStatus) -> Bool
 
@@ -239,6 +245,8 @@ public extension AppThemeProvider {
     var controlCornerRadius: CGFloat? { nil }
     var groundHeight: CGFloat { 0 }
     var headerStyle: HeaderStyle { .standard }
+    var runner: GroundRunner? { nil }
+    func walking(_ shown: Bool) -> any AppThemeProvider { self }
     func blinks(_ status: QuotaStatus) -> Bool { false }
     var textOnAccent: Color { .white }
     var badgeCornerRadius: CGFloat? { nil }

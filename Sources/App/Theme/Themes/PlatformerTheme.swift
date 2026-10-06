@@ -38,6 +38,8 @@ public struct PlatformerTheme: AppThemeProvider {
     static let stone = Color(red: 0.420, green: 0.420, blue: 0.420)     // #6B6B6B
     static let brick = Color(red: 0.784, green: 0.298, blue: 0.047)     // #C84C0C
     static let brickLight = Color(red: 0.941, green: 0.627, blue: 0.439) // #F0A070
+    static let clay = Color(red: 0.910, green: 0.455, blue: 0.227)      // #E8743A, the runner
+    static let clayLight = Color(red: 0.965, green: 0.635, blue: 0.431) // #F6A26E
 
     // MARK: - Background
 
@@ -79,7 +81,7 @@ public struct PlatformerTheme: AppThemeProvider {
     /// plain words.
     public var customFontName: String? { textStyle == .themed ? PlatformerFonts.body : nil }
     public var textStyleName: String? { "Pixel" }
-    public func styled(_ style: ThemeTextStyle) -> any AppThemeProvider { PlatformerTheme(textStyle: style) }
+    public func styled(_ style: ThemeTextStyle) -> any AppThemeProvider { PlatformerTheme(textStyle: style, showsRunner: showsRunner) }
     /// Pixel text: big numbers in Press Start 2P. Classic: no pixel face at
     /// all — bold outlined numbers in the system font.
     public var displayFontName: String? { textStyle == .themed ? PlatformerFonts.display : nil }
@@ -158,6 +160,10 @@ public struct PlatformerTheme: AppThemeProvider {
     public var groundHeight: CGFloat { PlatformerScenery.floorHeight }
     /// A score line across the top, a ? block to refresh.
     public var headerStyle: HeaderStyle { .scoreLine }
+    /// A box-bot strolls the floor while all is well, runs when time runs
+    /// low, and falls in a pit at GAME OVER.
+    public var runner: GroundRunner? { showsRunner ? PlatformerRunner.runner : nil }
+    public func walking(_ shown: Bool) -> any AppThemeProvider { PlatformerTheme(textStyle: textStyle, showsRunner: shown) }
     /// HURRY UP! blinks, as the music speeds up when time runs low.
     public func blinks(_ status: QuotaStatus) -> Bool { status == .critical }
     /// Ink on the green of the selected tab.
@@ -178,9 +184,12 @@ public struct PlatformerTheme: AppThemeProvider {
     }
 
     public let textStyle: ThemeTextStyle
+    /// The person can take the runner off the floor.
+    public let showsRunner: Bool
 
-    public init(textStyle: ThemeTextStyle = .themed) {
+    public init(textStyle: ThemeTextStyle = .themed, showsRunner: Bool = true) {
         self.textStyle = textStyle
+        self.showsRunner = showsRunner
     }
 }
 
@@ -259,6 +268,34 @@ struct PlatformerScenery: View {
             }
         }
     }
+}
+
+// MARK: - Runner
+
+/// Platformer's runner: an 8×9 box-bot with an antenna, in 3-point art
+/// pixels, the same as the scenery's.
+enum PlatformerRunner {
+    static let runner = GroundRunner(
+        laneHeight: 48,
+        pixel: 3,
+        sprite: RunnerSprite(
+            body: ["....K...",
+                   "....I...",
+                   ".IIIIII.",
+                   "IHHOOOOI",
+                   "IOOIOOIO",
+                   "IOOOOOOI",
+                   ".IIIIII."],
+            strides: [[".II..II.", ".I....I."],
+                      ["..IIII..", "..I..I.."]],
+            leap: ["II....II", "I......I"],
+            coin: [".III.", "IKKKI", "IKDKI", "IKDKI", "IKDKI", "IKKKI", ".III."],
+            palette: ["I": PlatformerTheme.ink, "O": PlatformerTheme.clay, "H": PlatformerTheme.clayLight,
+                      "K": PlatformerTheme.coin, "D": PlatformerTheme.blockDeep],
+            sweat: PlatformerTheme.cloudShade
+        ),
+        paces: [.healthy: .stroll, .warning: .walk, .critical: .run, .depleted: .fall]
+    )
 }
 
 // MARK: - Fonts

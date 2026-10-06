@@ -47,6 +47,33 @@
   (Platformer's Pixelify Sans) reaches every word; without one it is the
   same system font.
 
+## The runner
+
+A theme may put a runner on its floor (`runner`, `nil` by default; only
+Platformer has one). It lives in its own lane above the floor, which the
+action bar stands on, so the popover grows by `runner.laneHeight`. Nobody
+plays it: it shows the selected provider's status and nothing else. Mockup:
+[living-level.html](../../../design-concept/platformer-theme/living-level.html).
+
+| Law | Owner |
+|---|---|
+| Which status it shows | `QuotaMonitor.selectedProviderStatus`, unchanged: the one the menu bar shows |
+| How it moves for a status: strolls, walks, runs (and sweats), or falls in a pit | the theme: `runner.pace(for:)`, beside `statusWord(for:)` |
+| Where it is, which way it faces, turning at the edges, the jump, the fall and the new runner after a reset | `RunnerLevel`, told the time, the pace and the lane's width |
+| It jumps and a coin pops when a refresh finishes | the view tells `RunnerLevel.celebrate(at:)` when the ? block's `isSyncing` turns false; no new Monitor event |
+| Reduce motion: it stands still, a coin still shows, the fall skips to GAME OVER | `RunnerLevel`, told `reduceMotion` by the view |
+| No frames while the popover is closed | the view: its `TimelineView` pauses off screen |
+
+It never takes input (`allowsHitTesting(false)`), makes no sound and never
+appears in the menu bar. It is original pixel art, like the ? block.
+
+**The runner is the person's choice**, like the text style: a theme with a
+runner is resolved `walking(true)` or `walking(false)` from
+`AppSettings.themeRunnerShown` (`app.themeRunner` in settings.json, on by
+default). Off, the theme has no `runner`, so the lane goes and the popover is
+its old height; the rest of the level stays. Views never read the setting.
+Settings shows the switch only for a theme with a runner.
+
 ## Imported terminal themes
 
 An `.itermcolors` file becomes a theme in four steps, each its own piece:

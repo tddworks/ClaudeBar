@@ -1,0 +1,412 @@
+<title>Platformer Living Level</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Platformer: a living level. Concept only, follows index.html in this folder.
+   Layout: the popover on the left, the controls that drive it and the design change on the right.
+   Original pixel art; no Nintendo names, characters or sprites. */
+:root{
+  /* the theme's own colours: PlatformerTheme.swift */
+  --sky:#5C94FC; --ink:#141414; --paper:#FFF8E7; --paper-2:#FCE9C0;
+  --pipe:#80D010; --pipe-deep:#00A800; --coin:#FFD43B; --block:#FAB005; --block-deep:#A86400;
+  --fire:#FC7460; --stone:#6B6B6B; --brick:#C84C0C; --brick-light:#F0A070; --cloud-shade:#A8D8FF;
+  /* the page around it */
+  --page:#E9E4D8; --page-text:#2A2620; --page-muted:#6E675C; --rule:#CFC7B6; --panel:#FFFDF7; --hi:#FFF1C2;
+  --f-pix:"Press Start 2P",ui-monospace,monospace;
+  --f-body:"Pixelify Sans",ui-rounded,system-ui,sans-serif;
+  --f-code:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27;--hi:#3A3320;color-scheme:dark}
+}
+:root[data-theme="dark"]{--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27;--hi:#3A3320;color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--page-text);font-family:var(--f-body);font-size:16px;line-height:1.5;padding-block:40px 80px;padding-inline:16px;overflow-x:hidden}
+.wrap{max-width:1120px;margin:0 auto}
+.eyebrow{font-family:var(--f-pix);font-size:10px;color:var(--page-muted);letter-spacing:.06em}
+h1{font-family:var(--f-pix);font-size:clamp(20px,4vw,32px);line-height:1.35;margin:14px 0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--block)}
+.lede{max-width:640px;color:var(--page-muted);font-size:18px}
+h2{font-family:var(--f-pix);font-size:12px;margin-bottom:14px;line-height:1.6}
+code{font-family:var(--f-code);font-size:.86em;background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:0 4px}
+
+.stage{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:44px;margin-top:40px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+
+/* ---------- the popover ---------- */
+.menubar{height:26px;background:#2b2b2b;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:0 12px;color:#ddd;font:12px system-ui}
+.mb-item{display:flex;align-items:center;gap:6px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.18)}
+.mb-dot{width:8px;height:8px;background:var(--pipe)}
+.mb-pct{font-family:var(--f-pix);font-size:8px;color:#eee}
+.pop{position:relative;max-width:380px;border:3px solid var(--ink);border-top:0;overflow:hidden;background:var(--sky);box-shadow:6px 6px 0 var(--ink);color:var(--ink)}
+.pop-inner{position:relative;padding:12px 12px 0}
+.hud{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;color:var(--paper);font-family:var(--f-pix);font-size:8px;line-height:1.8;text-shadow:2px 2px 0 var(--ink)}
+.hud b{display:block;font-size:10px;font-weight:400}
+.head{display:flex;align-items:center;gap:10px;margin:12px 0 12px}
+.avatar{width:38px;height:38px;border-radius:50%;background:#D9A77E;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--f-pix);font-size:10px}
+.name{font-family:var(--f-pix);font-size:12px;color:var(--paper);text-shadow:2px 2px 0 var(--ink)}
+.tag{font-size:13px;color:var(--ink);font-weight:600}
+.qb{margin-left:auto;width:36px;height:36px;background:var(--block);border:3px solid var(--ink);box-shadow:inset -3px -3px 0 var(--block-deep),inset 3px 3px 0 #FFE08A;display:grid;place-items:center;font-family:var(--f-pix);font-size:14px;color:var(--ink)}
+.qb.bump{animation:bump .28s steps(4)}
+@keyframes bump{50%{transform:translateY(-6px)}}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:4px;box-shadow:4px 4px 0 var(--ink);padding:9px 9px 8px}
+.card-top{display:flex;align-items:center;gap:6px;font-family:var(--f-pix);font-size:7px}
+.badge{margin-left:auto;font-family:var(--f-pix);font-size:6px;padding:4px 4px 3px;border:2px solid var(--ink);white-space:nowrap}
+.badge.blink{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:.25}}
+.pct{font-family:var(--f-pix);font-size:22px;margin:10px 0 8px;color:var(--paper);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:2px 2px 0 var(--ink);font-variant-numeric:tabular-nums}
+.pct small{font-size:8px;-webkit-text-stroke:0;color:var(--ink);text-shadow:none;margin-left:4px}
+.blocks{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;border:2px solid var(--ink);padding:2px;background:var(--paper-2)}
+.blocks i{height:8px;background:transparent}
+.foot{margin-top:7px;font-size:11px;color:#4A3A2A}
+
+.bottom{position:relative;margin-top:14px}
+.btns{position:relative;z-index:2;display:flex;gap:7px;padding:0 12px}
+.btn{font-family:var(--f-pix);font-size:7px;padding:9px 8px;background:var(--paper);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);color:var(--ink);white-space:nowrap}
+.btn.go{background:var(--pipe)}
+.btn.sq{width:32px;padding:9px 0;text-align:center}
+.btn.push{margin-left:auto}
+#lane{position:absolute;left:0;bottom:0;width:100%;pointer-events:none;image-rendering:pixelated;z-index:1}
+.bottom.lane #lane{z-index:3}
+.closed{position:absolute;inset:0;background:rgba(20,20,20,.72);display:grid;place-items:center;text-align:center;color:var(--paper);font-family:var(--f-pix);font-size:9px;line-height:2;padding:20px;z-index:5}
+
+/* ---------- controls ---------- */
+.panel{background:var(--panel);border:2px solid var(--rule);border-radius:6px;padding:18px}
+.controls{display:grid;gap:16px}
+.row{display:grid;gap:7px}
+.label{font-family:var(--f-pix);font-size:8px;color:var(--page-muted);letter-spacing:.06em}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.act{font-family:var(--f-body);font-size:15px;font-weight:600;padding:5px 12px;border:2px solid var(--rule);background:var(--page);color:var(--page-text);border-radius:4px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--page-text);color:var(--page);border-color:var(--page-text)}
+.act{background:var(--pipe);color:var(--ink);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.act:active{transform:translate(2px,2px);box-shadow:none}
+button:focus-visible{outline:3px solid var(--block);outline-offset:2px}
+.check{display:flex;align-items:center;gap:8px;font-size:15px}
+.hint{font-size:14px;color:var(--page-muted)}
+
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--f-pix);font-size:8px;color:var(--page-muted);font-weight:400;letter-spacing:.05em}
+tr.on td{background:var(--hi)}
+td:first-child{white-space:nowrap;font-weight:600}
+.tbl{overflow-x:auto}
+.right{display:grid;gap:22px;min-width:0}
+
+.design{margin-top:56px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+@media (max-width:860px){.design{grid-template-columns:1fr}}
+.design .panel{min-width:0}
+pre{font-family:var(--f-code);font-size:13px;line-height:1.55;background:var(--page);border:1px solid var(--rule);border-radius:4px;padding:12px;overflow-x:auto}
+ul{padding-left:18px;display:grid;gap:6px}
+.wide{grid-column:1/-1}
+@media (prefers-reduced-motion: reduce){.qb.bump,.badge.blink{animation:none}}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">PLATFORMER THEME · CONCEPT 2 · OCT 2026</div>
+  <h1>A <em>living</em> level</h1>
+  <p class="lede">A small runner walks the brick floor while the popover is open. It walks, runs or falls depending on your quota, and jumps for a coin each time a refresh finishes. You can't control it. It shows the same status the menu bar icon does.</p>
+
+  <div class="stage">
+    <div>
+      <div class="menubar"><span class="mb-item"><span class="mb-dot" id="mbDot"></span><span class="mb-pct" id="mbPct">81%</span></span><span>Tue 6 Oct 09:41</span></div>
+      <div class="pop" id="pop">
+        <div class="pop-inner">
+          <div class="hud">
+            <div>CLAUDE<b id="hudStatus">READY</b></div>
+            <div>COINS<b id="hudCoins">×81</b></div>
+            <div>WORLD<b>1-1</b></div>
+            <div>TIME<b id="hudTime">042</b></div>
+          </div>
+          <div class="head">
+            <div class="avatar">AI</div>
+            <div><div class="name">ClaudeBar</div><div class="tag">Your quotas, one level at a time</div></div>
+            <div class="qb" id="qb" aria-hidden="true">?</div>
+          </div>
+          <div class="cards">
+            <div class="card">
+              <div class="card-top">SESSION <span class="badge" id="sBadge">HEALTHY</span></div>
+              <div class="pct"><span id="sPct">81%</span><small>left</small></div>
+              <div class="blocks" id="sBlocks"></div>
+              <div class="foot">Resets in <span id="sReset">42m</span></div>
+            </div>
+            <div class="card">
+              <div class="card-top">WEEKLY <span class="badge" id="wBadge">HEALTHY</span></div>
+              <div class="pct"><span id="wPct">94%</span><small>left</small></div>
+              <div class="blocks" id="wBlocks"></div>
+              <div class="foot">Resets in 4d 18h</div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom" id="bottom">
+          <div class="btns" id="btns">
+            <span class="btn">DASHBOARD</span>
+            <span class="btn go" id="syncBtn">REFRESH</span>
+            <span class="btn sq push">⚙</span>
+            <span class="btn sq">✕</span>
+          </div>
+          <canvas id="lane" aria-label="The runner on the brick floor"></canvas>
+        </div>
+        <div class="closed" id="closed" hidden>POPOVER CLOSED<br>NO FRAMES DRAWN<br>THE RUNNER WAITS</div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="panel controls">
+        <div class="row">
+          <span class="label">SESSION QUOTA</span>
+          <div class="seg" id="segState">
+            <button type="button" id="st-healthy" data-v="healthy" aria-pressed="true">Healthy</button>
+            <button type="button" id="st-warning" data-v="warning" aria-pressed="false">Warning</button>
+            <button type="button" id="st-critical" data-v="critical" aria-pressed="false">Critical</button>
+            <button type="button" id="st-depleted" data-v="depleted" aria-pressed="false">Depleted</button>
+          </div>
+        </div>
+        <div class="row">
+          <span class="label">WHERE IT WALKS</span>
+          <div class="seg" id="segPlace">
+            <button type="button" id="pl-lane" data-v="lane" aria-pressed="true">Its own lane (+48 pt)</button>
+            <button type="button" id="pl-behind" data-v="behind" aria-pressed="false">Behind the buttons (+0)</button>
+          </div>
+        </div>
+        <div class="row">
+          <span class="label">EVENTS</span>
+          <div class="seg">
+            <button type="button" class="act" id="refresh">Finish a refresh</button>
+            <button type="button" id="openBtn" aria-pressed="true">Popover open</button>
+          </div>
+          <label class="check"><input type="checkbox" id="reduce"> Reduce motion (System Settings › Accessibility)</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>WHAT THE RUNNER DOES</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>STATUS</th><th>BADGE</th><th>RUNNER</th></tr></thead>
+          <tbody id="rules">
+            <tr data-v="healthy"><td>Healthy</td><td>HEALTHY</td><td>Strolls back and forth</td></tr>
+            <tr data-v="warning"><td>Warning</td><td>WARNING</td><td>Walks at a steady pace</td></tr>
+            <tr data-v="critical"><td>Critical</td><td>HURRY UP!</td><td>Runs, with a drop of sweat</td></tr>
+            <tr data-v="depleted"><td>Depleted</td><td>GAME OVER</td><td>A pit opens and it falls in. GAME OVER stays on the floor until the quota resets, then a new runner walks in from the left</td></tr>
+            <tr data-v="refresh"><td>Refresh done</td><td>–</td><td>Jumps, and a coin pops over its head while the ? block bumps</td></tr>
+            <tr data-v="reduce"><td>Reduce motion</td><td>–</td><td>Stands still. A coin shows over its head after each refresh, with no jump</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="design">
+    <div class="panel">
+      <h2>THE DESIGN CHANGE</h2>
+      <p>The theme gets one new optional property. Its default is <code>nil</code>, so no other theme changes and no view checks which theme is active.</p>
+<pre>// AppThemeProvider
+var runner: GroundRunner? { get }   // default: nil
+
+// GroundRunner, a value the theme returns
+func pace(for status: QuotaStatus) -> RunnerPace
+//   .stroll · .walk · .run · .fall
+var sprite: PixelSprite              // frames, in art pixels
+var lane: RunnerLane                 // .ownLane(48) or .behindControls</pre>
+      <p class="hint" style="margin-top:10px">Platformer returns a runner; every other theme keeps nil. The <code>StatusColorOverridingTheme</code> wrapper forwards it like every other property.</p>
+    </div>
+
+    <div class="panel">
+      <h2>LAWS AND OWNERS</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>LAW</th><th>OWNER</th></tr></thead>
+        <tbody>
+          <tr><td>Which status the runner shows</td><td>The selected provider's status, from <code>QuotaMonitor</code>. Unchanged, the same one the menu bar icon shows</td></tr>
+          <tr><td>How it moves for a status</td><td>The theme: <code>runner.pace(for:)</code>, beside <code>statusWord(for:)</code></td></tr>
+          <tr><td>When it jumps</td><td>A refresh finishing: the same signal the ? block already watches. No new event in the Monitor</td></tr>
+          <tr><td>No frames while closed</td><td>The view: a paused <code>TimelineView</code> while the popover is closed</td></tr>
+          <tr><td>Stand still with Reduce motion</td><td>The view, from the system accessibility setting</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="panel wide">
+      <h2>STAYS OUT</h2>
+      <ul>
+        <li>Input of any kind: no keys, no clicks, no score. The floor stays non-interactive (<code>allowsHitTesting(false)</code>), like the current scenery.</li>
+        <li>Sound, and any runner in the menu bar itself. It only appears in the popover.</li>
+        <li>Any Nintendo character, name, sprite or sound. The runner is original pixel art, like the ? block and coin.</li>
+        <li>Settings: it comes with the theme. If people ask to turn it off, add a "Runner" toggle next to the Pixel / Classic text style.</li>
+      </ul>
+      <p class="hint" style="margin-top:12px"><b>For you to decide:</b> where it walks. In its own lane, the runner is always visible, but the popover is 48 pt taller. Behind the buttons, the height stays the same, but the runner is only visible in the gaps between buttons, and the coin can be hidden.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const PX = 3, FLOOR = 36, LANE = 48, HEAD = 50;
+  const C = {ink:'#141414', body:'#E8743A', bodyHi:'#F6A26E', eye:'#FFF8E7', coin:'#FFD43B', coinDeep:'#A86400', brick:'#C84C0C', light:'#F0A070', sweat:'#A8D8FF', paper:'#FFF8E7'};
+  const STATES = {
+    healthy:  {s:81, w:94, sb:'healthy',  wb:'healthy', speed:16, reset:'42m', time:'042'},
+    warning:  {s:34, w:88, sb:'warning',  wb:'healthy', speed:30, reset:'2h 10m', time:'130'},
+    critical: {s:8,  w:61, sb:'critical', wb:'healthy', speed:66, reset:'3h 05m', time:'185'},
+    depleted: {s:0,  w:22, sb:'depleted', wb:'warning', speed:0,  reset:'3h 51m', time:'231'},
+  };
+  const BADGE = {healthy:['HEALTHY','#80D010'], warning:['WARNING','#FFD43B'], critical:['HURRY UP!','#FC7460'], depleted:['GAME OVER','#6B6B6B']};
+
+  // the runner: an original 8×9 box-bot, in art pixels
+  const TOP = ['....K...','....I...','.IIIIII.','IHHOOOOI','IOOIOOIO','IOOOOOOI','.IIIIII.'];
+  const LEGS = [['.II..II.','.I....I.'], ['..IIII..','..I..I..']];
+  const JUMP = ['II....II','I......I'];
+  const COIN = ['.III.','IKKKI','IKDKI','IKDKI','IKDKI','IKKKI','.III.'];
+  const COL = {I:C.ink, O:C.body, H:C.bodyHi, K:C.coin, D:C.coinDeep};
+
+  const $ = id => document.getElementById(id);
+  const canvas = $('lane'), ctx = canvas.getContext('2d');
+  let state = 'healthy', place = 'lane', open = true, reduce = false;
+  try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  $('reduce').checked = reduce;
+
+  const r = {x: 40, dir: 1, mode: 'walk', y: 0, vy: 0, dist: 0, t: 0};
+  let coin = null, pitX = null, W = 0, H = 0, last = 0;
+
+  function size() {
+    const dpr = window.devicePixelRatio || 1;
+    W = canvas.parentElement.clientWidth; H = FLOOR + LANE + HEAD;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
+    $('btns').style.paddingBottom = (FLOOR + (place === 'lane' ? LANE : 0) + 6) + 'px';
+    $('bottom').classList.toggle('lane', place === 'lane');
+  }
+  const ground = () => H - FLOOR;
+
+  function sprite(rows, x, y, flip) {
+    rows.forEach((row, j) => [...row].forEach((ch, i) => {
+      if (ch === '.') return;
+      const col = flip ? row.length - 1 - i : i;
+      ctx.fillStyle = COL[ch]; ctx.fillRect(Math.round(x + col * PX), Math.round(y + j * PX), PX, PX);
+    }));
+  }
+
+  function drawFloor() {
+    const top = H - FLOOR, bw = PX * 12, bh = PX * 6;
+    for (let row = 0; row < 2; row++) {
+      const y = top + row * bh;
+      for (let x = row ? -bw / 2 : 0; x < W; x += bw) {
+        ctx.fillStyle = C.brick; ctx.fillRect(x, y, bw, bh);
+        ctx.fillStyle = C.light; ctx.fillRect(x + PX, y + PX, bw - PX * 2, PX);
+        ctx.fillStyle = C.ink; ctx.fillRect(x, y, bw, PX * .7); ctx.fillRect(x, y, PX * .7, bh);
+      }
+    }
+    ctx.fillStyle = C.ink; ctx.fillRect(0, top, W, PX);
+    if (pitX !== null) { ctx.fillStyle = C.ink; ctx.fillRect(pitX, top, PX * 12, FLOOR); }
+  }
+
+  function drawRunner() {
+    if (r.mode === 'gone') return;
+    const flip = r.dir < 0, h = 9 * PX, x = r.x, y = ground() - h - r.y;
+    sprite(TOP, x, y, flip);
+    const legs = (r.mode === 'jump') ? JUMP : LEGS[reduce || r.mode === 'stop' ? 0 : Math.floor(r.dist / 6) % 2];
+    sprite(legs, x, y + 7 * PX, flip);
+    if (state === 'critical' && r.mode !== 'fall') {
+      const bob = reduce ? 0 : (Math.floor(r.t * 4) % 2) * PX;
+      ctx.fillStyle = C.sweat; ctx.fillRect(x + (flip ? -PX * 1.5 : PX * 8.5), y + PX * 2 + bob, PX, PX * 2);
+    }
+  }
+
+  function drawCoin(dt) {
+    if (!coin) return;
+    coin.t += dt;
+    const rise = reduce ? 0 : Math.min(1, coin.t / .35) * 16;
+    sprite(COIN, coin.x, coin.y - rise, false);
+    if (coin.t > (reduce ? 1.2 : .7)) coin = null;
+  }
+
+  function gameOver() {
+    ctx.font = '8px "Press Start 2P", monospace'; ctx.textAlign = 'center';
+    const y = H - FLOOR - 16;
+    ctx.fillStyle = C.ink; ctx.fillText('GAME OVER', W / 2 + 2, y + 2);
+    ctx.fillStyle = C.paper; ctx.fillText('GAME OVER', W / 2, y);
+  }
+
+  function step(dt) {
+    r.t += dt;
+    const spd = STATES[state].speed, minX = 6, maxX = W - 8 * PX - 6;
+    if (r.mode === 'walk' || r.mode === 'enter') {
+      if (!reduce) { r.x += r.dir * spd * dt; r.dist += spd * dt; }
+      if (r.x > maxX) { r.x = maxX; r.dir = -1; }
+      if (r.x < minX && r.mode === 'walk') { r.x = minX; r.dir = 1; }
+      if (r.mode === 'enter' && r.x >= minX) r.mode = 'walk';
+    } else if (r.mode === 'jump') {
+      r.vy -= 520 * dt; r.y += r.vy * dt;
+      if (r.y <= 0) { r.y = 0; r.vy = 0; r.mode = 'walk'; }
+    } else if (r.mode === 'stop') {
+      if (r.t > .45) { pitX = Math.floor((r.x + 4 * PX) / (PX * 12)) * PX * 12; r.x = pitX + PX * 2; r.mode = reduce ? 'gone' : 'fall'; r.vy = 0; }
+    } else if (r.mode === 'fall') {
+      r.vy -= 600 * dt; r.y += r.vy * dt;
+      if (r.y < -(FLOOR + 9 * PX)) r.mode = 'gone';
+    }
+  }
+
+  function frame(now) {
+    const dt = last ? Math.min(.05, (now - last) / 1000) : 0; last = now;
+    if (open) {
+      step(dt);
+      ctx.clearRect(0, 0, W, H);
+      if (r.mode === 'fall') { drawFloor(); ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H - FLOOR); ctx.rect(pitX, H - FLOOR, PX * 12, FLOOR); ctx.clip(); drawRunner(); ctx.restore(); }
+      else { drawFloor(); drawRunner(); }
+      drawCoin(dt);
+      if (state === 'depleted' && r.mode === 'gone') gameOver();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function renderQuota() {
+    const s = STATES[state];
+    const blocks = (el, pct, st) => { el.innerHTML = ''; for (let i = 0; i < 10; i++) { const b = document.createElement('i'); if (i < Math.round(pct / 10)) b.style.background = BADGE[st][1]; el.appendChild(b); } };
+    const badge = (el, st) => { el.textContent = BADGE[st][0]; el.style.background = BADGE[st][1]; el.classList.toggle('blink', st === 'critical'); };
+    $('sPct').textContent = s.s + '%'; $('wPct').textContent = s.w + '%';
+    blocks($('sBlocks'), s.s, s.sb); blocks($('wBlocks'), s.w, s.wb);
+    badge($('sBadge'), s.sb); badge($('wBadge'), s.wb);
+    $('sReset').textContent = s.reset; $('hudCoins').textContent = '×' + s.s; $('hudTime').textContent = s.time;
+    $('mbPct').textContent = s.s + '%'; $('mbDot').style.background = BADGE[s.sb][1];
+    document.querySelectorAll('#rules tr').forEach(tr => tr.classList.toggle('on', tr.dataset.v === state || (tr.dataset.v === 'reduce' && reduce)));
+  }
+
+  function setState(v) {
+    const was = state; state = v;
+    if (v === 'depleted' && was !== 'depleted') { r.mode = 'stop'; r.t = 0; r.y = 0; coin = null; }
+    if (was === 'depleted' && v !== 'depleted') { pitX = null; r.mode = 'enter'; r.x = -8 * PX; r.dir = 1; r.y = 0; }
+    renderQuota();
+  }
+
+  function refresh() {
+    const qb = $('qb'); qb.classList.remove('bump'); void qb.offsetWidth; qb.classList.add('bump');
+    $('hudStatus').textContent = 'READY'; $('syncBtn').textContent = 'REFRESH';
+    if (!open || r.mode === 'gone' || r.mode === 'fall' || r.mode === 'stop') return;
+    coin = {x: r.x + 1.5 * PX, y: ground() - 9 * PX - 7 * PX - 4, t: 0};
+    if (!reduce && r.mode !== 'jump') { r.mode = 'jump'; r.vy = 150; coin.y -= 18; }
+  }
+
+  function seg(id, fn) {
+    $(id).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+      fn(b.dataset.v);
+    });
+  }
+  seg('segState', setState);
+  seg('segPlace', v => { place = v; size(); });
+  $('refresh').addEventListener('click', () => {
+    $('hudStatus').textContent = 'SYNCING'; $('syncBtn').textContent = 'SYNCING…';
+    setTimeout(refresh, 600);
+  });
+  $('openBtn').addEventListener('click', () => {
+    open = !open; $('openBtn').setAttribute('aria-pressed', open);
+    $('openBtn').textContent = open ? 'Popover open' : 'Popover closed';
+    $('closed').hidden = open;
+  });
+  $('reduce').addEventListener('change', e => { reduce = e.target.checked; renderQuota(); });
+  addEventListener('resize', size);
+
+  size(); renderQuota();
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
+})();
+</script>

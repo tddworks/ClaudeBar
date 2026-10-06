@@ -109,8 +109,19 @@ struct MenuContentView: View {
                 // Bottom Action Bar
                 actionBar
                     .padding(.horizontal, 16)
-                    // A theme's floor: the buttons stand on it.
-                    .padding(.bottom, 12 + theme.groundHeight)
+                    // A theme's floor: the buttons stand on it, above
+                    // its runner's lane.
+                    .padding(.bottom, 12 + theme.groundHeight + (theme.runner?.laneHeight ?? 0))
+            }
+            .overlay(alignment: .bottom) {
+                if let runner = theme.runner {
+                    GroundRunnerView(
+                        runner: runner,
+                        status: monitor.selectedProviderStatus,
+                        isSyncing: isCurrentlyRefreshing,
+                        floorHeight: theme.groundHeight
+                    )
+                }
             }
 
             // Share Pass Overlay

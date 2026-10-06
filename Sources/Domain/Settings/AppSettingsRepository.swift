@@ -24,6 +24,10 @@ public protocol AppSettingsRepository: Sendable {
     func themeTextStyle() -> String
     func setThemeTextStyle(_ style: String)
 
+    /// Whether a theme's runner walks its floor (on by default).
+    func themeRunnerShown() -> Bool
+    func setThemeRunnerShown(_ shown: Bool)
+
     // MARK: - Display
 
     func usageDisplayMode() -> String

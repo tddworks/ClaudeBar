@@ -56,6 +56,18 @@ struct AppearancePane: View {
                 }
             }
 
+            // A theme with a runner lets the person take it off the floor.
+            if ThemeRegistry.shared.theme(for: settings.themeMode)?.runner != nil {
+                SettingsCard {
+                    SettingsRow(
+                        title: "Runner",
+                        subtitle: "A small runner walks the floor: it runs when a quota is low and jumps for a coin after each refresh."
+                    ) {
+                        SettingsSwitch(isOn: $settings.themeRunnerShown)
+                    }
+                }
+            }
+
             SettingsCard {
                 SettingsRow(
                     title: "Native menu bar icons",

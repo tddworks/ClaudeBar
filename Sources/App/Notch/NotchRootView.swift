@@ -19,7 +19,8 @@ struct NotchRootView: View {
             for: AppSettings.shared.themeMode,
             systemColorScheme: .dark,
             statusColors: AppSettings.shared.statusColorPolicy,
-            textStyle: AppSettings.shared.themeTextStyle
+            textStyle: AppSettings.shared.themeTextStyle,
+            showsRunner: AppSettings.shared.themeRunnerShown
         )
     }
 

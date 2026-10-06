@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Leaderboard web board**: the board scrolls inside its card so the globe is close by, the globe shows the tokens its countries total, and country names in its list are no longer cut in half. ([#503](https://github.com/tddworks/ClaudeBar/pull/503)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md)
 
+### Added
+- **Platformer's runner**: a small pixel runner walks the brick floor. It strolls when your quota is healthy, runs when it's low, falls into a pit when it's empty, and jumps for a coin after each refresh. Turn it off in Settings → Appearance → Runner. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/themes/README.md)
+
 ---
 
 ## [0.5.7] - 2026-10-06

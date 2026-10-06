@@ -56,6 +56,10 @@ struct StatusColorOverridingTheme: AppThemeProvider {
     var controlCornerRadius: CGFloat? { base.controlCornerRadius }
     var groundHeight: CGFloat { base.groundHeight }
     var headerStyle: HeaderStyle { base.headerStyle }
+    var runner: GroundRunner? { base.runner }
+    func walking(_ shown: Bool) -> any AppThemeProvider {
+        StatusColorOverridingTheme(base: base.walking(shown), policy: policy, appearance: appearance)
+    }
     func blinks(_ status: QuotaStatus) -> Bool { base.blinks(status) }
     var textOnAccent: Color { base.textOnAccent }
     var badgeCornerRadius: CGFloat? { base.badgeCornerRadius }
