@@ -32,8 +32,8 @@ public struct UsageLog: Sendable {
     public var currentTime: Date { now() }
 
     /// Whether these logs can say what a day cost: a price list, or a cost
-    /// the log writes itself. Without either every cost reads zero.
-    public var knowsCost: Bool { prices != nil || definition.records.cost != nil }
+    /// every shape of the log writes itself. Without either every cost reads zero.
+    public var knowsCost: Bool { prices != nil || definition.records.shapes.allSatisfy { $0.cost != nil } }
 
     /// One stat per day of `range`, every date present; a day with nothing
     /// is an empty day. Unreadable files are skipped.
@@ -105,11 +105,73 @@ extension UsageLog {
         public var definition: Definition { Definition(records: records, prices: prices) }
     }
 
-    /// Where the records are and how one reads, in the mapping's path language.
+    /// The log: where its files are and how they're laid out, and the shape a
+    /// usage record is written in — or its `shapes`, when the log writes one
+    /// more than one way. Paths are in the mapping's path language.
     public struct Records: Sendable, Equatable, Codable {
         /// A glob: `**` any depth, `*` within one name; `~` and `${VAR:-default}` expand.
         public let files: String
         public let format: Format
+        /// The ways the log writes a record, in order: a line is read by the
+        /// first whose `where` holds, and by it alone. One, unless the
+        /// definition lists `shapes`.
+        public let shapes: [Shape]
+
+        /// A log that writes a record one way, its fields given inline.
+        public init(files: String, format: Format = .jsonLines, where condition: Match? = nil, at: At,
+                    id: [String] = [], model: String? = nil, tokens: Tokens = Tokens(), cost: String? = nil) {
+            self.init(files: files, format: format,
+                      shapes: [Shape(where: condition, at: at, id: id, model: model, tokens: tokens, cost: cost)])
+        }
+
+        /// A log that writes a record more than one way.
+        public init(files: String, format: Format = .jsonLines, shapes: [Shape]) {
+            self.files = files
+            self.format = format
+            self.shapes = shapes
+        }
+
+        /// A record's fields sit inline or in `shapes`, never both; in a list
+        /// every shape has a `where`, so none silently takes another's lines.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let files = try container.decode(String.self, forKey: .files)
+            let format = try container.decodeIfPresent(Format.self, forKey: .format) ?? .jsonLines
+            guard container.contains(.shapes) else {
+                self.init(files: files, format: format, shapes: [try Shape(from: decoder)])
+                return
+            }
+            if let inline = [CodingKeys.where, .at, .id, .model, .tokens, .cost].first(where: container.contains) {
+                throw DecodingError.dataCorruptedError(forKey: inline, in: container,
+                    debugDescription: "A log gives its record's fields inline or in `shapes`, never both.")
+            }
+            let shapes = try container.decode([Shape].self, forKey: .shapes)
+            guard !shapes.isEmpty, shapes.allSatisfy({ $0.where != nil }) else {
+                throw DecodingError.dataCorruptedError(forKey: .shapes, in: container,
+                    debugDescription: "`shapes` lists at least one shape, and every shape has a `where`.")
+            }
+            self.init(files: files, format: format, shapes: shapes)
+        }
+
+        /// One shape is written inline, exactly as before `shapes` existed, so
+        /// its fingerprint — and the days kept under it — stay put.
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(files, forKey: .files)
+            try container.encode(format, forKey: .format)
+            if shapes.count == 1 {
+                try shapes[0].encode(to: encoder)
+            } else {
+                try container.encode(shapes, forKey: .shapes)
+            }
+        }
+
+        private enum CodingKeys: String, CodingKey { case files, format, shapes, `where`, at, id, model, tokens, cost }
+    }
+
+    /// One way a log writes a usage record, read whole: its own filter and
+    /// paths, never another shape's.
+    public struct Shape: Sendable, Equatable, Codable {
         /// Only the records where this holds; its text is also a byte prefilter.
         public let `where`: Match?
         /// When — a field (ISO 8601 text or epoch seconds), or the file's path.
@@ -121,10 +183,8 @@ extension UsageLog {
         /// The log's own cost, which wins over any price.
         public let cost: String?
 
-        public init(files: String, format: Format = .jsonLines, where condition: Match? = nil, at: At,
-                    id: [String] = [], model: String? = nil, tokens: Tokens = Tokens(), cost: String? = nil) {
-            self.files = files
-            self.format = format
+        public init(where condition: Match? = nil, at: At, id: [String] = [], model: String? = nil,
+                    tokens: Tokens = Tokens(), cost: String? = nil) {
             self.where = condition
             self.at = at
             self.id = id
@@ -136,8 +196,6 @@ extension UsageLog {
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.init(
-                files: try container.decode(String.self, forKey: .files),
-                format: try container.decodeIfPresent(Format.self, forKey: .format) ?? .jsonLines,
                 where: try container.decodeIfPresent(Match.self, forKey: .where),
                 at: try container.decode(At.self, forKey: .at),
                 id: try container.decodeIfPresent([String].self, forKey: .id) ?? [],
@@ -147,7 +205,7 @@ extension UsageLog {
             )
         }
 
-        private enum CodingKeys: String, CodingKey { case files, format, `where`, at, id, model, tokens, cost }
+        private enum CodingKeys: String, CodingKey { case `where`, at, id, model, tokens, cost }
     }
 
     /// How a log is laid out — a closed list, one reader per case.

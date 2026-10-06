@@ -132,8 +132,8 @@ a.plink svg{width:14px;height:14px}
 // The API lives on its own host; /board and /globe allow any origin.
 const API = "https://claudebar-api.tddworks.com";
 const PERIODS = [["today", "Today"], ["7d", "7 days"], ["30d", "30 days"]];
-const PROVIDERS = [[null, "All"], ["claude", "Claude"], ["codex", "Codex"], ["mistral", "Mistral"]];
-const COLORS = { claude: "#7C5CFF", codex: "#1FA37A", mistral: "#F29B38" };
+const PROVIDERS = [[null, "All"], ["claude", "Claude"], ["codex", "Codex"], ["mistral", "Mistral"], ["omp", "Oh My Pi"]];
+const COLORS = { claude: "#7C5CFF", codex: "#1FA37A", mistral: "#F29B38", omp: "#3E8EF7" };
 const state = { period: "7d", provider: null };
 
 // Profile links: a platform and a handle from the server; the link is built

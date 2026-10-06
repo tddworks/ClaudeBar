@@ -6,7 +6,7 @@ import Testing
 /// was appended since the last scan, the whole file when it changed under us.
 @Suite
 struct JSONLinesReaderTests {
-    static let shape = RecordShape(UsageLog.Records(
+    static let records = UsageLog.Records(
         files: "~/logs/*.jsonl",
         where: Match(path: "$.kind", equals: .string("reply")),
         at: "$.at",
@@ -15,13 +15,13 @@ struct JSONLinesReaderTests {
         tokens: UsageLog.Tokens(input: "$.reply.usage.in", output: "$.reply.usage.out",
                                 cacheWrite: "$.reply.usage.cacheIn", cacheWrite1h: "$.reply.usage.split.hour",
                                 cacheRead: "$.reply.usage.cacheHit")
-    ))
+    )
 
     static func line(_ model: String, id: String = UUID().uuidString, at: String = "2026-03-11T10:00:00.000Z") -> String {
         #"{"kind":"reply","request":"q_\#(id)","reply":{"id":"r_\#(id)","model":"\#(model)","usage":{"in":10,"out":5}},"at":"\#(at)"}"#
     }
 
-    private func reader() -> JSONLinesReader { JSONLinesReader(shape: Self.shape) }
+    private func reader() -> JSONLinesReader { JSONLinesReader(records: Self.records) }
 
     private func makeFile(_ content: String) throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -76,12 +76,12 @@ struct JSONLinesReaderTests {
     }
 
     @Test func `should count only the uncached input when the log's input includes the cache reads`() {
-        let shape = RecordShape(UsageLog.Records(
+        let records = UsageLog.Records(
             files: "~/logs/*.jsonl", at: "$.at",
             tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cached", inputIncludesCacheRead: true)
-        ))
+        )
         let line = #"{"in":100,"cached":70,"out":5,"at":"2026-03-11T10:00:00.000Z"}"#
-        let record = JSONLinesReader(shape: shape).read(content: line).first
+        let record = JSONLinesReader(records: records).read(content: line).first
         #expect(record?.input == 30)
         #expect(record?.cacheRead == 70)
         #expect(record?.tokens == 35)
@@ -119,6 +119,45 @@ struct JSONLinesReaderTests {
         {"kind":"ask","reply":{"content":"the \"reply\" kind"},"at":"2026-03-11T10:00:00.000Z"}
         """#
         #expect(reader().read(content: content).isEmpty)
+    }
+
+    // MARK: - A log that writes a record two ways
+
+    /// A reply's usage sits under it; a side call's sits at the top.
+    static let twoShapes = UsageLog.Records(files: "~/logs/*.jsonl", shapes: [
+        UsageLog.Shape(where: Match(path: "$.reply.role", equals: .string("model")), at: "$.at",
+                       tokens: UsageLog.Tokens(input: "$.reply.usage.in", output: "$.reply.usage.out"), cost: "$.reply.usage.usd"),
+        UsageLog.Shape(where: Match(path: "$.kind", equals: .string("side")), at: "$.at",
+                       tokens: UsageLog.Tokens(input: "$.usage.in", output: "$.usage.out"), cost: "$.usage.usd"),
+    ])
+
+    @Test func `should count a line of either shape`() {
+        let content = """
+        {"kind":"turn","reply":{"role":"model","usage":{"in":100,"out":50,"usd":0.5}},"at":"2026-03-11T10:00:00.000Z"}
+        {"kind":"side","usage":{"in":7,"out":3,"usd":0.01},"at":"2026-03-11T10:00:01.000Z"}
+        """
+        let records = JSONLinesReader(records: Self.twoShapes).read(content: content)
+
+        #expect(records.map(\.input) == [100, 7])
+        #expect(records.map(\.output) == [50, 3])
+        #expect(records.map(\.cost) == [Decimal(string: "0.5"), Decimal(string: "0.01")])
+    }
+
+    @Test func `should pass over a line no shape picks out`() {
+        let content = """
+        {"kind":"turn","reply":{"role":"person","usage":{"in":100}},"at":"2026-03-11T10:00:00.000Z"}
+        {"kind":"rollup","of":"side","usage":{"in":999},"at":"2026-03-11T10:00:01.000Z"}
+        """
+        #expect(JSONLinesReader(records: Self.twoShapes).read(content: content).isEmpty)
+    }
+
+    @Test func `should read a line by the first shape whose where holds, and by that shape alone`() {
+        let line = #"{"kind":"side","reply":{"role":"model","usage":{"in":100,"out":50}},"usage":{"in":7,"out":3,"usd":0.01},"at":"2026-03-11T10:00:00.000Z"}"#
+        let record = JSONLinesReader(records: Self.twoShapes).read(content: line).first
+
+        #expect(record?.input == 100)
+        #expect(record?.output == 50)
+        #expect(record?.cost == nil)
     }
 
     // MARK: - A file, from an offset

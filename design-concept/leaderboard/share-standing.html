@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Share my rank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--claude:#F08C6E;--codex:#3FB8A8;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+h1,h2,h3,p{margin:0}
+button{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.wrap{max-width:1400px;margin:0 auto;padding:40px 16px 80px;display:flex;flex-direction:column;gap:44px}
+header h1{font-size:44px;font-weight:800;letter-spacing:-.02em}
+header p{color:var(--muted);max-width:760px;margin-top:6px}
+.step-title{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;margin-bottom:14px}
+.n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--sun);border:var(--line);font-size:14px;font-weight:800;flex:none}
+.row{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.caption{font-size:14px;color:var(--muted);max-width:420px;display:flex;flex-direction:column;gap:10px}
+.caption b{color:var(--ink)}
+.caption ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+
+/* The popover */
+.pop{width:400px;max-width:100%;background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:var(--line);border-radius:26px;box-shadow:6px 6px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.pop-head{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:50%;border:var(--line);background:#2B6CB0;display:grid;place-items:center;font-size:20px}
+.pop-head h2{font-size:20px;font-weight:800;line-height:1}
+.pop-head small{display:block;color:var(--muted);font-size:12px}
+.pill{margin-left:auto;border:var(--line);border-radius:999px;padding:4px 12px;background:var(--mint);font-weight:800;font-size:12px;box-shadow:2px 2px 0 var(--ink)}
+.tabs{display:flex;gap:6px;overflow:hidden}
+.tabs span{border:var(--line);border-radius:999px;padding:4px 10px;font-weight:700;font-size:13px;background:var(--card);white-space:nowrap}
+.tabs span.on{background:var(--violet);color:#fff}
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px}
+.label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.rank-card{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.rank-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.share-btn{display:inline-flex;align-items:center;gap:5px;border:2px solid var(--ink);border-radius:999px;background:var(--sun);font-weight:800;font-size:12px;padding:2px 10px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;min-height:28px}
+.share-btn.ring{outline:3px dashed var(--violet);outline-offset:4px}
+.bigrank{font-size:52px;font-weight:800;line-height:.9;color:var(--violet);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;letter-spacing:-.03em}
+.who b{font-size:18px;font-weight:800}
+.who div{font-size:14px}
+.who small{color:var(--muted);font-size:12px}
+.mix{display:flex;height:10px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;width:110px}
+.mix span{display:block;height:100%}
+.mixrow{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:4px}
+.mixrow i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.mixrow span:last-child{margin-left:auto;font-weight:700}
+.board-ghost{height:300px;opacity:.5}
+.board-ghost .r{height:30px;border:2px solid var(--ink);border-radius:10px;margin-top:8px;background:linear-gradient(90deg,#F6C5B5 70%,#F7F0E6 0)}
+
+/* The share sheet, over the popover */
+.scrim{position:absolute;inset:0;background:rgba(30,27,46,.35)}
+.sheet{position:absolute;left:10px;right:10px;bottom:10px;background:var(--paper);border:var(--line);border-radius:22px;box-shadow:4px 4px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:12px}
+.sheet-head{display:flex;align-items:center;justify-content:space-between}
+.sheet-head h3{font-size:17px;font-weight:800}
+.x{width:30px;height:30px;border:2px solid var(--ink);border-radius:50%;background:var(--card);display:grid;place-items:center;font-weight:800}
+.preview{display:grid;place-items:center;background:var(--lav);border:2px solid var(--ink);border-radius:14px;padding:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:700}
+.seg{display:flex;border:2px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg span{padding:3px 10px;font-size:12px;font-weight:800}
+.seg span+span{border-left:2px solid var(--ink)}
+.seg span.on{background:var(--ink);color:var(--paper)}
+.acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.act{border:var(--line);border-radius:14px;background:var(--card);font-weight:800;font-size:13px;padding:8px 6px;box-shadow:3px 3px 0 var(--ink);min-height:44px}
+.act.primary{background:var(--violet);color:#fff}
+.small{font-size:11px;color:var(--muted)}
+
+/* The shared image itself (drawn at 1/3 of 1080 px for Square, 1/2.5 of 1200×630 for Wide) */
+.shot{position:relative;border:var(--line);border-radius:28px;background:var(--paper);background-image:radial-gradient(var(--dot) 1.6px,transparent 1.6px);background-size:16px 16px;overflow:hidden;box-shadow:6px 6px 0 var(--ink);display:flex;flex-direction:column}
+.shot.square{width:360px;height:360px;padding:22px}
+.shot.wide{width:480px;height:252px;padding:20px 22px;flex-direction:row;gap:20px}
+.shot.mini{transform-origin:top left}
+.brand{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;white-space:nowrap}
+.brand .lg{width:24px;height:24px;border-radius:50%;border:2px solid var(--ink);background:#2B6CB0;display:grid;place-items:center;font-size:12px}
+.view{margin-left:auto;border:2px solid var(--ink);border-radius:999px;background:var(--card);padding:1px 9px;font-size:10.5px;font-weight:800;white-space:nowrap}
+.hero{display:flex;align-items:flex-end;gap:14px;margin-top:18px}
+.hero .bigrank{font-size:96px;-webkit-text-stroke:5px var(--ink)}
+.hero .of{font-size:13px;color:var(--muted);font-weight:700;padding-bottom:10px}
+.hero .of b{display:block;color:var(--ink);font-size:15px}
+.name{font-size:26px;font-weight:800;margin-top:10px;letter-spacing:-.01em}
+.tok{font:800 22px "JetBrains Mono",monospace}
+.tok small{font:700 12px "Bricolage Grotesque",sans-serif;color:var(--muted)}
+.shot .mix{width:100%;height:14px;margin-top:12px;flex:none}
+.legend{display:flex;gap:12px;font-size:12px;font-weight:700;margin-top:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;border:1.5px solid var(--ink)}
+.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--muted);font-weight:700;white-space:nowrap}
+.badge{background:var(--sun);border:2px solid var(--ink);border-radius:8px;padding:1px 8px;color:var(--ink);font-weight:800;font-size:12px}
+.wide .left{display:flex;flex-direction:column;justify-content:space-between;width:190px;flex:none}
+.wide .right{flex:1;display:flex;flex-direction:column;min-width:0}
+.wide .foot span:last-child{display:none}
+.wide .hero{margin-top:6px}
+.wide .hero .bigrank{font-size:104px}
+.wide .name{margin-top:0;font-size:24px}
+.shots{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.shots figure{margin:0;display:flex;flex-direction:column;gap:8px}
+.shots figcaption{font-size:13px;color:var(--muted)}
+.shots figcaption b{color:var(--ink)}
+
+/* Laws */
+table{border-collapse:collapse;background:var(--card);border:var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);font-size:14px;max-width:900px}
+th,td{padding:9px 14px;text-align:left;border-bottom:2px solid var(--dot);vertical-align:top}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.q{max-width:900px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.q div{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:10px 14px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Share my rank</h1>
+    <p>A member proud of their place wants to post it: on X, in a team chat, in a README. They share their <b>standing</b> in the <b>board view</b> they're looking at. That's the same thing the <i>Your rank</i> card shows, turned into an image. Nothing goes in it that the board doesn't already show, and no other member's name. Mock data.</p>
+  </header>
+
+  <!-- 1 -->
+  <section>
+    <div class="step-title"><span class="n">1</span>A Share button on <i>Your rank</i></div>
+    <div class="row">
+      <div class="pop">
+        <div class="pop-head"><div class="logo">🦙</div><div><h2>ClaudeBar</h2><small>Your quotas, the cute way</small></div><span class="pill">● RANKED</span></div>
+        <div class="tabs"><span>MiniMax</span><span>Command Code</span><span class="on">🏆 Leaderboard</span></div>
+        <div class="card">
+          <div class="rank-top"><span class="label">Your rank · 7 days</span><button class="share-btn ring">↗ Share</button></div>
+          <div class="rank-card">
+            <div class="bigrank">#8</div>
+            <div class="who"><b>@itshan</b> 👁<div>3.82B tokens</div><small>430.0M behind #7</small></div>
+            <div><div class="label" style="font-size:9px">Your mix</div><div class="mix"><span style="width:100%;background:var(--claude)"></span></div>
+              <div class="mixrow"><i style="background:var(--claude)"></i><span>Claude</span><span>100%</span></div>
+              <div class="mixrow"><i style="background:var(--codex)"></i><span>Codex</span><span>0%</span></div></div>
+          </div>
+        </div>
+        <div class="card board-ghost"><div class="label">The board · 34 members</div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div></div>
+      </div>
+      <div class="caption">
+        <p><b>Where:</b> top right of <i>Your rank</i>, beside the period it names. The card is already "me". The button shares what the card shows.</p>
+        <p><b>Shows only once there's a rank.</b> Before the first upload, or with nothing in this view, there's nothing to share, so there's no button.</p>
+        <p><b>It follows the board view.</b> Switch to <i>30 days · Codex</i> and Share shares that. A rank never means anything without its view.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <div class="step-title"><span class="n">2</span>The share sheet, inside the popover</div>
+    <div class="row">
+      <div class="pop" style="height:760px">
+        <div class="pop-head"><div class="logo">🦙</div><div><h2>ClaudeBar</h2><small>Your quotas, the cute way</small></div><span class="pill">● RANKED</span></div>
+        <div class="tabs"><span>MiniMax</span><span>Command Code</span><span class="on">🏆 Leaderboard</span></div>
+        <div class="card board-ghost" style="height:600px"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h3>Share my rank</h3><span class="x">✕</span></div>
+          <div class="preview">
+            <div style="width:300px;height:300px;overflow:hidden"><div class="shot square mini" id="mini" style="transform:scale(.8333)"></div></div>
+          </div>
+          <div class="opts">
+            <div class="opt"><span>Shape</span><div class="seg"><span class="on">Square</span><span>Wide</span></div></div>
+            <div class="opt"><span>Name</span><div class="seg"><span class="on">@itshan</span><span>@i•••</span></div></div>
+          </div>
+          <div class="acts"><button class="act primary">Copy image</button><button class="act">Save…</button><button class="act">Share…</button></div>
+          <p class="small">An image of what's on your card. Nothing is uploaded; the board's link is printed on it.</p>
+        </div>
+      </div>
+      <div class="caption">
+        <p><b>The preview is the image.</b> What you see is exactly what gets copied or saved.</p>
+        <ul>
+          <li><b>Shape:</b> <i>Square</i> (1080×1080, for X, Instagram and chats) or <i>Wide</i> (1200×630, the link-card shape for READMEs and blogs).</li>
+          <li><b>Name:</b> starts as the eye on <i>Your rank</i> has it. With the eye on, it starts masked, so screen-sharers stay safe.</li>
+          <li><b>Copy image</b> is the main action: paste into X, Slack or Discord. <b>Save…</b> writes a PNG. <b>Share…</b> opens the Mac's share menu (Messages, AirDrop, Mail…).</li>
+        </ul>
+        <p>No text field, no "post to X" button. ClaudeBar never signs in anywhere to post for you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <div class="step-title"><span class="n">3</span>The image</div>
+    <div class="shots">
+      <figure><div class="shot square" id="sq"></div><figcaption><b>Square</b> · 1080×1080 · shown at ⅓</figcaption></figure>
+      <figure><div class="shot wide" id="wd"></div><figcaption><b>Wide</b> · 1200×630 · shown at 40%</figcaption></figure>
+      <figure><div class="shot square" id="sq2"></div><figcaption><b>Square, one provider, name masked</b> · <i>30 days · Codex</i></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <div class="step-title"><span class="n">4</span>What goes in, and who owns it</div>
+    <table>
+      <thead><tr><th>Law</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>The image shows one standing in one board view: rank, members in the view, total tokens, the provider mix, the view. Nothing else</td><td><code>Standing</code> + <code>BoardView</code> (already exist; the image only reads them)</td></tr>
+        <tr><td>No other member's name, and no input/output/cache split, cost, account or country</td><td>The share card's content (one type, App)</td></tr>
+        <tr><td>"Top N%" is <code>rank ÷ members</code>, shown only in the top half. Lower down it says "#18 of 34"</td><td><code>Standing</code> (a told-for rule, not counted in the view)</td></tr>
+        <tr><td>The name starts masked when the eye on <i>Your rank</i> is on</td><td>Existing privacy-mask setting</td></tr>
+        <tr><td>Nothing leaves the Mac: the image goes to the clipboard, a file or the share menu</td><td>App (no API, no server change)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="step-title"><span class="n">?</span>Open questions for you</div>
+    <div class="q">
+      <div><b>Hidden members.</b> Someone with <i>Show me on the web board</i> off is still ranked for themselves. Should Share work for them (it's their choice to post it), or be off with "Turn on Show me on the web board to share"? <i>Mockup assumes: allowed.</i></div>
+      <div><b>A link back.</b> Printing <code>claudebar.tddworks.com/leaderboard</code> is enough for v1. A per-member page (<code>/leaderboard/@itshan</code> with this card as its preview image) would be a later web feature.</div>
+      <div><b>Theme.</b> Decided: the image follows the theme the member uses (Platformer, Pop, Dark…), drawn as that theme's card on its background. This mockup shows it in Pop.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+// One template, three images: the same standing drawn for each shape.
+function card({ rank, of, name, tokens, view, mix, wide }) {
+  const top = Math.ceil((rank / of) * 100);
+  const where = rank / of <= 0.5 ? `<span class="badge">Top ${top}%</span>` : `<span class="badge">#${rank} of ${of}</span>`;
+  const bar = `<div class="mix">${mix.map(m => `<span style="width:${m.p}%;background:${m.c}"></span>`).join("")}</div>
+    <div class="legend">${mix.filter(m => m.p > 0).map(m => `<span><i style="background:${m.c}"></i>${m.n} ${m.p}%</span>`).join("")}</div>`;
+  const brand = `<div class="brand"><span class="lg">🦙</span>ClaudeBar Leaderboard</div>`;
+  const foot = `<div class="foot"><span>claudebar.tddworks.com/leaderboard</span><span>tokens only</span></div>`;
+  if (wide) return `
+    <div class="left">${brand}<div class="hero"><div class="bigrank">#${rank}</div></div><div class="of"><b>of ${of} members</b></div></div>
+    <div class="right"><div style="display:flex;justify-content:flex-end"><span class="view">${view}</span></div>
+      <div class="name" style="margin-top:14px">${name}</div><div class="tok">${tokens} <small>tokens</small></div>
+      <div style="margin-top:8px">${where}</div>${bar}${foot}</div>`;
+  return `
+    <div style="display:flex;align-items:center">${brand}<span class="view">${view}</span></div>
+    <div class="hero"><div class="bigrank">#${rank}</div><div class="of"><b>of ${of} members</b>${where}</div></div>
+    <div class="name">${name}</div><div class="tok">${tokens} <small>tokens</small></div>
+    ${bar}${foot}`;
+}
+const me = { rank: 8, of: 34, name: "@itshan", tokens: "3.82B", view: "7 days · All providers",
+  mix: [{ n: "Claude", p: 100, c: "var(--claude)" }, { n: "Codex", p: 0, c: "var(--codex)" }] };
+document.getElementById("sq").innerHTML = card(me);
+document.getElementById("mini").innerHTML = card(me);
+document.getElementById("wd").innerHTML = card({ ...me, wide: true });
+document.getElementById("sq2").innerHTML = card({ rank: 3, of: 21, name: "@i•••", tokens: "612.4M", view: "30 days · Codex",
+  mix: [{ n: "Codex", p: 100, c: "var(--codex)" }] });
+</script>
+</body>
+</html>

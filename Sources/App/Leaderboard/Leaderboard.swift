@@ -13,6 +13,8 @@ final class Leaderboard {
     let uploader: LeaderboardUploader
     let boardPage = URL(string: "https://claudebar.tddworks.com/leaderboard/")!
     let globePage = URL(string: "https://claudebar.tddworks.com/leaderboard/#globe-section")!
+    /// The rank the member is sharing, while *Share my rank* is open over the popover.
+    private(set) var sharing: RankCard?
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let logs: MonitorTokenLogs
@@ -70,6 +72,15 @@ final class Leaderboard {
         return DailyTokens.summed(await logs.days(in: today), providers: providers)
     }
 
+    /// *Share* on *Your rank*: opens *Share my rank* with this card.
+    func share(_ card: RankCard) {
+        sharing = card
+    }
+
+    func stopSharing() {
+        sharing = nil
+    }
+
     func board(in view: BoardView) async throws -> [Standing] {
         try await api.board(in: view)
     }
@@ -98,7 +109,7 @@ func leaderboardCountryLabel(_ code: String) -> String {
 }
 
 /// This Mac's token logs, from every login whose provider reads usage
-/// history: Claude, Codex and Mistral today.
+/// history: Claude, Codex, Mistral and Oh My Pi today.
 @MainActor
 final class MonitorTokenLogs: TokenLogs {
     private let monitor: QuotaMonitor

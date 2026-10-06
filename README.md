@@ -49,7 +49,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Alibaba | Coding Plan 5-hour, weekly and monthly quota | [docs](docs/providers/alibaba/README.md) |
 | Mistral | Today's Mistral Vibe spend and tokens | [docs](docs/providers/mistral/README.md) |
 | OpenCode Go | 5-hour, weekly and monthly windows | [docs](docs/providers/opencode-go/README.md) |
-| Oh My Pi | Every rate-limit window `omp` reports, per upstream account | [docs](docs/providers/omp/README.md) |
+| Oh My Pi | Every rate-limit window `omp` reports, per upstream account, and daily usage from its session logs | [docs](docs/providers/omp/README.md) |
 | Grok | xAI credit allowance per billing period, per product, plan and prepaid balance | [docs](docs/providers/grok/README.md) |
 | Command Code | 5-hour and weekly windows, credit balance | [docs](docs/providers/commandcode/README.md) |
 | Cline | Five-hour, weekly and monthly plan limits | [docs](docs/providers/cline/README.md) |

@@ -179,6 +179,8 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Your own upload shows on the board you read at once, the same place *Your rank* says; everyone else's within two minutes | Server (an upload drops the boards it changes from the edge cache) |
 | The globe shows only countries, only for members who opted in; tokens only where at least three are | Server |
 | A member who hasn't opted in sees the globe offered once, until they opt in or dismiss it | `LeaderboardMembership.showsGlobeHint` |
+| A shared rank image shows one standing in one board view (rank, where that is, tokens, the provider mix) and no other member's name; there is none to share before a rank | `RankCard` |
+| *Top N%* only in the top half, where N is the rank over every member, rounded up; *#r of N* below it; *Top 100* on a board longer than it lists; nothing when the rank isn't among the members listed | `RankCard.placement` |
 | A profile link is a platform and a handle that fits its rules, never a URL | `ProfileLink` (the app, as you type) and the server (the authority); one `vectors.json` |
 | Leaving deletes the member and every row, on the server | Server — the app forgets the key only after a 2xx |
 
@@ -251,7 +253,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 │  └───────────────┬─────────────────┘          ├────────────────────────────────┤             │           │
 │                  ▼                            │ Username · DailyTokens ·       │             │           │
 │  Account.usageHistory ──days(in:)──▶ per login│ BoardView · Standing           │             │           │
-│   (Claude, Codex, Mistral)                    │ LeaderboardUploader (hourly) ◀─┼── App driver timer      │
+│   (Claude, Codex, Mistral, Oh My Pi)          │ LeaderboardUploader (hourly) ◀─┼── App driver timer      │
 │                                               │ RequestSigner (canonical)      │                         │
 │                                               ├─ @Mockable ports ──────────────┤                         │
 │                                               │ LeaderboardAPI                 │                         │
@@ -280,10 +282,10 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 
 | Piece | Home |
 |---|---|
-| `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
+| `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `RankCard`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
 | `@Mockable` ports `LeaderboardAPI` and `SigningKeyStore`; plain `LeaderboardSettingsRepository` (like Notify!'s) and `@MainActor` `TokenLogs`, faked in tests | `Sources/Domain/Leaderboard/` |
 | `LeaderboardHTTPClient`, `CredentialSigningKeyStore`; settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
-| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh), `MonitorTokenLogs`, popover tab, `LeaderboardPane` | `Sources/App/` |
+| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `LeaderboardPane` | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 
 ## 8 · Build sequence

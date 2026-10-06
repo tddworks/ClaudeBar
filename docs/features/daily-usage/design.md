@@ -41,8 +41,9 @@ tool's logs, a new model's price or a new view never edit a vendor's Swift
 
 ## 2 · The definition: `usageHistory` beside `dataSources`
 
-Record fields use **the mapping's path language** (§3: `$.a.b`, a list is the
-first that answers, `where`), so there is one way to point into JSON.
+Record fields use **the mapping's path language** (§3: `$.a.b`, `where`), so
+there is one way to point into JSON. Each field names one path; a log that
+writes a record more than one way lists its `shapes` (below).
 
 ```jsonc
 // claude.json
@@ -130,6 +131,7 @@ screens) never learns which tool wrote it.
 |---|---|---|
 | where the files are, what a field is called (Claude's `message.usage.input_tokens`, Vibe's `stats.session_total_llm_tokens`) | `files` and the field paths | no |
 | the same idea, said another way: the time in a folder's name, the log's own cost, a session per file, a running total | an option: `at.fromPath`, `cost`, no `sessionGap`, `"cumulative": true` | no |
+| one log that writes a record more than one way (Oh My Pi's turns under `message.usage`, the side calls it logs under `usage`) | `records.shapes`: one entry per shape, each read whole — its own `where`, `at`, `id` and paths | no |
 | a record no path can say (a field to compute, a list to add up) | `"script": "x-log.js"` — `read(record, context)` returns one `LogRecord`, the escape hatch a mapping already has (built when a tool first needs it) | no |
 | a file of another kind (SQLite, binary) | a new `format` case and its reader, named for the format, with a test that names no tool | once |
 
@@ -206,14 +208,58 @@ data. The reading rules every format shares:
 
 - **`files`** is a glob: `**` any depth, `*` within one name; hidden files
   are skipped, and only files changed since the range's first day are read.
-- **`where`** keeps the records that match; its text values are also a byte
-  prefilter, so a line without them is never decoded.
+- **`where`** keeps the records that match. Its text is also a byte
+  prefilter: a line holding no shape's `where` text is never decoded. A shape
+  without a `where`, or with one that isn't text, turns the prefilter off.
 - A record without `at`, or without a declared `model`, is skipped; so is
   one where no token field and no `cost` answers — it says nothing about
   usage (Claude's assistant line without `usage`, a Vibe `meta.json`
   without `stats`). Otherwise a missing token field counts 0.
 - **`id`**'s paths together are a record's identity; a record missing any of
   them is never merged with another.
+- **`records` is the log**: `files` and `format`, then the record's shape —
+  `where`, `at`, `id`, `model`, `tokens`, `cost` — or, when the log writes a
+  record more than one way, a list of **`shapes`**; never both. Each file is
+  read once, and a line is read whole by the first shape whose `where`
+  holds: one shape's paths never answer for another's record. Every shape in
+  a list has a `where`, so none silently takes another's lines. `id` dedupe
+  runs over all of the log's records, whatever their shape. Without `shapes`
+  a definition is written back exactly as before, so its fingerprint and its
+  kept days stay put.
+
+**One record, written two ways.** Oh My Pi writes a turn's usage under the
+message, and a model call it makes outside the conversation (memory,
+judgment, an advisor) as a `model_usage` entry with `usage` at the top. To
+the person both are the same thing — a model call that spent tokens and
+money — so it is one record in two shapes:
+
+```jsonc
+// omp.json
+"records": {
+  "files": "${PI_CODING_AGENT_DIR:-~/.omp/agent}/sessions/**/*.jsonl",
+  "format": "jsonLines",
+  "shapes": [
+    { "where": { "path": "$.message.role", "equals": "assistant" },
+      "at": "$.timestamp", "id": ["$.id", "$.timestamp"],
+      "tokens": { "input": "$.message.usage.input", "output": "$.message.usage.output",
+                  "cacheWrite": "$.message.usage.cacheWrite", "cacheRead": "$.message.usage.cacheRead" },
+      "cost": "$.message.usage.cost.total" },
+    { "where": { "path": "$.type", "equals": "model_usage" },
+      "at": "$.timestamp", "id": ["$.id", "$.timestamp"],
+      "tokens": { "input": "$.usage.input", "output": "$.usage.output",
+                  "cacheWrite": "$.usage.cacheWrite", "cacheRead": "$.usage.cacheRead" },
+      "cost": "$.usage.cost.total" }
+  ]
+}
+```
+
+Files and format describe the log; paths and filters describe a shape. So an
+added login's `accounts.patch.usageHistory` moves the log —
+`{ "records": { "files": "…" } }` — and keeps its shapes, since a merge patch
+leaves the keys it doesn't name. Left out on purpose: shapes in different
+files are different logs, not another shape (a list of logs, added when a
+tool needs one), and shapes don't inherit shared fields — omp repeats `at`
+and `id`, and each shape reads on its own.
 
 **Other apps.** `usageHistory.otherApps` lists apps on this Mac that use
 the same plan and keep their own count, each `{label, records, prices?}`:
@@ -275,9 +321,10 @@ own cadence (popover open, never the background poll).
 |---|---|---|
 | `UsageLog.Definition` (`DataSources`) | the JSON, `Codable`, no behaviour | the constants in both analyzers |
 | `UsageLog` (`DataSources`) | `days(from:to:)`: the readers, prices and aggregator for one login | both analyzers' entry points |
-| `JSONLinesReader` (`DataSources/Internal`) | one record per matching line; reads only what was appended since the last scan, re-reads a file that changed under it; a byte prefilter derived from `where` | `SessionJSONLParser` + `SessionLogCache`, generalised |
-| `JSONLogReader` (`DataSources/Internal`) | one record per file; `at.fromPath` reads the time from the path | `VibeSessionLogAnalyzer.loadSessions` |
-| `LogRecord` (`DataSources/Internal`) | the one shape every reader produces | `TokenUsageRecord`, `ParsedSession` |
+| `JSONLinesReader` (`DataSources/Internal`) | one record per line a shape picks out; reads only what was appended since the last scan, re-reads a file that changed under it; a byte prefilter from the shapes' `where` texts | `SessionJSONLParser` + `SessionLogCache`, generalised |
+| `JSONLogReader` (`DataSources/Internal`) | one record per file, by the same first-matching-shape rule; `at.fromPath` reads the time from the path | `VibeSessionLogAnalyzer.loadSessions` |
+| `RecordShape` (`DataSources/Internal`) | one per shape: whether its `where` holds, and the record read whole from its paths; the first shape whose `where` holds reads a line | — (new) |
+| `LogRecord` (`DataSources/Internal`) | the one form every reader produces | `TokenUsageRecord`, `ParsedSession` |
 | `PriceList` (`DataSources/Internal`) | the record's own cost, else the list (exact → longest prefix → family → free → `freeWhen` → otherwise); cache savings | `ModelPricing` |
 | `LocalEndpoint` (`DataSources/Internal`) | `freeWhen.localEndpoint`: is the route in that file on this Mac? | `ClaudeLocalInferenceDetector` |
 | `LogFileFinder` (`DataSources/Internal`) | `files`' glob, changed since a date | `findRecentJSONLFiles` |
@@ -303,6 +350,7 @@ a vendor; the readers are named for formats. The page owns the views:
 | a new model's price, or a price cut | `claude-prices.json` |
 | *TODAY'S USAGE* for another tool that logs JSON | that tool's definition: a `usageHistory` block |
 | Codex's usage history (`~/.codex/sessions/**/rollout-*.jsonl`, whose `token_count` events carry a session's **running total**) | `codex.json`'s `usageHistory`, plus one reader option, `"cumulative": true` (the last record per session counts), with a neutral test |
+| Oh My Pi's usage history (turns, subagents and side calls in `~/.omp/agent/sessions/**/*.jsonl`, copied whole into forked sessions) | `omp.json`'s `usageHistory`: one log, two `shapes`, and `id: [$.id, $.timestamp]` — the identity omp's own stats use for fork copies |
 | a binary log format | one new reader, named for the format |
 | an added login's own usage history | nothing: `accounts.patch.usageHistory` |
 

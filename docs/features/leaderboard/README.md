@@ -1,5 +1,5 @@
 ---
-description: Join the ClaudeBar Leaderboard with a username, share daily token totals from Claude, Codex or Mistral, and see your rank. Use when joining, changing what you share, or leaving.
+description: Join the ClaudeBar Leaderboard with a username, share daily token totals from Claude, Codex, Mistral or Oh My Pi, and see your rank. Use when joining, changing what you share, or leaving.
 ---
 
 # Leaderboard
@@ -28,6 +28,7 @@ Providers whose logs ClaudeBar reads for daily usage can be shared:
 | Claude | `~/.claude/projects` (or each added account's folder) |
 | Codex | `~/.codex/sessions` (or each added account's `CODEX_HOME`) |
 | Mistral | `~/.vibe/logs` |
+| Oh My Pi | `~/.omp/agent/sessions` (or `$PI_CODING_AGENT_DIR/sessions`): every account omp drives, as one total |
 
 Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, not tokens, so they can't be ranked. If you have several accounts for one provider, their tokens are added together.
 
@@ -39,6 +40,16 @@ Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, 
 4. Press **Join leaderboard**. Your last 30 days are uploaded straight away.
 
 The tab then shows your rank (the eye next to your name shows it as `@i•••` for screen shares) and your provider mix, the board (up to the top 100, scrolling inside its card; while your own row is scrolled out of sight, a copy of it sits under the list and takes you there), and when the last upload went. Switch between **Today**, **7 days** and **30 days**, or one provider. **Full board** opens the public page at [claudebar.tddworks.com/leaderboard](https://claudebar.tddworks.com/leaderboard).
+
+## Share your rank
+
+**Share** on *Your rank* turns your place into an image to post: your rank, how near the top that is (**Top 24%**, or **#18 of 34** in the bottom half), your tokens and provider mix, the period and provider you're looking at, and the board's address. It never shows anyone else's name.
+
+- **Shape:** **Square** (1080×1080) for X, Instagram and chats, or **Wide** (1200×630) for READMEs and blogs.
+- **Name:** shown or masked as `@i•••`. It starts the way the eye on *Your rank* has it.
+- **Copy image** puts it on the clipboard, **Save…** writes a PNG, **Share…** opens the Mac's share menu.
+
+The image is drawn on your Mac in the theme you use, Platformer, Pop, Dark or any other; nothing is uploaded. The button shows once you have a rank in the view you're looking at.
 
 ## Settings → Leaderboard
 

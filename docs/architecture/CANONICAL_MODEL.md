@@ -160,9 +160,10 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │                   `usageHistory` (a UsageLog.Definition) filled with this
 │       │       │   │   │                   login's values (its folder); days(from:to:) reads them:
 │       │       │   │   ├── records         WHERE AND HOW — files (a glob) · format (a JSON object per
-│       │       │   │   │                   line, or per file) · the fields of one record in the
-│       │       │   │   │                   mapping's path language: when, which model, tokens by
-│       │       │   │   │                   kind, its own cost, its identity
+│       │       │   │   │                   line, or per file) · the record's shape in the mapping's
+│       │       │   │   │                   path language (when, which model, tokens by kind, its own
+│       │       │   │   │                   cost, its identity), or its `shapes` when the log writes it
+│       │       │   │   │                   more than one way, each read whole
 │       │       │   │   ├── prices: PriceList   WHAT A TOKEN COSTS — a price file beside the
 │       │       │   │   │                   definition, or a cloud's list through Bedrock's PriceCatalog
 │       │       │   │   └── sessionGap: seconds?   a pause longer than this starts a working session
@@ -438,6 +439,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | usage history is a SERIES OF DAYS; every view — today against yesterday, the last thirty days, a chart — is a range of it, chosen by the page | `UsageHistory.days(in:)` |
 | a day is the local calendar day; a record counts on the day its own timestamp falls in — a timestamp written in UTC (a file name) is converted, never read as local | `Day` |
 | a record written twice counts once — the last copy wins (a streamed message is logged as it grows) | `UsageLog.records` |
+| a record is read by the first shape whose `where` holds; one shape's paths never answer for another's record | `UsageLog.Records` |
 | a day closes a fixed while after it ends; a closed day is summed once, kept, and never read from the logs again. Today, and the day before until it closes, are read every time | `DayLedger` |
 | a day's spend is a `Cost` with a line per model — the log's own cost wins; otherwise it is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission | `Day.cost` · `PriceList` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |

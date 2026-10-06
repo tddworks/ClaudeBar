@@ -45,14 +45,17 @@ actor JSONLinesReader {
     private static let readChunkSize = 1 << 20
     private static let newline = UInt8(ascii: "\n")
 
-    private let shape: RecordShape
+    private let shapes: [RecordShape]
+    /// A line must hold one of these before it is decoded; `nil` reads every line.
+    private let fragments: [[UInt8]]?
     private var entries: [URL: Entry] = [:]
     private(set) var lastScan = ScanSummary()
 
     var cachedFileCount: Int { entries.count }
 
-    init(shape: RecordShape) {
-        self.shape = shape
+    init(records: UsageLog.Records) {
+        shapes = records.shapes.map(RecordShape.init)
+        fragments = shapes.fragments
     }
 
     /// Records from `files`, in file order and line order within each file.
@@ -127,14 +130,14 @@ actor JSONLinesReader {
         data.withUnsafeBytes { parseLine($0) }.map { [$0] } ?? []
     }
 
-    /// The record on one line, or `nil` when it lacks a required fragment,
-    /// isn't JSON, or isn't a record.
+    /// The record on one line, or `nil` when it holds none of the shapes'
+    /// fragments, isn't JSON, or isn't a record.
     private nonisolated func parseLine(_ line: UnsafeRawBufferPointer) -> LogRecord? {
         guard let base = line.baseAddress,
-              shape.requiredFragments.allSatisfy({ fragment in memmem(base, line.count, fragment, fragment.count) != nil }),
+              fragments?.contains(where: { fragment in memmem(base, line.count, fragment, fragment.count) != nil }) ?? true,
               let json = try? JSONSerialization.jsonObject(with: Data(bytes: base, count: line.count))
         else { return nil }
-        return shape.record(from: json)
+        return shapes.record(from: json)
     }
 
     // MARK: - Keeping what was read

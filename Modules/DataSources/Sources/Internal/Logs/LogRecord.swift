@@ -64,45 +64,49 @@ struct LogRecord: Sendable, Equatable {
     }
 }
 
-/// How one record reads, from a definition's `records`: the paths, the
-/// filter, and the bytes a line must hold before it is decoded.
+/// How one shape of a log's records reads: its filter, its paths, and the
+/// bytes a line must hold for its `where` to have a chance.
 struct RecordShape: Sendable {
-    let records: UsageLog.Records
+    let shape: UsageLog.Shape
 
-    init(_ records: UsageLog.Records) {
-        self.records = records
+    init(_ shape: UsageLog.Shape) {
+        self.shape = shape
     }
 
-    /// The `where` texts, quoted as JSON writes them: a line without one
-    /// can't match, so it is skipped undecoded. Inside a JSON string the
-    /// quotes would be escaped, so a quoted mention never matches.
-    var requiredFragments: [[UInt8]] {
-        guard case .string(let text)? = records.where?.equals else { return [] }
-        return [Array("\"\(text)\"".utf8)]
+    /// The `where` text, quoted as JSON writes it, or `nil` when the shape has
+    /// no text to look for. Inside a JSON string the quotes would be escaped,
+    /// so a quoted mention never matches.
+    var fragment: [UInt8]? {
+        guard case .string(let text)? = shape.where?.equals else { return nil }
+        return Array("\"\(text)\"".utf8)
     }
 
-    /// The record in `json`, read from the file at `path`, or `nil` when it
-    /// doesn't match, has no time or declared model, or says nothing about usage.
-    func record(from json: Any, path: String = "") -> LogRecord? {
-        let scope = JSONScope(root: json)
-        if let condition = records.where, !JSONMapper.holds(condition, in: scope) { return nil }
+    /// Whether this shape's `where` holds for the record in `scope`.
+    func picks(_ scope: JSONScope) -> Bool {
+        shape.where.map { JSONMapper.holds($0, in: scope) } ?? true
+    }
+
+    /// The record in `scope` read whole from this shape's paths, from the file
+    /// at `path`, or `nil` when it has no time or declared model, or says
+    /// nothing about usage.
+    func record(in scope: JSONScope, path: String) -> LogRecord? {
         guard let at = time(in: scope, path: path) else { return nil }
         var model: String?
-        if let path = records.model {
+        if let path = shape.model {
             guard let name = scope.string(path) else { return nil }
             model = name
         }
-        let tokens = records.tokens
+        let tokens = shape.tokens
         let read = [tokens.input, tokens.output, tokens.cacheWrite, tokens.cacheRead, tokens.total, tokens.cacheWrite1h]
             .map { path in path.flatMap { scope.number($0) } }
         // A count is a whole number of tokens: a negative or a fraction is a
         // log that changed shape, not usage.
         guard read.allSatisfy({ $0.map { $0 >= 0 && $0.rounded() == $0 } ?? true }) else { return nil }
         let counts = read.map { $0.map { Int($0) } }
-        let cost = records.cost.flatMap { Self.decimal(scope.value($0)) }
+        let cost = shape.cost.flatMap { Self.decimal(scope.value($0)) }
         // A record that says nothing about usage isn't usage.
         guard counts.prefix(5).contains(where: { $0 != nil }) || cost != nil else { return nil }
-        let parts = records.id.map { scope.string($0) }
+        let parts = shape.id.map { scope.string($0) }
         let id = parts.isEmpty || parts.contains(nil) ? nil : parts.compactMap { $0 }.joined(separator: "\u{1F}")
         var input = counts[0] ?? 0
         if tokens.inputIncludesCacheRead == true { input = max(0, input - (counts[3] ?? 0)) }
@@ -112,7 +116,7 @@ struct RecordShape: Sendable {
     }
 
     private func time(in scope: JSONScope, path: String) -> Date? {
-        switch records.at {
+        switch shape.at {
         case .field(let field): Self.date(scope.value(field))
         case .fromPath(let rule): Self.date(inPath: path, rule)
         case .formatted(let rule): scope.string(rule.field).flatMap { Self.date($0, format: rule.format, timeZone: rule.timeZone) }
@@ -157,5 +161,27 @@ struct RecordShape: Sendable {
         default: return nil
         }
         return Decimal(string: text, locale: Locale(identifier: "en_US_POSIX"))
+    }
+}
+
+/// A log's shapes, in order: a record is read by the first whose `where`
+/// holds, and by it alone.
+extension [RecordShape] {
+    /// A line must hold one of these — the shapes' `where` texts — before it is
+    /// decoded; `nil` when a shape has none to look for, which reads every line.
+    var fragments: [[UInt8]]? {
+        var all: [[UInt8]] = []
+        for shape in self {
+            guard let fragment = shape.fragment else { return nil }
+            all.append(fragment)
+        }
+        return all
+    }
+
+    /// The record in `json`, read from the file at `path`, or `nil` when no
+    /// shape picks it out or the one that does can't read it.
+    func record(from json: Any, path: String = "") -> LogRecord? {
+        let scope = JSONScope(root: json)
+        return first { $0.picks(scope) }?.record(in: scope, path: path)
     }
 }

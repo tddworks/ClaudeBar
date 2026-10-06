@@ -190,7 +190,7 @@ struct UsageLogTests {
         """#
         let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8))
         #expect(definition.records.format == .jsonLines)
-        #expect(definition.records.id.isEmpty)
+        #expect(definition.records.shapes.map(\.id) == [[]])
         #expect(definition.freeWhen?.localEndpoint?.url == [["$.a"], ["$.b", "$.c"]])
         let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition))
         #expect(again == definition)
@@ -205,7 +205,7 @@ struct UsageLogTests {
         let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8))
         let app = try #require(definition.otherApps?.first)
         #expect(app.label == "Desk")
-        #expect(app.definition.records.at == .formatted(.init(field: "$.day", format: "yyyy-MM-dd")))
+        #expect(app.definition.records.shapes.map(\.at) == [.formatted(.init(field: "$.day", format: "yyyy-MM-dd"))])
         #expect(app.definition.prices == nil)
         #expect(app.definition.otherApps == nil)
         #expect(try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition)) == definition)
@@ -216,6 +216,34 @@ struct UsageLogTests {
         let with = UsageLog.Definition(records: Self.definition.records, prices: Self.definition.prices,
                                        freeWhen: Self.definition.freeWhen, sessionGap: Self.definition.sessionGap, otherApps: [app])
         #expect(log(with).fingerprint == log().fingerprint)
+    }
+
+    /// A log that writes a record two ways: a reply's usage under it, a side call's at the top.
+    private static let twoShapes = #"""
+    { "records": { "files": "~/x/*.jsonl",
+                   "shapes": [{ "where": { "path": "$.kind", "equals": "reply" }, "at": "$.at", "tokens": { "total": "$.reply.n" } },
+                              { "where": { "path": "$.kind", "equals": "side" }, "at": "$.at", "tokens": { "total": "$.n" } }] } }
+    """#
+
+    @Test func `should keep a log's shapes when an added login's patch moves its files`() throws {
+        let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(Self.twoShapes.utf8))
+        let patch = JSONValue.object(["records": .object(["files": .string("{{account.dir}}/*.jsonl")])])
+
+        let moved = try definition.patched(with: patch).filled(["dir": "/tmp/work"], scope: "account")
+
+        #expect(moved.records.files == "/tmp/work/*.jsonl")
+        #expect(moved.records.shapes == definition.records.shapes)
+        #expect(moved.records.shapes.count == 2)
+    }
+
+    @Test func `should refuse a log that gives a record's fields beside its shapes`() {
+        let json = Self.twoShapes.replacingOccurrences(of: #""files": "~/x/*.jsonl","#, with: #""files": "~/x/*.jsonl", "at": "$.at","#)
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8)) }
+    }
+
+    @Test func `should refuse a shape in a list that has no where`() {
+        let json = Self.twoShapes.replacingOccurrences(of: #""where": { "path": "$.kind", "equals": "side" }, "#, with: "")
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8)) }
     }
 
     @Test func `should count an app's daily total on the day it names, with no cost known`() async throws {

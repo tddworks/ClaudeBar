@@ -133,6 +133,13 @@ struct MenuContentView: View {
                 }
             }
 
+            // Share my rank
+            if let card = leaderboard.sharing {
+                RankShareOverlay(card: card, monitor: monitor) {
+                    withAnimation(.easeInOut(duration: 0.2)) { leaderboard.stopSharing() }
+                }
+            }
+
             // Share Pass Error Overlay
             if let guestPasses, let passError = guestPasses.error {
                 SharePassErrorOverlay(message: passError.localizedDescription) {

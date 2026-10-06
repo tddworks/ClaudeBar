@@ -6,10 +6,9 @@ enum LogReader: Sendable {
     case json(JSONLogReader)
 
     init(_ records: UsageLog.Records) {
-        let shape = RecordShape(records)
         switch records.format {
-        case .jsonLines: self = .jsonLines(JSONLinesReader(shape: shape))
-        case .json: self = .json(JSONLogReader(shape: shape))
+        case .jsonLines: self = .jsonLines(JSONLinesReader(records: records))
+        case .json: self = .json(JSONLogReader(records: records))
         }
     }
 
@@ -33,15 +32,20 @@ enum LogReader: Sendable {
 }
 
 /// `json` — one JSON document per file, one record each: a session's
-/// summary, written whole. Small files, so each scan reads them again.
+/// summary, written whole. Small files, so each scan reads them again. A file
+/// is read by the first shape whose `where` holds, as a line is.
 struct JSONLogReader: Sendable {
-    let shape: RecordShape
+    private let shapes: [RecordShape]
+
+    init(records: UsageLog.Records) {
+        shapes = records.shapes.map(RecordShape.init)
+    }
 
     func records(in files: [URL]) -> [LogRecord] {
         files.compactMap { url in
             guard let data = FileManager.default.contents(atPath: url.path),
                   let json = try? JSONSerialization.jsonObject(with: data) else { return nil }
-            return shape.record(from: json, path: url.path)
+            return shapes.record(from: json, path: url.path)
         }
     }
 }

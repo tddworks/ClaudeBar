@@ -1,5 +1,5 @@
 ---
-description: Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe) session logs. Use when the cards are missing or the numbers look off.
+description: Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe or Oh My Pi) session logs. Use when the cards are missing or the numbers look off.
 ---
 
 # Daily Usage
@@ -26,13 +26,15 @@ They appear for providers that keep local session logs:
 |---|---|
 | Claude | Claude Code transcripts in `~/.claude/projects/**/*.jsonl`; an added account, its own folder's `projects/`. Your usual login also gets a **Claude Desktop · Token Usage** card from `~/Library/Application Support/Claude/buddy-tokens.json`, with tokens only and no cost |
 | Mistral | Vibe session metadata in `~/.vibe/logs/session/` |
+| Oh My Pi | omp's session logs in `~/.omp/agent/sessions/**/*.jsonl` (or `$PI_CODING_AGENT_DIR/sessions`), subagents included; every account omp drives adds up under Oh My Pi. See [Oh My Pi](../../providers/omp/README.md#daily-usage) |
 | Extensions | Whatever the extension's `dailyUsage` section returns; see [extensions](../extensions/README.md) |
 
-Nothing is sent anywhere; ClaudeBar only reads the files.
+The cards and the chart only read these files; nothing is sent anywhere. If you join the [Leaderboard](../leaderboard/README.md), the providers you tick there upload their daily token totals, and nothing else from these logs.
 
 ## How the numbers are worked out
 
 - **Days** are calendar days in your time zone. A day is summed once, an hour after it ends, and kept in `~/.claudebar/usage-history/`; after that only today's logs are read. Delete that folder to have every day summed again.
+- **Oh My Pi** cost is what omp recorded for each model call; its tokens are omp's own counts per call.
 - **Mistral** cost and tokens are the totals Vibe itself records for each session. The rest of this section is about Claude.
 - **Cost** is an estimate: each message's tokens times the model's list price per million tokens (input, output, cache write, cache read). A cache write Claude Code keeps for an hour costs the higher 1-hour price; Claude Code writes most of its cache that way. Unknown Anthropic models are priced by family (Opus, Haiku), and anything else at Sonnet rates. It won't match your subscription bill, which is flat; it shows what the same work would cost on the API.
 - **Local models cost nothing.** A model ClaudeBar recognises as an open-weight one (Qwen, Llama, Gemma, Mistral, …), or any model at all when Claude Code is pointed at a loopback `ANTHROPIC_BASE_URL` (ollama, LM Studio, llama.cpp), is billed at $0. Its tokens are still counted. A hosted open-weight endpoint counts too — a `qwen3-max` or `*/llama-*` model served from someone else's cloud also shows $0, so don't read a zero here as proof nobody charged you upstream.

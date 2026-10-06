@@ -194,6 +194,33 @@ struct UsageHistoryTests {
 
         #expect(store.keys.sorted() == ["acme", "acme/Desk"])
     }
+
+    // MARK: - Kept days
+
+    /// A usage history's fingerprint names how its days were summed: when it
+    /// changes, every kept day is summed again, a month of logs read anew. These
+    /// are the built-in definitions' fingerprints as released. Price files are
+    /// left out: a new price list re-sums the days, and is meant to.
+    @Test
+    func `should keep the days every built-in usage history has already summed`() throws {
+        let home = URL(fileURLWithPath: "/Users/someone")
+        func fingerprint(_ definition: UsageLog.Definition?) throws -> String {
+            DataSources.makeUsageLog(try #require(definition), environment: { _ in nil }, homeDirectory: home).fingerprint
+        }
+        let claude = try ProviderFactory.builtIn("claude")
+        let codex = try ProviderFactory.builtIn("codex")
+
+        #expect(try fingerprint(claude.usageHistory) == "b3bcc70b596fd9b04e17e3db8ad24d09352051cfd8fbac03070d464826171024")
+        #expect(try fingerprint(claude.usageHistory(forAccount: ["configDirectory": "/Users/someone/work-claude"]))
+            == "931d7ea6e4403964a2af69dd0de2d289ea13c65df6955d337b33e52173cc3f25")
+        #expect(try fingerprint(claude.usageHistory?.otherApps?.first?.definition)
+            == "d43e7240f0b32898243293138562cd3503f2a69619691664482038c86e360427")
+        #expect(try fingerprint(codex.usageHistory) == "2db943b5a7ea6de29b14f66f92d48f028df8f2a176923d0ac3c9be7d1cb8b8ac")
+        #expect(try fingerprint(codex.usageHistory(forAccount: ["codexHome": "/Users/someone/work-codex"]))
+            == "f64c646a4632e6262d600ca716d13a0addcf792e9e569bfaec672b9cf7cc05b7")
+        #expect(try fingerprint(ProviderFactory.builtIn("mistral").usageHistory)
+            == "3e1157e243aa7b8bf21ff21cdab66d73f885f72bf7bd7f0c57dee7b56543bf0d")
+    }
 }
 
 /// Kept days in memory, by key.

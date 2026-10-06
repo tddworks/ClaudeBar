@@ -76,7 +76,7 @@ struct MistralUsageHistoryTests {
     @Test func `should date each session by its folder's name, in UTC`() throws {
         let rule = UsageLog.At.FromPath(pattern: #"session_(\d{8}_\d{6})"#, format: "yyyyMMdd_HHmmss", timeZone: "UTC")
         let definition = try #require(try ProviderFactory.builtIn("mistral").usageHistory)
-        #expect(definition.records.at == .fromPath(rule))
+        #expect(definition.records.shapes.map(\.at) == [.fromPath(rule)])
         #expect(definition.records.format == .json)
     }
 }

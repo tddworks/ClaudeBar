@@ -24,5 +24,38 @@
       "mapping": { "script": { "file": "omp-usage.js" } },
       "errors": { "cli.missing": { "cliNotFound": "omp" } }
     }
-  ]
+  ],
+  "usageHistory": {
+    "records": {
+      "files": "${PI_CODING_AGENT_DIR:-~/.omp/agent}/sessions/**/*.jsonl",
+      "format": "jsonLines",
+      "shapes": [
+        {
+          "where": { "path": "$.message.role", "equals": "assistant" },
+          "at": "$.timestamp",
+          "id": ["$.id", "$.timestamp"],
+          "tokens": {
+            "input": "$.message.usage.input",
+            "output": "$.message.usage.output",
+            "cacheWrite": "$.message.usage.cacheWrite",
+            "cacheRead": "$.message.usage.cacheRead"
+          },
+          "cost": "$.message.usage.cost.total"
+        },
+        {
+          "where": { "path": "$.type", "equals": "model_usage" },
+          "at": "$.timestamp",
+          "id": ["$.id", "$.timestamp"],
+          "tokens": {
+            "input": "$.usage.input",
+            "output": "$.usage.output",
+            "cacheWrite": "$.usage.cacheWrite",
+            "cacheRead": "$.usage.cacheRead"
+          },
+          "cost": "$.usage.cost.total"
+        }
+      ]
+    },
+    "sessionGap": 1800
+  }
 }

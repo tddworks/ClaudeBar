@@ -349,6 +349,18 @@ struct LeaderboardStandingsView: View {
                 CardLabel(text: (["YOUR RANK", period.label] + [provider.map { leaderboardProviderName($0, in: monitor) }].compactMap { $0 })
                     .joined(separator: " · ").uppercased())
                 Spacer()
+                if let card = RankCard(standing: mine?.standing, in: view, board: top) {
+                    Button { leaderboard.share(card) } label: {
+                        Label("Share", systemImage: "arrow.up.right")
+                            .font(theme.font(size: 11, weight: .bold))
+                            .foregroundStyle(theme.textPrimary)
+                            .padding(.horizontal, 9).padding(.vertical, 3)
+                            .background(Capsule().fill(theme.glassBackground))
+                            .overlay(Capsule().stroke(theme.glassBorder, lineWidth: max(1, theme.cardBorderWidth * 0.6)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Share your rank as an image")
+                }
             }
             HStack(alignment: .center, spacing: 12) {
                 OutlinedNumber(text: mine?.standing.map { "#\($0.rank)" } ?? "–", size: 42, color: theme.accentPrimary)

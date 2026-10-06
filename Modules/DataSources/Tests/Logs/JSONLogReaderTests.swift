@@ -18,8 +18,8 @@ struct JSONLogReaderTests {
     private let rule = UsageLog.At.FromPath(pattern: #"run-(\d{8}T\d{4})"#, format: "yyyyMMdd'T'HHmm", timeZone: "UTC")
 
     private func reader(at: UsageLog.At) -> JSONLogReader {
-        JSONLogReader(shape: RecordShape(UsageLog.Records(files: "~/runs/*/summary.json", format: .json, at: at,
-                                                          tokens: UsageLog.Tokens(total: "$.used"), cost: "$.spent")))
+        JSONLogReader(records: UsageLog.Records(files: "~/runs/*/summary.json", format: .json, at: at,
+                                                tokens: UsageLog.Tokens(total: "$.used"), cost: "$.spent"))
     }
 
     @Test func `should count a summary file as one record, timed by its path in the rule's time zone`() throws {
