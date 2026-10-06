@@ -10,6 +10,14 @@ import Foundation
 /// As a fallback (for sandboxed apps or limited launchd contexts), also checks
 /// common installation paths directly.
 ///
+/// The lookup is architecture-aware (issue #251): an Intel-only binary runs
+/// under Rosetta, and macOS then names ClaudeBar — the app that spawned it —
+/// in its "apps for Intel processors" warning. So the login shell that runs
+/// the `which` spawns is swapped for the always-universal /bin/zsh when the
+/// user's own shell has no native slice, a native copy of a tool beats an
+/// Intel-only one whenever one exists, and settling on an Intel-only binary
+/// is logged, never silent.
+///
 /// Usage:
 /// ```swift
 /// if let path = BinaryLocator.which("claude") {
@@ -133,18 +141,107 @@ public struct BinaryLocator: Sendable {
 
         // First, try using the login shell's `which`
         if let path = whichViaShell(tool) {
-            return path
+            return settled(tool: tool, shellAnswer: path, fallbackCandidates: candidates(in: commonPaths, tool: tool))
         }
 
         // Fallback: check common paths directly (for sandboxed/launchd contexts)
-        return findInCommonPaths(tool)
+        guard let path = findInCommonPaths(tool) else { return nil }
+        noteRosettaCost(tool: tool, path: path)
+        return path
+    }
+
+    /// Decides between the login shell's answer and a native copy in the
+    /// fallback folders.
+    ///
+    /// The shell's answer stands unless this Mac can't run it natively — an
+    /// Intel-only binary on Apple Silicon would run under Rosetta — *and* one
+    /// of the fallback folders holds a native copy of the same tool. The shell
+    /// wins whenever there is no arch info to contradict it.
+    static func settled(tool: String, shellAnswer: String, fallbackCandidates: [String]) -> String {
+        let machine = BinaryArchitecture.current
+        guard let slices = MachOSliceReader.architectures(atPath: shellAnswer),
+              !slices.contains(machine)
+        else { return shellAnswer }
+
+        let native = fallbackCandidates.first {
+            MachOSliceReader.architectures(atPath: $0)?.contains(machine) == true
+        }
+        guard let native else {
+            noteRosettaCost(tool: tool, path: shellAnswer)
+            return shellAnswer
+        }
+
+        AppLog.probes.info("BinaryLocator: '\(tool)' resolved to \(shellAnswer), which has no \(String(describing: machine)) slice; using the native copy at \(native) instead")
+        return native
+    }
+
+    /// The shell binary for the `which`/PATH spawns, guarded against Rosetta
+    /// (issue #251): a login shell without a slice for this Mac's architecture
+    /// would run translated on every lookup, and macOS then names ClaudeBar in
+    /// its "apps for Intel processors" warning. The system shell at /bin/zsh
+    /// has shipped universal since macOS 12.
+    ///
+    /// Only the *binary* changes; the argument and parsing rules still follow
+    /// the user's shell (its PATH is the one being asked for). A shell whose
+    /// rules /bin/zsh can't carry (nushell) simply fails the lookup and the
+    /// common-path fallback takes over, as it already does for spawn failures.
+    static func whichShellPath(preferred: String) -> String {
+        let chosen = whichShellPath(
+            preferred: preferred,
+            machine: .current,
+            preferredSlices: MachOSliceReader.architectures(atPath: preferred)
+        )
+        if chosen != preferred {
+            AppLog.probes.info("BinaryLocator: '\(preferred)' has no slice this Mac runs natively; using /bin/zsh for PATH lookups so ClaudeBar isn't blamed for Intel apps")
+        }
+        return chosen
+    }
+
+    /// The decision itself, kept free of file reads so tests pass it in.
+    static func whichShellPath(
+        preferred: String,
+        machine: BinaryArchitecture,
+        preferredSlices: [BinaryArchitecture]?
+    ) -> String {
+        guard let slices = preferredSlices, !slices.contains(machine) else { return preferred }
+        return "/bin/zsh"
+    }
+
+    /// Records once per launch that the binary ClaudeBar settled on is
+    /// Intel-only and will run under Rosetta, so macOS may name ClaudeBar in
+    /// its "apps for Intel processors" warning. Never a silent choice: this is
+    /// where support questions get their answer.
+    private static func noteRosettaCost(tool: String, path: String) {
+        guard BinaryArchitecture.current == .arm64,
+              let slices = MachOSliceReader.architectures(atPath: path),
+              !slices.contains(.arm64),
+              rosettaNotices.insert(path)
+        else { return }
+
+        AppLog.probes.info("BinaryLocator: '\(tool)' at \(path) is Intel-only and will run under Rosetta; macOS may name ClaudeBar in its 'apps for Intel processors' warning")
+    }
+
+    private static let rosettaNotices = OncePerPathLog()
+
+    /// A locked set of paths already logged, so a tool that runs translated
+    /// costs one log line, not one per refresh.
+    private final class OncePerPathLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var seen: Set<String> = []
+
+        func insert(_ path: String) -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return seen.insert(path).inserted
+        }
     }
 
     /// Tries to find a tool using the user's login shell.
     private static func whichViaShell(_ tool: String) -> String? {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        let shell = Shell.detect(from: shellPath)
+        let preferred = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let shell = Shell.detect(from: preferred)
+        let shellPath = whichShellPath(preferred: preferred)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: shellPath)
@@ -176,31 +273,59 @@ public struct BinaryLocator: Sendable {
 
     /// Searches for a tool in common installation paths.
     /// This is the fallback for menu bar apps where shell access is limited.
+    ///
+    /// When several folders hold the same tool, a copy built for this Mac wins
+    /// over an Intel-only one; otherwise the folder order stands (issue #251).
     public static func findInCommonPaths(_ tool: String) -> String? {
-        let fm = FileManager.default
+        candidates(in: commonPaths, tool: tool).first
+    }
 
-        for basePath in commonPaths {
+    /// Every install location of `tool` under `basePaths`, best first: a
+    /// binary carrying a slice this Mac runs natively beats an Intel-only one,
+    /// and equal candidates keep the order they were given in.
+    static func candidates(in basePaths: [String], tool: String) -> [String] {
+        let fm = FileManager.default
+        var found: [String] = []
+
+        for basePath in basePaths {
             // Direct check: /path/bin/tool
             let directPath = "\(basePath)/\(tool)"
             if fm.isExecutableFile(atPath: directPath) {
-                AppLog.probes.debug("BinaryLocator.findInCommonPaths('\(tool)') found at \(directPath)")
-                return directPath
+                found.append(directPath)
             }
 
             // For nvm/Herd: search in version subdirectories
             // e.g., ~/Library/Application Support/Herd/config/nvm/versions/node/v24.11.0/bin/codex
             if basePath.contains("nvm/versions") || basePath.contains("Herd") {
-                if let found = searchNvmVersions(basePath: basePath, tool: tool) {
-                    return found
+                if let foundInVersions = searchNvmVersions(basePath: basePath, tool: tool) {
+                    found.append(foundInVersions)
                 }
             }
         }
 
-        return nil
+        return nativeFirst(found)
+    }
+
+    /// Moves the candidates built for this Mac ahead of Intel-only ones,
+    /// keeping the given order otherwise. Candidates whose architecture can't
+    /// be read count as neither, so scripts keep their place.
+    static func nativeFirst(_ paths: [String]) -> [String] {
+        let machine = BinaryArchitecture.current
+        return paths.enumerated().sorted { lhs, rhs in
+            let lhsNative = MachOSliceReader.architectures(atPath: lhs.element)?.contains(machine) ?? false
+            let rhsNative = MachOSliceReader.architectures(atPath: rhs.element)?.contains(machine) ?? false
+            if lhsNative != rhsNative { return lhsNative }
+            return lhs.offset < rhs.offset
+        }
+        .map(\.element)
     }
 
     /// Searches for a tool in nvm/Herd version directories.
     /// Structure: basePath/node/vX.Y.Z/bin/tool
+    ///
+    /// Newer versions win, unless the newer install is Intel-only and an older
+    /// one is native — a translated node under Rosetta is the warning in
+    /// issue #251.
     private static func searchNvmVersions(basePath: String, tool: String) -> String? {
         let fm = FileManager.default
         let nodeVersionsPath = basePath.hasSuffix("/node") ? basePath : "\(basePath)/node"
@@ -214,15 +339,14 @@ public struct BinaryLocator: Sendable {
             v1.compare(v2, options: .numeric) == .orderedDescending
         }
 
-        for version in sortedVersions {
+        let candidates = sortedVersions.compactMap { version -> String? in
             let binPath = "\(nodeVersionsPath)/\(version)/bin/\(tool)"
-            if fm.isExecutableFile(atPath: binPath) {
-                AppLog.probes.debug("BinaryLocator.searchNvmVersions('\(tool)') found at \(binPath)")
-                return binPath
-            }
+            return fm.isExecutableFile(atPath: binPath) ? binPath : nil
         }
 
-        return nil
+        guard let binPath = nativeFirst(candidates).first else { return nil }
+        AppLog.probes.debug("BinaryLocator.searchNvmVersions('\(tool)') found at \(binPath)")
+        return binPath
     }
 
     /// Gets the user's PATH from their login shell.
@@ -242,8 +366,9 @@ public struct BinaryLocator: Sendable {
     /// Uncached login-shell `PATH` lookup.
     private static func computeShellPath() -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        let shell = Shell.detect(from: shellPath)
+        let preferred = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let shell = Shell.detect(from: preferred)
+        let shellPath = whichShellPath(preferred: preferred)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: shellPath)

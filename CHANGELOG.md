@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **"Support for apps for Intel processors" warning**: ClaudeBar now runs a tool's native Apple-silicon copy when one exists and asks the system shell, not an Intel-only one, for PATHs — so macOS stops naming ClaudeBar for a tool it ran. ([#251](https://github.com/tddworks/ClaudeBar/issues/251))
+
 ### Added
 - Settings → Appearance → Popover Text Size scales the popover's text up to 1.4× and widens the window to fit. ([#364](https://github.com/tddworks/ClaudeBar/issues/364)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/settings.md)
 

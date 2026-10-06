@@ -99,8 +99,35 @@ Every provider runs on the same engine, so its log lines have the same shape: `<
 | `Hook HTTP server failed: …` | Port 19847 is taken, so session hooks are off ([session hooks](features/session-hooks/README.md)) |
 | `Usage history: scanned <n> recent log files (…)` / `… raw records, … after dedup` | *TODAY'S USAGE* read a tool's local logs. Days that have closed are kept in `~/.claudebar/usage-history/`; deleting that folder makes the next read sum them again |
 | `Usage history: price file '<file>' is missing` / `is malformed` | A provider's price list didn't load, so its usage history shows tokens without cost. Report it with the log |
+| `'<tool>' at <path> is Intel-only and will run under Rosetta; macOS may name ClaudeBar in its 'apps for Intel processors' warning` | The only copy of the tool on your Mac is Intel-only, so running it is translated ([below](#support-for-apps-for-intel-processors-macos-warning)) |
+| `'<tool>' resolved to <path>, which has no arm64 slice; using the native copy at <other> instead` | Two copies of the tool existed; ClaudeBar picked the native one ([below](#support-for-apps-for-intel-processors-macos-warning)) |
+| `'<path>' has no slice this Mac runs natively; using /bin/zsh for PATH lookups` | Your login shell is Intel-only, so ClaudeBar asks the system shell for PATHs instead of running the shell translated ([below](#support-for-apps-for-intel-processors-macos-warning)) |
 
 Each provider's own errors and what to do: its page under [providers/](providers/).
+
+## Support for apps for Intel processors (macOS warning)
+
+macOS 26 shows a notification that says *"Support for apps for Intel processors will end. This version of '<app>' contains components that will not work in future macOS releases."* When the app it names is ClaudeBar, the Intel-only component isn't ClaudeBar itself — it's a tool ClaudeBar ran on your behalf: the coding CLIs it reads quotas from, `node` behind them, or the login shell it asks for your PATH.
+
+That matters because macOS records whichever app spawned a translated process as the one responsible. An Intel-only tool runs under Rosetta on an Apple-silicon Mac, and ClaudeBar — whose whole job is spawning those tools — gets named.
+
+ClaudeBar avoids what it can:
+
+- It reads a binary's architecture before running it. When several copies of a tool exist (for example an Intel-only one from an old nvm install and a native one), it picks the native one; the shell's answer still wins when there is nothing native to prefer.
+- If the only copy is Intel-only, ClaudeBar still uses it — you installed it there — and logs the one line above, so the choice is never silent.
+- When your login shell itself is Intel-only, ClaudeBar asks the always-universal system shell (`/bin/zsh`) for PATH lookups instead of running your shell translated.
+
+If the warning still names ClaudeBar, find what is Intel-only and reinstall it natively:
+
+```bash
+# Which of the usual suspects are Intel-only on your arm64 Mac
+for b in claude codex gemini node bun python3; do
+  p=$(which $b 2>/dev/null) || continue
+  lipo -archs "$p" | grep -q arm64 || echo "Intel-only: $p"
+done
+```
+
+Reinstalling that tool with a native build (for example `arch -arm64` Homebrew, or an arm64 Node from nvm) makes both the Rosetta runs and the warning go away.
 
 ## Still stuck
 
