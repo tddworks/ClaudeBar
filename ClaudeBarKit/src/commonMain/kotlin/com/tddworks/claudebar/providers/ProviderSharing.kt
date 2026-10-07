@@ -1,5 +1,8 @@
 package com.tddworks.claudebar.providers
 
+import com.tddworks.claudebar.datasources.commands
+import com.tddworks.claudebar.datasources.urls
+
 import com.tddworks.claudebar.datasources.Fetch
 import com.tddworks.claudebar.datasources.lookup.CredentialLookup
 import kotlinx.serialization.json.JsonArray
@@ -64,31 +67,6 @@ private fun keyNames(lookup: CredentialLookup): List<String> = when (lookup) {
     is CredentialLookup.Refined -> keyNames(lookup.base)
     else -> emptyList()
 }
-
-/** Every URL a request may go to, as written — `{{setting.x}}` and `{{token}}` left for the caller. */
-private val Fetch.urls: List<String>
-    get() = when (this) {
-        is Fetch.Http -> listOf(request.url)
-        is Fetch.HttpSteps -> steps.steps.map { it.request.url }
-        // Only this Mac's loopback address, on whatever port the app listens.
-        is Fetch.LocalServer -> call.paths.map { "https://127.0.0.1:{{port}}$it" }
-        else -> emptyList()
-    }
-
-/** Every command it may run, as argv. */
-private val Fetch.commands: List<List<String>>
-    get() = when (this) {
-        is Fetch.JsonRpc -> listOf(listOf(call.cli) + call.args)
-        is Fetch.Cli -> listOf(listOf(call.cli) + call.args)
-        is Fetch.Command -> listOf(listOf(call.cli) + call.args)
-        is Fetch.LocalServer -> listOf(
-            listOf("/usr/bin/pgrep", "-lf", call.process.names.joinToString("|")),
-            listOf("/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", "{{pid}}"),
-        )
-        // The person's own script — *Import* shows it before anything runs.
-        is Fetch.Script -> listOf(listOf("/bin/sh", "-c", call.run))
-        else -> emptyList()
-    }
 
 private val urlPattern = Regex("""^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]*)""")
 

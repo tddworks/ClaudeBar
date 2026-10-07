@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.providers
 
+import com.tddworks.claudebar.datasources.runningCLI
+
 import com.tddworks.claudebar.datasources.process.SignInCall
 
 import com.tddworks.claudebar.datasources.DataSourceDefinition
@@ -561,26 +563,4 @@ internal fun JsonObject.present(key: String): JsonElement? = this[key]?.takeUnle
 /** A map of text, every value text. */
 internal fun JsonObject.textMap(key: String): Map<String, String>? = (present(key) as? JsonObject)?.mapValues { (name, value) ->
     (value as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw DefinitionError("\"$key.$name\" is text")
-}
-
-/** The same fetch with the CLI at [binary] wherever it ran [cli]. */
-private fun Fetch.runningCLI(cli: String, binary: String): Fetch = when {
-    this is Fetch.JsonRpc && call.cli == cli -> Fetch.JsonRpc(call.copy(cli = binary))
-    this is Fetch.Cli && call.cli == cli -> Fetch.Cli(call.copy(cli = binary))
-    this is Fetch.Command && call.cli == cli -> Fetch.Command(call.copy(cli = binary))
-    else -> this
-}
-
-/** A credential refresh that runs [cli] repointed at [binary], through the lookups that wrap it. */
-private fun CredentialLookup.runningCLI(cli: String, binary: String): CredentialLookup = when (this) {
-    is CredentialLookup.FirstOf -> CredentialLookup.FirstOf(lookups.map { it.runningCLI(cli, binary) })
-    is CredentialLookup.Refined -> CredentialLookup.Refined(base.runningCLI(cli, binary), refinement)
-    is CredentialLookup.Refreshing -> {
-        val refresh = refresh
-        CredentialLookup.Refreshing(
-            base.runningCLI(cli, binary),
-            if (refresh is CredentialRefresh.Cli && refresh.call.cli == cli) CredentialRefresh.Cli(refresh.call.copy(cli = binary)) else refresh,
-        )
-    }
-    else -> this
 }
