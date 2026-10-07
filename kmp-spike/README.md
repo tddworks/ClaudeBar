@@ -69,10 +69,26 @@ swift run --package-path swift-consumer QuotasDemo
 ## Swift export (JetBrains' own path) vs SKIE
 
 Swift export is **Alpha** in Kotlin 2.4 (`suspend` → `async`, `Flow` → `AsyncSequence`,
-enums, sealed → Swift enums in 2.4.20, no generics); the docs list only iOS targets.
-SKIE works on the Objective-C export and is the mature choice today; once Swift export is
-stable it will replace it. JetBrains is also removing Swift IDE support from the KMP plugin
-(IntelliJ 2026.3), so Swift stays in Xcode either way.
+enums, sealed → Swift enums in 2.4.20, no generics). The docs show only iOS targets,
+but **rechecked by building it: macOS works**. `macosArm64` + `macosX64` with
+`swiftExport { moduleName = "QuotaRules" }` produce `arm64-apple-macos` and
+`x86_64-apple-macos` Swift modules and a fat `libQuotaRules.a`, and a Swift 6 file
+calls them and runs.
+
+What it is like today, against SKIE:
+
+| | Swift export (Alpha) | SKIE 0.10.15 (on Obj-C export) |
+|---|---|---|
+| macOS, universal | yes | yes |
+| How it reaches Xcode | only `embedSwiftExportForXcode`, a **build phase run by Xcode** (reads Xcode's env, needs `ENABLE_USER_SCRIPT_SANDBOXING=NO`); no XCFramework, no SPM package | a prebuilt **XCFramework**, built once by Gradle; Xcode never runs Gradle |
+| Kotlin enum | Swift enum, but cases keep Kotlin's names: `.HEALTHY` | Swift enum, `.healthy` |
+| Sealed members | nested names are emitted `internal`; Swift must use the mangled `_ExportedKotlinPackages_com_…_Left_Share` | `LeftShare`, `onEnum(of:)` |
+| `Sendable` | no (same as SKIE) | no |
+| Stability | "breaking changes expected" | stable, follows each Kotlin release |
+
+SKIE is the practical choice today; Swift export becomes the choice once it is stable
+and can build a framework outside Xcode. JetBrains is also removing Swift IDE support
+from the KMP plugin (IntelliJ 2026.3), so Swift stays in Xcode either way.
 
 ## KMMBridge: what it is for
 

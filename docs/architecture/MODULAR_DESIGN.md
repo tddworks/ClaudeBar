@@ -61,7 +61,7 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 
 | Module | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | `Internal/` (the implementation) |
 |---|---|---|---|
-| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O |
+| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O; the rules' bodies call the Kotlin core `QuotaRules` (§3.1) |
 | `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5) |
 | `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
 | `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository` | definition-file reading, `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
@@ -88,7 +88,8 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
    ┌──────────────── Quotas ────────────┐   (+ Diagnostics, which anyone may import)
 ```
 
-1. **Arrows point at the supplier.** `Quotas` imports nothing but Foundation.
+1. **Arrows point at the supplier.** `Quotas` imports nothing but Foundation
+   and its own Kotlin core (§3.1).
 2. **Siblings never import across the fence.** `Monitoring` does not import
    `Alerting`; it emits `MonitoringEvent` and `Alerting` subscribes.
 3. **No module names a vendor.** A vendor's name appears in its JSON file,
@@ -102,6 +103,63 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 
 The build enforces it: a forbidden import fails to compile, because the target
 has no such dependency in `Project.swift`.
+
+### 3.1 · Rules written once, in Kotlin
+
+> **Status: PROPOSED** — the spike that proved it is `kmp-spike/README.md`.
+
+A rule that a second platform would need too (a Windows or Linux tray app, an
+Android companion, a JVM backend) is written once in Kotlin Multiplatform and
+**called from inside the Swift module that owns it**. The law keeps its one
+owner ([model §5](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
+only the language of its body changes.
+
+```text
+Modules/Quotas/
+├── Sources/                 THE DOMAIN, unchanged to every caller — Swift values,
+│                            Sendable, Decimal; their rules call the core
+│     UsageQuota.status      → QuotaRules.status(…)
+│     QuotaStatus.from(…)    → QuotaRules.statusFrom(…)
+└── Kotlin/                  THE CORE — a Gradle KMP project
+    ├── src/commonMain/      the rules: pure functions over numbers and strings
+    ├── src/jvmTest/         the rules' own tests, JUnit
+    └── build/…/QuotaRules.xcframework   built by Gradle, linked by Quotas only
+```
+
+1. **The Swift module stays the face.** Callers keep `UsageQuota`,
+   `QuotaStatus`, `StatusPolicy` exactly as they are; nothing outside the
+   module changes. `Quotas` writes `internal import QuotaRules`, so no Kotlin
+   type can leak into another module's signature.
+2. **Only plain values cross.** The core takes and returns `Double`, `Long`,
+   `String` and its own enums, never a Swift type, and the Swift side
+   converts. Kotlin classes are not `Sendable` and have no `Decimal`; keeping
+   them inside one call avoids both (spike friction #1, #4).
+3. **The core is linked by exactly one module** (rule 4): `QuotaRules` →
+   `Quotas`. A second core for another module is its own framework.
+4. **Swift never implements a Kotlin interface.** The edges (CLI, network,
+   Keychain) stay Swift ports; Kotlin only decides. This avoids SKIE's hidden
+   `__name` for `suspend` requirements and the `NSObject` subclassing (spike
+   friction #2, #3).
+5. **Tooling**: Kotlin 2.4.20, SKIE 0.10.15 for the Swift API (a prebuilt
+   XCFramework; Swift export also builds for macOS but is Alpha and runs only
+   as an Xcode build phase — the switch when it is stable), JUnit 6 on a
+   `jvm()` target; `macosArm64` + `macosX64` because releases are universal
+   (`macosX64` is deprecated upstream: the day it is removed, Intel builds
+   need the Swift rules back or Intel support ends). KMMBridge is **not**
+   used while the core lives in this repo: it exists to publish a binary to
+   another repo; a Gradle task does the same here.
+6. **Built before generating**: `scripts/build-kotlin.sh` runs Gradle and
+   writes the XCFramework that `Project.swift` links; `tuist generate` and
+   every CI workflow run it first.
+
+**What moves first** — the status law, the one every surface reads (menu bar,
+cards, pills, Touch Bar, notch, notifications): `QuotaStatus.from` (absolute
+and pace-aware), `UsageQuota.status`, `percentTimeElapsed`,
+`status(under:)`, `UsageSnapshot.overallStatus(under:)`, and the quota key
+(`QuotaType.quotaKey` / `init(quotaKey:)`). The Swift suites that guard them
+today (`QuotaStatusTests`, `StatusPolicyTests`, `UsageQuotaTests`,
+`QuotaTypeTests`, `UsageSnapshotTests`) stay unchanged and pass: they are the
+proof the port answers the same.
 
 ## 4 · Naming
 
@@ -220,6 +278,9 @@ testability" alone.
 - What each piece's tests guard: [TARGET §7](TARGET_ARCHITECTURE.md#7--testing).
 - `AcceptanceTests` stays at the App level and composes real modules with
   stubbed ports.
+- A Kotlin core's rules are tested in Kotlin with JUnit (`./gradlew jvmTest`);
+  the Swift module's existing tests keep guarding the same laws through the
+  Swift face, so a port is proven by the Swift suite staying green.
 - `MOCKING` is a project-level compilation condition in `Project.swift`, so
   every new target inherits it.
 
@@ -246,6 +307,11 @@ The kernel still holds a few types that belong elsewhere; each carries a
 under *where the code is still behind*.
 
 ## 9 · Open
+
+- **The next Kotlin core.** After the status law: pace (`UsagePace`), then the
+  definition mappings in `DataSources` (the path dialect, `HumanDate`), which
+  are pure and are what another platform would need to read the same JSON
+  definitions. Not the workers: they are Apple I/O.
 
 - **`Storage` as a module, or each module's settings in its own `Internal/`?**
   `settings.json` is one file many contexts write, so one owner today.
