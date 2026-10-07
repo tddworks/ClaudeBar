@@ -1,0 +1,3 @@
+line1
+line2
+line3[2;3H[1J

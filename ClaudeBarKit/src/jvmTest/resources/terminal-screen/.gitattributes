@@ -1,0 +1,2 @@
+# Byte-exact terminal input and SwiftTerm renderings: never normalise line endings.
+* -text

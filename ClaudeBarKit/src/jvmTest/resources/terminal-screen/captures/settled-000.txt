@@ -1,0 +1,50 @@
+
+This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
+
+Memory injection starts on your second session in a project.
+
+`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional).
+Otherwise memory builds passively as work happens.
+
+Live activity: http://localhost:37701
+✨  Get up to 100% more usage from your plan — memory runs off-plan, free for 30 days https://cmem.ai/pro?<query>
+How it works: `/how-it-works`
+
+This message disappears once the first observation lands.
+
+View Observations Live @ http://localhost:37701
+✨  Get 2x more use out of your Max plan for free (30-day trial, $30/mo) https://cmem.ai/pro?<query>
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+Settings  Status   Config   Usage   Stats
+
+Session
+
+Total cost:            $0.0000
+Total duration (API):  0s
+Total duration (wall): 2s
+Total code changes:    0 lines added, 0 lines removed
+Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+Current session
+0% used
+Resets 4pm (<timezone>)
+
+Current week (all mod>ls)
+███                                                6% used
+Resets Sep 13 at 4pm (<timezone>)
++50% weekly limits promo through Sep 13 · clau.de/cc-50-promo
+
+What's contributing to your limits usage?
+Approximate, based on local sessions on this machine — does not include other devices or claude.ai
+
+Last 24h · these are independent characteristics of your usage, not a breakdown
+
+Nothing over 10% in this period — try the other window.
+
+d to day · w to week
+
+Usage credits
+0% used
+$0.00 / $75.00 spent · Resets Oct 1 (<timezone>)
+
+Esc to cancel

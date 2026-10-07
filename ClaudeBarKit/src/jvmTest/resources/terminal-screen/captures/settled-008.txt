@@ -1,0 +1,50 @@
+This message disappears once the first observation lands.
+
+View Observations Live @ http://localhost:37701
+✨  Get 2x more use out of your Max plan for free (30-day trial, $30/mo) https://cmem.ai/pro?<query>
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+Settings  Status   Config   Usage   Stats
+
+Session
+
+Total cost:            $0.0000
+Total duration (API):  0s
+Total duration (wall): 3s
+Total code changes:    0 lines added, 0 lines removed
+Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+Current session
+███▌                                               7% used
+Resets 4pm (<timezone>)
+
+Current week (all mod>ls)
+███                                                6% used
+Resets Sep 13 at 4pm (<timezone>)
++50% weekly limits promo through Sep 13 · clau.de/cc-50-promo
+
+What's contributing to your limits usage?
+Approximate, based on local sessions on this machine — does not include other devices or claude.ai
+
+Last 24h · these are independent characteristics of your usage, not a breakdown
+
+89% of your usage came from /anthropic-skills:xlsx
+Heavy skills can be scoped down or run with a cheaper model via skill
+frontmatter.
+
+89% of your usage came from the plugin "anthropic-skills"
+Review what this plugin contributes — its agents, skills, and MCP tools all
+count toward your limit.
+
+Skills                  % of usage
+/anthropic-skills:xlsx         89%
+
+Plugins                 % of usage
+anthropic-skills               89%
+
+d to day · w to week
+
+Usage credits
+0% used
+$0.00 / $75.00 spent · Resets Oct 1 (<timezone>)
+
+Esc to cancel
