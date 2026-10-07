@@ -18,10 +18,10 @@ import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
-import platform.Foundation.NSString
-import platform.Foundation.NSUTF8StringEncoding
-import platform.Foundation.create
-import platform.Foundation.dataUsingEncoding
+import platform.Foundation.dataWithBytes
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.readBytes
+import kotlinx.cinterop.usePinned
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
@@ -48,7 +48,7 @@ import platform.Security.kSecValueData
 class KeychainCredentials(private val service: String = "com.tddworks.claudebar.credentials") : CredentialRepository {
 
     override fun save(value: String, key: String) {
-        val data = CFBridgingRetain((value as NSString).dataUsingEncoding(NSUTF8StringEncoding))
+        val data = CFBridgingRetain(value.encodeToByteArray().toNSData())
         try {
             val updateStatus = withQuery(key) { query ->
                 withDictionary(kSecValueData to data) { update -> SecItemUpdate(query, update) }
@@ -74,7 +74,7 @@ class KeychainCredentials(private val service: String = "com.tddworks.claudebar.
             return null
         }
         val data = CFBridgingRelease(result.value) as? NSData ?: return null
-        NSString.create(data, NSUTF8StringEncoding)?.toString()
+        data.toByteArray().decodeToString()
     }
 
     override fun delete(key: String): Boolean {
@@ -107,6 +107,14 @@ class KeychainCredentials(private val service: String = "com.tddworks.claudebar.
         } finally {
             dictionary?.let { CFRelease(it) }
         }
+    }
+
+    private fun ByteArray.toNSData(): NSData =
+        if (isEmpty()) NSData() else usePinned { NSData.dataWithBytes(it.addressOf(0), size.toULong()) }
+
+    private fun NSData.toByteArray(): ByteArray {
+        val size = length.toInt()
+        return if (size == 0) ByteArray(0) else bytes!!.readBytes(size)
     }
 
     // The value is never logged — only what failed and its status.

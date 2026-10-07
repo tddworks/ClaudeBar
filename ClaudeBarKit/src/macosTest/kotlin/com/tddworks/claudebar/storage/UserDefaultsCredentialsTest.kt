@@ -1,4 +1,4 @@
-package com.tddworks.claudebar.alerting
+package com.tddworks.claudebar.storage
 
 import platform.Foundation.NSUserDefaults
 import kotlin.random.Random

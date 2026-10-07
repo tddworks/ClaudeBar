@@ -1,6 +1,5 @@
-package com.tddworks.claudebar.alerting
+package com.tddworks.claudebar.storage
 
-import com.tddworks.claudebar.storage.CredentialRepository
 import platform.Foundation.NSUserDefaults
 
 /**
