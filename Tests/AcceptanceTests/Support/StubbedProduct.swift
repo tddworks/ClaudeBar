@@ -59,7 +59,7 @@ private struct ProbeAnswers: NetworkClient {
     }
 
     private static func type(_ kind: QuotaType) -> String {
-        switch kind {
+        switch kind.shape {
         case .session: "session"
         case .weekly: "weekly"
         case .modelSpecific(let model): "model:\(model)"

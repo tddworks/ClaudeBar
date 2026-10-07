@@ -7,6 +7,7 @@ ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them fro
 ## Build & test
 
 ```bash
+./scripts/build-kotlin.sh                # the Kotlin kernel Quotas links (needs JDK 21); rerun after editing it
 tuist install && tuist generate          # generated *.xcodeproj / *.xcworkspace are git-ignored
 tuist test                               # every target: module tests, DomainTests, InfrastructureTests, AppTests, AcceptanceTests
 tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
@@ -22,7 +23,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 | Where | Holds |
 |---|---|
-| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing |
+| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageQuota` and its laws are Kotlin (`Kotlin/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §3.1](docs/architecture/MODULAR_DESIGN.md#31--the-kernel-written-once-in-kotlin) |
 | `Modules/DataSources` | `DataSource` (credential lookup → fetch → mapping) and its workers: OAuth, HTTP, JSON-RPC, CLI, JSON/text/script mapping |
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |

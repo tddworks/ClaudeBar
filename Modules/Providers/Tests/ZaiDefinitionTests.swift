@@ -328,7 +328,7 @@ struct ZaiDefinitionTests {
         """
         let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
-        if case .modelSpecific(let label) = snapshot.quotas.first?.quotaType {
+        if case .modelSpecific(let label) = snapshot.quotas.first?.quotaType.shape {
             #expect(label.contains("99"))
         } else {
             Issue.record("Expected .modelSpecific quota type for unknown unit, got \(String(describing: snapshot.quotas.first?.quotaType))")

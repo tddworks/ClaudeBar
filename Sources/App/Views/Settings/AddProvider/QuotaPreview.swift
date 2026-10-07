@@ -5,7 +5,7 @@ import Foundation
 /// "62% left", "$12.40 of $50.00", "$12.40 remaining" for a balance.
 enum QuotaPreview {
     static func text(_ quota: UsageQuota) -> String {
-        switch quota.left {
+        switch quota.left.shape {
         case .share(let percent):
             return "\(Int(percent.rounded()))% left"
         case .money(let remaining, let ceiling?):

@@ -1827,7 +1827,7 @@ struct WrappedStatCard: View {
         if title.contains("chat") { return "bubble.left.fill" }
         if title.contains("imagine") { return "sparkles" }
 
-        switch quota.quotaType {
+        switch quota.quotaType.shape {
         case .session: return "bolt.fill"
         case .weekly: return "calendar.badge.clock"
         case .modelSpecific: return "cpu.fill"

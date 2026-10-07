@@ -87,6 +87,26 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ inputs.version }}" "$INFO_PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.build.outputs.build_number }}" "$INFO_PLIST"
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Cache Gradle and Kotlin/Native
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: kotlin-v1-${{ runner.os }}-${{ hashFiles('Modules/Quotas/Kotlin/*.gradle.kts', 'Modules/Quotas/Kotlin/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            kotlin-v1-${{ runner.os }}-
+
+      - name: Build the Kotlin kernel
+        run: ./scripts/build-kotlin.sh
+
       - name: Install Dependencies & Generate Xcode Project
         run: |
           tuist install

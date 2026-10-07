@@ -273,7 +273,7 @@ struct UsageSnapshotTests {
         // Then
         #expect(modelQuotas.count == 2)
         #expect(modelQuotas.allSatisfy { quota in
-            if case .modelSpecific = quota.quotaType { return true }
+            if case .modelSpecific = quota.quotaType.shape { return true }
             return false
         })
     }

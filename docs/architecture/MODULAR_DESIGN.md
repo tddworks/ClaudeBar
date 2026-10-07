@@ -106,7 +106,9 @@ has no such dependency in `Project.swift`.
 
 ### 3.1 · The kernel written once, in Kotlin
 
-> **Status: PROPOSED** — proven by the spike in `kmp-spike/README.md`.
+> **Status: SLICE 1 BUILT** — `UsageQuota` and the values it reads are Kotlin;
+> the app and its 2,750 Swift tests run on them. Versions, friction and the
+> bridge comparison: [`Modules/Quotas/Kotlin/README.md`](../../Modules/Quotas/Kotlin/README.md).
 
 The shared kernel's values and laws are written once in Kotlin
 Multiplatform, so a second platform (a Windows or Linux tray app, an Android
@@ -123,10 +125,10 @@ Modules/Quotas/
 │   │                           Left, Money, Window, UsagePace … and their laws
 │   ├── src/jvmTest/            the laws' tests, JUnit
 │   └── → QuotaKernel.xcframework   built by Gradle + SKIE, linked by Quotas only
-└── Sources/                    THE SWIFT FACE — extensions only, no second model
+└── Sources/Kernel/             THE SWIFT FACE — extensions only, no second model
       @_exported import QuotaKernel
       Sendable · Comparable     conformances SKIE can't state
-      Date · Decimal · TimeInterval   Foundation views of Kotlin's millis and micros
+      Date · Decimal · TimeInterval   Foundation views of Kotlin's seconds and micros
       init(…, resetsAt: Date? = nil, …)   the default arguments Kotlin's don't survive
       QuotaType.session · .modelSpecific("opus")   construction shortcuts
       quotaType.shape           a Swift enum to `switch` on, with associated values
@@ -144,16 +146,19 @@ Modules/Quotas/
    file. SKIE makes Kotlin enums `Sendable` itself. Nothing else in the app
    writes `@unchecked`.
 3. **Only the face names the bridge.** `onEnum(of:)`, `KotlinLong`, SKIE's
-   generated type names and the millis/micros fields appear in
-   `Modules/Quotas/Sources` and nowhere else. Every other module uses the
+   generated type names and the seconds/micros fields appear in
+   `Modules/Quotas/Sources/Kernel` and nowhere else. Every other module uses the
    face's Swift words. Moving to Swift export later then changes one folder.
-4. **Kotlin has no `Date` or `Decimal`.** Times are epoch milliseconds
-   (`Long`); money is micro-units (`Long`, exact to $0.000001). The face shows
-   them as `Date` and `Decimal`. The caller passes the clock (`nowMillis`),
-   and the face supplies `Date()`.
+4. **Kotlin has no `Date` or `Decimal`.** Times are `Double` seconds on the
+   caller's clock: the kernel only subtracts `nowSeconds`, so the epoch is the
+   caller's, and the face uses Apple's reference date so a `Date` survives the
+   round trip exactly. Money is micro-units (`Long`, exact to $0.000001). The
+   face shows them as `Date` and `Decimal` and supplies `Date()` as now.
 5. **Sealed classes, not sealed interfaces.** A Kotlin sealed class becomes a
-   Swift class, so the face can add `.session`-style static shortcuts on it.
-   Pattern matching goes through `shape`.
+   Swift class, so the face can add `.session`-style static shortcuts and an
+   `==` that finds them. Pattern matching goes through `shape`. A failable
+   init that returns a subclass (`QuotaType(quotaKey:)`) lives in a protocol
+   extension, which may assign `self`.
 6. **Swift never implements a Kotlin interface.** The edges (CLI, network,
    Keychain) stay Swift ports in `DataSources`. Kotlin only holds values and
    decides. This avoids SKIE's hidden `__name` for `suspend` requirements and
@@ -178,15 +183,16 @@ sandboxing off, and gives sealed members mangled names. It is JetBrains'
 direction, so it is re-checked with each Kotlin release (next: 2.5,
 December 2026), and rule 3 keeps the switch to one folder.
 
-**Slice 1 — the quotas show.** The values a card, the menu bar and the
+**Slice 1 — the quotas show (built).** The values a card, the menu bar and the
 status color read move to Kotlin: `UsageQuota`, `QuotaType`, `QuotaDuration`,
 `QuotaStatus`, `StatusPolicy`, `UsagePace`, `Left`, `Money`, `Window`.
 `UsageSnapshot` stays Swift (it holds `CostUsage`, `DailyUsageReport`,
 `AccountTier` and `ExtensionMetric`, which move with it in slice 2) and holds
 Kotlin quotas. The Swift suites that guard these laws today keep passing
 through the face, with call sites rewritten mechanically where a `switch`
-becomes `switch …shape`. The app shows the same cards on mock data
-(`scripts/demo-screenshots.sh`).
+becomes `switch …shape` (nine sites). Run on sample data
+(`scripts/demo-screenshots.sh`), the app reads the same quotas, statuses,
+reset text and menu-bar text, and fires the same alerts.
 
 ## 4 · Naming
 

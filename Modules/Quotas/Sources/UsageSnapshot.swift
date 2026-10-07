@@ -87,7 +87,7 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// All model-specific quotas
     public var modelSpecificQuotas: [UsageQuota] {
         quotas.filter { quota in
-            if case .modelSpecific = quota.quotaType {
+            if case .modelSpecific = quota.quotaType.shape {
                 return true
             }
             return false

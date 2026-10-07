@@ -90,7 +90,7 @@ public final class QuotaAlerts {
     /// ceiling as its part of it; a balance without one has no share.
     private static func lowestShare(_ usage: UsageSnapshot) -> Double? {
         usage.quotas.compactMap { quota -> Double? in
-            switch quota.left {
+            switch quota.left.shape {
             case .share(let percent): percent
             case .money(let money, of: let ceiling?) where ceiling.amount > 0:
                 NSDecimalNumber(decimal: money.amount / ceiling.amount * 100).doubleValue

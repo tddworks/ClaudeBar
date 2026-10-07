@@ -177,7 +177,7 @@ struct AmpDefinitionTests {
 
         // Then
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
-        if let freeQuota, case .modelSpecific(let name) = freeQuota.quotaType {
+        if let freeQuota, case .modelSpecific(let name) = freeQuota.quotaType.shape {
             #expect(name == "Free")
         } else {
             Issue.record("Expected modelSpecific quota type")
