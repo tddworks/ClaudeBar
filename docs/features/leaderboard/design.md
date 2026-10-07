@@ -4,7 +4,7 @@ description: Contributor design for the Leaderboard. Join with a username, share
 
 # Leaderboard: design
 
-**Status:** BUILT on `feat/leaderboard-app`. The server is deployed at `https://claudebar-api.tddworks.com`; its code, storage and security internals live in the private repo `tddworks/claudebar-server`. User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise. **Several devices per member ([§2a](#2a--devices-one-member-several-machines)) is DESIGN, not built**, asked for in [#507](https://github.com/tddworks/ClaudeBar/issues/507); until it is, a member is one key on one Mac.
+**Status:** BUILT on `feat/leaderboard-app`. The server is deployed at `https://claudebar-api.tddworks.com`; its code, storage and security internals live in the private repo `tddworks/claudebar-server`. User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise. **Several devices per member ([§2a](#2a--devices-one-member-several-machines)) is built on the server, not yet in the app**, asked for in [#507](https://github.com/tddworks/ClaudeBar/issues/507); until the app has it, a member is one key on one Mac.
 
 This document owns **joining the board, what a member shares, how a member's uploads are trusted, and how standings are ranked**. Its neighbours own the rest:
 
@@ -135,7 +135,7 @@ There is no `Leaderboard` type on the app side that holds standings. The app doe
 
 ## 2a · Devices: one member, several machines
 
-**Status:** DESIGN, for the maintainer to confirm. Not built.
+**Status:** confirmed ([#512](https://github.com/tddworks/ClaudeBar/pull/512)). The server side, slice 11, is built (`tddworks/claudebar-server` #1); the app side, slices 12–15, is not. It will be written in Kotlin in ClaudeBarKit's `leaderboard` package ([#507](https://github.com/tddworks/ClaudeBar/issues/507)).
 
 People code on more than one machine: a MacBook, a Mac mini, a Windows PC. A tool's logs hold only what ran on that machine, so a member's day is the sum of their machines' days. v1 can't express that: the key is per install, a second Mac can't join under a name already taken, and a copy of one Mac's key on another makes their uploads replace each other's days (§9).
 
@@ -165,7 +165,7 @@ This is RFC 8628's device flow, the one GitHub's and Microsoft's sign-ins use. K
 4. **Every other device in use past its first week** shows each device added since it last looked, once, with its label and **Remove** beside it. It looks on `/me`, which it reads after each upload and when the Leaderboard tab opens. A device that's turned off sees it when turned back on, and one in its own first week sees it once that week ends: until then `/me` shows it only itself. Telegram asks a member's other sessions the same about a new login ([core.telegram.org/api/auth](https://core.telegram.org/api/auth)).
 
 **Limits.**
-- Approving, and reading a pending code, are limited per member per hour; asking for codes, per IP, as `POST /join` is.
+- Approving, and reading a pending code, are limited to 10 a minute per member (Cloudflare's limiter counts only 10 s or 60 s periods; at that rate a live code can't be found among 20⁸ in its 10 minutes); asking for codes, per IP, as `POST /join` is.
 - A member has at most 5 devices that aren't removed (Signal links 5, WhatsApp 4). A sixth approve is refused (`409 deviceLimit`).
 
 ### What a new device may do: a waiting week
@@ -189,7 +189,7 @@ Below, *past its first week* means the device that joined, or one added 7 days a
 ### Removing a device revokes its key, and only that
 
 `DELETE /me/devices/{key}` works from any device of the member past its first week, and from the device itself.
-- The removed device's next upload is answered `401` with `"error": "unauthorized"`, so even an app from before devices forgets its membership, as it does today when the server forgot its member. The answer also names the device that removed it (`removedBy`), and a current app says so.
+- The removed device's next upload is answered `401` with `"error": "unauthorized"`, so even an app from before devices forgets its membership, as it does today when the server forgot its member. The answer also names the device that removed it (`removedBy: {publicKey, label}`), and a current app says so.
 - Removing itself, a device forgets once the server confirmed, as leaving does.
 - Its uploaded days stay and keep counting, listed under it as *removed*. Google, Apple, Microsoft, Tailscale and Keybase all remove a device this way: its access goes, the account's data doesn't.
 - The last device can't be removed (`409 lastDevice`). That is leaving, which deletes the member, every device and every row.
@@ -367,14 +367,14 @@ Host: `https://claudebar-api.tddworks.com`; the public board page is `https://cl
 
 | Route | Auth | Does |
 |---|---|---|
-| `POST /join` `{username, publicKey, label}` | none, rate-limited per IP | creates the member and its first device, or `409 usernameTaken` if the name is taken |
-| `POST /devices` `{publicKey, label}` | none, rate-limited per IP | starts adding a device: answers `{code, expiresIn: 600, interval: 5}`. Until a device of the member approves the code, the key's signature only proves it holds the key: `GET /me` answers it `202` with no member data, and every other signed route refuses it |
-| `GET /me/devices/pending/{code}` | signed, limited per member per hour with approving | what approving `code` would add: `{label, requestedAt}`; `404` when there's no such code, or it expired |
-| `POST /me/devices` `{code}` | signed, limited per member per hour | approves the device that showed `code`; `409 deviceLimit` when the member has 5 devices; `403 deviceTooNew` from a device in its first week |
+| `POST /join` `{username, publicKey, label}` | none, rate-limited per IP | creates the member and its first device: `201 {username}`; `409 usernameTaken` if the name is taken, `409 keyTaken` if the key is already a device's or waiting, `400 badLabel` for a label that isn't 1–40 characters without control characters. Without `label` (an app from before devices) the device is called "Mac" |
+| `POST /devices` `{publicKey, label}` | none, rate-limited per IP | starts adding a device: answers `201 {code, expiresIn: 600, interval: 5}`, the code shown as `WDJB-MJHT` and read however it's typed (case, dash); `409 keyTaken`, `400 badLabel` as for `POST /join`. Until a device of the member approves the code, the key's signature only proves it holds the key: `GET /me` answers it `202` with no member data, and every other signed route refuses it |
+| `GET /me/devices/pending/{code}` | signed, limited to 10 a minute per member with approving | what approving `code` would add: `{label, requestedAt}`; `404 unknownCode` when there's no such code, or it expired |
+| `POST /me/devices` `{code}` | signed, limited to 10 a minute per member | approves the device that showed `code`: `201 {publicKey, label, addedAt}`; `404 unknownCode` for a code that's unknown, expired or used; `409 deviceLimit` when the member has 5 devices; `403 deviceTooNew` from a device in its first week |
 | `DELETE /me/devices/{publicKey}` | signed | removes a device: its key is revoked, its days stay; `409 lastDevice` for the last device; `403 deviceTooNew` from a device in its first week removing another |
 | `DELETE /me/devices/{publicKey}/days[?provider=][&day=]` | signed | deletes a removed device's days, for one provider, one day or all; `403 notYours` for a device in use, `403 deviceTooNew` from a device in its first week |
-| `PUT /usage` `{today, days: [DailyTokens]}` | signed | upserts each of the signing device's days; `today` is the device's date, refused when more than a day from UTC's. With devices, a day that is too old, in the future, or would put the member over the cap is refused alone: the `2xx` answer lists it under `refused` |
-| `GET /me` | signed | the member (`username`, `visible`, `shareCountry`, `country`, `link`), their standing in a view, their devices (`publicKey`, `label`, `addedAt`, `removedAt`, `removedBy`), and every row each device uploaded. From an added device in its first week, only its own device and rows, with the member and the standing. Signed by a key still waiting for approval: `202`; by one whose code expired: `401` |
+| `PUT /usage` `{today, days: [DailyTokens]}` | signed | upserts each of the signing device's days; `today` is the device's date, refused when more than a day from UTC's. With devices, a day that is too old, in the future, or would put the member over the cap is refused alone: the answer is `200 {stored, refused: [{provider, day, reason}]}`, `provider` and `day` echoed as sent, `null` for a row that wasn't an object |
+| `GET /me` | signed | the member (`username`, `visible`, `shareCountry`, `country`, `link`), their standing in a view, their devices (`publicKey`, `label`, `addedAt`, `removedAt`, `removedBy`), and every row each device uploaded, each with `device`, the public key of the device that sent it. `removedBy` is `{publicKey, label}` or `null`. From an added device in its first week, only its own device and rows, with the member and the standing. Signed by a key still waiting for approval: `202 {waiting: true, expiresIn}`; by one whose code expired: `401` |
 | `GET /me/export` | signed | the same, as a downloadable JSON file; `403 deviceTooNew` from an added device in its first week |
 | `PATCH /me` `{username?, visible?, shareCountry?, link?}` | signed | rename, hide or show; opt in to the globe (the server then keeps the country Cloudflare's edge reports for that request, and never updates it) or out (it forgets it at once); set the profile link as `{platform, handle}` (`x`, `instagram` or `github`, each with its own username rule, pinned by `vectors.json`) or remove it with `null`; `403 deviceTooNew` from a device in its first week |
 | `DELETE /me` | signed | deletes the member, every device and every row; `403 deviceTooNew` from a device in its first week |
@@ -391,7 +391,9 @@ X-Nonce:     <16 random bytes, base64url>
 X-Signature: base64url( sign( METHOD \n PATH?QUERY \n TIMESTAMP \n NONCE \n hex(SHA256(body bytes)) ) )
 ```
 
-Every request, signed or not (`POST /join` and `POST /devices` too), also carries `X-Client: <name>/<version>`: the macOS app `claudebar-macos/<version>`, ClaudeBar for Windows `claudebar-windows/<version>`. It isn't a credential and isn't signed; it lets the server tell clients apart and refuse one broken version alone ([#507](https://github.com/tddworks/ClaudeBar/issues/507)). A request without it comes from a macOS app from before this rule.
+Every request, signed or not (`POST /join` and `POST /devices` too), also carries `X-Client: <name>/<version>`: the macOS app `claudebar-macos/<version>`, ClaudeBar for Windows `claudebar-windows/<version>`. It isn't a credential and isn't signed; it lets the server tell clients apart and refuse one broken version alone, answered `426 clientRefused` on every route ([#507](https://github.com/tddworks/ClaudeBar/issues/507)). A request without it comes from a macOS app from before this rule.
+
+**A removed device's key** is answered `401 {error: "unauthorized", message, removedBy: {publicKey, label}}` on every signed route, so an app from before devices forgets its membership as it does for a member the server forgot.
 
 **Periods per device, in one query.** A board view joins each row to its device and keeps the rows inside that device's own period, v1's window ending on the device's date rather than one date, then sums per member as v1 does. The device's date is its `today` while that is within a day of UTC's, and UTC's date once it isn't, so a device that stopped uploading (removed, turned off, a wiped Mac) ages out of *Today* and *7 days* as v1's rows do. For a 7-day window, say: `end = CASE WHEN julianday(date('now')) - julianday(device.today) <= 1 THEN device.today ELSE date('now') END`, then `WHERE row.day BETWEEN date(end, '-6 days') AND end … GROUP BY member`. One member's week can span time zones that way and still be one `GROUP BY`; the indexes and the exact SQL are `claudebar-server`'s.
 
@@ -481,7 +483,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–10 are built; 11–15 are §2a's devices, a design not built yet.
+Test-first slices, each green on its own. Slices 1–11 are built: 11 on the server (`tddworks/claudebar-server` #1). 12–15, §2a's devices in the app, are not built yet.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.
