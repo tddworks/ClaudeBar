@@ -2,6 +2,7 @@ package com.tddworks.claudebar.providers
 
 import com.tddworks.claudebar.datasources.Fetch
 import com.tddworks.claudebar.datasources.mapping.Mapping
+import com.tddworks.claudebar.quotas.QuotaType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -16,8 +17,7 @@ import java.io.File
 
 /**
  * An extension's `manifest.json`, read as a definition of origin *Extension*
- * (docs/features/extensions/design.md). The person's file stays as it is. What the example's
- * script shows once refreshed runs through `Provider`, and is the lifecycle's to test.
+ * (docs/features/extensions/design.md). The person's file stays as it is.
  */
 class ExtensionDefinitionTest {
     private val root = TestDefinitions.folder("extensions")
@@ -76,6 +76,21 @@ class ExtensionDefinitionTest {
         assertEquals(mapOf("CLAUDEBAR_API_KEY" to "apiKey"), call.secrets)
         assertEquals("{{setting.baseUrl}}", call.environment["CLAUDEBAR_BASE_URL"])
         assertEquals(Mapping.Usage, definition.dataSources[0].mapping)
+    }
+
+    @Test
+    fun `should show the example extension's session and weekly quotas`() {
+        val folder = example()
+        // The scripts run as the person's own programs, as they are in the docs.
+        folder.listFiles { file -> file.extension == "sh" }.orEmpty().forEach { it.setExecutable(true) }
+        val stub = StubbedProvider()
+        val provider = stub.make(read(folder))
+
+        val usage = provider.refreshPlain().usage()
+
+        assertEquals(85.0, usage.quota(QuotaType.Session)?.percentRemaining)
+        assertEquals(62.0, usage.quota(QuotaType.Weekly)?.percentRemaining)
+        stub.cleanUp()
     }
 
     @Test

@@ -12,6 +12,8 @@ import com.tddworks.claudebar.datasources.mapping.Mapping
 import com.tddworks.claudebar.datasources.mapping.QuotaRule
 import com.tddworks.claudebar.datasources.mapping.ResetRef
 import com.tddworks.claudebar.datasources.mapping.ValueRef
+import com.tddworks.claudebar.quotas.Left
+import com.tddworks.claudebar.quotas.Money
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -25,8 +27,7 @@ import java.io.File
 
 /**
  * *Add Provider* (USER_JOURNEYS moments 5–9): the sheet's answers become a definition — the
- * same data the built-ins are. What a drafted provider shows once refreshed goes through
- * `Provider`, and is the lifecycle's to test.
+ * same data the built-ins are — and run on the same `Provider` and `DataSource`.
  */
 class AddProviderTest {
     private val root = TestDefinitions.folder("catalog")
@@ -83,6 +84,25 @@ class AddProviderTest {
 
         assertEquals(CredentialLookup.Environment("OPENROUTER_API_KEY"), source.credential)
         assertEquals("{{token}}", (source.fetch as Fetch.Http).request.headers["X-API-Key"])
+    }
+
+    @Test
+    fun `should show money of its limit, with no reset, when the drafted provider is refreshed`() {
+        val network = StubNetwork { call ->
+            if (call.headers["Authorization"] == "Bearer sk-or-1") Response(200, body = """{"data":{"limit_remaining":12.4,"limit":50}}""".encodeToByteArray())
+            else Response(401, body = ByteArray(0))
+        }
+        val stub = StubbedProvider(network = network)
+        val vault = MemoryVault(mapOf("custom-openrouter.apiKey" to "sk-or-1"))
+        val definition = openRouter().definition("custom-openrouter")
+        val provider = stub.make(definition, vault = vault)
+
+        val usage = provider.refreshPlain().usage()
+
+        val quota = usage.quotas.first()
+        assertEquals(Left.Balance(Money(12_400_000_000, "USD"), Money(50_000_000_000, "USD")), quota.left)
+        assertNull(quota.resetsAtSeconds)
+        stub.cleanUp()
     }
 
     @Test
@@ -260,5 +280,31 @@ class AddProviderTest {
         assertEquals(CredentialLookup.Setting("apiKey"), source.credential)
         assertEquals(Mapping.Json(JSONMapping(quotas = emptyList())), source.mapping)
         assertThrows<ProviderDraft.Missing.Used> { draft.definition("x") }
+    }
+}
+
+/** Screens that only hold an id find a custom provider's face and name too. */
+class CustomRegistryTest {
+    @Test
+    fun `should find a registered custom provider by its lineup id until it is unregistered`() {
+        val draft = ProviderDraft(ProviderDraft.Start.File)
+        draft.path = "~/usage.json"
+        draft.used = "$.used"
+        draft.name = "Local Tool"
+        val definition = draft.definition("custom-local-tool-abc123")
+        val stub = StubbedProvider()
+        val factory = ProviderFactory(
+            Engine(InMemoryProviderSettings(), stub.connections(), stub.home, { null }, stub.folders, HomePaths(stub.home), { true }, { it }, now = { 0.0 }),
+            TestDefinitions.builtIns,
+        )
+
+        factory.customs.register(definition)
+        val found = factory.definition("custom-local-tool-abc123")
+        factory.customs.unregister(definition.id)
+
+        assertEquals("Local Tool", found?.profile?.name)
+        assertNull(factory.definition("custom-local-tool-abc123"))
+        assertEquals("codex", factory.definition("codex.work")?.id)
+        stub.cleanUp()
     }
 }

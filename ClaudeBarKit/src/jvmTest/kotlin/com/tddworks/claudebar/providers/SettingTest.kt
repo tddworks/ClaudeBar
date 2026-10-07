@@ -1,19 +1,20 @@
 package com.tddworks.claudebar.providers
 
 import com.tddworks.claudebar.datasources.DefinitionError
+import com.tddworks.claudebar.datasources.Fetch
+import com.tddworks.claudebar.datasources.Paths
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
-/**
- * A setting's kind owns its rule; a choice's options carry their values. How an added login's
- * folder is checked against the others' (`DefaultPathIsolationTests`) runs through `Provider`,
- * and is the lifecycle's to test.
- */
+/** A setting's kind owns its rule; a choice's options carry their values. */
 class SettingTest {
     private fun decode(json: String) = Setting.from(Json.parseToJsonElement(json))
 
@@ -112,4 +113,73 @@ internal class FakePaths(private val folders: Set<String>, private val aliases: 
     override fun expanded(path: String): String = aliases[path] ?: path
     override fun isFolder(path: String): Boolean = canonical(path) in folders
     override fun canonical(path: String): String = aliases[path] ?: path
+}
+
+/** An added login's folder is never the default login's, and a saved `~` path is the absolute folder its CLI needs. */
+class DefaultPathIsolationTest {
+    /** `~` is `/Users/me`; every folder exists. */
+    private object IsolationPaths : PathChecking {
+        override fun isFolder(path: String) = true
+        override fun canonical(path: String) = expanded(path)
+        override fun expanded(path: String) = Paths.expand(path, "/Users/me") { null }
+    }
+
+    private val stub = StubbedProvider()
+
+    @AfterEach
+    fun cleanUp() = stub.cleanUp()
+
+    private fun provider(id: String, accounts: List<ProviderAccountConfig> = emptyList()) =
+        stub.make(TestDefinitions.builtIn(id), accounts, paths = IsolationPaths, settings = InMemoryProviderSettings())
+
+    @ParameterizedTest
+    @CsvSource("gemini, home, ~", "kiro, home, ~", "grok, directory, ~/.grok", "kimi, home, ~/.kimi")
+    fun `should reject an added login that reuses the default folder`(id: String, setting: String, folder: String) {
+        val account = provider(id)
+        assertTrue(account.accounts.add(filling = mapOf(setting to folder)) is Outcome.Refused)
+        assertEquals(1, account.accounts.size)
+    }
+
+    @Test
+    fun `should restore a saved tilde path as an absolute folder`() {
+        val owner = provider("kiro", listOf(ProviderAccountConfig("work", "Work", probeConfig = mapOf("home" to "~/work"), madeBy = AccountOrigin.FORM)))
+        val account = owner.accounts.first { it.accountId == "work" }
+        assertEquals("/Users/me/work", account.values["home"])
+    }
+
+    @Test
+    fun `should restore a signed-in folder as the absolute path its CLI needs`() {
+        val owner = provider(
+            "codex",
+            listOf(ProviderAccountConfig("work", "Work", probeConfig = mapOf("codexHome" to "~/work", "chatgptAccountId" to "work-id"), madeBy = AccountOrigin.FOLDER)),
+        )
+        val account = owner.accounts.first { it.accountId == "work" }
+        assertEquals("/Users/me/work", account.values["codexHome"])
+        val rpc = owner.dataSources(account).first { it.kind == "rpc" }
+        assertEquals("/Users/me/work", (rpc.definition.fetch as Fetch.JsonRpc).call.environment.set["CODEX_HOME"])
+    }
+
+    @Test
+    fun `should validate a blank path default after expansion`() {
+        val owner = provider("kimi")
+        owner.configuration.set("home", "/Users/me/other").done()
+        val added = owner.accounts.add(filling = emptyMap()).done()
+        assertEquals("/Users/me/.kimi", added.values["home"])
+    }
+
+    @Test
+    fun `should reject a blank default that duplicates another login folder`() {
+        val owner = provider("kimi")
+        assertEquals(
+            Outcome.Refused("Choose a separate folder for Signed-in Kimi Folder — another Kimi login uses this one."),
+            owner.accounts.add(filling = emptyMap()),
+        )
+    }
+
+    @Test
+    fun `should save a tilde path as the absolute folder the CLI needs`() {
+        val owner = provider("kiro")
+        val account = owner.accounts.add(filling = mapOf("home" to "~/work")).done()
+        assertEquals("/Users/me/work", account.values["home"])
+    }
 }

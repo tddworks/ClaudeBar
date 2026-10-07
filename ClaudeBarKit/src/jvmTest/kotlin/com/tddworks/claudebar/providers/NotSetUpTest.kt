@@ -2,16 +2,70 @@ package com.tddworks.claudebar.providers
 
 import com.tddworks.claudebar.quotas.UsageError
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * *SET UP* as the definition says it. Whether a login waits to be set up, and the notice it
- * shows, go through `Provider` and are the lifecycle's to test.
+ * *NOT SET UP* — a login with no usage whose tool isn't on this Mac, or that has never signed
+ * in, is waiting to be set up, not failing (#198). The definition's `setup` says what that
+ * takes; a real failure stays one.
  */
 class NotSetUpTest {
+    private val claude = StubbedProvider("claude")
+
+    @AfterEach
+    fun cleanUp() = claude.cleanUp()
+
+    private fun cliNotFound() {
+        claude.cli.located = { null }
+        claude.cli.answer = { throw UsageError.CliNotFound("claude") }
+    }
+
+    private fun provider(settings: InMemoryProviderSettings = claude.settings) =
+        claude.make(TestDefinitions.builtIn("claude"), settings = settings)
+
+    @Test
+    fun `should wait to be set up when Claude Code is not installed and never signed in (#198)`() {
+        cliNotFound()
+        val provider = provider()
+
+        provider.refreshPlain()
+
+        assertTrue(provider.defaultAccount.needsSetup)
+    }
+
+    @Test
+    fun `should wait to be set up on the API when Claude Code is not installed and never signed in`() {
+        cliNotFound()
+        val provider = provider(InMemoryProviderSettings(dataSourceKinds = mapOf("claude" to "api")))
+
+        provider.refreshPlain()
+
+        assertTrue(provider.defaultAccount.needsSetup)
+    }
+
+    @Test
+    fun `should show a failure, not set up, when Claude Code is installed but fails`() {
+        claude.cli.located = { "/usr/local/bin/claude" }
+        claude.cli.answer = { throw UsageError.ExecutionFailed("claude is not running") }
+        val provider = provider()
+
+        provider.refreshPlain()
+
+        assertNotNull(provider.defaultAccount.lastError)
+        assertFalse(provider.defaultAccount.needsSetup)
+    }
+
+    @Test
+    fun `should not wait to be set up when the login has never been refreshed`() {
+        assertFalse(provider().defaultAccount.needsSetup)
+    }
+
     @Test
     fun `should tell the person how to set up Claude Code and where`() {
         val setup = TestDefinitions.builtIn("claude").setup!!
@@ -33,6 +87,16 @@ class NotSetUpTest {
     }
 
     @Test
+    fun `should show Claude's own setup notice when Claude Code is not set up`() {
+        cliNotFound()
+        val provider = provider()
+        provider.refreshPlain()
+
+        assertEquals("See your session and weekly limits", provider.setupNotice(provider.defaultAccount).title)
+        assertEquals("Set up Claude Code", provider.setupNotice(provider.defaultAccount).button)
+    }
+
+    @Test
     fun `should name the provider and say what failed when it has no setup of its own`() {
         val claude = TestDefinitions.builtIn("claude")
         val definition = ProviderDefinition(profile = claude.profile, dataSources = claude.dataSources, defaultDataSource = "cli")
@@ -42,5 +106,10 @@ class NotSetUpTest {
         assertEquals("Set up Claude", notice.title)
         assertEquals(UsageError.CliNotFound("acme").message, notice.text)
         assertNull(notice.url)
+    }
+
+    @Test
+    fun `should read no usage history when the login has none`() {
+        assertFalse(provider().defaultAccount.readsUsage)
     }
 }

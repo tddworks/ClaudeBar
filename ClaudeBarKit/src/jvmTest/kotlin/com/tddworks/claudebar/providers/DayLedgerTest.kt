@@ -1,20 +1,23 @@
 package com.tddworks.claudebar.providers
 
+import com.tddworks.claudebar.datasources.logs.UsageLog
 import com.tddworks.claudebar.datasources.logs.localCalendar
 import com.tddworks.claudebar.quotas.DailyUsageStat
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 
 /**
  * The ledger: a day that has closed is summed once and kept, never read from the logs again;
  * the open days — today, and yesterday until an hour past midnight — are read every time. A
- * change to how the logs read starts it over (daily-usage design §3). Reading the logs around
- * it is `UsageHistory`'s, and the lifecycle's to test.
+ * change to how the logs read starts it over (daily-usage design §3).
  */
 class DayLedgerTest {
     private class Shelf : LedgerStore {
@@ -97,6 +100,42 @@ class DayLedgerTest {
         ledger.keep(emptyMap(), "f1")
 
         assertTrue(shelf.pages.isEmpty())
+    }
+
+    // Through a login's usage history: the cards read the kept days
+
+    private val home = TestDefinitions.folder("day-ledger")
+
+    @AfterEach
+    fun forgetHome() {
+        home.deleteRecursively()
+    }
+
+    private fun history(nowSeconds: Double): UsageHistory {
+        val definition = UsageLog.Definition(
+            records = UsageLog.Records(files = "~/.acme/*.jsonl", at = UsageLog.At.Field("$.at"), tokens = UsageLog.Tokens(total = "$.tokens"), cost = "$.cost"),
+        )
+        return UsageHistory(UsageLog.make(definition, home.path, { null }, calendar = calendar, now = { nowSeconds }), DayLedger(shelf, "acme"))
+    }
+
+    /** One record per entry, `daysAgo` days before today, at noon. */
+    private fun log(vararg entries: Pair<Int, Int>) {
+        val dir = File(home, ".acme").also { it.mkdirs() }
+        File(dir, "log.jsonl").writeText(entries.joinToString("\n") { (cost, ago) -> """{"at":${daysAgo(ago) + 43_200},"tokens":1000,"cost":$cost}""" })
+    }
+
+    @Test
+    fun `should show yesterday's kept usage on the cards after the logs are gone`() = runBlocking {
+        val now = todayAt(12.0)
+        log(14 to 0, 41 to 1)
+        history(now).read()
+
+        File(home, ".acme").deleteRecursively()
+        val history = history(now)
+        history.read()
+
+        assertEquals(41_000_000_000, history.report?.previous?.totalCostNanos)
+        assertEquals(true, history.report?.today?.isEmpty)
     }
 
     @Test
