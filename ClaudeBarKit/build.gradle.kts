@@ -68,6 +68,10 @@ kotlin {
             runtimeOnly("org.junit.platform:junit-platform-launcher")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
             implementation("io.ktor:ktor-client-mock:3.6.0")
+            // A JavaScript engine for JUnit: the definitions' script mappings run on the JVM too.
+            // The Mac runs them on JavaScriptCore (its native suite covers that engine).
+            implementation("org.graalvm.polyglot:polyglot:25.4.4.1.1")
+            implementation("org.graalvm.polyglot:js-community:25.4.4.1.1")
             // ArchitectureTest: the package rules of MODULAR_DESIGN §3.
             implementation("com.lemonappdev:konsist:0.17.3")
         }

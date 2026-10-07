@@ -56,7 +56,7 @@ internal fun testDataSources(
     browserStorage: BrowserStorageReading = FakeStorage(),
     cloudWatch: CloudWatchClient? = null,
     priceCatalog: PriceCatalog? = null,
-    scriptEngine: ScriptEngine = NoScriptEngine,
+    scriptEngine: ScriptEngine = com.tddworks.claudebar.datasources.mapping.GraalScriptEngine(),
     processPaths: () -> List<String> = { emptyList() },
 ): DataSources = DataSources(
     home = home,
