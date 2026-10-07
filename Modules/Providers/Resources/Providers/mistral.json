@@ -13,9 +13,10 @@
   "enabledByDefault": false,
   "order": 170,
   "settings": [
-    { "id": "cookie", "label": "chat.mistral.ai Cookie", "kind": "secret", "scope": "account", "for": ["web"] }
+    { "id": "cookie", "label": "chat.mistral.ai Cookie", "kind": "secret", "scope": "account" }
   ],
   "defaultDataSource": "logs",
+  "together": true,
   "dataSources": [
     {
       "kind": "logs",

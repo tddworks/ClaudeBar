@@ -25,7 +25,7 @@ function read(response) {
         return {error: 'noData'};
     }
     const left = Math.max(0, 100 - usage.usagePercentage);
-    const quota = {type: 'time', name: 'Vibe plan', percentRemaining: left, resetText: Math.floor(left) + '% remaining'};
+    const quota = {type: 'time', name: 'Vibe plan', percentRemaining: left};
     const reset = Date.parse(usage.resetAt || '');
     if (Number.isFinite(reset)) quota.resetsAt = reset / 1000;
     return {quotas: [quota]};

@@ -5,8 +5,8 @@ import Providers
 import Quotas
 import Testing
 
-/// Mistral has no meter: its Vibe session logs are today's usage, shown as
-/// TODAY'S USAGE beside it. The definition only says Vibe is installed.
+/// Mistral's Vibe session logs are today's usage, shown as TODAY'S USAGE;
+/// the plan meter comes from the web source (#496) when a cookie is pasted.
 @MainActor @Suite
 struct MistralDefinitionTests {
     private func make(withLogs: Bool) throws -> (Provider, () -> Void) {

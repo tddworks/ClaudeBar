@@ -4,14 +4,14 @@ description: Show today's and yesterday's Mistral Vibe cost and token totals fro
 
 # Mistral
 
-Shows how much you spent and how many tokens you used in **Mistral Vibe** today, next to yesterday. With a chat.mistral.ai session cookie, it also shows your **Vibe Coding Plan**: how much of it you have used and when it resets.
+Shows how much you spent and how many tokens you used in **Mistral Vibe** today, next to yesterday. With a chat.mistral.ai session cookie, it also shows your **Vibe Coding Plan**: how much of it you have left and when it resets — beside today's spend, no source switching needed.
 
 ## Setup
 
 1. Use Mistral Vibe at least once, so it has written session logs to `~/.vibe/logs/session/`.
 2. Settings → Providers → Mistral → turn it on. It is off by default.
 3. Keep Settings → General → **Daily Usage Cards** on (the default). Mistral's numbers only appear in those cards.
-4. For the Vibe plan percentage and reset time, paste your chat.mistral.ai cookie: sign in to [chat.mistral.ai](https://chat.mistral.ai), copy the full `Cookie` request header of any request (DevTools → Network tab), and paste it into **Settings → Providers → Mistral → Cookie**. Or set `MISTRAL_CHAT_COOKIE` in ClaudeBar's environment. Without it, Mistral still shows daily spend and tokens.
+4. For the Vibe plan's remaining percent and reset time, paste your chat.mistral.ai cookie: sign in to [chat.mistral.ai](https://chat.mistral.ai), copy the value of the `Cookie` request header of any request (DevTools → Network tab — the header's value, without the `Cookie:` label), and paste it into **Settings → Providers → Mistral → Cookie**. Or set `MISTRAL_CHAT_COOKIE` in ClaudeBar's environment. Without it, Mistral still shows daily spend and tokens.
 
 No key needed; with no cookie there is no network access. With a cookie, ClaudeBar calls `chat.mistral.ai`'s own usage endpoint — nothing else, and the cookie is never logged.
 
@@ -23,7 +23,7 @@ No key needed; with no cookie there is no network access. With a cookie, ClaudeB
 - **A session counts on the day it started.** A session that begins before midnight and runs past it is counted entirely in the earlier day.
 - **Cost is Vibe's own number** (`session_cost` in each session's `meta.json`). ClaudeBar doesn't apply its own pricing, so if Vibe's cost is off, ClaudeBar's is too.
 - Session folders whose `meta.json` is missing or unreadable are skipped without an error.
-- **The cookie is the full `Cookie` header**, not one cookie's value: the session cookie's exact name is Mistral's own (`ory_session_…`), so copy the whole header while it is fresh. ClaudeBar cannot lift the session cookie out of your browser by itself — cookie names are matched exactly, and Mistral's is not public — so a browser read finds at most `csrftoken`, which is not enough to sign in.
+- **The cookie is the whole `Cookie` header's value**, not one cookie's value: the session cookie's exact name is Mistral's own (`ory_session_…`), so copy it while it is fresh. ClaudeBar cannot lift the session cookie out of your browser by itself — cookie names are matched exactly, and Mistral's is not public — so a browser read finds at most `csrftoken`, which is not enough to sign in.
 - **A cookie expires.** When chat.mistral.ai refuses it, Mistral's plan card asks you to sign in and paste a fresh one; the daily spend and tokens keep working.
 
 ## See also

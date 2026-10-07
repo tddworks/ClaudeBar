@@ -55,10 +55,18 @@ struct MistralWebExecutionTests {
 
     // MARK: - The definition
 
-    @Test func `should offer the web source beside the Vibe logs, with the logs first`() throws {
+    @Test func `should run the web source beside the Vibe logs on every refresh`() throws {
         let definition = try ProviderFactory.builtIn("mistral")
         #expect(definition.dataSources.map(\.kind) == ["logs", "web"])
         #expect(definition.defaultDataSource == "logs")
+        #expect(definition.together)
+    }
+
+    @Test func `should show the plan on the default source once the cookie is pasted`() async throws {
+        let sent = Sent()
+        let snapshot = try await make(vault: MemoryVault(["mistral.cookie": "ory_session_test=s; csrftoken=c"]), sent: sent).refreshPlain()
+        let plan = try #require(snapshot.quota(for: .timeLimit("Vibe plan")))
+        #expect(plan.percentRemaining == 87.5)
     }
 
     @Test func `should run an added login's web source on its own pasted cookie only`() throws {
@@ -79,7 +87,7 @@ struct MistralWebExecutionTests {
         let plan = try #require(snapshot.quota(for: .timeLimit("Vibe plan")))
         #expect(plan.percentRemaining == 87.5)
         #expect(plan.resetsAt == Date(timeIntervalSince1970: 1_793_491_200))
-        #expect(plan.resetText == "87% remaining")
+        #expect(plan.resetText == nil)
         let request = try #require(sent.requests.first)
         #expect(request.url?.host == "chat.mistral.ai")
         #expect(request.httpMethod == "GET")
@@ -142,8 +150,9 @@ struct MistralWebExecutionTests {
 
     // MARK: - Added accounts
 
-    @Test func `should ask for a cookie when adding a login on the web`() throws {
+    @Test func `should ask for a cookie when adding a login, whatever the active source`() throws {
         #expect(try make(mode: "web").accounts.form.map(\.id) == ["cookie"])
+        #expect(try make().accounts.form.map(\.id) == ["cookie"])
     }
 
     @Test func `should use an added login's own cookie, never the browser's`() async throws {
