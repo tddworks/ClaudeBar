@@ -91,7 +91,7 @@ struct NotchRootView: View {
 
     @ViewBuilder
     private var leading: some View {
-        switch state.activity {
+        switch state.activity?.shape {
         case .working(let session):
             NotchLane {
                 PhaseDot(color: .green, pulsing: true)
@@ -131,7 +131,7 @@ struct NotchRootView: View {
 
     @ViewBuilder
     private var trailing: some View {
-        switch state.activity {
+        switch state.activity?.shape {
         case .working(let session):
             NotchLane {
                 ElapsedLabel(session: session).fixedSize()
@@ -237,7 +237,7 @@ private struct NotchMeta: View {
 /// Ticks once a second so the elapsed time stays true without the rest of the
 /// app having to repaint.
 private struct ElapsedLabel: View {
-    let session: ClaudeSession
+    let session: Session
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in

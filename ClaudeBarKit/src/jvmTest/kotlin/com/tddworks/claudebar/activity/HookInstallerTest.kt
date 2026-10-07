@@ -136,6 +136,25 @@ class HookInstallerTest {
     }
 
     @Test
+    fun `should say why turning the hook on failed when the settings file cannot be read`() {
+        write("{ not json")
+
+        val reason = installer.turn(on = true)
+
+        assertTrue(reason != null && reason.isNotEmpty())
+        assertEquals("{ not json", file.readText())
+    }
+
+    @Test
+    fun `should report nothing wrong once the hook is turned on and off again`() {
+        assertNull(installer.turn(on = true))
+        assertTrue(installer.isInstalled())
+
+        assertNull(installer.turn(on = false))
+        assertFalse(installer.isInstalled())
+    }
+
+    @Test
     fun `should treat an empty settings file as no settings`() {
         write("")
 

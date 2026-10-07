@@ -7,7 +7,7 @@ import com.tddworks.claudebar.quotas.UsageQuota
  * Decides what, if anything, the notch shows now. Pure — state in, one activity or nothing
  * out — so every rule about what wins the notch is here, and the window stays presentation.
  */
-internal class NotchActivityResolver(
+public class NotchActivityResolver(
     /** How long a finished session keeps the notch before it retracts. */
     private val finishedDisplayDurationSeconds: Double = DEFAULT_FINISHED_DISPLAY_DURATION_SECONDS,
 ) {

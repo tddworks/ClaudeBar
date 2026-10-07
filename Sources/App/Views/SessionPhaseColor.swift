@@ -1,7 +1,7 @@
 import SwiftUI
 import Domain
 
-extension ClaudeSession.Phase {
+extension Session.Phase {
     /// The display color for this session phase.
     /// Single source of truth — used by StatusBarIcon, SessionIndicatorView, etc.
     var color: Color {

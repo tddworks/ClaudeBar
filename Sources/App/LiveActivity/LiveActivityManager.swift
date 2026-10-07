@@ -20,12 +20,12 @@ public final class LiveActivityManager: @unchecked Sendable {
     public init() {}
 
     /// Starts tracking a session. Currently a no-op on macOS.
-    public func startActivity(for session: ClaudeSession) {
+    public func startActivity(for session: Session) {
         AppLog.hooks.debug("Live Activity not available on macOS — using menu popover instead")
     }
 
     /// Updates tracking for a session. Currently a no-op on macOS.
-    public func updateActivity(for session: ClaudeSession) {
+    public func updateActivity(for session: Session) {
         // No-op until ActivityKit is available on macOS
     }
 

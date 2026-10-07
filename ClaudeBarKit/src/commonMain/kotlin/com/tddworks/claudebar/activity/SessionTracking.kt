@@ -17,8 +17,8 @@ internal fun interface SessionAnnouncer {
  * [sessions] — ClaudeBar's own probe runs left out (#172) — announces a session starting and
  * ending, and every [SWEEP_SECONDS] ends sessions whose process died without a `SessionEnd`.
  */
-internal class SessionTracking(
-    val sessions: SessionMonitor,
+public class SessionTracking internal constructor(
+    public val sessions: SessionMonitor,
     private val receiver: HookEventReceiver,
     private val liveness: ProcessLiveness,
     private val announcer: SessionAnnouncer?,
@@ -79,7 +79,7 @@ internal class SessionTracking(
         }
     }
 
-    companion object {
+    internal companion object {
         const val SWEEP_SECONDS = 30.0
     }
 }

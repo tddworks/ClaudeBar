@@ -4,7 +4,7 @@ import Domain
 /// Displays the Claude Code session's status in the menu popover.
 /// `SessionsCardView` shows it when exactly one session is running.
 struct SessionIndicatorView: View {
-    let session: ClaudeSession
+    let session: Session
 
     @Environment(\.appTheme) private var theme
 

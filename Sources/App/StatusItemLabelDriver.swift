@@ -93,7 +93,7 @@ final class StatusItemLabelDriver {
         /// enabled logins — `MenuBarAccountName`.
         var accountNames: [String: String] = [:]
         var fallbackStatus: QuotaStatus
-        var sessionPhase: ClaudeSession.Phase?
+        var sessionPhase: Session.Phase?
         var themeModeId: String
         /// Whether a dual-window label should render as two stacked smaller
         /// lines instead of one long "A | B" line (opt-in setting).
@@ -522,7 +522,7 @@ final class StatusItemLabelDriver {
     /// then the only place the quota status shows, so its shape says Claude is
     /// working and its colour keeps saying how the quota is doing. Otherwise a
     /// critical quota would look healthy for as long as a session runs.
-    static func sessionGlyphColor(phase: ClaudeSession.Phase, theme: any AppThemeProvider,
+    static func sessionGlyphColor(phase: Session.Phase, theme: any AppThemeProvider,
                                   status: QuotaStatus, showsUsageText: Bool,
                                   darkMenuBar: Bool) -> Color {
         guard !showsUsageText, let themeIcon = theme.statusBarIconName,

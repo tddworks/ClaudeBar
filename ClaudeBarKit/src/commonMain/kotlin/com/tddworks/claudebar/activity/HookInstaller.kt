@@ -15,18 +15,25 @@ import kotlinx.serialization.json.JsonPrimitive
  * Turns ClaudeBar's hook on and off in Claude Code's `~/.claude/settings.json`, keeping the
  * person's settings and other tools' hooks. ClaudeBar's entries are known by [HOOK_MARKER].
  */
-internal class HookInstaller(val settingsPath: String) {
+public class HookInstaller internal constructor(internal val settingsPath: String) {
     private val file = Path(settingsPath)
 
     /** Thrown when Claude Code's settings can't be read: they are left for the person to fix. */
-    class CorruptedSettingsFile(message: String) : Exception(message)
+    internal class CorruptedSettingsFile(message: String) : Exception(message)
+
+    /**
+     * Turns the hook on or off: null when done, else why it couldn't — the outcome Swift reads,
+     * since an exception never crosses the bridge.
+     */
+    public fun turn(on: Boolean): String? = runCatching { if (on) install() else uninstall() }
+        .exceptionOrNull()?.let { it.message ?: it.toString() }
 
     /**
      * Adds the hook to every event in [HOOK_EVENTS], replacing ClaudeBar's earlier entry, in
      * the matcher format: `{"SessionStart": [{"matcher": ".*", "hooks": [{"type": "command", "command": "…"}]}]}`.
      * Creates the file and its folder when missing.
      */
-    fun install() {
+    internal fun install() {
         val settings = readOrCreateSettings().toMutableMap()
         val hooks = (settings["hooks"] as? JsonObject ?: JsonObject(emptyMap())).toMutableMap()
         for (event in HOOK_EVENTS) {
@@ -38,7 +45,7 @@ internal class HookInstaller(val settingsPath: String) {
     }
 
     /** Removes only ClaudeBar's entries, dropping events and a `hooks` section left empty. */
-    fun uninstall() {
+    internal fun uninstall() {
         val settings = runCatching { readOrCreateSettings() }.getOrNull()?.toMutableMap() ?: return
         val hooks = (settings["hooks"] as? JsonObject)?.toMutableMap() ?: return
         for (event in HOOK_EVENTS) {

@@ -67,7 +67,7 @@ struct SessionsCardView: View {
         )
     }
 
-    private func sessionRow(_ session: ClaudeSession) -> some View {
+    private func sessionRow(_ session: Session) -> some View {
         HStack(spacing: 10) {
             Circle()
                 .fill(session.phase.color)
@@ -105,11 +105,11 @@ struct SessionsCardView: View {
     // MARK: - What the card shows
 
     /// Every session gets a row, most pressing first.
-    private var rowSessions: [ClaudeSession] {
+    private var rowSessions: [Session] {
         sessionMonitor.sessionsByProminence
     }
 
-    private var shownSessions: [ClaudeSession] {
+    private var shownSessions: [Session] {
         Array(rowSessions.prefix(Self.maxRows))
     }
 

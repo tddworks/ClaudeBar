@@ -1,6 +1,6 @@
 package com.tddworks.claudebar.activity
 
-internal object HookConstants {
+public object HookConstants {
     /** The hook HTTP server's port. */
     const val DEFAULT_PORT: Int = 19847
 
@@ -19,7 +19,7 @@ internal object HookConstants {
 }
 
 /** The hook settings. Hooks are a destination, not a provider, so they stand beside the provider settings. */
-internal interface HookSettingsRepository {
+public interface HookSettingsRepository {
     fun isHookEnabled(): Boolean
 
     fun setHookEnabled(enabled: Boolean)

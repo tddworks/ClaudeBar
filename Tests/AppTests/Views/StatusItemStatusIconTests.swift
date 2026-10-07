@@ -72,7 +72,7 @@ struct StatusItemStatusIconTests {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .subagentsWorking, theme: CLITheme(), status: .critical, showsUsageText: true, darkMenuBar: true
         )
-        #expect(color == ClaudeSession.Phase.subagentsWorking.color)
+        #expect(color == Session.Phase.subagentsWorking.color)
     }
 
     @Test
@@ -80,7 +80,7 @@ struct StatusItemStatusIconTests {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .active, theme: ChristmasTheme(), status: .critical, showsUsageText: false, darkMenuBar: true
         )
-        #expect(color == ClaudeSession.Phase.active.color)
+        #expect(color == Session.Phase.active.color)
     }
 
     @Test
@@ -88,6 +88,6 @@ struct StatusItemStatusIconTests {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .active, theme: DarkTheme(), status: .critical, showsUsageText: false, darkMenuBar: true
         )
-        #expect(color == ClaudeSession.Phase.active.color)
+        #expect(color == Session.Phase.active.color)
     }
 }

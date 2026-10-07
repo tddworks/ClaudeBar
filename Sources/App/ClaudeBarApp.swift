@@ -30,7 +30,8 @@ struct ClaudeBarApp: App {
     @State private var quotaAlerts: QuotaAlerts
 
     /// Monitors Claude Code sessions via hook events
-    @State private var sessionMonitor: SessionMonitor
+    /// Claude Code's sessions — Kotlin's, read through the kit (MODULAR_DESIGN §5).
+    private let sessionMonitor: SessionMonitor = Kit.shared.sessions
 
     /// Drives the menu-bar pixels and the background-refresh lifecycle
     /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
@@ -59,14 +60,8 @@ struct ClaudeBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// The hook HTTP server that receives events from Claude Code
-    private let hookServer = HookHTTPServer()
 
     /// Task for the hook server event loop (allows cancellation on toggle off)
-    @State private var hookServerTask: Task<Void, Never>?
-    @State private var sessionSweepTask: Task<Void, Never>?
-
-    /// How often ClaudeBar checks that each session's Claude Code process still exists.
-    private static let sessionSweepInterval: Duration = .seconds(30)
 
     /// Alerts users when quota status degrades
     private let quotaAlerter = NotificationAlerter(accountSettings: JSONSettingsRepository.shared)
@@ -152,8 +147,8 @@ struct ClaudeBarApp: App {
         }
         AppLog.monitor.info("QuotaMonitor initialized")
 
-        let sessionMonitor = SessionMonitor()
-        self.sessionMonitor = sessionMonitor
+        let sessionMonitor = Kit.shared.sessions
+        KitObservation.shared.follow(Kit.shared)
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle
         // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
@@ -201,14 +196,14 @@ struct ClaudeBarApp: App {
         leaderboard.start()
 
         // Start hook server if hooks are enabled
-        if settingsRepository.isHookEnabled() {
+        if Kit.shared.hookSettings.isHookEnabled() {
             // Reconcile installed hooks so newly-added events (e.g.
             // UserPromptSubmit, which revives a stopped session) register for
-            // existing users without re-toggling the setting. install() is
+            // existing users without re-toggling the setting. Turning it on is
             // idempotent — it replaces only ClaudeBar's own matcher entries
             // per event and preserves hooks from other tools.
-            if HookInstaller.isInstalled() {
-                try? HookInstaller.install()
+            if Kit.shared.hookInstaller.isInstalled() {
+                _ = Kit.shared.hookInstaller.turn(on: true)
             }
             startHookServer()
         }
@@ -227,82 +222,14 @@ struct ClaudeBarApp: App {
         ThemeMode(rawValue: settings.themeMode) ?? .system
     }
 
+    /// The hook loop is Kotlin's (activity's `SessionTracking`): it listens, tracks sessions,
+    /// sweeps dead ones and announces a session starting and ending.
     private func startHookServer() {
-        // Cancel any existing server task
-        hookServerTask?.cancel()
-        hookServer.stop()
-
-        // A session killed without a SessionEnd would otherwise stay forever.
-        sessionSweepTask?.cancel()
-        sessionSweepTask = Task {
-            let liveness = SystemProcessLiveness()
-            while !Task.isCancelled {
-                try? await Task.sleep(for: Self.sessionSweepInterval)
-                guard !Task.isCancelled else { break }
-                sessionMonitor.endSessionsWhoseProcessIsGone(according: liveness, at: Date())
-            }
-        }
-
-        hookServerTask = Task {
-            do {
-                let events = try await hookServer.start()
-                AppLog.hooks.info("Hook server started, listening for events")
-                for await event in events {
-                    // Ignore ClaudeBar's own background quota probe so routine
-                    // polling doesn't spam "Claude Code Finished: Probe"
-                    // notifications or pollute the recent-sessions list. (issue #172)
-                    guard !event.isClaudeBarProbe else { continue }
-                    await sessionMonitor.processEvent(event)
-                    await sendSessionNotification(for: event)
-                }
-            } catch {
-                AppLog.hooks.error("Failed to start hook server: \(error.localizedDescription)")
-            }
-        }
+        Kit.shared.sessionTracking.start()
     }
 
     func stopHookServer() {
-        sessionSweepTask?.cancel()
-        sessionSweepTask = nil
-        hookServerTask?.cancel()
-        hookServerTask = nil
-        hookServer.stop()
-    }
-
-    @MainActor private func sendSessionNotification(for event: SessionEvent) {
-        let projectName = (event.cwd as NSString).lastPathComponent
-
-        switch event.eventName {
-        case .sessionStart:
-            Task {
-                try? await sessionAlertSender.send(
-                    title: "Claude Code Started",
-                    body: "Session started in \(projectName)",
-                    categoryIdentifier: "SESSION_START"
-                )
-            }
-        case .sessionEnd:
-            // The session that just ended, not merely the newest in the list:
-            // several can be running, and one ClaudeBar never saw has no entry.
-            let ended = sessionMonitor.recentSessions.first { $0.id == event.sessionId }
-            let taskCount = ended?.completedTaskCount ?? 0
-            let summary = if let duration = ended?.durationDescription {
-                taskCount > 0
-                    ? "Completed \(taskCount) task\(taskCount == 1 ? "" : "s") in \(duration)"
-                    : "Session ended after \(duration)"
-            } else {
-                "Session ended"
-            }
-            Task {
-                try? await sessionAlertSender.send(
-                    title: "Claude Code Finished",
-                    body: "\(projectName) — \(summary)",
-                    categoryIdentifier: "SESSION_END"
-                )
-            }
-        default:
-            break
-        }
+        Kit.shared.sessionTracking.stop()
     }
 
     @MainActor
@@ -413,7 +340,7 @@ struct ClaudeBarApp: App {
 
 }
 
-private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
+private func sessionPhaseColor(_ phase: Session.Phase) -> Color {
     phase.color
 }
 
@@ -422,7 +349,7 @@ private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
 /// Uses theme's `statusBarIconName` if set, otherwise shows status-based icons.
 struct StatusBarIcon: View {
     let status: QuotaStatus
-    var activeSession: ClaudeSession? = nil
+    var activeSession: Session? = nil
 
     @Environment(\.appTheme) private var theme
 

@@ -188,7 +188,7 @@ final class NotchWindowDriver {
     /// A snooze quiets ambient status, not a session that is blocked on the
     /// user — that is the one thing worth interrupting for.
     private func demandsAttentionThroughSnooze(_ activity: NotchActivity?) -> Bool {
-        if case .awaitingInput = activity { return true }
+        if case .awaitingInput = activity?.shape { return true }
         return false
     }
 
@@ -196,7 +196,7 @@ final class NotchWindowDriver {
     /// change — nothing will fire an observation to retract it, so schedule the
     /// re-resolve ourselves. Same for the end of a snooze.
     private func scheduleWake(for activity: NotchActivity?) {
-        guard case .finished(let session) = activity, let finishedAt = session.finishedAt else {
+        guard case .finished(let session) = activity?.shape, let finishedAt = session.finishedAt else {
             scheduleWake(at: snoozedUntil)
             return
         }

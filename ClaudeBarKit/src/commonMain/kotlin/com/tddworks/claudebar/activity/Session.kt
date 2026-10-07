@@ -7,7 +7,7 @@ package com.tddworks.claudebar.activity
  * Swift's `ClaudeSession`; the Kotlin name drops the vendor (ArchitectureTest), and the
  * canonical model calls it Activity's *Session*.
  */
-internal data class Session(
+public data class Session(
     val id: String,
     val cwd: String,
     val startedAtSeconds: Double,
@@ -30,7 +30,7 @@ internal data class Session(
     /** What Claude Code is blocked on while `AWAITING_INPUT`; cleared when work resumes. */
     val pendingPrompt: String? = null,
 ) {
-    enum class Phase(
+    public enum class Phase(
         /** The notch's words for the same states (docs/features/notch), so the two never disagree. */
         val label: String,
     ) {
@@ -43,10 +43,10 @@ internal data class Session(
     }
 
     /** Records which process runs this session, when a later event says. */
-    fun runsInProcess(processId: Int): Session = copy(processId = processId)
+    internal fun runsInProcess(processId: Int): Session = copy(processId = processId)
 
     /** A subagent started. It also revives a stopped session: a new turn is clearly underway. */
-    fun subagentStarted(): Session =
+    internal fun subagentStarted(): Session =
         if (phase == Phase.ENDED) this else copy(activeSubagentCount = activeSubagentCount + 1).withWorkPhase()
 
     /**
@@ -54,29 +54,29 @@ internal data class Session(
      * a subagent's stop just after the turn's own `Stop`, which must not revive a stopped
      * session or release one waiting on the person.
      */
-    fun subagentStopped(): Session {
+    internal fun subagentStopped(): Session {
         if (phase == Phase.ENDED) return this
         val fewer = copy(activeSubagentCount = maxOf(0, activeSubagentCount - 1))
         return if (phase == Phase.SUBAGENTS_WORKING) fewer.withWorkPhase() else fewer
     }
 
     /** A new turn began (`UserPromptSubmit`); without it `Stop` would leave the session stopped for good. */
-    fun resume(): Session = if (phase == Phase.ENDED) this else withWorkPhase()
+    internal fun resume(): Session = if (phase == Phase.ENDED) this else withWorkPhase()
 
     /** Claude Code is blocked waiting on the person, on [prompt]. */
-    fun awaitInput(prompt: String? = null): Session =
+    internal fun awaitInput(prompt: String? = null): Session =
         if (phase == Phase.ENDED) this
         else copy(phase = Phase.AWAITING_INPUT, pendingPrompt = prompt, stoppedAtSeconds = null)
 
-    fun taskCompleted(): Session =
+    internal fun taskCompleted(): Session =
         if (phase == Phase.ENDED) this else copy(completedTaskCount = completedTaskCount + 1)
 
     /** The turn stopped; the session lives on. */
-    fun stop(atSeconds: Double): Session =
+    internal fun stop(atSeconds: Double): Session =
         if (phase == Phase.ENDED) this
         else copy(phase = Phase.STOPPED, activeSubagentCount = 0, stoppedAtSeconds = atSeconds, pendingPrompt = null)
 
-    fun end(atSeconds: Double): Session =
+    internal fun end(atSeconds: Double): Session =
         copy(phase = Phase.ENDED, activeSubagentCount = 0, endedAtSeconds = atSeconds)
 
     /**

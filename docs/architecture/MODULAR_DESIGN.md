@@ -38,7 +38,7 @@ ClaudeBarKit/                 THE SDK — one Kotlin Multiplatform project, ever
     │   ├── leaderboard/      the public board
     │   ├── storage/          settings.json, the vault, the usage-history ledger
     │   ├── diagnostics/      AppLog
-    │   └── kit/              ClaudeBarKit.start(…) — the composition root
+    │   └── kit/              ClaudeBarCore.start(…) — the composition root
     ├── macosMain/kotlin/…    the platform adapters, same packages: Keychain, processes,
     │                         PTYs, JavaScriptCore, notifications, IOKit (§4)
     ├── jvmMain/kotlin/…      — nothing yet; a JVM app's adapters would go here
@@ -68,7 +68,7 @@ one `DataSource`.
 
 ```swift
 // App — the composition root, in a few lines; it starts the kit and shows its state
-let kit = ClaudeBarKit.companion.start(home: FileManager.default.homeDirectoryForCurrentUser.path)
+let kit = ClaudeBarCore.companion.start(home: NSHomeDirectory())   // the class can't share the framework's name
 KitObservation.shared.follow(kit.changes)          // one revision; views re-render on it
 Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 ```
@@ -86,7 +86,7 @@ Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 | `leaderboard` | Leaderboard | `Leaderboard`, `DailyTokens`, its settings | — | `Domain/Leaderboard`, `Infrastructure/Leaderboard` |
 | `storage` | Vault & Settings · generic | `SettingsFile` (`settings.json` by dotted name), `CredentialRepository` (the vault's interface) | `KeychainCredentials` (`Security`), the UserDefaults store | `Infrastructure/Storage` |
 | `diagnostics` | — cross-cutting | `AppLog` and its categories | the unified-log sink | `Modules/Diagnostics` |
-| `kit` | — the composition root | `ClaudeBarKit.start(…)`: builds every context, wires the ports, owns the coroutine scope | — | `Sources/App/ClaudeBarApp.swift` (its wiring) |
+| `kit` | — the composition root | `ClaudeBarCore.start(…)`: builds every context, wires the ports, owns the coroutine scope, merges their revisions into `changes` | — | `Sources/App/ClaudeBarApp.swift` (its wiring) |
 
 **Stays native, in `Sources/App`:** SwiftUI views and themes, the status item,
 popover, notch window and Touch Bar, page state (`MenuBarLabel`,

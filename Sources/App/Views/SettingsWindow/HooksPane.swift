@@ -52,7 +52,7 @@ struct HooksPane: View {
         }
         .onAppear {
             hooksEnabled = settings.hook.isHookEnabled()
-            hooksInstalled = HookInstaller.isInstalled()
+            hooksInstalled = Kit.shared.hookInstaller.isInstalled()
         }
     }
 
@@ -60,23 +60,18 @@ struct HooksPane: View {
         // Ignore the programmatic sync in onAppear.
         guard newValue != settings.hook.isHookEnabled() else { return }
         hookError = nil
-        do {
-            if newValue {
-                try HookInstaller.install()
-            } else {
-                try HookInstaller.uninstall()
-            }
-            settings.hook.setHookEnabled(newValue)
-            hooksInstalled = HookInstaller.isInstalled()
-            NotificationCenter.default.post(
-                name: .hookSettingsChanged,
-                object: nil,
-                userInfo: ["enabled": newValue]
-            )
-        } catch {
-            hookError = error.localizedDescription
+        if let reason = Kit.shared.hookInstaller.turn(on: newValue) {
+            hookError = reason
             hooksEnabled = !newValue
-            AppLog.hooks.error("Hook \(newValue ? "install" : "uninstall") failed: \(error.localizedDescription)")
+            AppLog.hooks.error("Hook \(newValue ? "install" : "uninstall") failed: \(reason)")
+            return
         }
+        settings.hook.setHookEnabled(enabled: newValue)
+        hooksInstalled = Kit.shared.hookInstaller.isInstalled()
+        NotificationCenter.default.post(
+            name: .hookSettingsChanged,
+            object: nil,
+            userInfo: ["enabled": newValue]
+        )
     }
 }

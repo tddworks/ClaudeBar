@@ -3,7 +3,7 @@ import Domain
 
 /// Unified JSON-backed settings repository.
 /// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols) + HookSettingsRepository + NotifySettingsRepository.
+/// (including all sub-protocols) + NotifySettingsRepository. Hook settings are Kotlin's (activity).
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
 /// Notify! credentials use the injected secure store; legacy provider
@@ -12,7 +12,6 @@ public final class JSONSettingsRepository:
     AppSettingsRepository,
     ClaudeSettingsRepository,
     CodexSettingsRepository,
-    HookSettingsRepository,
     NotifySettingsRepository,
     QuotaAlertSettingsRepository,
     @unchecked Sendable
@@ -500,25 +499,6 @@ public final class JSONSettingsRepository:
 
     public func setQuotaAlertPercents(_ percents: [Int]) {
         store.write(value: percents, key: "alerts.thresholds")
-    }
-
-    // MARK: - HookSettingsRepository
-
-    public func isHookEnabled() -> Bool {
-        store.read(key: "hook.enabled") ?? false
-    }
-
-    public func setHookEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "hook.enabled")
-    }
-
-    public func hookPort() -> Int {
-        let port: Int = store.read(key: "hook.port") ?? Int(HookConstants.defaultPort)
-        return port > 0 ? port : Int(HookConstants.defaultPort)
-    }
-
-    public func setHookPort(_ port: Int) {
-        store.write(value: port, key: "hook.port")
     }
 
     // MARK: - NotifySettingsRepository

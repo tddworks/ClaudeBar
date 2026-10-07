@@ -66,7 +66,7 @@ struct NotchPanelView: View {
     }
 
     private var headlineBadge: (text: String, color: Color)? {
-        switch content.activity {
+        switch content.activity?.shape {
         case .awaitingInput: ("Needs you", .yellow)
         case .agentsWorking(let session): ("\(session.activeSubagentCount) agents", .blue)
         case .working: ("Active", .green)
@@ -82,7 +82,7 @@ struct NotchPanelView: View {
     }
 
     private var blockedPrompt: String? {
-        guard case .awaitingInput(let session) = content.activity else { return nil }
+        guard case .awaitingInput(let session) = content.activity?.shape else { return nil }
         return session.pendingPrompt
     }
 
@@ -121,7 +121,7 @@ struct NotchPanelView: View {
         .clipShape(RoundedRectangle(cornerRadius: 9))
     }
 
-    private func statusText(for session: ClaudeSession) -> String {
+    private func statusText(for session: Session) -> String {
         switch session.phase {
         case .awaitingInput:
             session.pendingPrompt ?? "Waiting for you"

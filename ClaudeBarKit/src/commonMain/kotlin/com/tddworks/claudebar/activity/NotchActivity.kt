@@ -10,7 +10,7 @@ import com.tddworks.claudebar.quotas.UsageQuota
  * Ordered by how loudly it demands attention, so two of the same kind compare equal
  * without being equal.
  */
-internal sealed class NotchActivity : Comparable<NotchActivity> {
+public sealed class NotchActivity : Comparable<NotchActivity> {
     /** The session behind it, for the activities that have one. */
     open val session: Session? get() = null
 

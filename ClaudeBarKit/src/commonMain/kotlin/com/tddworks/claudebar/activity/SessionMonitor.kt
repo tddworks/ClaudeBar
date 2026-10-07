@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.activity
 
+import kotlin.native.ObjCName
+
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +19,7 @@ import kotlinx.coroutines.flow.update
  * Safe from any thread; [revision] moves after every change, for the UI to re-read
  * (MODULAR_DESIGN §5).
  */
-internal class SessionMonitor(private val maxRecentSessions: Int = 10) {
+public class SessionMonitor internal constructor(private val maxRecentSessions: Int = 10) {
     private val lock = SynchronizedObject()
     private var running: List<Session> = emptyList()
     private var recent: List<Session> = emptyList()
@@ -31,12 +33,14 @@ internal class SessionMonitor(private val maxRecentSessions: Int = 10) {
     val revision: StateFlow<Long> = changes.asStateFlow()
 
     /** Every running session, in the order first seen. */
+    @ObjCName("sessionsUntracked")
     val sessions: List<Session> get() = synchronized(lock) { running }
 
     /** Ended sessions, most recent first. */
+    @ObjCName("recentSessionsUntracked")
     val recentSessions: List<Session> get() = synchronized(lock) { recent }
 
-    fun processEvent(event: SessionEvent) {
+    internal fun processEvent(event: SessionEvent) {
         val changed = synchronized(lock) {
             if (event.eventName == SessionEvent.EventName.SESSION_END) {
                 return@synchronized endSession(event.sessionId, event.receivedAtSeconds)
@@ -66,7 +70,7 @@ internal class SessionMonitor(private val maxRecentSessions: Int = 10) {
      * Ends every session whose Claude Code process is gone: killed without `SessionEnd`,
      * nothing else would end it. A session that never said its process is left alone.
      */
-    fun endSessionsWhoseProcessIsGone(liveness: ProcessLiveness, atSeconds: Double) {
+    internal fun endSessionsWhoseProcessIsGone(liveness: ProcessLiveness, atSeconds: Double) {
         val gone = sessions.filter { session -> session.processId?.let { !liveness.isRunning(it) } ?: false }
         if (gone.isEmpty()) return
         val changed = synchronized(lock) { gone.map { endSession(it.id, atSeconds) }.any { it } }
@@ -77,6 +81,7 @@ internal class SessionMonitor(private val maxRecentSessions: Int = 10) {
      * Every running session, the one that most needs the person first: blocked, then agents
      * working, then working alone, then stopped; among equals, the one heard from last.
      */
+    @ObjCName("sessionsByProminenceUntracked")
     val sessionsByProminence: List<Session>
         get() = synchronized(lock) {
             running.sortedWith(
@@ -86,8 +91,10 @@ internal class SessionMonitor(private val maxRecentSessions: Int = 10) {
         }
 
     /** The one session for where a single status fits (the menu bar glyph); null when none runs. */
+    @ObjCName("activeSessionUntracked")
     val activeSession: Session? get() = sessionsByProminence.firstOrNull()
 
+    @ObjCName("hasActiveSessionUntracked")
     val hasActiveSession: Boolean get() = sessions.isNotEmpty()
 
     private fun prominence(phase: Session.Phase): Int = when (phase) {

@@ -11,7 +11,7 @@ struct NotchContent: Equatable {
     var activity: NotchActivity?
 
     /// Sessions worth listing in the expanded panel, most relevant first.
-    var sessions: [ClaudeSession] = []
+    var sessions: [Session] = []
 
     /// The quotas closest to running out, most depleted first.
     var quotas: [UsageQuota] = []

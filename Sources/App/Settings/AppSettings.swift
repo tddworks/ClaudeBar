@@ -544,7 +544,7 @@ public final class AppSettings {
     public var claude: ClaudeSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
     public var deepseek: DeepSeekSettingsRepository { repository }
-    public var hook: HookSettingsRepository { repository }
+    public var hook: HookSettingsRepository { Kit.shared.hookSettings }
     public var notify: NotifySettingsRepository { repository }
 }
 

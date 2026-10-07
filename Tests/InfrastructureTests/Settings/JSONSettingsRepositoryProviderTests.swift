@@ -277,40 +277,5 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.codexVerifiedAtLeastOnce() == false)
     }
 
-    // MARK: - Hook Settings
-
-    @Test
-    func `should keep session hooks off until asked`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.isHookEnabled() == false)
-    }
-
-    @Test
-    func `should remember session hooks turned on`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setHookEnabled(true)
-        #expect(repo.isHookEnabled() == true)
-    }
-
-    @Test
-    func `should listen for session hooks on port 19847 when the person never chose`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.hookPort() == HookConstants.defaultPort)
-    }
-
-    @Test
-    func `should remember the chosen session hook port`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setHookPort(8080)
-        #expect(repo.hookPort() == 8080)
-    }
-
+    // Hook settings are Kotlin's: activity/FileHookSettingsTest.
 }
