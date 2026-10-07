@@ -24,6 +24,10 @@ kotlin {
         it.compilations.getByName("main").cinterops.create("oslog") {
             definitionFile.set(project.file("src/nativeInterop/cinterop/oslog.def"))
         }
+        // Other apps' databases and the browsers' cookie stores, read through macOS's libsqlite3.
+        it.compilations.getByName("main").cinterops.create("sqlite3") {
+            definitionFile.set(project.file("src/nativeInterop/cinterop/sqlite3.def"))
+        }
         it.binaries.framework {
             baseName = "ClaudeBarKit"
             isStatic = true
