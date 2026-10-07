@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.datasources.logs
 
+import com.tddworks.claudebar.datasources.mapping.Match
+
 import com.tddworks.claudebar.datasources.DefinitionJson
 import com.tddworks.claudebar.datasources.JsonPath
 import com.tddworks.claudebar.datasources.JsonScope
@@ -233,41 +235,6 @@ internal class UsageLog(
         /** The first entry that answers decides; a list of paths is one entry, and `[*]` walks every element of a list. */
         @Serializable(with = UrlEntriesSerializer::class) val url: List<List<String>>,
     )
-
-    /**
-     * `{ "path": "kind", "equals": "reply" }` — a value in the record equals this JSON value.
-     * The mapping's `Match`, kept here until the mapping area lands in Kotlin.
-     */
-    @Serializable
-    data class Match(val path: String, @SerialName("equals") val value: JsonElement) {
-        /** Whether the value at [path] equals [value]. */
-        fun holds(scope: JsonScope): Boolean {
-            val found = scope.value(path)
-            return when (val expected = value) {
-                is JsonNull -> found == null || found is JsonNull
-                is JsonPrimitive -> when {
-                    expected.isString -> found is JsonPrimitive && found.isString && found.content == expected.content
-                    expected.booleanOrNull != null ->
-                        found is JsonPrimitive && !found.isString && found.booleanOrNull == expected.booleanOrNull
-                    else -> !(found is JsonPrimitive && found.isString) &&
-                        JsonPath.number(found) != null && JsonPath.number(found) == JsonPath.number(expected)
-                }
-                else -> found != null && sameValue(found, expected)
-            }
-        }
-
-        /** Foundation's equality: numbers by value, `1` equal to `1.0`. */
-        private fun sameValue(a: JsonElement, b: JsonElement): Boolean = when {
-            a is JsonObject && b is JsonObject -> a.keys == b.keys && a.all { (key, item) -> sameValue(item, b.getValue(key)) }
-            a is JsonArray && b is JsonArray -> a.size == b.size && a.indices.all { sameValue(a[it], b[it]) }
-            a is JsonNull || b is JsonNull -> a is JsonNull && b is JsonNull
-            a is JsonPrimitive && b is JsonPrimitive -> when {
-                a.isString || b.isString -> a.isString && b.isString && a.content == b.content
-                else -> a.content == b.content || (JsonPath.number(a) != null && JsonPath.number(a) == JsonPath.number(b))
-            }
-            else -> false
-        }
-    }
 
     companion object {
         /**

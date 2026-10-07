@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.datasources.logs
 
+import com.tddworks.claudebar.datasources.mapping.JSONMapper
+
 import com.tddworks.claudebar.datasources.JsonScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -72,10 +74,10 @@ internal class RecordShape(val shape: UsageLog.Shape) {
      * for. Inside a JSON string the quotes would be escaped, so a quoted mention never matches.
      */
     val fragment: ByteArray?
-        get() = (shape.condition?.value as? JsonPrimitive)?.takeIf { it.isString }?.let { "\"${it.content}\"".encodeToByteArray() }
+        get() = (shape.condition?.equals as? JsonPrimitive)?.takeIf { it.isString }?.let { "\"${it.content}\"".encodeToByteArray() }
 
     /** Whether this shape's `where` holds for the record in [scope]. */
-    fun picks(scope: JsonScope): Boolean = shape.condition?.holds(scope) ?: true
+    fun picks(scope: JsonScope): Boolean = shape.condition?.let { JSONMapper.holds(it, scope) } ?: true
 
     /** The record in [scope] read whole from this shape's paths, from the file at [path], or null when it has no time or declared model, or says nothing about usage. */
     fun record(scope: JsonScope, path: String): LogRecord? {

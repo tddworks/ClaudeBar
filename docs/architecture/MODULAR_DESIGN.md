@@ -116,7 +116,10 @@ when it is the app's shell rather than something it knows.
 3. **No package names a vendor.** A vendor's name is in its definition and in
    test fixtures, nowhere in Kotlin.
 4. **A library is used by exactly one package.** Ktor's server → `activity`;
-   SQLite, JavaScriptCore, the PTY → `datasources`; `Security` → `storage`. The
+   SQLite, JavaScriptCore, CommonCrypto, the PTY → `datasources`; `Security` →
+   `storage` for ClaudeBar's own Keychain items, and `datasources` for other
+   apps' (a browser's Safe Storage key — other apps' tokens are read through
+   `/usr/bin/security`, which doesn't prompt on every read, #94). The
    platform's own libraries — kotlinx (coroutines, serialization, io, datetime)
    and the Ktor *client*, Kotlin's `URLSession` — are open to every package.
 5. **`internal` is the default.** A type is `public` only when another package

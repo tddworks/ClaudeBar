@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.datasources.logs
 
+import com.tddworks.claudebar.datasources.mapping.Match
+
 import com.tddworks.claudebar.datasources.DefinitionError
 import com.tddworks.claudebar.quotas.DailyUsageStat
 import kotlinx.coroutines.test.runTest
@@ -25,7 +27,7 @@ class UsageLogTest {
         internal val definition = UsageLog.Definition(
             records = UsageLog.Records(
                 files = "~/.acme/sessions/**/*.jsonl",
-                condition = UsageLog.Match("$.kind", JsonPrimitive("reply")),
+                condition = Match("$.kind", JsonPrimitive("reply")),
                 at = UsageLog.At.Field("$.at"),
                 id = listOf("$.reply.id", "$.request"),
                 model = "$.reply.model",

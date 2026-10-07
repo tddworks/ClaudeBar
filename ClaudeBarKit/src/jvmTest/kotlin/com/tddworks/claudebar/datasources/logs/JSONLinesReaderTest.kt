@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.datasources.logs
 
+import com.tddworks.claudebar.datasources.mapping.Match
+
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,7 +21,7 @@ class JSONLinesReaderTest {
     companion object {
         internal val records = UsageLog.Records(
             files = "~/logs/*.jsonl",
-            condition = UsageLog.Match("$.kind", JsonPrimitive("reply")),
+            condition = Match("$.kind", JsonPrimitive("reply")),
             at = UsageLog.At.Field("$.at"),
             id = listOf("$.reply.id", "$.request"),
             model = "$.reply.model",
@@ -33,9 +35,9 @@ class JSONLinesReaderTest {
 
         /** A reply's usage sits under it; a side call's sits at the top. */
         internal val twoShapes = UsageLog.Records(files = "~/logs/*.jsonl", shapes = listOf(
-            UsageLog.Shape(condition = UsageLog.Match("$.reply.role", JsonPrimitive("model")), at = UsageLog.At.Field("$.at"),
+            UsageLog.Shape(condition = Match("$.reply.role", JsonPrimitive("model")), at = UsageLog.At.Field("$.at"),
                 tokens = UsageLog.Tokens(input = "$.reply.usage.in", output = "$.reply.usage.out"), cost = "$.reply.usage.usd"),
-            UsageLog.Shape(condition = UsageLog.Match("$.kind", JsonPrimitive("side")), at = UsageLog.At.Field("$.at"),
+            UsageLog.Shape(condition = Match("$.kind", JsonPrimitive("side")), at = UsageLog.At.Field("$.at"),
                 tokens = UsageLog.Tokens(input = "$.usage.in", output = "$.usage.out"), cost = "$.usage.usd"),
         ))
     }
