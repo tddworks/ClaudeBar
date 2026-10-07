@@ -7,7 +7,7 @@
 `MetricDelta`), with their laws, are written once in Kotlin Multiplatform, so a second platform reads
 quotas with the same code. The Swift app links them as `QuotaKernel.xcframework`
 through the `Quotas` module, whose `Sources/Kernel/` is their Swift face. The
-design and its rules: [MODULAR_DESIGN §3.1](../../../docs/architecture/MODULAR_DESIGN.md#31--the-kernel-written-once-in-kotlin).
+design and its rules: [MODULAR_DESIGN](../../../docs/architecture/MODULAR_DESIGN.md#1--two-halves-a-kotlin-sdk-and-a-native-ui).
 
 ```bash
 ./scripts/build-kotlin.sh          # from the repo root: the release XCFramework Tuist links

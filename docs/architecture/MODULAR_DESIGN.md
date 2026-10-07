@@ -1,376 +1,270 @@
 ---
-description: How ClaudeBar's code is cut into modules — one module per bounded context, the domain at each module's root and its implementations in Internal/, no Infrastructure layer and no vendor modules, one factory per module, the dependency rules, naming, testing, and what is left to carve; read before adding a file, a type or a module.
+description: How ClaudeBar's code is cut — everything but the UI is one Kotlin Multiplatform SDK, ClaudeBarKit, with a package per bounded context; the macOS app is SwiftUI on top of it; the package rules, the platform adapters, the UI bridge, naming, testing, and the migration from today's Swift modules; read before adding a file, a type or a package.
 ---
 
 # ClaudeBar — the modular design
 
 > **#4 of 5** in [the design](ARCHITECTURE.md) · **Answers:** where the code
-> lives — which module a file goes in, what a module shows and hides, and what
-> it may import · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
+> lives — which package a file goes in, what a package shows and hides, what it
+> may use, and what stays native · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: IN PROGRESS** — what is left is §8.
+> **Status: PROPOSED (rethink of 2026-10-07)** — the target below replaces the
+> Swift-modules design. Built so far: the `quotas` package (§8, phases 0–1 of
+> the migration, still under `Modules/Quotas/Kotlin` as `QuotaKernel`).
 
 ---
 
-## 1 · Modules by context, not layers by technology
+## 1 · Two halves: a Kotlin SDK and a native UI
 
-Today Codex is spread across all three layers: `Domain/Provider/Codex/`,
-`Infrastructure/Codex/`, a settings protocol in `Domain/Provider/`, two
-implementations in `Infrastructure/Storage/`, and a card in `App/`. A layer
-groups code that changes for different reasons and splits code that changes
-together.
-
-The target cuts the other way: **one module per bounded context**, and inside
-each module **two halves**:
+ClaudeBar is two things: **what it knows** (quotas, providers, data sources,
+the monitor, alerts, sessions, settings) and **what it shows** (the menu bar,
+the popover, the notch, the Touch Bar, Settings). The first is the same on any
+platform; the second is the platform's. So the code is cut there:
 
 ```text
-Modules/<Context>/
-├── Sources/
-│   ├── *.swift            THE DOMAIN — public values, aggregates, and the
-│   │                      ports (protocols) for what lies outside the app
-│   ├── <Context>.swift    THE FACTORY — a public enum that builds the
-│   │                      context's objects and wires what they need
-│   └── Internal/          THE IMPLEMENTATION — `internal` types that talk to
-│                          a process, a socket, a file, the Keychain
-├── Resources/             data the module ships (definitions, fixtures)
-└── Tests/                 `@testable import` — Internal is reachable from here
+ClaudeBarKit/                 THE SDK — one Kotlin Multiplatform project, everything but the UI
+├── build.gradle.kts          one Gradle module → one ClaudeBarKit.xcframework (SKIE)
+├── definitions/              the built-in provider definitions (*.json, *.js, prices)
+└── src/
+    ├── commonMain/kotlin/com/tddworks/claudebar/
+    │   ├── quotas/           the usage model and its laws
+    │   ├── datasources/      look up → fetch → map, the engine every provider runs on
+    │   ├── providers/        the Provider lifecycle, accounts, catalog, usage history
+    │   ├── monitoring/       QuotaMonitor: refreshes, the state the UI shows
+    │   ├── alerting/         quota alerts, Notify!
+    │   ├── activity/         Claude Code sessions, the notch's activity, hooks
+    │   ├── leaderboard/      the public board
+    │   ├── storage/          settings.json, the vault, the usage-history ledger
+    │   ├── diagnostics/      AppLog
+    │   └── kit/              ClaudeBarKit.start(…) — the composition root
+    ├── macosMain/kotlin/…    the platform adapters, same packages: Keychain, processes,
+    │                         PTYs, JavaScriptCore, notifications, IOKit (§4)
+    ├── jvmMain/kotlin/…      — nothing yet; a JVM app's adapters would go here
+    └── jvmTest/kotlin/…      the tests, JUnit (§7)
+
+Sources/App/                  THE UI — SwiftUI and AppKit only
+├── Kit/                      the Swift face of ClaudeBarKit: Sendable vouching, Date/Decimal
+│                             views, `shape` enums, Observed<State> (§5)
+├── Views/ Theme/ Notch/ TouchBar/ …
+└── ClaudeBarApp.swift        starts the kit, hands its state to the views
 ```
 
-**There is no Infrastructure layer.** An implementation lives next to the
-domain it serves, in that module's `Internal/`, and Swift's `internal` access
-level keeps it there: the App and every other module **cannot name it**. They
-get a domain object from the module's factory.
+**Why one Gradle module, not a module per context.** Kotlin/Native gives every
+framework its own runtime and its own copy of each type, so two Kotlin
+frameworks in one app can't hand each other a `UsageQuota`. The SDK ships as
+**one framework**, built from one project. Inside it, a context is a
+**package**, and the rules between packages (§3) are enforced by an
+architecture test rather than by Gradle. A Gradle module per context
+re-exported through one umbrella framework is possible, but it buys build
+isolation we don't need yet at the cost of a build file per context. It
+becomes the move when one package needs a dependency the others must not see.
 
-**There are no vendor modules.** A vendor is a JSON file
-([target §3](TARGET_ARCHITECTURE.md#3--codex-as-data)). The Swift behind it is
-one `DataSource` type and a worker per case of its three closed sums, named
-for a protocol or a format — all in `DataSources`.
+**There is no Infrastructure layer and no vendor code.** An adapter lives in
+its context's package under `macosMain`. A vendor is a JSON file in
+`definitions/` ([target §3](TARGET_ARCHITECTURE.md#3--codex-as-data)), run by
+one `DataSource`.
 
 ```swift
-// App — the composition root, in a few lines; it cannot construct an implementation
-let settings = Storage.makeSettings()                     // → any ProviderSettingsRepository
-let vault    = Storage.makeVault()                        // → any CredentialRepository
-let catalog  = ProviderFactory.makeCatalog(settings: settings, vault: vault,
-                                     cloudWatch: AWSClients.makeCloudWatch(),
-                                     priceCatalog: AWSClients.makePriceCatalog())
-let monitor  = Monitoring.makeMonitor(providers: catalog.load())
+// App — the composition root, in a few lines; it starts the kit and shows its state
+let kit = ClaudeBarKit.companion.start(home: FileManager.default.homeDirectoryForCurrentUser.path)
+let monitor = Observed(kit.monitor.state)          // @Observable, read by the views
+Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 ```
 
-## 2 · The modules
+## 2 · The packages
 
-| Module | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | `Internal/` (the implementation) |
+| Package | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | Adapters (`macosMain`) | From today's |
+|---|---|---|---|---|
+| `quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `StatusPolicy`, `Left`, `Money`, `CostUsage`, `BudgetStatus`, `AccountTier`, `DailyUsageStat` … | — none: pure values | `Modules/Quotas` (built) |
+| `datasources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `UsageLog`; the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`, `ScriptEngine` | process and PTY runner, JavaScriptCore `ScriptEngine`, browser cookie reader, login-shell environment, running processes | `Modules/DataSources`, `Modules/AWSClients` |
+| `providers` | Providers · core | `Provider`, `Account`, `UsageHistory`, `Providers` (the lineup), `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository`, `LedgerStore` | — | `Modules/Providers`, `Domain/Provider` |
+| `monitoring` | Monitoring · conductor | `QuotaMonitor` and its `state: StateFlow<MonitorState>`, `MonitoringEvent`, `RefreshInterval`, `Clock`, `PowerState` | IOKit power state | `Domain/Monitor` |
+| `alerting` | Alerting | `QuotaAlerts`, Notify! values, `NotifySettingsRepository`, the port `AlertSender` | UserNotifications `AlertSender` | `Domain/Alerts`, `Domain/Notify`, `Infrastructure/Notify`, `Infrastructure/Notifications` |
+| `activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `InUse`, `HookSettingsRepository` | the hook HTTP server, hook installer, port discovery | `Domain/Session`, `Domain/Notch`, `Domain/InUse`, `Infrastructure/Hooks`, `Infrastructure/InUse` |
+| `leaderboard` | Leaderboard | `Leaderboard`, `DailyTokens`, its settings | — | `Domain/Leaderboard`, `Infrastructure/Leaderboard` |
+| `storage` | Vault & Settings · generic | `Storage` (settings, vault, ledger files), `AppSettingsRepository` | Keychain (`Security`) | `Domain/Settings`, `Infrastructure/Storage` |
+| `diagnostics` | — cross-cutting | `AppLog` and its categories | the unified-log sink | `Modules/Diagnostics` |
+| `kit` | — the composition root | `ClaudeBarKit.start(…)`: builds every context, wires the ports, owns the coroutine scope | — | `Sources/App/ClaudeBarApp.swift` (its wiring) |
+
+**Stays native, in `Sources/App`:** SwiftUI views and themes, the status item,
+popover, notch window and Touch Bar, page state (`MenuBarLabel`,
+`MenuBar*Display`, `PopoverContentHeight` …), Terminal theme import, Sparkle,
+launch at login, `NSScreen` metrics. A thing stays native when it draws, or
+when it is the app's shell rather than something it knows.
+
+## 3 · The package rules
+
+```text
+                     kit (composition root)        ← Sources/App (UI) uses kit and the domain types
+     ┌──────────┬──────────┼───────────┬────────────┐
+     ▼          ▼          ▼           ▼            ▼
+ monitoring  alerting   activity  leaderboard    storage
+     │          │                                   │
+     ▼          │                                   ▼
+ providers ─────┼──────────────────▶ datasources ◀──┘ (implements its SecretStore)
+     │          │                       │
+     ▼          ▼                       ▼
+ ┌────────────────────── quotas ───────────────────────┐   (+ diagnostics, which anyone may use)
+```
+
+1. **Arrows point at the supplier.** `quotas` uses nothing but the Kotlin
+   standard library.
+2. **Siblings never use each other.** `monitoring` does not use `alerting`; it
+   emits `MonitoringEvent` and `alerting` collects it.
+3. **No package names a vendor.** A vendor's name is in its definition and in
+   test fixtures, nowhere in Kotlin.
+4. **A library is used by exactly one package.** Ktor's server → `activity`;
+   SQLite, JavaScriptCore, the PTY → `datasources`; `Security` → `storage`.
+5. **`internal` is the default.** A type is `public` only when another package
+   or the UI must name it, and then its name is a word from the canonical model.
+   **Public type names are unique across the SDK**: the framework's
+   Objective-C names are flat, so two `Provider`s would reach Swift as
+   `Provider` and `Provider_`.
+6. **`diagnostics` is the only cross-cutting package.** It holds no rule.
+7. **Kotlin never calls Swift.** The SDK uses Apple frameworks directly through
+   Kotlin/Native (§4); Swift never implements a Kotlin interface.
+
+**Enforced by a test, not by convention.** `ArchitectureTest` (JUnit, with
+[Konsist](https://docs.konsist.lemonappdev.com/)) reads the sources and fails
+when a file imports across a forbidden arrow, a public name repeats, or a
+vendor name appears outside `definitions/`. Today `Project.swift` enforces the
+same rules by target dependencies; the test takes over that job.
+
+## 4 · The platform: commonMain decides, macosMain does
+
+Everything that decides is in `commonMain`, so it runs on the JVM and is tested
+there with JUnit. Everything that touches the Mac sits behind a **port** (an
+interface in `commonMain`) with its macOS adapter in `macosMain`, which calls
+the Apple framework directly. Kotlin/Native ships bindings for `Foundation`,
+`Security`, `JavaScriptCore`, `CommonCrypto`, `Network`, `UserNotifications`,
+`IOKit`, `OSLog` and POSIX.
+
+| Need | Port (commonMain) | macOS adapter (macosMain) | Replaces (Swift) |
 |---|---|---|---|
-| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O. The values are Kotlin (`Kotlin/` → `QuotaKernel`); `Sources/` is their Swift face (§3.1) |
-| `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5) |
-| `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
-| `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository` | definition-file reading, `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
-| `Providers/Resources/Providers/` | — | **the built-in definitions**: `codex.json`, `deepseek.json`, … | |
-| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `RefreshKind`, `Clock`, `PowerStateProvider` | `SystemClock`, `SystemPowerStateProvider`, `SingleFlightCache` |
-| `Alerting` | Alerting | `QuotaAlerter`, Notify! values, `NotifySettingsRepository` | `NotificationAlerter`, `SystemAlertSender`, `NotifyGatewayClient` |
-| `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookSettingsRepository` | `HookHTTPServer`, `HookInstaller`, `PortDiscovery`, `SessionEventParser` |
-| `Storage` | Vault & Settings · generic | `Storage.makeSettings()`, `Storage.makeVault()`, `AppSettingsRepository` | `JSONSettingsRepository`, `JSONSettingsStore`, `KeychainCredentialRepository`, `UserDefaults…`, `SecureCredentialMigration` |
-| `Diagnostics` | — cross-cutting | `AppLog` and its categories | `AppLogger`, `FileLogger` |
-| `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label, page state, the Add Provider sheet | — |
+| run a CLI to completion | `CLIExecutor` | `posix_spawn` + pipes | `Subprocess` |
+| drive an interactive CLI and read its screen | `InteractiveRunner` | `openpty` + `TerminalScreen` (a VT parser in commonMain, JUnit-tested on recorded captures) | `SwiftTerm` |
+| JSON-RPC over a process's stdio | `RPCTransport` | `posix_spawn` + pipes | `Process` |
+| HTTP | `NetworkClient` | Ktor client, Darwin engine (tests: Ktor `MockEngine`) | `URLSession` |
+| AWS CloudWatch, price list | `CloudWatchClient`, `PriceCatalog` | SigV4 (commonMain, `kotlincrypto`) over Ktor | AWS SDK for Swift |
+| a definition's script mapping | `ScriptEngine` | `JavaScriptCore` | `JavaScriptCore` |
+| browser cookies | `BrowserCookies` | Safari's binarycookies parser (commonMain); Chromium and Firefox SQLite, Chrome Safe Storage key via `Security` + `CommonCrypto` | `SweetCookieKit` |
+| SQLite files | `SQLiteReader` | `androidx.sqlite` bundled driver (runs on the JVM too) | `SQLite.swift` |
+| Keychain | `SecretStore`, `CredentialRepository` | `SecItem…` (`Security`) | `Security` |
+| files | — (kotlinx-io in commonMain) | — | `FileManager` |
+| notifications | `AlertSender` | `UNUserNotificationCenter` | `UserNotifications` |
+| Claude Code hooks | `HookEventReceiver` | Ktor server (CIO) | `Network` |
+| battery, clock | `PowerState`, `Clock` | `IOKit`; system time | `IOKit` |
+| hashing, PKCE, HMAC | — (`kotlincrypto` in commonMain) | — | `CryptoKit` |
+| the log | `LogSink` | unified log + `~/Library/Logs/ClaudeBar/ClaudeBar.log` | `OSLog` |
 
-## 3 · The dependency rules
+**Definitions are compiled in.** A Gradle task turns `definitions/` into Kotlin
+source, so the built-in providers need no bundle and read the same on every
+platform. Custom definitions and extensions are still read from
+`~/.claudebar/` at run time.
 
-```text
-                         ClaudeBar (App)
-       ┌────────┬────────┬────┴─────┬──────────┐
-       ▼        ▼        ▼          ▼          ▼
-  Monitoring Alerting Activity AWSClients  Storage
-       │        │                   │          │
-       ▼        │                   ▼          ▼
-   Providers ───┼──────────────▶ DataSources ◀─┘ (implements its ports)
-       │        │                   │
-       ▼        ▼                   ▼
-   ┌──────────────── Quotas ────────────┐   (+ Diagnostics, which anyone may import)
-```
-
-1. **Arrows point at the supplier.** `Quotas` imports nothing but Foundation
-   and its own Kotlin kernel (§3.1).
-2. **Siblings never import across the fence.** `Monitoring` does not import
-   `Alerting`; it emits `MonitoringEvent` and `Alerting` subscribes.
-3. **No module names a vendor.** A vendor's name appears in its JSON file,
-   and in a test fixture folder —
-   nowhere in a module's Swift.
-4. **An SDK is linked by exactly one module.** AWS → `AWSClients`;
-   SweetCookieKit, SwiftTerm, Subprocess → `DataSources`; Sparkle → the App.
-5. **`internal` is the default.** A type is `public` only when another module
-   must name it, and a public type is a word from the canonical model.
-6. **Diagnostics is the only cross-cutting module.** It holds no rule.
-
-The build enforces it: a forbidden import fails to compile, because the target
-has no such dependency in `Project.swift`.
-
-### 3.1 · The kernel written once, in Kotlin
-
-> **Status: SLICES 1–2 BUILT** — `UsageSnapshot` and every value it holds are
-> Kotlin; the app and its 2,968 Swift tests run on them. Versions, friction and the
-> bridge comparison: [`Modules/Quotas/Kotlin/README.md`](../../Modules/Quotas/Kotlin/README.md).
-
-The shared kernel's values and laws are written once in Kotlin
-Multiplatform, so a second platform (a Windows or Linux tray app, an Android
-companion, a JVM backend) reads quotas with the same code. **The Kotlin types
-are the app's types**: Swift code holds a Kotlin `UsageQuota`, not a copy of
-one. Every law keeps its one owner
-([model §5](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)); only
-the language it is written in changes.
+## 5 · The UI bridge
 
 ```text
-Modules/Quotas/
-├── Kotlin/                     THE KERNEL — a Gradle KMP project
-│   ├── src/commonMain/         UsageSnapshot, UsageQuota, QuotaType, QuotaStatus,
-│   │                           StatusPolicy, Left, Money, CostUsage, DailyUsageStat …
-│   │                           and their laws
-│   ├── src/jvmTest/            the laws' tests, JUnit
-│   └── → QuotaKernel.xcframework   built by Gradle + SKIE, linked by Quotas only
-└── Sources/Kernel/             THE SWIFT FACE — extensions only, no second model
-      @_exported import QuotaKernel
-      Sendable · Comparable     conformances SKIE can't state
-      Date · Decimal · TimeInterval   Foundation views of Kotlin's seconds and micros
-      init(…, resetsAt: Date? = nil, …)   the default arguments Kotlin's don't survive
-      QuotaType.session · .modelSpecific("opus")   construction shortcuts
-      quotaType.shape           a Swift enum to `switch` on, with associated values
-      DailyUsageStat.Stored     a Codable form where Swift persists or reads JSON
+Kotlin (ClaudeBarKit)                         Swift (Sources/App)
+QuotaMonitor.state : StateFlow<MonitorState>  ──▶  Observed<MonitorState>  (@MainActor @Observable)
+                                                   └─ views read observed.value
+QuotaMonitor.refresh(providerId)              ◀──  Button { kit.monitor.refresh(id) }
 ```
 
-1. **Kotlin owns values and their concurrency; Swift observes.** Kernel types
-   are immutable `data class`es. State that changes (later: the Monitor's) is
-   a Kotlin `StateFlow`, read in Swift as an `AsyncSequence` by a
-   `@MainActor @Observable` model the views read. Swift never mutates Kotlin
-   state.
-2. **The face vouches for `Sendable`, once per type.** Kotlin classes reach
-   Swift without `Sendable`. They are immutable, and Kotlin/Native objects are
-   safe across threads, so the face declares
-   `extension UsageQuota: @retroactive @unchecked Sendable {}` for each, in one
-   file. SKIE makes Kotlin enums `Sendable` itself. Nothing else in the app
-   writes `@unchecked`.
-3. **Only the face names the bridge.** `onEnum(of:)`, `KotlinLong`, SKIE's
-   generated type names and the seconds/micros fields appear in
-   `Modules/Quotas/Sources/Kernel` and nowhere else. Every other module uses the
-   face's Swift words. Moving to Swift export later then changes one folder.
-4. **Kotlin has no `Date` or `Decimal`.** Times are `Double` seconds on the
-   caller's clock: the kernel only subtracts `nowSeconds`, so the epoch is the
-   caller's, and the face uses Apple's reference date so a `Date` survives the
-   round trip exactly. Money is nano-units (`Long`, exact to $0.000000001, as
-   per-token prices need). Counts are `Long` (a day's tokens pass 2³¹). The face
-   shows them as `Date`, `Decimal` and `Int`; where a Kotlin name would clash
-   with the face's, `@ObjCName` renames it for Swift only (`totalTokens64`,
-   `percentLeftOrNull`), so Kotlin keeps the clean name.
-5. **Sealed classes, not sealed interfaces.** A Kotlin sealed class becomes a
-   Swift class, so the face can add `.session`-style static shortcuts and an
-   `==` that finds them. Pattern matching goes through `shape`. A failable
-   init that returns a subclass (`QuotaType(quotaKey:)`) lives in a protocol
-   extension, which may assign `self`.
-6. **`Codable` stays in Swift.** A Kotlin class can't adopt it from an
-   extension (it is non-final to Swift), so where Swift persists or reads JSON
-   the face gives a `Codable` struct with the old keys — `DailyUsageStat.Stored`
-   for the usage-history ledger, `ExtensionMetric.Reported` for what an
-   extension reports — and the file's JSON is unchanged.
-7. **Swift never implements a Kotlin interface.** The edges (CLI, network,
-   Keychain) stay Swift ports in `DataSources`. Kotlin only holds values and
-   decides. This avoids SKIE's hidden `__name` for `suspend` requirements and
-   `NSObject`-only adopters.
-8. **Linked by exactly one module** (rule 4): `QuotaKernel` → `Quotas`. Other
-   modules get it through `Quotas`' `@_exported import`.
-9. **Tooling.** Kotlin 2.4.20, SKIE 0.10.15, JUnit 6 on a `jvm()` target,
-   `macosArm64` + `macosX64` (releases are universal; `macosX64` is deprecated
-   upstream, so when it goes, Intel support goes with it). SKIE's
-   default-argument interop stays **off**: it fails to link in 0.10.15. No
-   KMMBridge: it publishes a binary to another repo, and here a Gradle task
-   does that.
-10. **Built before generating.** `scripts/build-kotlin.sh` runs Gradle and
-   writes the XCFramework that `Project.swift` links. Contributors need JDK
-   21. `tuist generate`, and every CI workflow, runs it first.
+1. **Kotlin owns state and concurrency; Swift observes.** An aggregate the UI
+   shows exposes `state: StateFlow<…>` holding an immutable value. One generic
+   Swift class, `Observed<State>`, collects any `StateFlow` (SKIE makes it an
+   `AsyncSequence`) on the main actor and republishes `value` through
+   Observation. Views read `value` and nothing else.
+2. **Views tell, Kotlin decides.** A view calls a command (`refresh`,
+   `addAccount`, `hide(quotaKey)`). Commands that wait are `suspend` (Swift
+   `async`); the rest return at once and work in the kit's scope. Views never
+   compare, count or read quotas to decide; Kotlin hands them the decision
+   (`notePlacement`, `status`, `badgeText`).
+3. **The face is one folder.** `Sources/App/Kit/` holds the
+   `@retroactive @unchecked Sendable` lines (Kotlin values are immutable and
+   Kotlin/Native objects are thread-safe; SKIE marks enums itself), the
+   `Date`/`Decimal`/`Int` views, construction shortcuts, the `shape` enums for
+   `switch`, the `Codable` structs where Swift still reads or writes JSON, and
+   `Observed`. No other Swift file names `onEnum`, `KotlinLong` or a
+   `…Seconds`/`…Nanos` field, so switching to Swift export later changes this
+   folder alone.
+4. **Strings a card prints are page state** ("$14.26", "19.5M"): they are
+   formatted in the face or the view, because Kotlin's common code has no
+   `String.format` and the model keeps presentation out (CANONICAL_MODEL §6).
 
-**Why SKIE, not Swift export.** Both build for macOS and both ran this
-design in the spike. SKIE produces a prebuilt XCFramework, so Xcode never
-runs Gradle. Its names look like Swift (`.healthy`, `QuotaTypeSession`) and
-it is stable. Swift export is Alpha, runs only as an Xcode build phase with
-sandboxing off, and gives sealed members mangled names. It is JetBrains'
-direction, so it is re-checked with each Kotlin release (next: 2.5,
-December 2026), and rule 3 keeps the switch to one folder.
-
-**Slice 1 — the quotas show (built).** `UsageQuota`, `QuotaType`,
-`QuotaDuration`, `QuotaStatus`, `StatusPolicy`, `UsagePace`, `PaceLevel`,
-`Left`, `Money`, `Window`.
-
-**Slice 2 — the snapshot (built).** `UsageSnapshot` and what it holds:
-`QuotaGroup`, `AccountTier`, `CostUsage`, `CostLine`, `BudgetStatus`,
-`DailyUsageStat`, `DailyUsageReport`, `ExtensionMetric`, `MetricDelta`. Laws
-(groups, hiding, overall status, budget judgement, day deltas, cache hit rate)
-are Kotlin; the strings a card prints ("$14.26", "19.5M", "6m 19.7s") stay in
-the face, because they are page state (CANONICAL_MODEL §6) and Kotlin common
-code has no `String.format`. `DateRange`, `UsageError`, `UsageDisplayMode` and
-`StatusInfo` stay Swift: none is held by the snapshot.
-
-Across both slices the Swift suites keep their expectations; ten `switch`es
-became `switch …shape`, and three tests decode an extension's metric through
-`ExtensionMetric.Reported`. Run on sample data (`scripts/demo-screenshots.sh`),
-the app reads the same quotas, statuses, reset text, menu-bar text and day
-history, writes the same usage-history JSON, and fires the same alerts.
-
-## 4 · Naming
+## 6 · Kotlin conventions
 
 | Rule | Example | Why |
 |---|---|---|
-| a public name is a word the screen prints, else the industry's | `DataSource` (*DATA SOURCE*), `CredentialLookup` (*TOKEN LOOKUP ORDER*), `Fetch` (*Data fetching method*), `CLIExecutor` (*CLI Mode*) | the model's rule, kept at the module boundary |
-| a module is named for its context, a type for its node | module `Providers`, type `Provider` | |
-| **no type has its module's name** | `Quotas` holds `UsageQuota`, never a type `Quotas` | `Quotas.Quotas` breaks qualification in Swift |
-| no module shadows an Apple or package module | not `Settings` (SwiftUI's scene), not `Logging` (swift-log, pulled in by the AWS SDK), not `ActivityKit` | |
-| **a worker is named for its protocol, format or place — never a vendor** | `JSONRPCFetcher`, `OAuth2Refresher`, `JSONFileReader` | a vendor-named type is a vendor's five jobs coming back |
-| a port is the domain word; its implementation names the technology | `NetworkClient` → `URLSessionNetworkClient` | |
-| no grab-bag types | no `Machines`, `Context`, `Dependencies`, `Environment` bundle: each worker receives the one thing it uses | a bag is an ISP violation with a friendly name |
-| a factory is the module's name as an enum | `enum DataSources { static func make(…) }` | |
+| times are `Double` seconds on the caller's clock | `resetsAtSeconds`; laws take `nowSeconds` | Kotlin has no `Date`; the face uses Apple's reference date so a `Date` round-trips exactly |
+| money is `Long` nano-units | `totalCostNanos` | exact to $0.000000001, as per-token prices need; no `Decimal` in Kotlin |
+| counts are `Long` | `totalTokens` | a day's tokens pass 2³¹ |
+| a clean Kotlin name, renamed for Swift with `@ObjCName` when the face shows it with a Swift type | `@ObjCName("totalTokens64") val totalTokens: Long` → face `totalTokens: Int` | Kotlin stays readable for a second platform |
+| sealed classes, not sealed interfaces | `sealed class QuotaType` | Swift can add `.session` shortcuts on a class |
+| constructors are public | `UsageQuota(…)` | the face adds convenience inits with defaults; Kotlin defaults don't reach Swift |
+| no `Codable` on kernel classes; JSON is kotlinx.serialization in Kotlin | `@Serializable` DTOs in the owning package | a Kotlin class can't adopt `Codable` from Swift |
+| a public name is a word the screen prints, else the industry's | `DataSource`, `CredentialLookup`, `Fetch` | the model's rule |
+| a worker is named for its protocol, format or place, never a vendor | `JsonRpcFetcher`, `OAuth2Refresher` | |
+| a port is the domain word; its adapter names the technology | `SecretStore` → `KeychainSecretStore` | |
+| no grab-bag types | each worker receives the one thing it uses | |
 
-## 5 · Inside a module
-
-```text
-Modules/DataSources/
-├── Sources/
-│   ├── DataSource.swift              ◆ fetchResponse() · fetchUsage() · isReady — one type for every provider
-│   ├── Response.swift                ◇ status · headers · body — what Test Connection shows
-│   ├── DataSourceError.swift         step: lookup · fetch · mapping
-│   ├── DataSourceDefinition.swift    ◇ kind · credential · fetch · mapping · fallback — Codable
-│   ├── CredentialLookup.swift        ◇ enum: environment · setting · jsonFile · keychain ·
-│   │                                   browserCookies · sqlite · refined · firstOf ·
-│   │                                   refreshing(_, oauth2 | cli)
-│   ├── Fetch.swift                   ◇ enum: http · httpSteps · jsonRpc · cli · command · file ·
-│   │                                   localServer · cloudWatch · directory
-│   ├── Mapping.swift                 ◇ enum: json · text · script
-│   ├── CLIExecutor.swift             port, @Mockable
-│   ├── NetworkClient.swift           port, @Mockable
-│   ├── RPCTransport.swift            port, @Mockable
-│   ├── SecretStore.swift             port, @Mockable — implemented in Storage
-│   │   (Fetch.swift also declares the ports CloudWatchClient · PriceCatalog, @Mockable —
-│   │    implemented in AWSClients)
-│   ├── UsageLog.swift                ◆ days(from:to:) for one login · ◇ UsageLog.Definition —
-│   │                                   files · format · where · at · id · model · tokens · cost ·
-│   │                                   prices · freeWhen · sessionGap
-│   ├── DataSources.swift             the factory: make(_:providerId:…)
-│   └── Internal/
-│       ├── Lookup/    EnvironmentReader · SettingReader · JSONFileReader · KeychainReader ·
-│       │              BrowserCookieReader · SQLiteReader · RefinedReader · FirstOfReader ·
-│       │              OAuth2Refresher · CLIRefresher
-│       ├── Fetch/     HTTPFetcher · HTTPStepsFetcher · JSONRPCFetcher · CLIFetcher ·
-│       │              CommandFetcher · FileFetcher · DirectoryFetcher · LocalServerFetcher ·
-│       │              CloudWatchFetcher
-│       ├── Mapping/   JSONMapper (+ the path dialect) · TextMapper · ScriptMapper ·
-│       │              DecimalScript · HumanDate
-│       ├── Logs/      LogRecord · JSONLinesReader · JSONLogReader (a reader per log
-│       │              format) · LogFileFinder · DayAggregator · PriceList · LocalEndpoint
-│       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·
-│       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
-│       │              TerminalRenderer
-│       └── Network/   URLSessionNetworkClient · InsecureLocalhostNetworkClient
-└── Tests/
-    ├── Fetch/JSONRPCFetcherTests.swift
-    ├── Mapping/JSONMapperTests.swift  one test per mapping feature
-    └── DataSourceTests.swift          look up → fetch → map, the 401 refresh
-```
-
-```text
-Modules/Providers/
-├── Sources/
-│   ├── Provider.swift                  ◆ the lifecycle, and the fallback between data sources
-│   ├── Account.swift                   ◆ a login: refresh() · usageHistory? · guestPasses?
-│   ├── UsageHistory.swift              ◆ one per login: days(in: DateRange) → [Day], over its
-│   │                                     UsageLog and its ledger
-│   ├── LedgerStore.swift               port, @Mockable — where closed days are kept
-│   ├── ProviderDefinition.swift        ◇ the definition and its laws; its optional blocks
-│   │                                     usageHistory · guestPasses are the capabilities
-│   ├── ProviderCatalog.swift           built in · custom · extension; add · import · export
-│   ├── ProviderSettingsRepository.swift  port, @Mockable
-│   ├── CredentialRepository.swift      port, @Mockable
-│   ├── Providers.swift                 the factory: makeCatalog(settings:vault:cloudWatch:priceCatalog:)
-│   └── Internal/
-│       ├── DefinitionFiles.swift       reads *.json from Bundle.module or a folder
-│       └── DayLedger · FileLedgerStore closed days kept in ~/.claudebar/usage-history/
-├── Resources/Providers/                codex.json · claude.json · claude-*.js ·
-│                                       claude-prices.json · …   — the vendors
-└── Tests/
-    ├── ProviderTests.swift
-    ├── CatalogTests.swift              every bundled definition decodes
-    └── Golden/codex/                   recorded responses → expected snapshots
-```
-
-## 6 · Ports: as many as the requirement, and no more
-
-A port (a `public protocol` at a module's root) exists because the domain
-needs something outside the app that it must not build itself. Each is named
-for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
-
-| Port | Declared in | What lies outside | Implemented in |
-|---|---|---|---|
-| `CLIExecutor` | DataSources | a CLI, run to completion | `DataSources/Internal/Process` |
-| `NetworkClient` | DataSources | an HTTP endpoint | `DataSources/Internal/Network` |
-| `RPCTransport` | DataSources | a JSON-RPC pipe to a process | `DataSources/Internal/Process` |
-| `CloudWatchClient` | DataSources | AWS CloudWatch | `AWSClients` |
-| `PriceCatalog` | DataSources | a cloud's price list (AWS) — a price file a definition ships is data, not a port | `AWSClients` |
-| `SecretStore` | DataSources | the Keychain, for secrets a login saved | `Storage` |
-| `LedgerStore` | Providers | `~/.claudebar/usage-history/` | `Providers/Internal` (→ `Storage`) |
-| `ProviderSettingsRepository` · `CredentialRepository` | Providers | `settings.json`, the Keychain | `Storage` |
-| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `Monitoring/Internal` |
-| `QuotaAlerter` | Alerting | the user's notifications | `Alerting/Internal` |
-| `HookEventReceiver` | Activity | Claude Code's hooks | `Activity/Internal` |
-
-Not a port: a definition (it is parsed, not injected), a closed sum's worker
-(the factory picks it; tests build it with `@testable`), a module's own
-aggregate (views call `Provider` directly), or anything added "for
-testability" alone.
+Tooling: Kotlin 2.4.20, SKIE 0.10.15 (default-argument interop off: it fails
+to link), kotlinx.coroutines, kotlinx.serialization, kotlinx-io, Ktor,
+`androidx.sqlite`, `kotlincrypto`, JUnit 6, Konsist. Targets `macosArm64` and
+`macosX64` (releases are universal; `macosX64` is deprecated upstream, and
+Intel support ends when Kotlin removes it) plus `jvm()` for tests.
+`scripts/build-kotlin.sh` builds the framework before `tuist generate`.
+**Why SKIE, not Swift export**, and the friction met:
+[`Modules/Quotas/Kotlin/README.md`](../../Modules/Quotas/Kotlin/README.md).
 
 ## 7 · Testing
 
-- One test target per module: `QuotasTests`, `DataSourcesTests`, `ProvidersTests` …
-  A module's tests link only that module and its suppliers, so `QuotasTests`
-  no longer links six AWS SDKs.
-- What each piece's tests guard: [TARGET §7](TARGET_ARCHITECTURE.md#7--testing).
-- `AcceptanceTests` stays at the App level and composes real modules with
-  stubbed ports.
-- Kotlin laws are tested in Kotlin with JUnit (`./gradlew jvmTest`). The
-  Swift suites keep guarding the same laws through the face, so a port is
-  proven when the Swift suite stays green.
-- `MOCKING` is a project-level compilation condition in `Project.swift`, so
-  every new target inherits it.
+- **JUnit on the JVM for everything in `commonMain`**: laws, the engine, the
+  workers, the monitor. Chicago school: assert on state and returned values,
+  with hand-written fakes for the ports (no mocking library; Mockable goes away
+  with the Swift modules). Named `` `should … when …` ``.
+- **Adapters get a small native suite** (`kotlin.test`, `macosArm64Test`):
+  Keychain, the PTY, JavaScriptCore against the real system, in a temporary
+  home.
+- **Golden tests follow the definitions**: recorded responses and screen
+  captures → expected snapshots, one folder per definition, on the JVM.
+- **`ArchitectureTest`** guards §3.
+- **Swift keeps `AppTests` only**: views render the state they're given. While
+  a context migrates, its Swift tests keep running as the proof the Kotlin
+  answers the same, and retire once its JUnit tests cover the same behaviour.
 
-## 8 · Still to carve
+## 8 · Migration: bottom-up, one context at a time
 
-`Quotas`, `Diagnostics`, `DataSources`, `AWSClients` and `Providers` are
-built. `Domain` and `Infrastructure` re-export them (`@_exported import`), so
-no call site changes while files move, and each old target is deleted once
-it is empty.
+Kotlin never calls Swift, so contexts move from the bottom of §3 upward. A
+moved context keeps its Swift API through the face, so the Swift code above
+it compiles unchanged, and its Swift tests keep passing until JUnit replaces
+them.
 
-| Today | Goes to |
-|---|---|
-| `Domain/Monitor/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
-| `Domain/Notify/`, `Infrastructure/Notifications/`, `Notify/` | `Alerting` |
-| `Domain/Session/`, `Domain/Notch/`, `Infrastructure/Hooks/` | `Activity` (`NSScreen+NotchMetrics` → App) |
-| `Domain/Settings/`, `Infrastructure/Storage/` | `Storage` (`StatusColorPolicy`, `MenuBarProviderSettings` → App) |
-| `Domain/Provider/` page state (`MenuBarLabel`, `MenuBar*Display`, `MenuBarStackedSize`, `CountdownColon`, `PopoverContentHeight`) | the App |
-| `Infrastructure/Claude/ClaudeGuestPassSource` | the App — Claude's alone, a source the composition root hands in behind `GuestPassSource` |
-| `Infrastructure/TerminalImport/` | the App — themes are presentation |
-| `Tests/DomainTests`, `InfrastructureTests` | split per module, following their sources |
+| Phase | Moves | Replaces | Status |
+|---|---|---|---|
+| 0 | `Modules/Quotas/Kotlin` becomes `ClaudeBarKit/` (framework `ClaudeBarKit`, package `quotas`); `ArchitectureTest` | `QuotaKernel` | next |
+| 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** (as `QuotaKernel`) |
+| 2 | `diagnostics`, `storage` (settings.json, vault, ledger files) | `Modules/Diagnostics`, `Infrastructure/Storage`, `Domain/Settings` | |
+| 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
+| 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history | `Modules/Providers`, `Domain/Provider` | |
+| 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |
+| 6 | the App on `Observed` and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable | — | |
 
-The kernel still holds a few types that belong elsewhere; each carries a
-`- Note: Interim` naming its final shape, and the canonical model lists them
-under *where the code is still behind*.
+Phase 3 is the largest and the riskiest: it replaces four Swift libraries.
+`TerminalScreen` is proven first against `scripts/claude-usage-captures/`
+before any interactive CLI moves.
 
 ## 9 · Open
 
-- **The next Kotlin slices.** After the kernel: the Monitor's state as a
-  `StateFlow` (§3.1 rule 1), then the
-  definition mappings in `DataSources` (the path dialect, `HumanDate`), which
-  are pure and are what another platform would need to read the same JSON
-  definitions. Not the workers: they are Apple I/O.
-
-- **`Storage` as a module, or each module's settings in its own `Internal/`?**
-  `settings.json` is one file many contexts write, so one owner today.
-- **One module per heavy SDK.** AWS is the only one today; the next gets its
-  own `…Clients` module behind its own port in `DataSources`.
-- **Usage History as its own module, later?** Not now: `Providers` is its
-  only consumer and its work is `DataSources`' (files, the path language,
-  prices). It earns a module when it needs its own SDK (a binary or
-  SQLite log) or a second consumer; keeping `Internal/Logs/` and
-  `UsageHistory.swift` in their own files keeps that carve cheap.
+- **JVM adapters.** `jvmMain` is empty: the JVM runs tests only. A Windows or
+  Linux app would fill it (`ProcessBuilder`, a JVM keyring, `java.net.http`),
+  and `commonMain` would not change.
+- **The log on macOS.** `os_log` is a C macro Kotlin can't call; the sink is
+  either a small C shim through cinterop, or `NSLog` plus the file log.
+- **Script mappings on the JVM.** `ScriptEngine` is JavaScriptCore on macOS;
+  golden tests of a definition's `.js` need a JVM engine (Rhino or GraalJS), or
+  run in the native suite.
+- **Swift export.** Re-checked with each Kotlin release (next: 2.5, December
+  2026); §5 rule 3 keeps the switch to one folder.

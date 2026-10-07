@@ -48,7 +48,7 @@ the user to confirm before writing code.
 | look (name, symbol, colour, icon) | `profile.look` in `<id>.json`; the icon image in the asset catalog | always |
 | research | `docs/providers/<id>/README.md` (users), `design.md` (contributors) | always |
 
-**The rules** ([MODULAR_DESIGN §3–4](../../../docs/architecture/MODULAR_DESIGN.md#3--the-dependency-rules)):
+**The rules** ([MODULAR_DESIGN §3–4](../../../docs/architecture/MODULAR_DESIGN.md#3--the-package-rules)):
 - No vendor's name in a module's Swift. A worker is named for its protocol, format or place (`JSONRPCFetcher`, `OAuth2Refresher`), never a vendor.
 - No `Probe` names. The words are DataSource, Fetch, Mapping, Usage, Quota, Plan and Cost.
 - `Modules/*` never `import Domain`. The usage model is `Quotas`; providers, settings and accounts are `Providers`.

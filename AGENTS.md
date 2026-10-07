@@ -23,7 +23,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 | Where | Holds |
 |---|---|
-| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageSnapshot`, `UsageQuota` and their laws are Kotlin (`Kotlin/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §3.1](docs/architecture/MODULAR_DESIGN.md#31--the-kernel-written-once-in-kotlin) |
+| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageSnapshot`, `UsageQuota` and their laws are Kotlin (`Kotlin/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §1, §8](docs/architecture/MODULAR_DESIGN.md#8--migration-bottom-up-one-context-at-a-time) |
 | `Modules/DataSources` | `DataSource` (credential lookup → fetch → mapping) and its workers: OAuth, HTTP, JSON-RPC, CLI, JSON/text/script mapping |
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
