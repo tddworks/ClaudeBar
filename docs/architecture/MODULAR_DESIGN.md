@@ -106,8 +106,8 @@ has no such dependency in `Project.swift`.
 
 ### 3.1 · The kernel written once, in Kotlin
 
-> **Status: SLICE 1 BUILT** — `UsageQuota` and the values it reads are Kotlin;
-> the app and its 2,750 Swift tests run on them. Versions, friction and the
+> **Status: SLICES 1–2 BUILT** — `UsageSnapshot` and every value it holds are
+> Kotlin; the app and its 2,968 Swift tests run on them. Versions, friction and the
 > bridge comparison: [`Modules/Quotas/Kotlin/README.md`](../../Modules/Quotas/Kotlin/README.md).
 
 The shared kernel's values and laws are written once in Kotlin
@@ -121,8 +121,9 @@ the language it is written in changes.
 ```text
 Modules/Quotas/
 ├── Kotlin/                     THE KERNEL — a Gradle KMP project
-│   ├── src/commonMain/         UsageQuota, QuotaType, QuotaStatus, StatusPolicy,
-│   │                           Left, Money, Window, UsagePace … and their laws
+│   ├── src/commonMain/         UsageSnapshot, UsageQuota, QuotaType, QuotaStatus,
+│   │                           StatusPolicy, Left, Money, CostUsage, DailyUsageStat …
+│   │                           and their laws
 │   ├── src/jvmTest/            the laws' tests, JUnit
 │   └── → QuotaKernel.xcframework   built by Gradle + SKIE, linked by Quotas only
 └── Sources/Kernel/             THE SWIFT FACE — extensions only, no second model
@@ -132,6 +133,7 @@ Modules/Quotas/
       init(…, resetsAt: Date? = nil, …)   the default arguments Kotlin's don't survive
       QuotaType.session · .modelSpecific("opus")   construction shortcuts
       quotaType.shape           a Swift enum to `switch` on, with associated values
+      DailyUsageStat.Stored     a Codable form where Swift persists or reads JSON
 ```
 
 1. **Kotlin owns values and their concurrency; Swift observes.** Kernel types
@@ -152,26 +154,34 @@ Modules/Quotas/
 4. **Kotlin has no `Date` or `Decimal`.** Times are `Double` seconds on the
    caller's clock: the kernel only subtracts `nowSeconds`, so the epoch is the
    caller's, and the face uses Apple's reference date so a `Date` survives the
-   round trip exactly. Money is micro-units (`Long`, exact to $0.000001). The
-   face shows them as `Date` and `Decimal` and supplies `Date()` as now.
+   round trip exactly. Money is nano-units (`Long`, exact to $0.000000001, as
+   per-token prices need). Counts are `Long` (a day's tokens pass 2³¹). The face
+   shows them as `Date`, `Decimal` and `Int`; where a Kotlin name would clash
+   with the face's, `@ObjCName` renames it for Swift only (`totalTokens64`,
+   `percentLeftOrNull`), so Kotlin keeps the clean name.
 5. **Sealed classes, not sealed interfaces.** A Kotlin sealed class becomes a
    Swift class, so the face can add `.session`-style static shortcuts and an
    `==` that finds them. Pattern matching goes through `shape`. A failable
    init that returns a subclass (`QuotaType(quotaKey:)`) lives in a protocol
    extension, which may assign `self`.
-6. **Swift never implements a Kotlin interface.** The edges (CLI, network,
+6. **`Codable` stays in Swift.** A Kotlin class can't adopt it from an
+   extension (it is non-final to Swift), so where Swift persists or reads JSON
+   the face gives a `Codable` struct with the old keys — `DailyUsageStat.Stored`
+   for the usage-history ledger, `ExtensionMetric.Reported` for what an
+   extension reports — and the file's JSON is unchanged.
+7. **Swift never implements a Kotlin interface.** The edges (CLI, network,
    Keychain) stay Swift ports in `DataSources`. Kotlin only holds values and
    decides. This avoids SKIE's hidden `__name` for `suspend` requirements and
    `NSObject`-only adopters.
-7. **Linked by exactly one module** (rule 4): `QuotaKernel` → `Quotas`. Other
+8. **Linked by exactly one module** (rule 4): `QuotaKernel` → `Quotas`. Other
    modules get it through `Quotas`' `@_exported import`.
-8. **Tooling.** Kotlin 2.4.20, SKIE 0.10.15, JUnit 6 on a `jvm()` target,
+9. **Tooling.** Kotlin 2.4.20, SKIE 0.10.15, JUnit 6 on a `jvm()` target,
    `macosArm64` + `macosX64` (releases are universal; `macosX64` is deprecated
    upstream, so when it goes, Intel support goes with it). SKIE's
    default-argument interop stays **off**: it fails to link in 0.10.15. No
    KMMBridge: it publishes a binary to another repo, and here a Gradle task
    does that.
-9. **Built before generating.** `scripts/build-kotlin.sh` runs Gradle and
+10. **Built before generating.** `scripts/build-kotlin.sh` runs Gradle and
    writes the XCFramework that `Project.swift` links. Contributors need JDK
    21. `tuist generate`, and every CI workflow, runs it first.
 
@@ -183,16 +193,24 @@ sandboxing off, and gives sealed members mangled names. It is JetBrains'
 direction, so it is re-checked with each Kotlin release (next: 2.5,
 December 2026), and rule 3 keeps the switch to one folder.
 
-**Slice 1 — the quotas show (built).** The values a card, the menu bar and the
-status color read move to Kotlin: `UsageQuota`, `QuotaType`, `QuotaDuration`,
-`QuotaStatus`, `StatusPolicy`, `UsagePace`, `Left`, `Money`, `Window`.
-`UsageSnapshot` stays Swift (it holds `CostUsage`, `DailyUsageReport`,
-`AccountTier` and `ExtensionMetric`, which move with it in slice 2) and holds
-Kotlin quotas. The Swift suites that guard these laws today keep passing
-through the face, with call sites rewritten mechanically where a `switch`
-becomes `switch …shape` (nine sites). Run on sample data
-(`scripts/demo-screenshots.sh`), the app reads the same quotas, statuses,
-reset text and menu-bar text, and fires the same alerts.
+**Slice 1 — the quotas show (built).** `UsageQuota`, `QuotaType`,
+`QuotaDuration`, `QuotaStatus`, `StatusPolicy`, `UsagePace`, `PaceLevel`,
+`Left`, `Money`, `Window`.
+
+**Slice 2 — the snapshot (built).** `UsageSnapshot` and what it holds:
+`QuotaGroup`, `AccountTier`, `CostUsage`, `CostLine`, `BudgetStatus`,
+`DailyUsageStat`, `DailyUsageReport`, `ExtensionMetric`, `MetricDelta`. Laws
+(groups, hiding, overall status, budget judgement, day deltas, cache hit rate)
+are Kotlin; the strings a card prints ("$14.26", "19.5M", "6m 19.7s") stay in
+the face, because they are page state (CANONICAL_MODEL §6) and Kotlin common
+code has no `String.format`. `DateRange`, `UsageError`, `UsageDisplayMode` and
+`StatusInfo` stay Swift: none is held by the snapshot.
+
+Across both slices the Swift suites keep their expectations; ten `switch`es
+became `switch …shape`, and three tests decode an extension's metric through
+`ExtensionMetric.Reported`. Run on sample data (`scripts/demo-screenshots.sh`),
+the app reads the same quotas, statuses, reset text, menu-bar text and day
+history, writes the same usage-history JSON, and fires the same alerts.
 
 ## 4 · Naming
 

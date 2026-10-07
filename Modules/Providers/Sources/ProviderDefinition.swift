@@ -62,7 +62,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         }
 
         static func key(for plan: AccountTier) -> String {
-            switch plan {
+            switch plan.shape {
             case .claudeMax: "claudeMax"
             case .claudePro: "claudePro"
             case .claudeApi: "claudeApi"

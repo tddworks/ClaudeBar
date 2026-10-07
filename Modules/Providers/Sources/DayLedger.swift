@@ -55,6 +55,21 @@ public struct LedgerPage: Sendable, Equatable, Codable {
         self.fingerprint = fingerprint
         self.days = days
     }
+
+    private enum CodingKeys: String, CodingKey { case fingerprint, days }
+
+    // A day is stored through its `Stored` form, which keeps the file's JSON unchanged.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fingerprint = try c.decode(String.self, forKey: .fingerprint)
+        days = try c.decode([String: DailyUsageStat.Stored].self, forKey: .days).mapValues(\.stat)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(fingerprint, forKey: .fingerprint)
+        try c.encode(days.mapValues(\.stored), forKey: .days)
+    }
 }
 
 /// Where kept days live.

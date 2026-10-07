@@ -1,8 +1,10 @@
 # QuotaKernel: the Quotas kernel in Kotlin
 
-`UsageQuota` and the values and laws it reads (`QuotaType`, `QuotaStatus`,
-`StatusPolicy`, `UsagePace`, `PaceLevel`, `QuotaDuration`, `Left`, `Money`,
-`Window`) are written once in Kotlin Multiplatform, so a second platform reads
+`UsageSnapshot` and every value it holds (`UsageQuota`, `QuotaType`,
+`QuotaStatus`, `StatusPolicy`, `UsagePace`, `PaceLevel`, `QuotaDuration`, `Left`,
+`Money`, `Window`, `QuotaGroup`, `AccountTier`, `CostUsage`, `CostLine`,
+`BudgetStatus`, `DailyUsageStat`, `DailyUsageReport`, `ExtensionMetric`,
+`MetricDelta`), with their laws, are written once in Kotlin Multiplatform, so a second platform reads
 quotas with the same code. The Swift app links them as `QuotaKernel.xcframework`
 through the `Quotas` module, whose `Sources/Kernel/` is their Swift face. The
 design and its rules: [MODULAR_DESIGN §3.1](../../../docs/architecture/MODULAR_DESIGN.md#31--the-kernel-written-once-in-kotlin).
@@ -27,13 +29,21 @@ with it.
 ## Writing kernel code
 
 - **Times are `Double` seconds on the caller's clock; money is `Long`
-  micro-units.** Kotlin has no `Date` or `Decimal`. A law that needs "now"
-  takes `nowSeconds`.
+  nano-units; counts are `Long`.** Kotlin has no `Date` or `Decimal`, and a
+  day's tokens pass 2³¹. A law that needs "now" takes `nowSeconds`.
 - **Use sealed classes, not sealed interfaces**, so Swift can add static
   shortcuts (`.session`) to the base class.
-- **Give a nullable number a name the face won't reuse** (`percentLeftOrNull`,
-  `resetsAtSeconds`). It reaches Swift boxed (`KotlinDouble?`), and the face
-  shows it under the Swift name (`percentLeft: Double?`).
+- **Keep Kotlin names clean; rename for Swift with `@ObjCName`** when the face
+  shows the field under the same name with a Swift type: a `Long` count
+  (`@ObjCName("totalTokens64")` → face `totalTokens: Int`) or a nullable number,
+  which reaches Swift boxed (`@ObjCName("percentLeftOrNull")` → face
+  `percentLeft: Double?`). A field that carries its unit (`resetsAtSeconds`,
+  `totalCostNanos`) needs no rename.
+- **No `Codable` on kernel classes.** Swift persists and reads JSON through a
+  face struct with the old keys (`DailyUsageStat.Stored`,
+  `ExtensionMetric.Reported`).
+- **Strings a card prints stay in the face** (`formattedCost`, "19.5M"):
+  Kotlin common code has no `String.format`, and they are page state.
 - **Constructors are public**, so the face can add convenience inits with
   default arguments. Kotlin defaults don't reach Swift.
 - **Swift never implements a Kotlin interface.** The edges stay Swift ports.
@@ -66,6 +76,8 @@ Friction met, and where it is handled:
 | A Swift class adopting a Kotlin interface must subclass `NSObject`, and SKIE hides a `suspend` requirement as `__name` | rule: Swift never implements a Kotlin interface |
 | `xcodebuild -create-xcframework` fails without a `.swiftinterface` | `skie { build { produceDistributableFramework() } }` |
 | SKIE uploads build analytics by default | `analytics { disableUpload.set(true) }` |
+| A face init and a Kotlin init that differ only in `Double?` versus `KotlinDouble?` make a `nil` argument ambiguous | `@ObjCName` on the Kotlin field |
 | Kotlin enums, data classes and companions: `==` on `NSObject` can't find `.session` | the face declares `==` per base class |
+| Kotlin classes are non-final to Swift, so an extension can't add `Codable` (`init(from:)` must be `required`) | a `Codable` face struct per JSON use |
 | A failable init can't return a subclass from a class extension | `QuotaType(quotaKey:)` lives in a protocol extension, which may assign `self` |
 | KMMBridge writes `Package.swift` to the git root, beside Tuist | not used: a Gradle task builds the XCFramework in-repo |

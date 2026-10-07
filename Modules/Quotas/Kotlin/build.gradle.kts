@@ -27,6 +27,8 @@ kotlin {
     }
 
     sourceSets {
+        // @ObjCName renames a Long count for Swift, so the face can show it as Int.
+        all { languageSettings.optIn("kotlin.experimental.ExperimentalObjCName") }
         jvmTest.dependencies {
             implementation(project.dependencies.platform("org.junit:junit-bom:6.1.3"))
             implementation("org.junit.jupiter:junit-jupiter")

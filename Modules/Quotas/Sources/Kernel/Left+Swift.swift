@@ -4,10 +4,10 @@ import QuotaKernel
 extension Money {
     /// An amount in one currency.
     public convenience init(_ amount: Decimal, currency: String = "USD") {
-        self.init(amountMicros: amount.micros, currency: currency)
+        self.init(amountNanos: amount.nanos, currency: currency)
     }
 
-    public var amount: Decimal { Decimal(micros: amountMicros) }
+    public var amount: Decimal { Decimal(nanos: amountNanos) }
 
     public static func == (lhs: Money, rhs: Money) -> Bool { lhs.isEqual(rhs) }
 }

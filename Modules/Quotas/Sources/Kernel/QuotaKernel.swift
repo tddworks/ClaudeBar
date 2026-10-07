@@ -17,6 +17,15 @@ extension StatusPolicy: @retroactive @unchecked Sendable {}
 extension Left: @retroactive @unchecked Sendable {}
 extension Money: @retroactive @unchecked Sendable {}
 extension Window: @retroactive @unchecked Sendable {}
+extension UsageSnapshot: @retroactive @unchecked Sendable {}
+extension QuotaGroup: @retroactive @unchecked Sendable {}
+extension AccountTier: @retroactive @unchecked Sendable {}
+extension CostUsage: @retroactive @unchecked Sendable {}
+extension CostLine: @retroactive @unchecked Sendable {}
+extension DailyUsageStat: @retroactive @unchecked Sendable {}
+extension DailyUsageReport: @retroactive @unchecked Sendable {}
+extension ExtensionMetric: @retroactive @unchecked Sendable {}
+extension MetricDelta: @retroactive @unchecked Sendable {}
 
 // MARK: - The kernel's clock and money
 
@@ -33,15 +42,15 @@ enum KernelClock {
 }
 
 extension Decimal {
-    /// Micro-units, the kernel's exact money (1 USD = 1_000_000).
-    var micros: Int64 {
-        var scaled = self * 1_000_000
+    /// Nano-units, the kernel's exact money (1 USD = 1_000_000_000).
+    var nanos: Int64 {
+        var scaled = self * 1_000_000_000
         var rounded = Decimal()
         NSDecimalRound(&rounded, &scaled, 0, .plain)
         return NSDecimalNumber(decimal: rounded).int64Value
     }
 
-    init(micros: Int64) { self = Decimal(micros) / 1_000_000 }
+    init(nanos: Int64) { self = Decimal(nanos) / 1_000_000_000 }
 }
 
 extension Optional where Wrapped == KotlinDouble {
@@ -50,6 +59,24 @@ extension Optional where Wrapped == KotlinDouble {
 
 extension Optional where Wrapped == KotlinLong {
     var swift: Int64? { self?.int64Value }
+}
+
+/// Dollars the way the cards print them ("$14.26").
+func formattedUSD(_ amount: Decimal, locale: String = "en_US_POSIX") -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .currency
+    formatter.currencyCode = "USD"
+    formatter.locale = Locale(identifier: locale)
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+}
+
+/// A count the way the cards print it ("19.5M", "1.2K", "500").
+func formattedCount(_ count: Int) -> String {
+    if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000.0) }
+    if count >= 1_000 { return String(format: "%.1fK", Double(count) / 1_000.0) }
+    return "\(count)"
 }
 
 extension Optional where Wrapped == Double {

@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.quotas
 
+import kotlin.native.ObjCName
+
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -9,7 +11,7 @@ import kotlin.math.min
  * the status color read.
  *
  * Times are seconds on the caller's clock: the kernel only ever subtracts `nowSeconds`
- * from them, so any epoch works as long as `now` uses the same one. Money is micro-units.
+ * from them, so any epoch works as long as `now` uses the same one. Money is nano-units.
  *
  * Interim shape (CANONICAL_MODEL): becomes `Quota` with `left: Left` — a share OR money.
  */
@@ -24,11 +26,11 @@ class UsageQuota(
     /** The window's length when the data source states it; pace is unknown without it. */
     val windowSeconds: Double?,
     /** Balance remaining for a credit quota with no cap. */
-    val dollarRemainingMicros: Long?,
+    val dollarRemainingNanos: Long?,
     /** Spent, for a capped spend meter. */
-    val dollarUsedMicros: Long?,
+    val dollarUsedNanos: Long?,
     /** The cap, for a capped spend meter. */
-    val dollarCapMicros: Long?,
+    val dollarCapNanos: Long?,
     /** Section when an aggregating provider spans several accounts ("Claude · work"). */
     val group: String?,
     /** Short card title inside its group ("5h", "Spark 7d"). */
@@ -48,10 +50,10 @@ class UsageQuota(
     val left: Left = run {
         val code = currency ?: "USD"
         when {
-            dollarRemainingMicros != null && dollarCapMicros == null && percentRemaining == 100.0 ->
-                Left.Balance(Money(dollarRemainingMicros, code), null)
-            dollarRemainingMicros != null && dollarCapMicros != null ->
-                Left.Balance(Money(dollarRemainingMicros, code), Money(dollarCapMicros, code))
+            dollarRemainingNanos != null && dollarCapNanos == null && percentRemaining == 100.0 ->
+                Left.Balance(Money(dollarRemainingNanos, code), null)
+            dollarRemainingNanos != null && dollarCapNanos != null ->
+                Left.Balance(Money(dollarRemainingNanos, code), Money(dollarCapNanos, code))
             else -> Left.Share(min(100.0, percentRemaining))
         }
     }
@@ -77,9 +79,9 @@ class UsageQuota(
         resetsAtSeconds = resetsAtSeconds,
         resetText = resetText,
         windowSeconds = windowSeconds,
-        dollarRemainingMicros = (left as? Left.Balance)?.remaining?.amountMicros,
-        dollarUsedMicros = (left as? Left.Balance)?.let { b -> b.ceiling?.let { it.amountMicros - b.remaining.amountMicros } },
-        dollarCapMicros = (left as? Left.Balance)?.ceiling?.amountMicros,
+        dollarRemainingNanos = (left as? Left.Balance)?.remaining?.amountNanos,
+        dollarUsedNanos = (left as? Left.Balance)?.let { b -> b.ceiling?.let { it.amountNanos - b.remaining.amountNanos } },
+        dollarCapNanos = (left as? Left.Balance)?.ceiling?.amountNanos,
         group = group,
         compactTitle = compactTitle,
         menuBarTitle = menuBarTitle,
@@ -88,8 +90,8 @@ class UsageQuota(
 
     companion object {
         private fun share(remaining: Money, ceiling: Money): Double? =
-            if (ceiling.currency != remaining.currency || ceiling.amountMicros <= 0) null
-            else remaining.amountMicros * 100.0 / ceiling.amountMicros
+            if (ceiling.currency != remaining.currency || ceiling.amountNanos <= 0) null
+            else remaining.amountNanos * 100.0 / ceiling.amountNanos
 
         /** The display symbol for an ISO 4217 code ("USD" → "$"); unknown codes keep the code. */
         fun currencySymbol(code: String): String = when (code.uppercase()) {
@@ -109,19 +111,20 @@ class UsageQuota(
         other is UsageQuota && percentRemaining == other.percentRemaining && quotaType == other.quotaType &&
             providerId == other.providerId && resetsAtSeconds == other.resetsAtSeconds &&
             resetText == other.resetText && windowSeconds == other.windowSeconds &&
-            dollarRemainingMicros == other.dollarRemainingMicros && dollarUsedMicros == other.dollarUsedMicros &&
-            dollarCapMicros == other.dollarCapMicros && group == other.group &&
+            dollarRemainingNanos == other.dollarRemainingNanos && dollarUsedNanos == other.dollarUsedNanos &&
+            dollarCapNanos == other.dollarCapNanos && group == other.group &&
             compactTitle == other.compactTitle && menuBarTitle == other.menuBarTitle && currency == other.currency
 
     override fun hashCode(): Int = listOf(
-        percentRemaining, quotaType, providerId, resetsAtSeconds, resetText, windowSeconds, dollarRemainingMicros,
-        dollarUsedMicros, dollarCapMicros, group, compactTitle, menuBarTitle, currency,
+        percentRemaining, quotaType, providerId, resetsAtSeconds, resetText, windowSeconds, dollarRemainingNanos,
+        dollarUsedNanos, dollarCapNanos, group, compactTitle, menuBarTitle, currency,
     ).hashCode()
 
     override fun toString(): String = "UsageQuota($providerId ${quotaType.quotaKey} $percentRemaining% left=$left)"
 
     /** The percentage left — null for a balance with no ceiling, which has none. */
-    val percentLeftOrNull: Double?
+    @ObjCName("percentLeftOrNull")
+    val percentLeft: Double?
         get() = when (val left = left) {
             is Left.Share -> left.percent
             is Left.Balance -> left.ceiling?.let { share(left.remaining, it) ?: percentRemaining }
@@ -139,14 +142,14 @@ class UsageQuota(
         get() {
             val left = left
             if (left is Left.Balance && left.ceiling == null) {
-                return if (left.remaining.amountMicros <= 0) QuotaStatus.DEPLETED else QuotaStatus.HEALTHY
+                return if (left.remaining.amountNanos <= 0) QuotaStatus.DEPLETED else QuotaStatus.HEALTHY
             }
             return QuotaStatus.from(percentRemaining)
         }
 
     val percentUsed: Double get() = 100 - percentRemaining
     val isDepleted: Boolean get() = percentRemaining <= 0
-    val isDollarBased: Boolean get() = dollarRemainingMicros != null
+    val isDollarBased: Boolean get() = dollarRemainingNanos != null
     val needsAttention: Boolean get() = status.needsAttention
 
     /** This quota's status under the person's policy. */

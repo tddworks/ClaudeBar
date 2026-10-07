@@ -1,11 +1,11 @@
 package com.tddworks.claudebar.quotas
 
 /**
- * An amount of money in one currency, in micro-units (1 USD = 1_000_000), exact to
- * $0.000001. Kotlin has no Decimal; the Swift face shows it as one. Two currencies are
+ * An amount of money in one currency, in nano-units (1 USD = 1_000_000_000),
+ * exact to $0.000000001. Kotlin has no Decimal; the Swift face shows it as one. Two currencies are
  * never added or compared.
  */
-data class Money(val amountMicros: Long, val currency: String = "USD")
+data class Money(val amountNanos: Long, val currency: String = "USD")
 
 /** HOW MUCH IS LEFT — a share or money, never both (CANONICAL_MODEL §5). */
 sealed class Left {

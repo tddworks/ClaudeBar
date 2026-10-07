@@ -25,9 +25,9 @@ extension UsageQuota {
             resetsAtSeconds: resetsAt.map(\.kernelSeconds).kotlin,
             resetText: resetText,
             windowSeconds: windowDuration.kotlin,
-            dollarRemainingMicros: dollarRemaining.map(\.micros).kotlin,
-            dollarUsedMicros: dollarUsed.map(\.micros).kotlin,
-            dollarCapMicros: dollarCap.map(\.micros).kotlin,
+            dollarRemainingNanos: dollarRemaining.map(\.nanos).kotlin,
+            dollarUsedNanos: dollarUsed.map(\.nanos).kotlin,
+            dollarCapNanos: dollarCap.map(\.nanos).kotlin,
             group: group,
             compactTitle: compactTitle,
             menuBarTitle: menuBarTitle,
@@ -68,9 +68,9 @@ extension UsageQuota {
     public var resetsAt: Date? { resetsAtSeconds.swift.map(Date.init(kernelSeconds:)) }
     /// The window's length in seconds, when the data source states it.
     public var windowDuration: TimeInterval? { windowSeconds.swift }
-    public var dollarRemaining: Decimal? { dollarRemainingMicros.swift.map(Decimal.init(micros:)) }
-    public var dollarUsed: Decimal? { dollarUsedMicros.swift.map(Decimal.init(micros:)) }
-    public var dollarCap: Decimal? { dollarCapMicros.swift.map(Decimal.init(micros:)) }
+    public var dollarRemaining: Decimal? { dollarRemainingNanos.swift.map(Decimal.init(nanos:)) }
+    public var dollarUsed: Decimal? { dollarUsedNanos.swift.map(Decimal.init(nanos:)) }
+    public var dollarCap: Decimal? { dollarCapNanos.swift.map(Decimal.init(nanos:)) }
 
     /// The percentage left — `nil` for a balance with no ceiling, which has none.
     public var percentLeft: Double? { percentLeftOrNull.swift }
@@ -189,12 +189,5 @@ public extension Collection where Element == UsageQuota {
               latest.timeIntervalSince(earliest) <= 60
         else { return nil }
         return first?.resetTimestampDescription
-    }
-}
-
-extension UsageSnapshot {
-    /// The worst quota's status under the person's policy.
-    public func overallStatus(under policy: StatusPolicy) -> QuotaStatus {
-        quotas.map { $0.status(under: policy) }.max() ?? .healthy
     }
 }

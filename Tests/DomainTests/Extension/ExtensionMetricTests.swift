@@ -62,7 +62,7 @@ struct ExtensionMetricTests {
         }
         """
 
-        let metric = try JSONDecoder().decode(ExtensionMetric.self, from: json.data(using: .utf8)!)
+        let metric = try JSONDecoder().decode(ExtensionMetric.Reported.self, from: json.data(using: .utf8)!).metric
 
         #expect(metric.label == "Cost")
         #expect(metric.value == "$10.26")
@@ -85,7 +85,7 @@ struct ExtensionMetricTests {
         }
         """
 
-        let metric = try JSONDecoder().decode(ExtensionMetric.self, from: json.data(using: .utf8)!)
+        let metric = try JSONDecoder().decode(ExtensionMetric.Reported.self, from: json.data(using: .utf8)!).metric
 
         #expect(metric.label == "Tokens")
         #expect(metric.delta == nil)
@@ -110,7 +110,7 @@ struct ExtensionMetricTests {
         }
         """
 
-        let delta = try JSONDecoder().decode(MetricDelta.self, from: json.data(using: .utf8)!)
+        let delta = try JSONDecoder().decode(MetricDelta.Reported.self, from: json.data(using: .utf8)!).delta
 
         #expect(delta.vs == "Yesterday")
         #expect(delta.value == "+5")

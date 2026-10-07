@@ -40,26 +40,26 @@ class UsageQuotaTest {
 
         @Test
         fun `should read a balance written as 100 percent as money with no percentage`() {
-            val balance = quota(100.0, dollarRemaining = 12_400_000)
-            assertEquals(Left.Balance(Money(12_400_000), null), balance.left)
-            assertNull(balance.percentLeftOrNull)
+            val balance = quota(100.0, dollarRemaining = 12_400_000_000)
+            assertEquals(Left.Balance(Money(12_400_000_000), null), balance.left)
+            assertNull(balance.percentLeft)
             assertTrue(balance.isBalance)
         }
 
         @Test
         fun `should give a capped spend meter its share of the cap`() {
             val meter = UsageQuota(
-                Left.Balance(Money(12_400_000), Money(50_000_000)), QuotaType.Weekly, "openrouter",
+                Left.Balance(Money(12_400_000_000), Money(50_000_000_000)), QuotaType.Weekly, "openrouter",
                 null, null, null, null, null, null,
             )
             assertEquals(24.8, meter.percentRemaining)
-            assertEquals(37_600_000L, meter.dollarUsedMicros)
+            assertEquals(37_600_000_000L, meter.dollarUsedNanos)
         }
 
         @Test
         fun `should give no share when the cap is in another currency`() {
             val meter = UsageQuota(
-                Left.Balance(Money(10_000_000, "USD"), Money(50_000_000, "CNY")), QuotaType.Weekly, "x",
+                Left.Balance(Money(10_000_000_000, "USD"), Money(50_000_000_000, "CNY")), QuotaType.Weekly, "x",
                 null, null, null, null, null, null,
             )
             assertEquals(100.0, meter.percentRemaining)
