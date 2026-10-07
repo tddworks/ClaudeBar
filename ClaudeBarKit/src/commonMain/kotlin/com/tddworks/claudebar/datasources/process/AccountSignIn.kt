@@ -6,6 +6,9 @@ import com.tddworks.claudebar.datasources.SignInProcess
 import com.tddworks.claudebar.datasources.decoding
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
@@ -24,6 +27,15 @@ internal data class SignInCall(
     /** Seconds to wait for the person to finish in the browser. */
     val timeout: Double = 300.0,
 ) {
+    /** As a definition writes it — every field, so a shared file says exactly what runs. */
+    fun toJson(): JsonObject = JsonObject(mapOf(
+        "cli" to JsonPrimitive(cli),
+        "args" to JsonArray(args.map(::JsonPrimitive)),
+        "homeVariable" to JsonPrimitive(homeVariable),
+        "unset" to JsonArray(unset.map(::JsonPrimitive)),
+        "timeout" to JsonPrimitive(timeout),
+    ))
+
     companion object {
         fun from(json: JsonElement): SignInCall = decoding("signIn") { DefinitionJson.decodeFromJsonElement(json) }
     }

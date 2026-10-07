@@ -1,5 +1,7 @@
 package com.tddworks.claudebar.providers
 
+import com.tddworks.claudebar.datasources.process.SignInCall
+
 import com.tddworks.claudebar.datasources.DataSourceDefinition
 import com.tddworks.claudebar.datasources.DefinitionError
 import com.tddworks.claudebar.datasources.Fetch
