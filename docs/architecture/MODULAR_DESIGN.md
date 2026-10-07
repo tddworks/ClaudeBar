@@ -276,6 +276,9 @@ them.
 | 5 | `monitoring`, `alerting` (with the Notify! publisher), `activity`, `leaderboard` (with its upload schedule), `kit` (`ClaudeBarCore.start` composes them all) | `Domain`, `Infrastructure` | **built** |
 | 6 | the App on the face and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable; the acceptance specs become JUnit (`acceptance/`) | — | **built**, but for the face's folder (still `Modules/Kit`) |
 
+How the migration went, its traps and the playbook to reuse:
+[KMP_MIGRATION_GUIDE.md](KMP_MIGRATION_GUIDE.md).
+
 Phase 6 left in Swift only what pages own (`Sources/App/PageState`: the menu-bar
 labels, popover sizes, status colours, the app's own settings, `RefreshInterval`,
 the terminal-theme import) and the drivers that push state to AppKit surfaces

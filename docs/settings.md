@@ -59,7 +59,7 @@ A few `app.*` keys worth knowing:
 | `app.nativeMenuBarIconsEnabled` | `false` (default) keeps brand colors; `true` uses monochrome provider marks for every menu bar account, adapting to the bar’s appearance |
 | `app.statusColorOverrides` | `{ "warning": "#F2BF33" }`; only the levels you set |
 
-The full list is the code: app-wide keys are read and written in [`JSONSettingsRepository.swift`](../Sources/Infrastructure/Storage/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.swift`](../Modules/Providers/Sources/Extensions.swift)).
+The full list is the code: app-wide keys are read and written in [`JSONSettingsRepository.swift`](../Sources/App/PageState/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.kt`](../ClaudeBarKit/src/commonMain/kotlin/com/tddworks/claudebar/providers/Extensions.kt)).
 
 ## Editing by hand
 
