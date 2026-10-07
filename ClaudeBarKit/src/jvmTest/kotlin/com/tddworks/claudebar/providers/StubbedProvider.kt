@@ -15,7 +15,7 @@ import com.tddworks.claudebar.datasources.lookup.SQLiteReading
 import com.tddworks.claudebar.datasources.lookup.SecurityResult
 import com.tddworks.claudebar.datasources.lookup.SecurityTool
 import com.tddworks.claudebar.datasources.lookup.StoredValue
-import com.tddworks.claudebar.datasources.mapping.NoScriptEngine
+import com.tddworks.claudebar.datasources.mapping.GraalScriptEngine
 import com.tddworks.claudebar.datasources.mapping.ScriptEngine
 import com.tddworks.claudebar.datasources.process.AccountSignIn
 import com.tddworks.claudebar.datasources.process.DiskFiles
@@ -80,8 +80,8 @@ internal class StubbedProvider(
     /** What `/usr/bin/security` answers — by default, no such Keychain item. */
     var security: (List<String>) -> SecurityResult = { SecurityResult(44, "") }
 
-    /** JavaScript mappings need an engine; the JVM has none, so a definition that maps with a script is read on the Mac. */
-    var scriptEngine: ScriptEngine = NoScriptEngine
+    /** JavaScript mappings run on GraalJS, as JavaScriptCore runs them on the Mac. */
+    var scriptEngine: ScriptEngine = GraalScriptEngine()
 
     var now: () -> Double = { System.currentTimeMillis() / 1000.0 }
 
