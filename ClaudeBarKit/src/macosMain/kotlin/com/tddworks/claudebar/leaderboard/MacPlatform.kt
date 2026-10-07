@@ -10,18 +10,18 @@ import platform.Foundation.NSTimeZone
 import platform.Foundation.NSURLRequestReloadIgnoringLocalCacheData
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.localTimeZone
-import platform.Security.SecRandomCopyBytes
-import platform.Security.errSecSuccess
-import platform.Security.kSecRandomDefault
+import platform.posix.arc4random_buf
 
-/** The system's cryptographically secure generator, as CryptoKit's keys and Swift's `random` use. */
+/**
+ * The system's cryptographically secure generator (arc4random, the kernel's CSPRNG — the one
+ * Swift's `random` uses). Not `Security`: only `storage` uses that framework (MODULAR_DESIGN §3).
+ */
 @OptIn(ExperimentalForeignApi::class)
 internal class SystemRandomBytes : RandomBytes {
     override fun bytes(count: Int): ByteArray {
         val bytes = ByteArray(count)
         if (count == 0) return bytes
-        val status = bytes.usePinned { SecRandomCopyBytes(kSecRandomDefault, count.toULong(), it.addressOf(0)) }
-        check(status == errSecSuccess) { "The system's random source failed ($status)" }
+        bytes.usePinned { arc4random_buf(it.addressOf(0), count.toULong()) }
         return bytes
     }
 }
