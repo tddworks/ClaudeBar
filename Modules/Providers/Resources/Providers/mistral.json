@@ -12,6 +12,9 @@
   },
   "enabledByDefault": false,
   "order": 170,
+  "settings": [
+    { "id": "cookie", "label": "chat.mistral.ai Cookie", "kind": "secret", "scope": "account", "for": ["web"] }
+  ],
   "defaultDataSource": "logs",
   "dataSources": [
     {
@@ -20,8 +23,45 @@
       "summary": "Mistral Vibe's session logs on this Mac; today's usage shows as TODAY'S USAGE",
       "fetch": { "directory": { "path": "~/.vibe/logs/session", "match": "^session_" } },
       "mapping": { "script": { "file": "mistral-logs.js" } }
+    },
+    {
+      "kind": "web",
+      "label": "Web",
+      "summary": "Reads your Vibe Coding Plan usage from chat.mistral.ai with your session cookie",
+      "credential": {
+        "firstOf": [
+          { "setting": "cookie" },
+          { "environment": "MISTRAL_CHAT_COOKIE" },
+          { "browserCookies": { "domains": ["mistral.ai"], "names": ["ory_session_*", "csrftoken", "csrf_token_*"], "format": "header" } }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://chat.mistral.ai/api/code-trpc/projects.list,apiKey.getApiKey,apiKey.getUsage?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22direction%22%3A%22forward%22%7D%7D%2C%221%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%222%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D",
+          "method": "GET",
+          "timeout": 30,
+          "headers": {
+            "Accept": "application/json",
+            "trpc-accept": "application/jsonl",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cookie": "{{token}}"
+          }
+        }
+      },
+      "errors": {
+        "http.401": { "sessionExpired": "Sign in to chat.mistral.ai again, then paste a fresh cookie." },
+        "http.403": { "sessionExpired": "Sign in to chat.mistral.ai again, then paste a fresh cookie." }
+      },
+      "mapping": { "script": { "file": "mistral-plan.js" } }
     }
   ],
+  "accounts": {
+    "patch": {
+      "web": {
+        "credential": { "firstOf": null, "setting": "cookie" }
+      }
+    }
+  },
   "usageHistory": {
     "records": {
       "files": "~/.vibe/logs/session/session_*/meta.json",

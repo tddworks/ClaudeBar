@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Mistral Vibe plan usage**: paste your chat.mistral.ai cookie (or set `MISTRAL_CHAT_COOKIE`) and Mistral shows the plan's percent used and reset time beside today's Vibe spend. ([#496](https://github.com/tddworks/ClaudeBar/issues/496)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/mistral/README.md)
+
 ---
 
 ## [0.5.9] - 2026-10-07
