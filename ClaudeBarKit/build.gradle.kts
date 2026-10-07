@@ -37,6 +37,11 @@ kotlin {
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.9.1")
             implementation("org.jetbrains.kotlinx:atomicfu:0.33.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+        }
+        // The adapters' native suite (kotlin.test): Keychain and friends against the real system.
+        macosTest.dependencies {
+            implementation(kotlin("test"))
         }
         jvmTest.dependencies {
             implementation(project.dependencies.platform("org.junit:junit-bom:6.1.3"))

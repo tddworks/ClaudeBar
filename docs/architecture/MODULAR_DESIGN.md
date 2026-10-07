@@ -10,9 +10,9 @@ description: How ClaudeBar's code is cut — everything but the UI is one Kotlin
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
 > **Status: IN PROGRESS (rethink of 2026-10-07)** — the target below replaces
-> the Swift-modules design. Built: phases 0–1 and half of 2 (§8) —
-> `ClaudeBarKit/` with the `quotas` and `diagnostics` packages and
-> `ArchitectureTest`; `Modules/Kit` is the Swift face.
+> the Swift-modules design. Built: phases 0–2 (§8) — `ClaudeBarKit/` with
+> the `quotas`, `diagnostics` and `storage` packages and `ArchitectureTest`;
+> `Modules/Kit` is the Swift face.
 
 ---
 
@@ -84,7 +84,7 @@ Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 | `alerting` | Alerting | `QuotaAlerts`, Notify! values, `NotifySettingsRepository`, the port `AlertSender` | UserNotifications `AlertSender` | `Domain/Alerts`, `Domain/Notify`, `Infrastructure/Notify`, `Infrastructure/Notifications` |
 | `activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `InUse`, `HookSettingsRepository` | the hook HTTP server, hook installer, port discovery | `Domain/Session`, `Domain/Notch`, `Domain/InUse`, `Infrastructure/Hooks`, `Infrastructure/InUse` |
 | `leaderboard` | Leaderboard | `Leaderboard`, `DailyTokens`, its settings | — | `Domain/Leaderboard`, `Infrastructure/Leaderboard` |
-| `storage` | Vault & Settings · generic | `Storage` (settings, vault, ledger files), `AppSettingsRepository` | Keychain (`Security`) | `Domain/Settings`, `Infrastructure/Storage` |
+| `storage` | Vault & Settings · generic | `SettingsFile` (`settings.json` by dotted name), the vault | `KeychainCredentials` (`Security`), the UserDefaults store | `Infrastructure/Storage` |
 | `diagnostics` | — cross-cutting | `AppLog` and its categories | the unified-log sink | `Modules/Diagnostics` |
 | `kit` | — the composition root | `ClaudeBarKit.start(…)`: builds every context, wires the ports, owns the coroutine scope | — | `Sources/App/ClaudeBarApp.swift` (its wiring) |
 
@@ -249,15 +249,21 @@ them.
 | 0 | `Modules/Quotas/Kotlin` becomes `ClaudeBarKit/` (framework `ClaudeBarKit`, package `quotas`); `ArchitectureTest` | `QuotaKernel` | **built** |
 | 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** |
 | 2 | `diagnostics` | `Modules/Diagnostics` (the face moves to the new `Modules/Kit`) | **built** |
-| 2 | `storage` (settings.json, vault, ledger files) | `Infrastructure/Storage`, `Domain/Settings` | next |
+| 2 | `storage`: `SettingsFile`, `KeychainCredentials` (Swift's `JSONSettingsStore` and `KeychainCredentialRepository` become faces over them) | `Infrastructure/Storage`'s file and Keychain code | **built** |
 | 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
-| 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history | `Modules/Providers`, `Domain/Provider` | |
+| 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history; with them the vault (`ProviderVault`, the legacy-key migration, the UserDefaults store), which composes the Swift `CredentialRepository` that Swift tests mock until this phase | `Modules/Providers`, `Domain/Provider`, the rest of `Infrastructure/Storage` | |
 | 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |
 | 6 | the App on `Observed` and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable | — | |
 
 Phase 3 is the largest and the riskiest: it replaces four Swift libraries.
 `TerminalScreen` is proven first against `scripts/claude-usage-captures/`
 before any interactive CLI moves.
+
+**Each context keeps its own settings.** `settings.json` is one file, owned by
+`storage`'s `SettingsFile`; the *repositories* over it (app settings, provider
+settings, hooks, Notify!, Leaderboard, accounts) belong to their contexts and
+move with them. Until then Swift's `JSONSettingsRepository` keeps its code and
+runs on `SettingsFile` through `JSONSettingsStore`.
 
 ## 9 · Open
 

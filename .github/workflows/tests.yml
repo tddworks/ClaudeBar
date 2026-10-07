@@ -67,6 +67,9 @@ jobs:
       - name: Test ClaudeBarKit (JUnit)
         run: ClaudeBarKit/gradlew -p ClaudeBarKit jvmTest --console=plain
 
+      - name: Test ClaudeBarKit's macOS adapters (native)
+        run: ClaudeBarKit/gradlew -p ClaudeBarKit macosArm64Test --console=plain
+
       - name: Install Dependencies
         run: tuist install
 
