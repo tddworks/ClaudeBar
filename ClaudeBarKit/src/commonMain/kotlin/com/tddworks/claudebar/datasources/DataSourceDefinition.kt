@@ -125,9 +125,9 @@ internal data class DataSourceDefinition(
 
     /** The `{{<scope>.<name>}}` names still in the definition, sorted. */
     fun unfilled(scope: String): List<String> {
-        val names = sortedSetOf<String>()
+        val names = mutableSetOf<String>()
         toJson().mapStrings { names += Placeholders.names(it, scope); it }
-        return names.toList()
+        return names.sorted()
     }
 }
 
