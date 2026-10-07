@@ -45,6 +45,8 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             implementation("io.ktor:ktor-client-core:3.6.0")
+            // activity's hook receiver: Claude Code's hooks POST to it on 127.0.0.1.
+            implementation("io.ktor:ktor-server-cio:3.6.0")
             implementation("org.kotlincrypto.hash:sha2:0.8.0")
             implementation("org.kotlincrypto.macs:hmac-sha2:0.8.0")
         }
