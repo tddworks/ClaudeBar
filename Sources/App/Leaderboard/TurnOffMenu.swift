@@ -56,6 +56,9 @@ struct TurnOffMenu: View {
                 .overlay(RoundedRectangle(cornerRadius: theme.cardCornerRadius).fill(theme.cardGradient))
                 .overlay(RoundedRectangle(cornerRadius: theme.cardCornerRadius)
                     .stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
+                // One shape casts the shadow: without it the border casts
+                // its own, drawn inside the card as a second outline.
+                .compositingGroup()
                 .themeShadow(theme, scale: 0.8)
         )
         .accessibilityElement(children: .contain)
