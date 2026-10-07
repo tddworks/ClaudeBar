@@ -84,7 +84,7 @@ Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 | `alerting` | Alerting | `QuotaAlerts`, Notify! values, `NotifySettingsRepository`, the port `AlertSender` | UserNotifications `AlertSender` | `Domain/Alerts`, `Domain/Notify`, `Infrastructure/Notify`, `Infrastructure/Notifications` |
 | `activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `InUse`, `HookSettingsRepository` | the hook HTTP server, hook installer, port discovery | `Domain/Session`, `Domain/Notch`, `Domain/InUse`, `Infrastructure/Hooks`, `Infrastructure/InUse` |
 | `leaderboard` | Leaderboard | `Leaderboard`, `DailyTokens`, its settings | — | `Domain/Leaderboard`, `Infrastructure/Leaderboard` |
-| `storage` | Vault & Settings · generic | `SettingsFile` (`settings.json` by dotted name), the vault | `KeychainCredentials` (`Security`), the UserDefaults store | `Infrastructure/Storage` |
+| `storage` | Vault & Settings · generic | `SettingsFile` (`settings.json` by dotted name), `CredentialRepository` (the vault's interface) | `KeychainCredentials` (`Security`), the UserDefaults store | `Infrastructure/Storage` |
 | `diagnostics` | — cross-cutting | `AppLog` and its categories | the unified-log sink | `Modules/Diagnostics` |
 | `kit` | — the composition root | `ClaudeBarKit.start(…)`: builds every context, wires the ports, owns the coroutine scope | — | `Sources/App/ClaudeBarApp.swift` (its wiring) |
 
@@ -100,13 +100,13 @@ when it is the app's shell rather than something it knows.
                      kit (composition root)        ← Sources/App (UI) uses kit and the domain types
      ┌──────────┬──────────┼───────────┬────────────┐
      ▼          ▼          ▼           ▼            ▼
- monitoring  alerting   activity  leaderboard    storage
-     │          │                                   │
-     ▼          │                                   ▼
- providers ─────┼──────────────────▶ datasources ◀──┘ (implements its SecretStore)
-     │          │                       │
-     ▼          ▼                       ▼
- ┌────────────────────── quotas ───────────────────────┐   (+ diagnostics, which anyone may use)
+ monitoring  alerting   activity  leaderboard       │
+     │          │          │           │            │
+     ▼          ▼          ▼           ▼            ▼
+ providers ─────────────────────▶ datasources
+     │                                  │
+     ▼                                  ▼
+ ┌────────────────────── quotas ───────────────────────┐   (+ diagnostics and storage, which anyone may use)
 ```
 
 1. **Arrows point at the supplier.** `quotas` uses nothing but the Kotlin
@@ -116,13 +116,17 @@ when it is the app's shell rather than something it knows.
 3. **No package names a vendor.** A vendor's name is in its definition and in
    test fixtures, nowhere in Kotlin.
 4. **A library is used by exactly one package.** Ktor's server → `activity`;
-   SQLite, JavaScriptCore, the PTY → `datasources`; `Security` → `storage`.
+   SQLite, JavaScriptCore, the PTY → `datasources`; `Security` → `storage`. The
+   platform's own libraries — kotlinx (coroutines, serialization, io, datetime)
+   and the Ktor *client*, Kotlin's `URLSession` — are open to every package.
 5. **`internal` is the default.** A type is `public` only when another package
    or the UI must name it, and then its name is a word from the canonical model.
    **Public type names are unique across the SDK**: the framework's
    Objective-C names are flat, so two `Provider`s would reach Swift as
    `Provider` and `Provider_`.
-6. **`diagnostics` is the only cross-cutting package.** It holds no rule.
+6. **`diagnostics` and `storage` are the cross-cutting packages.** Neither holds
+   a rule: one is the log, the other `settings.json` and the vault, which every
+   context's own settings repository and secrets read.
 7. **Kotlin never calls Swift.** The SDK uses Apple frameworks directly through
    Kotlin/Native (§4); Swift never implements a Kotlin interface.
 

@@ -10,13 +10,16 @@ import java.io.File
 class ArchitectureTest {
     private val root = "com.tddworks.claudebar"
 
-    /** What each package may use — §3's arrows. `diagnostics` is open to all; `kit` wires everything. */
+    /**
+     * What each package may use — §3's arrows. `diagnostics` is open to all, and so is `storage`
+     * (settings.json and the vault: each context keeps its own settings over them); `kit` wires everything.
+     */
     private val mayUse = mapOf(
         "quotas" to setOf(),
         "diagnostics" to setOf(),
+        "storage" to setOf(),
         "datasources" to setOf("quotas"),
         "providers" to setOf("datasources", "quotas"),
-        "storage" to setOf("providers", "datasources", "quotas"),
         "monitoring" to setOf("providers", "quotas"),
         "alerting" to setOf("providers", "quotas"),
         "activity" to setOf("providers", "quotas"),
@@ -51,7 +54,7 @@ class ArchitectureTest {
             val from = contextOf(file.packagee?.name.orEmpty()) ?: return@flatMap emptyList()
             file.imports.mapNotNull { import ->
                 val to = contextOf(import.name) ?: return@mapNotNull null
-                val allowed = to == from || to == "diagnostics" || to in mayUse[from].orEmpty()
+                val allowed = to == from || to == "diagnostics" || to == "storage" || to in mayUse[from].orEmpty()
                 if (allowed) null else "${file.name}: $from uses $to (${import.name})"
             }
         }

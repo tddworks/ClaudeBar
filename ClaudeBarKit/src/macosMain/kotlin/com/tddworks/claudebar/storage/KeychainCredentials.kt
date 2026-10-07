@@ -1,7 +1,6 @@
 package com.tddworks.claudebar.storage
 
 import com.tddworks.claudebar.diagnostics.AppLog
-import com.tddworks.claudebar.providers.CredentialRepository
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped

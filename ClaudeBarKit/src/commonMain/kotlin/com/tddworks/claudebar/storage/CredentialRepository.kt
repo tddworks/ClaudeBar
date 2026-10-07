@@ -1,4 +1,4 @@
-package com.tddworks.claudebar.providers
+package com.tddworks.claudebar.storage
 
 import kotlin.native.ObjCName
 
