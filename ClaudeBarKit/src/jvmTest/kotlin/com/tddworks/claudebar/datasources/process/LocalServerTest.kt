@@ -7,6 +7,8 @@ import com.tddworks.claudebar.datasources.HttpCall
 import com.tddworks.claudebar.datasources.LocalServerCall
 import com.tddworks.claudebar.datasources.NetworkClient
 import com.tddworks.claudebar.datasources.Response
+import com.tddworks.claudebar.datasources.commands
+import com.tddworks.claudebar.datasources.urls
 import com.tddworks.claudebar.quotas.UsageError
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,7 +20,7 @@ import org.junit.jupiter.api.assertThrows
 /**
  * An app that serves its usage on this Mac: found by its process, asked with what it was
  * started with, on the ports it listens on — loopback only. The loopback client's own rules
- * (no remote host, no cross-origin redirect) are the network adapter's suite.
+ * (no remote host, no cross-origin redirect) are `LoopbackRedirectTest`.
  */
 class LocalServerTest {
     private val callJson = """
@@ -117,12 +119,12 @@ class LocalServerTest {
 
     @Test
     fun `should list what it runs and where it asks for Import, and keep the definition when written out and read back`() {
-        // What it reaches for Import (`Connection`) is the data source's; here the definition's round trip.
         val call = decode(callJson)
         val fetch = Fetch.LocalServer(call)
 
         assertEquals(call, decode(DefinitionJson.encodeToString(LocalServerCall.serializer(), call)))
         assertEquals(fetch, Fetch.from(fetch.toJson()))
-        assertEquals(listOf("/usr/bin/pgrep", "-lf", "acme_server"), LocalServerFetcher.processQuery(call.process))
+        assertEquals(listOf("https://127.0.0.1:{{port}}/usage", "https://127.0.0.1:{{port}}/status"), fetch.urls)
+        assertEquals(listOf("/usr/bin/pgrep", "-lf", "acme_server"), fetch.commands.first())
     }
 }

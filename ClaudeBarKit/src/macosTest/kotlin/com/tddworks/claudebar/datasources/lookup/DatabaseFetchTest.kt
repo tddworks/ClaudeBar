@@ -4,6 +4,8 @@ import com.tddworks.claudebar.datasources.Fetch
 import com.tddworks.claudebar.datasources.PathPattern
 import com.tddworks.claudebar.datasources.Response
 import com.tddworks.claudebar.datasources.SQLiteCall
+import com.tddworks.claudebar.datasources.commands
+import com.tddworks.claudebar.datasources.urls
 import com.tddworks.claudebar.quotas.UsageError
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -101,6 +103,8 @@ class DatabaseFetchTest {
     fun `should come from a definition and name no host and run nothing`() {
         val fetch = Fetch.from(Json.parseToJsonElement("""{"sqlite":{"path":"~/state.vscdb","query":"SELECT value FROM ItemTable"}}"""))
         assertEquals(Fetch.Sqlite(SQLiteCall(PathPattern("~/state.vscdb"), "SELECT value FROM ItemTable")), fetch)
+        assertTrue(fetch.urls.isEmpty())
+        assertTrue(fetch.commands.isEmpty())
         assertEquals(fetch, Fetch.from(fetch.toJson()))
     }
 

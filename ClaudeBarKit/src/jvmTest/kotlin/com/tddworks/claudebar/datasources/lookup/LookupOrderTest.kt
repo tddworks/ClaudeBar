@@ -1,5 +1,6 @@
 package com.tddworks.claudebar.datasources.lookup
 
+import com.tddworks.claudebar.datasources.definition
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -31,5 +32,15 @@ class LookupOrderTest {
 
         assertEquals(listOf("${'$'}DEEPSEEK_API_KEY"), order.lookupOrder)
         assertNull(order.hint)
+    }
+
+    @Test
+    fun `should show the note a definition gives its data source`() {
+        val source = definition("""
+        { "kind": "api", "note": "Needs file credentials.",
+          "fetch": { "http": { "url": "https://example.com" } }, "mapping": { "json": { "quotas": [] } } }
+        """)
+
+        assertEquals("Needs file credentials.", source.note)
     }
 }

@@ -1,12 +1,16 @@
 package com.tddworks.claudebar.datasources.fetch
 
 import com.tddworks.claudebar.datasources.Credential
+import com.tddworks.claudebar.datasources.DataSourceError
 import com.tddworks.claudebar.datasources.DefinitionError
 import com.tddworks.claudebar.datasources.Fetch
 import com.tddworks.claudebar.datasources.HTTPStatusError
 import com.tddworks.claudebar.datasources.HttpCall
 import com.tddworks.claudebar.datasources.NetworkClient
 import com.tddworks.claudebar.datasources.Response
+import com.tddworks.claudebar.datasources.definition
+import com.tddworks.claudebar.datasources.testDataSources
+import com.tddworks.claudebar.quotas.QuotaType
 import com.tddworks.claudebar.quotas.UsageError
 import io.ktor.http.Url
 import kotlinx.coroutines.test.runTest
@@ -18,6 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
@@ -251,5 +256,81 @@ class HTTPStepsTest {
     fun `should keep multi-step requests when the definition is written out and read back`() {
         val fetch = steps(twoSteps)
         assertEquals(fetch, Fetch.from(fetch.toJson()))
+    }
+
+    /** The Swift suite's end-to-end half: the steps made live by the factory, their answer mapped to quotas. */
+    @Nested
+    inner class ThroughTheDataSource {
+        private fun source(fetch: String, network: NetworkClient, environment: Map<String, String> = emptyMap()) =
+            testDataSources(network = network, environment = environment, now = { now }).make(
+                definition("""
+                {"kind":"api","credential":{"environment":"KEY"},"fetch":{"http":$fetch},
+                 "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"usage.used"}]}}}
+                """),
+                "acme",
+            )
+
+        private val key = mapOf("KEY" to "k")
+
+        @Test
+        fun `should show the quota from a second request that uses what the first one learned`() = runTest {
+            val network = network(mapOf("/project" to (200 to """{"project":{"id":"p-7"}}"""), "/usage/p-7" to (200 to """{"used":40}""")))
+
+            val usage = source(twoSteps, network, key).fetchUsage()
+
+            assertEquals(60.0, usage.quota(QuotaType.Weekly)?.percentRemaining)
+            assertEquals(listOf("/project", "/usage/p-7"), network.paths)
+        }
+
+        @Test
+        fun `should still show the quota when an optional step fails, without its value`() = runTest {
+            val network = network(mapOf("/project" to (500 to ""), "/usage" to (200 to """{"used":10}""")))
+
+            val usage = source(
+                """{"steps":[
+                   {"name":"project","request":{"url":"https://acme.test/project"},"optional":true,"keep":{"project":"$.id"}},
+                   {"name":"usage","request":{"url":"https://acme.test/usage","method":"POST","body":"{\"project\":\"{{project}}\"}"},
+                    "dropEmpty":["project"]}]}""",
+                network, key,
+            ).fetchUsage()
+
+            assertEquals(90.0, usage.quota(QuotaType.Weekly)?.percentRemaining)
+            assertEquals("{}", network.body("/usage"))
+        }
+
+        @ParameterizedTest
+        @CsvSource("401, authenticationRequired", "429, rateLimited")
+        fun `should still ask to sign in or wait when an optional step is refused or rate limited`(status: Int, tag: String) = runTest {
+            val source = source(
+                """{"steps":[
+                   {"name":"project","request":{"url":"https://acme.test/project"},"optional":true},
+                   {"name":"usage","request":{"url":"https://acme.test/usage"}}]}""",
+                network(mapOf("/project" to (status to ""), "/usage" to (200 to """{"used":10}"""))), key,
+            )
+
+            val error = failure { source.fetchUsage() } as? DataSourceError
+
+            assertEquals(tag, error?.reason?.tag)
+        }
+
+        @Test
+        fun `should try a step again after a server error when the definition allows attempts`() = runTest {
+            val network = ByPath { _, times -> (if (times == 1) 503 else 200) to """{"used":20}""" }
+
+            val usage = source("""{"steps":[{"name":"usage","request":{"url":"https://acme.test/usage"},"attempts":2}]}""", network, key)
+                .fetchUsage()
+
+            assertEquals(80.0, usage.quota(QuotaType.Weekly)?.percentRemaining)
+            assertEquals(2, network.times("/usage"))
+        }
+
+        @Test
+        fun `should fail at fetching when a required step fails`() = runTest {
+            val source = source(twoSteps, network(mapOf("/project" to (500 to ""))), key)
+
+            val error = failure { source.fetchUsage() } as? DataSourceError
+
+            assertEquals(DataSourceError.Step.FETCH, error?.step)
+        }
     }
 }

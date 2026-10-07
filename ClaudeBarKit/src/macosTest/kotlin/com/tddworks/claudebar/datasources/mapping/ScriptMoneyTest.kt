@@ -1,11 +1,14 @@
 package com.tddworks.claudebar.datasources.mapping
 
-import com.tddworks.claudebar.datasources.MappingFacts
+import com.tddworks.claudebar.datasources.DataSourceDefinition
+import com.tddworks.claudebar.datasources.DataSourceError
+import com.tddworks.claudebar.datasources.Fetch
+import com.tddworks.claudebar.datasources.HTTPRequest
 import com.tddworks.claudebar.datasources.Response
+import com.tddworks.claudebar.datasources.systemDataSources
 import com.tddworks.claudebar.quotas.CostLine
 import com.tddworks.claudebar.quotas.Left
 import com.tddworks.claudebar.quotas.Money
-import com.tddworks.claudebar.quotas.UsageError
 import com.tddworks.claudebar.quotas.UsageSnapshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,9 +19,14 @@ import kotlin.test.assertTrue
 class ScriptMoneyTest {
     private val dollar = 1_000_000_000L
 
-    private fun read(output: String): UsageSnapshot =
-        Mapping.Script(ScriptMapping("balance.js")).reader({ "function read() { return $output; }" }, JavaScriptCoreEngine(), { 0.0 })
-            .read(Response("{}"), MappingFacts(), "example")
+    /** The script's answer read by a data source the factory made on this Mac, as the Swift suite did. */
+    private fun read(output: String): UsageSnapshot {
+        val definition = DataSourceDefinition(
+            kind = "api", fetch = Fetch.Http(HTTPRequest(url = "https://example.test")), mapping = Mapping.Script(ScriptMapping("balance.js")),
+        )
+        val source = systemDataSources().make(definition, "example", scripts = { "function read() { return $output; }" })
+        return source.read(Response("{}"))
+    }
 
     @Test
     fun `should show an exact balance without a made-up percentage when a script reports money`() {
@@ -70,7 +78,7 @@ class ScriptMoneyTest {
             "{type:'model',name:'Balance',percentRemaining:50,left:{money:'1'}}",
             "{type:'model',name:'Balance',left:{money:'nope'}}",
         )) {
-            assertFailsWith<UsageError>(quota) { read("{quotas:[$quota]}") }
+            assertFailsWith<DataSourceError>(quota) { read("{quotas:[$quota]}") }
         }
     }
 }
