@@ -46,7 +46,7 @@ ClaudeBarKit/                 THE SDK — one Kotlin Multiplatform project, ever
 
 Sources/App/                  THE UI — SwiftUI and AppKit only
 ├── Kit/                      the Swift face of ClaudeBarKit: Sendable vouching, Date/Decimal
-│                             views, `shape` enums, Observed<State> (§5)
+│                             views, `shape` enums, KitObservation (§5)
 ├── Views/ Theme/ Notch/ TouchBar/ …
 └── ClaudeBarApp.swift        starts the kit, hands its state to the views
 ```
@@ -69,7 +69,7 @@ one `DataSource`.
 ```swift
 // App — the composition root, in a few lines; it starts the kit and shows its state
 let kit = ClaudeBarKit.companion.start(home: FileManager.default.homeDirectoryForCurrentUser.path)
-let monitor = Observed(kit.monitor.state)          // @Observable, read by the views
+KitObservation.shared.follow(kit.changes)          // one revision; views re-render on it
 Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 ```
 
@@ -167,32 +167,44 @@ platform. Custom definitions and extensions are still read from
 ## 5 · The UI bridge
 
 ```text
-Kotlin (ClaudeBarKit)                         Swift (Sources/App)
-QuotaMonitor.state : StateFlow<MonitorState>  ──▶  Observed<MonitorState>  (@MainActor @Observable)
-                                                   └─ views read observed.value
-QuotaMonitor.refresh(providerId)              ◀──  Button { kit.monitor.refresh(id) }
+Kotlin (ClaudeBarKit)                               Swift (Sources/App)
+QuotaMonitor, Provider, Account … mutate state ──▶  kit.changes: StateFlow<Long>   (one revision)
+                                                          │
+                                                    KitObservation (@Observable) republishes it
+                                                          │
+views read monitor.lineup, account.snapshot  ◀── face properties touch KitObservation, then read Kotlin
+views call monitor.refreshAll(), accounts.add(…) ──▶ Kotlin commands
 ```
 
-1. **Kotlin owns state and concurrency; Swift observes.** An aggregate the UI
-   shows exposes `state: StateFlow<…>` holding an immutable value. One generic
-   Swift class, `Observed<State>`, collects any `StateFlow` (SKIE makes it an
-   `AsyncSequence`) on the main actor and republishes `value` through
-   Observation. Views read `value` and nothing else.
+1. **Kotlin owns state and concurrency; Swift observes one change signal.** Every
+   aggregate the UI shows (`QuotaMonitor`, `Providers`, `Provider`, `Account`,
+   `SessionMonitor` …) keeps its state in Kotlin and, after any change, bumps the
+   kit's single `changes` revision. One Swift class, `KitObservation`
+   (`@Observable`), collects it on the main actor. Every face property that reads
+   changing state touches `KitObservation` first, so SwiftUI re-renders whatever
+   read it. Views keep writing `monitor.lineup` and `account.snapshot`, as they do
+   today. Invalidation is coarse — a change re-evaluates the visible views — which a
+   menu-bar popover affords, and which spares a mirror type per aggregate. A view
+   that needs one value's stream (a countdown, a session's activity) may take
+   `Observed<T>` over that value's own `StateFlow`.
 2. **Views tell, Kotlin decides.** A view calls a command (`refresh`,
    `addAccount`, `hide(quotaKey)`). Commands that wait are `suspend` (Swift
    `async`); the rest return at once and work in the kit's scope. Views never
    compare, count or read quotas to decide; Kotlin hands them the decision
    (`notePlacement`, `status`, `badgeText`).
-3. **The face is one folder.** `Sources/App/Kit/` (until phase 6, the Swift
+3. **Values cross, exceptions don't.** A command that can fail returns an outcome
+   value (usage or a reason, a response or a step that failed); Kotlin throws only
+   inside the SDK.
+4. **The face is one folder.** `Sources/App/Kit/` (until phase 6, the Swift
    module `Modules/Kit`, the only target that links the framework) holds the
    `@retroactive @unchecked Sendable` lines (Kotlin values are immutable and
    Kotlin/Native objects are thread-safe; SKIE marks enums itself), the
    `Date`/`Decimal`/`Int` views, construction shortcuts, the `shape` enums for
-   `switch`, the `Codable` structs where Swift still reads or writes JSON, and
-   `Observed`. No other Swift file names `onEnum`, `KotlinLong` or a
-   `…Seconds`/`…Nanos` field, so switching to Swift export later changes this
-   folder alone.
-4. **Strings a card prints are page state** ("$14.26", "19.5M"): they are
+   `switch`, the `Codable` structs where Swift still reads or writes JSON,
+   `KitObservation` and `Observed`. No other Swift file names `onEnum`,
+   `KotlinLong` or a `…Seconds`/`…Nanos` field, so switching to Swift export later
+   changes this folder alone.
+5. **Strings a card prints are page state** ("$14.26", "19.5M"): they are
    formatted in the face or the view, because Kotlin's common code has no
    `String.format` and the model keeps presentation out (CANONICAL_MODEL §6).
 
@@ -253,7 +265,7 @@ them.
 | 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
 | 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history; with them the vault (`ProviderVault`, the legacy-key migration, the UserDefaults store), which composes the Swift `CredentialRepository` that Swift tests mock until this phase | `Modules/Providers`, `Domain/Provider`, the rest of `Infrastructure/Storage` | |
 | 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |
-| 6 | the App on `Observed` and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable | — | |
+| 6 | the App on the face and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable | — | |
 
 Phase 3 is the largest and the riskiest: it replaces four Swift libraries.
 `TerminalScreen` is proven first against `scripts/claude-usage-captures/`
