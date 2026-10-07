@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **"Support for apps for Intel processors" warning**: ClaudeBar now runs a tool's native Apple-silicon copy when one exists and asks the system shell, not an Intel-only one, for PATHs — so macOS stops naming ClaudeBar for a tool it ran. ([#251](https://github.com/tddworks/ClaudeBar/issues/251))
 
 ### Added
-- **Turn the Leaderboard off**: hide its tab and stop uploads from Settings → Leaderboard, from the join form, or once joined from the tab's **Turn off ▾**, which also takes you off the globe or lets you leave. A joined member's name and days stay. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md#turning-it-off)
+- **Turn the Leaderboard off**: hide its tab and stop uploads from Settings → Leaderboard, from the join form, or once joined from the tab's **Turn off ▾**, which also takes you off the globe or lets you leave. A joined member's name and days stay. ([#510](https://github.com/tddworks/ClaudeBar/pull/510)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md#turning-it-off)
 - Settings → Appearance → Popover Text Size scales the popover's text up to 1.4× and widens the window to fit. ([#364](https://github.com/tddworks/ClaudeBar/issues/364)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/settings.md)
 
 ---
