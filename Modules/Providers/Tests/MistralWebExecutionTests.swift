@@ -34,7 +34,12 @@ struct MistralWebExecutionTests {
 
     private func make(mode: String? = nil, status: Int = 200, vault: MemoryVault = MemoryVault(),
                       cookies: [BrowserCookie] = [], environment: [String: String] = [:], sent: Sent = Sent(),
-                      body: String = Self.ndjson) throws -> Provider {
+                      body: String = Self.ndjson, home: URL = FileManager.default.temporaryDirectory,
+                      withLogs: Bool = false) throws -> Provider {
+        if withLogs {
+            try FileManager.default.createDirectory(at: home.appendingPathComponent(".vibe/logs/session/session_20260103_101500_abc"),
+                                                    withIntermediateDirectories: true)
+        }
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             sent.add(request)
@@ -49,7 +54,7 @@ struct MistralWebExecutionTests {
             DataSources.make(source, providerId: definition.id, makeCLIExecutor: { _ in MockCLIExecutor() }, makeCommandExecutor: { _ in MockCLIExecutor() },
                              network: network, makeTransport: { _, _, _, _ in MockRPCTransport() }, security: { _ in (1, "") },
                              scripts: ProviderFactory.builtInScripts, secrets: vault.scoped(to: login), browserCookies: browser,
-                             environment: { environment[$0] }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
+                             environment: { environment[$0] }, homeDirectory: home, now: { Date() })
         }, vault: vault)
     }
 
@@ -130,22 +135,38 @@ struct MistralWebExecutionTests {
 
     // MARK: - What can go wrong
 
+    // With `together`, a source that can't answer is left out of the union
+    // and its failure shows as fetch health on the login — the refresh only
+    // fails when both sources do, so these read the login's `lastError`.
+
     @Test(arguments: [401, 403]) func `should ask to sign in again when chat.mistral.ai refuses the cookie`(_ code: Int) async throws {
-        await #expect(throws: UsageError.sessionExpired(hint: "Sign in to chat.mistral.ai again, then paste a fresh cookie.")) {
-            try await make(mode: "web", status: code, vault: MemoryVault(["mistral.cookie": "ory_session_old=o"])).refreshPlain()
-        }
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let provider = try make(mode: "web", status: code, vault: MemoryVault(["mistral.cookie": "ory_session_old=o"]),
+                                home: home, withLogs: true)
+        _ = try await provider.refreshPlain()
+        let login = provider.accounts[0]
+        #expect(login.lastError as? UsageError == UsageError.sessionExpired(hint: "Sign in to chat.mistral.ai again, then paste a fresh cookie."))
     }
 
     @Test func `should report the error the answer carries`() async throws {
-        await #expect(throws: UsageError.executionFailed("Mistral API error: Unauthorized")) {
-            try await make(mode: "web", vault: MemoryVault(["mistral.cookie": "ory_session_old=o"]), body: Self.apiError).refreshPlain()
-        }
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let provider = try make(mode: "web", vault: MemoryVault(["mistral.cookie": "ory_session_old=o"]),
+                                body: Self.apiError, home: home, withLogs: true)
+        _ = try await provider.refreshPlain()
+        let login = provider.accounts[0]
+        #expect(login.lastError as? UsageError == UsageError.executionFailed("Mistral API error: Unauthorized"))
     }
 
     @Test func `should say there is no data when the answer carries no usage`() async throws {
-        await #expect(throws: UsageError.noData) {
-            try await make(mode: "web", vault: MemoryVault(["mistral.cookie": "ory_session_old=o"]), body: Self.noUsage).refreshPlain()
-        }
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let provider = try make(mode: "web", vault: MemoryVault(["mistral.cookie": "ory_session_old=o"]),
+                                body: Self.noUsage, home: home, withLogs: true)
+        _ = try await provider.refreshPlain()
+        let login = provider.accounts[0]
+        #expect(login.lastError as? UsageError == UsageError.noData)
     }
 
     // MARK: - Added accounts
