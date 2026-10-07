@@ -5,6 +5,8 @@ import com.tddworks.claudebar.datasources.DataSourceError
 import com.tddworks.claudebar.datasources.HttpCall
 import com.tddworks.claudebar.datasources.NetworkClient
 import com.tddworks.claudebar.datasources.Response
+import com.tddworks.claudebar.datasources.process.QualityOfService
+import com.tddworks.claudebar.datasources.process.currentQualityOfService
 import com.tddworks.claudebar.quotas.QuotaStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.net.URI
+import java.util.Collections
 
 /**
  * THE lifecycle, once for every provider — pinned on a provider no vendor ships: "Acme",
@@ -168,6 +171,26 @@ class ProviderTest {
         assertEquals(90.0, acme.accounts[1].snapshot?.sessionQuota?.percentRemaining)
         assertNull(acme.accounts[1].lastError)
         assertNull(acme.accounts[2].snapshot)
+    }
+
+    @Test
+    fun `should run a background refresh's fetch at the utility priority, and a click's at the default (#204)`() {
+        val priorities = Collections.synchronizedList(mutableListOf<QualityOfService>())
+        val network = object : NetworkClient {
+            override suspend fun send(call: HttpCall): Response {
+                priorities += currentQualityOfService()
+                return Response(200, emptyMap(), """{"used":30}""".encodeToByteArray())
+            }
+        }
+        val stub = StubbedProvider(network = network).also { stubs += it }
+        val acme = stub.make(acme(), settings = InMemoryProviderSettings())
+        // The data source without a cache, so both refreshes ask.
+        acme.configuration.use("backup")
+
+        acme.refreshPlain(RefreshKind.BACKGROUND).usage()
+        acme.refreshPlain(RefreshKind.INTERACTIVE).usage()
+
+        assertEquals(listOf(QualityOfService.UTILITY, QualityOfService.DEFAULT), priorities.toList())
     }
 
     @Test

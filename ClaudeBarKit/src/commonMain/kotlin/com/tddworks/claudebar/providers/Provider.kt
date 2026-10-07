@@ -7,6 +7,8 @@ import com.tddworks.claudebar.datasources.LoginFolders
 import com.tddworks.claudebar.datasources.SecretVault
 import com.tddworks.claudebar.datasources.logs.UsageLog
 import com.tddworks.claudebar.datasources.process.AccountSignIn
+import com.tddworks.claudebar.datasources.process.FetchContext
+import com.tddworks.claudebar.datasources.process.QualityOfService
 import com.tddworks.claudebar.diagnostics.AppLog
 import com.tddworks.claudebar.quotas.QuotaStatus
 import com.tddworks.claudebar.quotas.UsageError
@@ -26,6 +28,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
@@ -222,10 +225,12 @@ internal class Provider(
             account.lastError = error
             return RefreshOutcome.Failed(error)
         }
+        // The background poll runs its CLIs at a low priority, on efficiency cores (#204).
+        val priority = if (kind == RefreshKind.BACKGROUND) FetchContext(QualityOfService.UTILITY) else EmptyCoroutineContext
         // Overlapping refreshes of one login share one result.
         var started = false
         val running = synchronized(lock) {
-            refreshes[account.id] ?: scope.async {
+            refreshes[account.id] ?: scope.async(priority) {
                 if (definition.together) runTogether(account) else run(account, active)
             }.also {
                 refreshes[account.id] = it
