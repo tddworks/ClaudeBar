@@ -1,7 +1,7 @@
 import AWSCloudWatch
 import AWSSDKIdentity
 import DataSources
-import Diagnostics
+import Kit
 import Foundation
 
 /// Sums of CloudWatch metrics per dimension value, with the person's own

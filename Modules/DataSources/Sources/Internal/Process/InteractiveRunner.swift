@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Darwin
 import Quotas
 import Foundation

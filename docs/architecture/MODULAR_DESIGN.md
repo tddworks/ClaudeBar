@@ -10,8 +10,9 @@ description: How ClaudeBar's code is cut — everything but the UI is one Kotlin
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
 > **Status: IN PROGRESS (rethink of 2026-10-07)** — the target below replaces
-> the Swift-modules design. Built: phases 0–1 (§8) — `ClaudeBarKit/` with the
-> `quotas` package and `ArchitectureTest`.
+> the Swift-modules design. Built: phases 0–1 and half of 2 (§8) —
+> `ClaudeBarKit/` with the `quotas` and `diagnostics` packages and
+> `ArchitectureTest`; `Modules/Kit` is the Swift face.
 
 ---
 
@@ -156,7 +157,7 @@ the Apple framework directly. Kotlin/Native ships bindings for `Foundation`,
 | Claude Code hooks | `HookEventReceiver` | Ktor server (CIO) | `Network` |
 | battery, clock | `PowerState`, `Clock` | `IOKit`; system time | `IOKit` |
 | hashing, PKCE, HMAC | — (`kotlincrypto` in commonMain) | — | `CryptoKit` |
-| the log | `LogSink` | unified log + `~/Library/Logs/ClaudeBar/ClaudeBar.log` | `OSLog` |
+| the log | `LogSink` | unified log through a one-function C shim (cinterop: `os_log` is a macro); the user's file is `FileLogSink` in commonMain | `OSLog` |
 
 **Definitions are compiled in.** A Gradle task turns `definitions/` into Kotlin
 source, so the built-in providers need no bundle and read the same on every
@@ -182,7 +183,8 @@ QuotaMonitor.refresh(providerId)              ◀──  Button { kit.monitor.re
    `async`); the rest return at once and work in the kit's scope. Views never
    compare, count or read quotas to decide; Kotlin hands them the decision
    (`notePlacement`, `status`, `badgeText`).
-3. **The face is one folder.** `Sources/App/Kit/` holds the
+3. **The face is one folder.** `Sources/App/Kit/` (until phase 6, the Swift
+   module `Modules/Kit`, the only target that links the framework) holds the
    `@retroactive @unchecked Sendable` lines (Kotlin values are immutable and
    Kotlin/Native objects are thread-safe; SKIE marks enums itself), the
    `Date`/`Decimal`/`Int` views, construction shortcuts, the `shape` enums for
@@ -246,7 +248,8 @@ them.
 |---|---|---|---|
 | 0 | `Modules/Quotas/Kotlin` becomes `ClaudeBarKit/` (framework `ClaudeBarKit`, package `quotas`); `ArchitectureTest` | `QuotaKernel` | **built** |
 | 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** |
-| 2 | `diagnostics`, `storage` (settings.json, vault, ledger files) | `Modules/Diagnostics`, `Infrastructure/Storage`, `Domain/Settings` | next |
+| 2 | `diagnostics` | `Modules/Diagnostics` (the face moves to the new `Modules/Kit`) | **built** |
+| 2 | `storage` (settings.json, vault, ledger files) | `Infrastructure/Storage`, `Domain/Settings` | next |
 | 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
 | 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history | `Modules/Providers`, `Domain/Provider` | |
 | 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |
@@ -261,8 +264,6 @@ before any interactive CLI moves.
 - **JVM adapters.** `jvmMain` is empty: the JVM runs tests only. A Windows or
   Linux app would fill it (`ProcessBuilder`, a JVM keyring, `java.net.http`),
   and `commonMain` would not change.
-- **The log on macOS.** `os_log` is a C macro Kotlin can't call; the sink is
-  either a small C shim through cinterop, or `NSLog` plus the file log.
 - **Script mappings on the JVM.** `ScriptEngine` is JavaScriptCore on macOS;
   golden tests of a definition's `.js` need a JVM engine (Rhino or GraalJS), or
   run in the native suite.

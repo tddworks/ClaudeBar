@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Foundation
 
 /// Resolves environment variables through the user's login shell.

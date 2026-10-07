@@ -53,9 +53,8 @@ let project = Project(
             bundleId: "com.tddworks.claudebar.quotas",
             deploymentTargets: .macOS("15.0"),
             sources: ["Modules/Quotas/Sources/**"],
-            // ClaudeBarKit, the Kotlin SDK (MODULAR_DESIGN); scripts/build-kotlin.sh builds it.
             dependencies: [
-                .xcframework(path: "ClaudeBarKit/build/XCFrameworks/release/ClaudeBarKit.xcframework"),
+                .target(name: "Kit"),
             ],
             settings: .settings(
                 base: [
@@ -64,14 +63,18 @@ let project = Project(
             )
         ),
 
-        // Diagnostics — AppLog; the only module anything may import.
+        // Kit — the Swift face of ClaudeBarKit, the Kotlin SDK (MODULAR_DESIGN §5), and the
+        // only target that links it; scripts/build-kotlin.sh builds the framework.
         .target(
-            name: "Diagnostics",
+            name: "Kit",
             destinations: .macOS,
             product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.diagnostics",
+            bundleId: "com.tddworks.claudebar.kitface",
             deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/Diagnostics/Sources/**"],
+            sources: ["Modules/Kit/Sources/**"],
+            dependencies: [
+                .xcframework(path: "ClaudeBarKit/build/XCFrameworks/release/ClaudeBarKit.xcframework"),
+            ],
             settings: .settings(
                 base: [
                     "SWIFT_STRICT_CONCURRENCY": "complete",
@@ -90,7 +93,7 @@ let project = Project(
             sources: ["Modules/DataSources/Sources/**"],
             dependencies: [
                 .target(name: "Quotas"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
                 .external(name: "Subprocess"),
@@ -114,7 +117,7 @@ let project = Project(
             sources: ["Modules/AWSClients/Sources/**"],
             dependencies: [
                 .target(name: "DataSources"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .external(name: "AWSCloudWatch"),
                 .external(name: "AWSSTS"),
                 .external(name: "AWSPricing"),
@@ -142,7 +145,7 @@ let project = Project(
             dependencies: [
                 .target(name: "Quotas"),
                 .target(name: "DataSources"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .external(name: "Mockable"),
             ],
             settings: .settings(
@@ -219,7 +222,7 @@ let project = Project(
             sources: ["Sources/Infrastructure/**"],
             dependencies: [
                 .target(name: "Domain"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .target(name: "DataSources"),
                 .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
@@ -248,7 +251,7 @@ let project = Project(
             entitlements: .file(path: "Sources/App/entitlements.plist"),
             dependencies: [
                 .target(name: "Domain"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .target(name: "DataSources"),
                 .target(name: "Providers"),
                 .target(name: "AWSClients"),
@@ -317,7 +320,7 @@ let project = Project(
             dependencies: [
                 .target(name: "Infrastructure"),
                 .target(name: "DataSources"),
-                .target(name: "Diagnostics"),
+                .target(name: "Kit"),
                 .target(name: "Domain"),
                 .external(name: "Mockable"),
                 .external(name: "AWSCloudWatch"),

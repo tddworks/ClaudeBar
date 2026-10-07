@@ -1,5 +1,5 @@
 import CryptoKit
-import Diagnostics
+import Kit
 import Foundation
 import Quotas
 

@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import Diagnostics
+import Kit
 
 /// Sends the shared days to the server. The first upload sends the last
 /// thirty days; each later one resumes from the day of the last good upload,

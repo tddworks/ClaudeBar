@@ -1,7 +1,7 @@
 import Foundation
 import AWSPricing
 import DataSources
-import Diagnostics
+import Kit
 
 // MARK: - BedrockPricingService Protocol
 

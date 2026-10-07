@@ -19,6 +19,10 @@ kotlin {
 
     val xcf = XCFramework("ClaudeBarKit")
     listOf(macosArm64(), macosX64()).forEach {
+        // os_log is a C macro; diagnostics calls it through a one-function shim.
+        it.compilations.getByName("main").cinterops.create("oslog") {
+            definitionFile.set(project.file("src/nativeInterop/cinterop/oslog.def"))
+        }
         it.binaries.framework {
             baseName = "ClaudeBarKit"
             isStatic = true
@@ -30,6 +34,10 @@ kotlin {
     sourceSets {
         // @ObjCName renames a Long count for Swift, so the face can show it as Int.
         all { languageSettings.optIn("kotlin.experimental.ExperimentalObjCName") }
+        commonMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.9.1")
+            implementation("org.jetbrains.kotlinx:atomicfu:0.33.0")
+        }
         jvmTest.dependencies {
             implementation(project.dependencies.platform("org.junit:junit-bom:6.1.3"))
             implementation("org.junit.jupiter:junit-jupiter")

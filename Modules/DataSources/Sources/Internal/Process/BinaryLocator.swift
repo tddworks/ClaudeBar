@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Foundation
 
 /// Finds where CLI tools are installed on the system.

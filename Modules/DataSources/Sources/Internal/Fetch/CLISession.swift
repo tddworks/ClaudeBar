@@ -1,5 +1,5 @@
 import CryptoKit
-import Diagnostics
+import Kit
 import Foundation
 
 /// What a CLI worker remembers about its session between runs (#132): the

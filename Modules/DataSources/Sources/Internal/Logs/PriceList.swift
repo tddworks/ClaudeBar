@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Foundation
 
 /// What a token costs, from a price file shipped beside a definition — data,

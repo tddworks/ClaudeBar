@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Foundation
 
 /// Where definitions live, and the one place they are found

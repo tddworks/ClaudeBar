@@ -1,0 +1,12 @@
+package = com.tddworks.claudebar.diagnostics.oslog
+headers = os/log.h
+---
+// os_log is a macro; Kotlin calls these two functions instead. The handle crosses as an
+// opaque pointer. %{public}s: the app keeps secrets out of its messages (AGENTS.md › Logging).
+static inline void *claudebar_os_log_create(const char *subsystem, const char *category) {
+    return (void *) os_log_create(subsystem, category);
+}
+
+static inline void claudebar_os_log(void *log, uint8_t type, const char *message) {
+    os_log_with_type((os_log_t) log, (os_log_type_t) type, "%{public}s", message);
+}

@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 import Domain
-import Diagnostics
+import Kit
 
 /// *SHARE MY RANK* — over the popover: the image as it will be posted, its
 /// shape and name, and Copy image · Save… · Share…. Nothing is uploaded; the

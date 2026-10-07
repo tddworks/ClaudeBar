@@ -1,5 +1,5 @@
 import DataSources
-import Diagnostics
+import Kit
 import Foundation
 
 /// *Extensions* — `~/.claudebar/extensions/<id>/manifest.json`, read as

@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Foundation
 
 /// The module's factory: the only place a case of `Fetch`, `Mapping` or

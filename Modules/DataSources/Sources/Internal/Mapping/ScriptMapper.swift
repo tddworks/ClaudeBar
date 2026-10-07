@@ -1,4 +1,4 @@
-import Diagnostics
+import Kit
 import Quotas
 import Foundation
 import JavaScriptCore
