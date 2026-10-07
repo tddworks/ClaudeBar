@@ -283,6 +283,13 @@ runs on `SettingsFile` through `JSONSettingsStore`.
 
 ## 9 · Open
 
+- **AWS credentials beyond static profiles.** Without the AWS SDK, `datasources`
+  resolves environment keys and `~/.aws/credentials`/`config` profiles (named or
+  default). SSO, assumed roles (`role_arn`/`source_profile`), `credential_process`,
+  web identity and instance metadata are not resolved yet; a profile that needs one
+  fails naming what it needs. The SDK resolved them all, so a Bedrock login on SSO
+  regresses until they are added.
+
 - **JVM adapters.** `jvmMain` is empty: the JVM runs tests only. A Windows or
   Linux app would fill it (`ProcessBuilder`, a JVM keyring, `java.net.http`),
   and `commonMain` would not change.
