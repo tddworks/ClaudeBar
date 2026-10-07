@@ -31,9 +31,11 @@ The design concept is the only surface so far, and its words are where the names
   "Today | 7 days | 30 days"            ← the periods, a closed set
   "Leave and delete my data"            ← leaving is deletion, not hiding
   "Show me on the web board"            ← visibility is separate from membership
+  "Leaderboard in ClaudeBar"            ← on/off is a pause, neither hiding nor leaving
+  "Turn off ▾"                          ← one way out in the tab: globe, pause, or leave
 ```
 
-Two findings fall out of these. A rank is never a property of a member alone; it is a member's place in one **board view** (period × provider). And "leave" and "hide" are different acts: hiding keeps your rows and your own rank, leaving destroys both.
+Two findings fall out of these. A rank is never a property of a member alone; it is a member's place in one **board view** (period × provider). And "leave" and "hide" are different acts: hiding keeps your rows and your own rank, leaving destroys both. Turning the Leaderboard **off** is a third: it changes nothing on the server, only stops this Mac taking part.
 
 ## The one sentence
 
@@ -66,6 +68,7 @@ Two findings fall out of these. A rank is never a property of a member alone; it
 | **Period** | `today`, `7d` or `30d`. Closed | an arbitrary date range |
 | **Standing** | One member's place in one board view: rank, username, totals, provider mix | the member |
 | **Visible** | Whether the member appears on the public board. A hidden member is still ranked for themselves | membership |
+| **On / off** | Whether ClaudeBar takes part in the Leaderboard at all: its tab, and uploads. On until turned off, joined or not. Off is a **pause**: a member keeps their name, key and uploaded days, and their row stays on the board with its last totals | *visible* (a server fact) and *leaving* (deletion) |
 | **Signing key** | The Ed25519 key pair made on join. Private half on this Mac, public half on the server | an API token; there is no shared secret anywhere |
 
 "Daily tokens" is chosen over the user's "token usage" because *usage* already means quota usage everywhere else in ClaudeBar. Do not rename it back.
@@ -79,6 +82,7 @@ LeaderboardMembership                     this Mac's membership (aggregate root,
  ├─ username : Username?                  nil = not joined; the only "joined" flag
  ├─ sharing : Set<ProviderID>             ONLY PROVIDERS WITH USAGE HISTORY
  ├─ isVisible : Bool                      hidden members still see their own standing
+ ├─ isOn : Bool                           OFF = PAUSED: NO TAB, NOTHING UPLOADED; NAME, KEY, DAYS KEPT
  ├─ key : SigningKey                      PRIVATE HALF NEVER LEAVES THE MAC
  └─ lastUpload : Date?                    where the next upload resumes
 
@@ -100,8 +104,9 @@ There is no `Leaderboard` type on the app side that holds standings. The app doe
 |---|---|
 | **Owns: only shared providers leave the Mac** | `dailyTokens(from:)` drops every provider not in `sharing` before anything is built |
 | **Owns: only shareable providers can be shared** | `share(_:)` refuses a provider with no usage history; the ability is absent, not ignored |
-| **Tell it** | `join(as:sharing:)` · `share(_:)` · `stopSharing(_:)` · `setVisible(_:)` · `rename(to:)` · `leave()` |
-| **It answers** | `isJoined` · `sharing` · `myStanding(in:)` |
+| **Owns: a turned-off Leaderboard uploads nothing** | `uploadCredentials` is `nil` while off, so the uploader has nothing to sign with and `lastUpload` stays where uploads stopped |
+| **Tell it** | `join(as:sharing:)` · `share(_:)` · `stopSharing(_:)` · `setVisible(_:)` · `rename(to:)` · `leave()` · `turnOff()` · `turnOn()` |
+| **It answers** | `isJoined` · `isOn` · `sharing` · `myStanding(in:)` |
 | **Never** | holds a ranking · sends a provider it was not told to share · forgets its key before the server confirmed the leave |
 
 ### `DailyTokens`: one provider's day
@@ -138,6 +143,10 @@ await uploader.uploadNow()
 membership.share(.mistral)                       // throws if Mistral has no usage history on this Mac
 membership.setVisible(false)
 try await membership.leave()                     // server deletes first, then the key is forgotten
+
+// On / off: a pause, kept on this Mac only. The server hears nothing.
+leaderboard.turnOff()                            // tab gone, uploads stop; says so once in the popover
+leaderboard.turnOn()                             // tab back; uploads now, from where they stopped
 
 // Popover
 let standings = try await board.standings(in: BoardView(period: .sevenDays, provider: nil))
@@ -183,6 +192,10 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | *Top N%* only in the top half, where N is the rank over every member, rounded up; *#r of N* below it; *Top 100* on a board longer than it lists; nothing when the rank isn't among the members listed | `RankCard.placement` |
 | A profile link is a platform and a handle that fits its rules, never a URL | `ProfileLink` (the app, as you type) and the server (the authority); one `vectors.json` |
 | Leaving deletes the member and every row, on the server | Server — the app forgets the key only after a 2xx |
+| A turned-off Leaderboard uploads nothing, joined or not, and keeps the membership as it was | `LeaderboardMembership.uploadCredentials` (nil while off) |
+| Turned off stays off across launches, and outlives leaving and joining again | `LeaderboardMembership.isOn`, kept as `leaderboard.on` apart from the membership record |
+| Turning it back on catches up the days missed, up to 30 | `LeaderboardUploader`'s range from `lastUpload`, unchanged; `Leaderboard.turnOn()` asks for it at once |
+| While off there is no Leaderboard tab, and the popover falls back to its provider | The popover reads `membership.isOn` |
 
 ## 5 · The API
 
@@ -285,7 +298,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `RankCard`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
 | `@Mockable` ports `LeaderboardAPI` and `SigningKeyStore`; plain `LeaderboardSettingsRepository` (like Notify!'s) and `@MainActor` `TokenLogs`, faked in tests | `Sources/Domain/Leaderboard/` |
 | `LeaderboardHTTPClient`, `CredentialSigningKeyStore`; settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
-| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `LeaderboardPane` | `Sources/App/` |
+| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 
 ## 8 · Build sequence
@@ -301,6 +314,7 @@ Test-first slices, each green on its own. All nine are built; deployment is the 
 7. **Leaving.** Pins: the key is forgotten only after the server's 2xx; a failed delete leaves the member joined and says so.
 8. **App surfaces.** Popover tab and Settings pane, per the design concept.
 9. **Board page** on GitHub Pages.
+10. **On / off.** Pins: off uploads nothing and keeps the membership; off is remembered across launches and outlives leaving; back on uploads from `lastUpload`. Surfaces per [the mockup](../../../design-concept/leaderboard/index.html) (*5 · Turn it off*): the first card in Settings, *Not for me · hide Leaderboard* under the join form, and *Turn off ▾* on the tab's globe line with *My country on the globe* (while on it), *Leaderboard: pause & hide* and *Leave and delete my data…*.
 
 Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands with slice 8.
 

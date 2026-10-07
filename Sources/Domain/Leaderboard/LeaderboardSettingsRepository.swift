@@ -29,4 +29,8 @@ public protocol LeaderboardSettingsRepository: Sendable {
     func leaderboardRecord() -> LeaderboardRecord?
     /// `nil` forgets the membership.
     func saveLeaderboardRecord(_ record: LeaderboardRecord?)
+    /// Whether ClaudeBar takes part in the Leaderboard at all. Kept apart
+    /// from the record, so it holds before joining and after leaving.
+    func isLeaderboardOn() -> Bool
+    func setLeaderboardOn(_ on: Bool)
 }

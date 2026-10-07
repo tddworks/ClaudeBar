@@ -142,4 +142,30 @@ struct LeaderboardUploaderTests {
 
         #expect(logs.askedFor == nil)
     }
+
+    // MARK: - On and off
+
+    @Test func `should read and send nothing, and keep where it stopped, while the Leaderboard is off`() async throws {
+        let membership = try await joined()
+        membership.recordUpload(at: LeaderboardFixtures.date(2))
+        membership.turnOff()
+
+        await uploader(membership).uploadNow()
+
+        #expect(logs.askedFor == nil)
+        #expect(membership.lastUpload == LeaderboardFixtures.date(2))
+    }
+
+    @Test func `should catch up from where it stopped once the Leaderboard is back on`() async throws {
+        let membership = try await joined()
+        membership.recordUpload(at: LeaderboardFixtures.date(2))
+        membership.turnOff()
+        await uploader(membership).uploadDue()
+
+        membership.turnOn()
+        await uploader(membership).uploadDue()
+
+        #expect(logs.askedFor == DateRange(first: LeaderboardFixtures.date(2), last: now, calendar: calendar))
+        #expect(membership.lastUpload == now)
+    }
 }

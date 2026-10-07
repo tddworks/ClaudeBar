@@ -287,4 +287,48 @@ struct LeaderboardMembershipTests {
         #expect(membership.isJoined)
         #expect(keys.stored != nil)
     }
+
+    // MARK: - On and off
+
+    @Test func `should be on until the person turns it off`() {
+        #expect(membership().isOn)
+    }
+
+    @Test func `should keep the person's name, key and what they share when they turn it off`() async throws {
+        let membership = try await joined(sharing: ["claude", "codex"])
+
+        membership.turnOff()
+
+        #expect(!membership.isOn)
+        #expect(membership.isJoined)
+        #expect(membership.username?.value == "tokenwhale")
+        #expect(membership.sharing == ["claude", "codex"])
+        #expect(keys.stored != nil)
+    }
+
+    @Test func `should stay off after a relaunch`() {
+        membership().turnOff()
+
+        #expect(!membership().isOn)
+    }
+
+    @Test func `should stay off after the person leaves`() async throws {
+        let membership = try await joined()
+        membership.turnOff()
+
+        try await membership.leave()
+
+        #expect(!membership.isOn)
+        #expect(!self.membership().isOn)
+    }
+
+    @Test func `should be on again once the person turns it back on`() {
+        let membership = membership()
+        membership.turnOff()
+
+        membership.turnOn()
+
+        #expect(membership.isOn)
+        #expect(self.membership().isOn)
+    }
 }

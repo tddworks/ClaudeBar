@@ -170,10 +170,24 @@ struct MenuContentView: View {
                 }
             }
         }
+        // Turn off ▾, drawn above the button it opened from, outside the
+        // scroll view that would clip it.
+        .overlayPreferenceValue(TurnOffAnchorKey.self) { anchor in
+            if leaderboard.showsTurnOffMenu, let anchor {
+                turnOffMenu(above: anchor)
+            }
+        }
         .frame(width: popoverWidth)
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .onAppear { openCount += 1 }
+        .onAppear {
+            openCount += 1
+            leaderboard.dismissOffNotice()
+        }
+        // Turned off with its tab open: back to the provider.
+        .onChange(of: leaderboard.membership.isOn) { _, isOn in
+            if !isOn { showsLeaderboard = false }
+        }
         .background(TouchBarWindowAccessor())
         .background(keyboardShortcuts)
         .background(PopoverKeyWindowAccessor())
@@ -244,6 +258,28 @@ struct MenuContentView: View {
         popoverTextSize.popoverWidth
     }
 
+    // MARK: - Turn off ▾
+
+    /// The menu's card, its bottom-right just above the button; any click
+    /// outside it closes it.
+    private func turnOffMenu(above anchor: Anchor<CGRect>) -> some View {
+        GeometryReader { proxy in
+            let button = proxy[anchor]
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture { leaderboard.closeTurnOffMenu() }
+                TurnOffMenu(leaderboard: leaderboard) {
+                    SettingsRoute.shared.open(.leaderboard)
+                    openWindow(id: "settings")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .alignmentGuide(.leading) { $0[.trailing] - button.maxX }
+                .alignmentGuide(.top) { $0[.bottom] - (button.minY - 6) }
+            }
+        }
+    }
+
     // MARK: - Keyboard Shortcuts
 
     /// Shortcuts with no button of their own: Escape, and ⌘1–⌘9 for the
@@ -270,7 +306,9 @@ struct MenuContentView: View {
 
     /// Escape backs out one level: an open overlay first, then the popover.
     private func handleEscape() {
-        if showSharePass {
+        if leaderboard.showsTurnOffMenu {
+            leaderboard.closeTurnOffMenu()
+        } else if showSharePass {
             withAnimation(.easeInOut(duration: 0.2)) {
                 showSharePass = false
             }
@@ -538,8 +576,11 @@ struct MenuContentView: View {
             HStack(spacing: 6) {
                 // Leaderboard leads the row, but the popover still opens on
                 // the first provider: it shows only once it's picked.
-                LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
-                    .help("Leaderboard")
+                // Gone while the Leaderboard is turned off.
+                if leaderboard.membership.isOn {
+                    LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
+                        .help("Leaderboard")
+                }
                 ForEach(Array(monitor.tabs.enumerated()), id: \.element.id) { index, tab in
                     ProviderPill(
                         providerId: tab.id,
@@ -611,7 +652,12 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if showsLeaderboard && !settings.overviewModeEnabled {
+        if let notice = leaderboard.offNotice {
+            LeaderboardOffNoticeCard(notice: notice) {
+                withAnimation(.easeInOut(duration: 0.2)) { leaderboard.turnOn() }
+            }
+        }
+        if showsLeaderboard && leaderboard.membership.isOn && !settings.overviewModeEnabled {
             LeaderboardPopoverView(leaderboard: leaderboard, monitor: monitor)
         } else if settings.overviewModeEnabled {
             let providers = monitor.lineup

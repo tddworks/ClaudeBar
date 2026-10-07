@@ -12,9 +12,12 @@ final class InMemorySigningKeyStore: SigningKeyStore, @unchecked Sendable {
 
 final class InMemoryLeaderboardSettings: LeaderboardSettingsRepository, @unchecked Sendable {
     var record: LeaderboardRecord?
+    var isOn = true
 
     func leaderboardRecord() -> LeaderboardRecord? { record }
     func saveLeaderboardRecord(_ record: LeaderboardRecord?) { self.record = record }
+    func isLeaderboardOn() -> Bool { isOn }
+    func setLeaderboardOn(_ on: Bool) { isOn = on }
 }
 
 /// This Mac's logs: what each login used, and the range last asked for.

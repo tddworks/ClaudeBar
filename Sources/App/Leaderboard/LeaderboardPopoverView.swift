@@ -10,7 +10,9 @@ struct LeaderboardPopoverView: View {
         if leaderboard.membership.isJoined {
             LeaderboardStandingsView(leaderboard: leaderboard, monitor: monitor)
         } else {
-            LeaderboardJoinView(leaderboard: leaderboard, monitor: monitor)
+            LeaderboardJoinView(leaderboard: leaderboard, monitor: monitor) {
+                withAnimation(.easeInOut(duration: 0.2)) { leaderboard.turnOff() }
+            }
         }
     }
 }
@@ -56,6 +58,9 @@ private struct CardLabel: View {
 struct LeaderboardJoinView: View {
     let leaderboard: Leaderboard
     let monitor: QuotaMonitor
+    /// *Not for me · hide Leaderboard*, under the form: only in the popover,
+    /// since Settings has its own switch.
+    var onHide: (() -> Void)?
 
     @Environment(\.appTheme) private var theme
     @State private var name = ""
@@ -201,6 +206,18 @@ struct LeaderboardJoinView: View {
                 .disabled(username == nil || sharing.isEmpty || isJoining || linkIsInvalid)
                 .opacity(username == nil || sharing.isEmpty ? 0.5 : 1)
             }
+            if let onHide {
+                Button(action: onHide) {
+                    Text("Not for me · hide Leaderboard")
+                        .font(theme.font(size: 11, weight: .semibold))
+                        .underline()
+                        .foregroundStyle(theme.textSecondary)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .help("Hides the Leaderboard tab. Turn it back on in Settings → Leaderboard.")
+            }
         }
         .onAppear {
             if sharing.isEmpty { sharing = Set(shareable) }
@@ -254,6 +271,7 @@ struct LeaderboardStandingsView: View {
         .task(id: view) { await load() }
         .task { globe = try? await leaderboard.globe() }
         .task(id: membership.lastUpload) { await load() }
+        .onDisappear { leaderboard.closeTurnOffMenu() }
     }
 
     // MARK: The globe
@@ -319,15 +337,21 @@ struct LeaderboardStandingsView: View {
                 PrivacyEyeBadge(isHidden: $settings.hideLeaderboardCountry, what: "your globe country")
             }
             Spacer(minLength: 4)
-            if membership.sharesCountry {
-                Button("Turn off") { Task { try? await membership.setSharesCountry(false) } }
-                    .buttonStyle(.plain)
-                    .font(theme.font(size: 11, weight: .bold))
-                    .foregroundStyle(theme.textPrimary)
-                    .padding(.horizontal, 9).padding(.vertical, 3)
-                    .overlay(Capsule().stroke(theme.glassBorder, lineWidth: max(1, theme.cardBorderWidth * 0.6)))
-                    .help("Take your country off the globe; the server forgets it at once")
+            Button { leaderboard.toggleTurnOffMenu() } label: {
+                HStack(spacing: 3) {
+                    Text("Turn off")
+                    Image(systemName: "chevron.down").font(.system(size: 7, weight: .heavy))
+                }
+                .font(theme.font(size: 11, weight: .bold))
+                .foregroundStyle(theme.textPrimary)
+                .padding(.horizontal, 9).padding(.vertical, 3)
+                .background(Capsule().fill(leaderboard.showsTurnOffMenu ? theme.accentPrimary.opacity(0.18) : .clear))
+                .overlay(Capsule().stroke(theme.glassBorder, lineWidth: max(1, theme.cardBorderWidth * 0.6)))
+                .contentShape(Capsule())
             }
+            .buttonStyle(.plain)
+            .anchorPreference(key: TurnOffAnchorKey.self, value: .bounds) { $0 }
+            .help("Take your country off the globe, pause the Leaderboard, or leave")
         }
         .padding(.horizontal, 4)
     }

@@ -44,7 +44,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "quota alert", "percent"]
         case .hooks: ["claude code", "session", "install"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
-        case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete"]
+        case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete", "hide", "disable", "turn off", "pause", "opt out"]
         case .updates: ["sparkle", "beta", "version", "check"]
         case .logs: ["log file", "debug", "report"]
         case .about: ["version", "github", "license"]

@@ -19,6 +19,9 @@ public final class LeaderboardMembership {
     private var globeHintDismissed = false
     /// Where people on the board can find you, when you added it. Not verified.
     public private(set) var link: ProfileLink?
+    /// Whether ClaudeBar takes part at all: the tab, and uploads. Off is a
+    /// pause, kept on this Mac only: the membership stays as it was.
+    public private(set) var isOn = true
     private var key: SigningKey?
 
     @ObservationIgnored private let api: any LeaderboardAPI
@@ -45,6 +48,12 @@ public final class LeaderboardMembership {
     var credentials: MemberCredentials? {
         guard let username, let key else { return nil }
         return MemberCredentials(username: username, key: key)
+    }
+
+    /// What an upload is signed with: nothing while not joined or turned
+    /// off, so nothing leaves the Mac and `lastUpload` stays where it stopped.
+    var uploadCredentials: MemberCredentials? {
+        isOn ? credentials : nil
     }
 
     // MARK: - Joining and leaving
@@ -96,6 +105,19 @@ public final class LeaderboardMembership {
         globeHintDismissed = false
         link = nil
         settings.saveLeaderboardRecord(nil)
+    }
+
+    // MARK: - On and off
+
+    /// Hides the Leaderboard and stops uploads. A member stays a member.
+    public func turnOff() {
+        isOn = false
+        settings.setLeaderboardOn(false)
+    }
+
+    public func turnOn() {
+        isOn = true
+        settings.setLeaderboardOn(true)
     }
 
     // MARK: - What is shared
@@ -184,6 +206,7 @@ public final class LeaderboardMembership {
     }
 
     private func restore() {
+        isOn = settings.isLeaderboardOn()
         guard let record = settings.leaderboardRecord(), let name = Username(record.username),
               let raw = keys.load(), let key = try? SigningKey(rawRepresentation: raw) else { return }
         self.key = key

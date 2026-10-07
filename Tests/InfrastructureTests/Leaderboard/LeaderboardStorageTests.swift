@@ -56,6 +56,22 @@ struct LeaderboardStorageTests {
         #expect(try !String(contentsOf: url, encoding: .utf8).contains("tokenwhale"))
     }
 
+    @Test func `should remember the Leaderboard is off, apart from the membership`() {
+        let (settings, _) = repository()
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))
+
+        settings.setLeaderboardOn(false)
+        settings.saveLeaderboardRecord(nil)
+
+        #expect(!settings.isLeaderboardOn())
+    }
+
+    @Test func `should count the Leaderboard as on when nothing was saved`() {
+        let (settings, _) = repository()
+
+        #expect(settings.isLeaderboardOn())
+    }
+
     // MARK: - The key
 
     @Test func `should keep the signing key in the Keychain when the Keychain accepts it`() {

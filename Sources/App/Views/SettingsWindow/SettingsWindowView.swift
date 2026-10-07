@@ -69,6 +69,8 @@ struct SettingsWindowView: View {
                 selection = first
             }
         }
+        .onAppear { followRoute() }
+        .onChange(of: SettingsRoute.shared.requested) { followRoute() }
         .frame(minWidth: 760, minHeight: 520)
         .background(TouchBarWindowAccessor())
         .touchBar {
@@ -80,6 +82,13 @@ struct SettingsWindowView: View {
             let enabled = notification.userInfo?["enabled"] as? Bool ?? false
             onHookSettingsChanged?(enabled)
         }
+    }
+
+    /// Opens on the pane asked for from outside, when there is one.
+    private func followRoute() {
+        guard let section = SettingsRoute.shared.take() else { return }
+        searchText = ""
+        selection = section
     }
 
     @ViewBuilder

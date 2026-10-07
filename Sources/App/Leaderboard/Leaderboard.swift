@@ -15,6 +15,10 @@ final class Leaderboard {
     let globePage = URL(string: "https://claudebar.tddworks.com/leaderboard/#globe-section")!
     /// The rank the member is sharing, while *Share my rank* is open over the popover.
     private(set) var sharing: RankCard?
+    /// What the popover says once, after the Leaderboard was turned off there.
+    private(set) var offNotice: LeaderboardOffNotice?
+    /// *Turn off ▾* is open over the popover.
+    private(set) var showsTurnOffMenu = false
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let logs: MonitorTokenLogs
@@ -72,6 +76,35 @@ final class Leaderboard {
         return DailyTokens.summed(await logs.days(in: today), providers: providers)
     }
 
+    // MARK: On and off
+
+    /// Hides the tab and stops uploads; a member stays a member. From the
+    /// popover it says so once, with a way back.
+    func turnOff(noting: Bool = true) {
+        showsTurnOffMenu = false
+        offNotice = noting ? (membership.isJoined ? .paused : .hidden) : nil
+        membership.turnOff()
+    }
+
+    /// Brings the tab back and catches up at once on the days missed.
+    func turnOn() {
+        offNotice = nil
+        membership.turnOn()
+        Task { await uploader.uploadNow() }
+    }
+
+    func dismissOffNotice() {
+        offNotice = nil
+    }
+
+    func toggleTurnOffMenu() {
+        showsTurnOffMenu.toggle()
+    }
+
+    func closeTurnOffMenu() {
+        showsTurnOffMenu = false
+    }
+
     /// *Share* on *Your rank*: opens *Share my rank* with this card.
     func share(_ card: RankCard) {
         sharing = card
@@ -87,6 +120,21 @@ final class Leaderboard {
 
     func globe() async throws -> GlobeSummary {
         try await api.globe(in: BoardView(period: .thirtyDays))
+    }
+}
+
+/// What the popover says after the Leaderboard was turned off in it.
+enum LeaderboardOffNotice {
+    /// Not joined: only the tab went away.
+    case hidden
+    /// Joined: uploads stopped too; the membership stays.
+    case paused
+
+    var text: String {
+        switch self {
+        case .hidden: "Leaderboard hidden. Turn it back on in Settings → Leaderboard."
+        case .paused: "Leaderboard paused and hidden. Nothing uploads; your name and days stay. Turn it back on in Settings → Leaderboard."
+        }
     }
 }
 

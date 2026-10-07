@@ -41,7 +41,7 @@ public final class LeaderboardUploader {
 
     /// Uploads at once, hour or not: an upload the person asked for.
     public func uploadNow() async {
-        guard let credentials = membership.credentials, !isUploading else { return }
+        guard let credentials = membership.uploadCredentials, !isUploading else { return }
         isUploading = true
         defer { isUploading = false }
         let now = now()

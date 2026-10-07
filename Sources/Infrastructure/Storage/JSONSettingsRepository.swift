@@ -814,6 +814,14 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         )
     }
 
+    public func isLeaderboardOn() -> Bool {
+        store.read(key: "leaderboard.on") ?? true
+    }
+
+    public func setLeaderboardOn(_ on: Bool) {
+        store.write(value: on, key: "leaderboard.on")
+    }
+
     public func saveLeaderboardRecord(_ record: LeaderboardRecord?) {
         store.write(value: record?.username, key: "leaderboard.username")
         store.write(value: record?.sharing, key: "leaderboard.sharing")

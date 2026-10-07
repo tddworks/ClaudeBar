@@ -14,6 +14,7 @@
   --line:3px solid var(--ink); --shadow:4px 4px 0 var(--ink); --r:18px;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
 h1,h2,h3,p{margin:0}
 button,input{font:inherit;color:inherit}
@@ -77,10 +78,49 @@ details.payload pre{margin:8px 0 0;font-size:11.5px;white-space:pre-wrap;color:#
 .chip{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:700;font-size:12px;background:#fff;cursor:pointer;min-height:32px}
 .chip[aria-pressed="true"]{background:var(--sun)}
 ol.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-ol.board li{display:grid;grid-template-columns:30px 30px 1fr auto;align-items:center;gap:8px;padding:6px 8px;border:2px solid var(--ink);border-radius:12px;background:#fff}
-ol.board li.me{background:var(--mint);box-shadow:3px 3px 0 var(--ink)}
-ol.board li.gap{border-style:dashed;background:transparent;justify-content:center;display:flex;color:var(--muted);font-size:12px;padding:2px}
-.pos{font-weight:800;text-align:center}
+ol.board li{position:relative;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:2px solid var(--ink);border-radius:9px;background:#F7EEDF;overflow:hidden;font-size:13px;font-weight:800}
+ol.board li .fill{position:absolute;inset:0;display:flex;z-index:0}
+ol.board li .fill i{display:block;height:100%}
+ol.board li>*:not(.fill){position:relative;z-index:1}
+ol.board li .tok{margin-left:auto}
+ol.board li.me{border-color:var(--violet);border-width:2.5px;box-shadow:0 0 0 2px #E6DEFF}
+ol.board li.cut{height:8px;border-style:solid;border-color:#E2D8C6;opacity:.7}
+.badge{width:16px;text-align:center;font-weight:800;font-size:15px;-webkit-text-stroke:.6px var(--ink);color:var(--sun)}
+.you{font-size:9px;font-weight:800;color:#fff;background:var(--violet);border-radius:999px;padding:1px 7px}
+.rowx{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rank-grid{display:grid;grid-template-columns:auto 1fr 120px;gap:12px;align-items:center}
+.rank-grid .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rank-grid .meta b{font-size:17px;display:flex;align-items:center;gap:6px}
+.eye{border:2px solid var(--ink);border-radius:6px;background:#fff;width:24px;height:20px;display:inline-grid;place-items:center;cursor:pointer;padding:0}
+.eye svg{width:13px;height:13px}
+.mixbar{display:flex;height:9px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:#fff}
+.mixbar i{display:block;height:100%}
+.mixlist{list-style:none;margin:6px 0 0;padding:0;font-size:11px;font-weight:700}
+.mixlist li{display:flex;align-items:center;gap:6px}
+.mixlist li span:last-child{margin-left:auto}
+.dot{width:7px;height:7px;border-radius:50%}
+.line{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#3a3550;min-height:36px}
+.line .grow{flex:1;min-width:0}
+.btn.pillbtn{border-radius:999px;padding:4px 12px;min-height:32px;font-size:12px;box-shadow:2px 2px 0 var(--ink)}
+.iconbtn{border:var(--line);border-radius:999px;background:#fff;width:34px;height:34px;display:grid;place-items:center;font-weight:800;cursor:pointer;box-shadow:2px 2px 0 var(--ink);flex:none;padding:0}
+.iconbtn[aria-expanded="true"]{background:var(--sun)}
+.linkbtn.inline{padding:2px 4px;min-height:28px;font-size:12px}
+.morewrap{position:relative}
+.menu{position:absolute;right:0;bottom:calc(100% + 8px);z-index:4;width:250px;background:#fff;border:var(--line);border-radius:14px;box-shadow:4px 4px 0 var(--ink);padding:6px;display:flex;flex-direction:column}
+.menu button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;border:0;background:transparent;border-radius:9px;padding:7px 9px;cursor:pointer;font-weight:800;font-size:13px;min-height:40px}
+.menu button small{font-weight:500;font-size:11px;color:var(--muted)}
+.menu button:hover,.menu button:focus-visible{background:var(--lav);outline:none}
+.menu button.destructive{color:#B4232C}
+.menu hr{border:0;border-top:2px dashed #E2D8C6;margin:4px 6px}
+.bottombar{display:flex;gap:8px;align-items:center}
+.bottombar .btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:6px 12px;min-height:38px;font-size:13px;border-radius:12px}
+.bottombar .sq{width:38px;height:38px;border:var(--line);border-radius:12px;background:#fff;display:grid;place-items:center;box-shadow:2px 2px 0 var(--ink);font-weight:800}
+.optbar{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;color:var(--muted)}
+.optbar .seg{flex:none}
+[data-compact] button{white-space:nowrap;padding:4px 9px;min-height:30px;font-size:12px}
+.optbar .seg button{white-space:nowrap}
+.flash{animation:flash 1.4s ease-out 1}
+@keyframes flash{0%,40%{box-shadow:0 0 0 5px var(--sun),4px 4px 0 var(--ink)}100%{box-shadow:var(--shadow)}}
 .av{width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font-weight:800;font-size:12px}
 .who{min-width:0;display:flex;flex-direction:column}
 .who b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -100,6 +140,16 @@ ol.board li.gap{border-style:dashed;background:transparent;justify-content:cente
 .setrow+.setrow{border-top:2px dashed #D9CFF5}
 .setrow p{font-size:12px;color:var(--muted)}
 .danger{background:#FFE1E6;color:#8A1424}
+/* Turning the Leaderboard off */
+.linkbtn{align-self:center;border:0;background:transparent;padding:6px 8px;font-weight:700;font-size:12px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:32px}
+.linkbtn:hover,.linkbtn:focus-visible{color:var(--ink);outline:none;background:var(--sun);border-radius:8px}
+.toast{display:flex;align-items:center;gap:10px;border:var(--line);border-radius:14px;background:var(--sun);box-shadow:3px 3px 0 var(--ink);padding:8px 10px;font-size:12px;font-weight:700}
+.toast .btn{margin-left:auto}
+.offcard{border-style:dashed}
+.setrow.lead b{font-size:16px}
+.new{font-size:10px;font-weight:800;letter-spacing:.08em;border:2px solid var(--ink);border-radius:999px;padding:0 6px;background:var(--sun);margin-left:6px;vertical-align:2px}
+.quota{display:flex;flex-direction:column;gap:6px}
+.quota .bar i{background:var(--mint)}
 
 /* Web board */
 .web{flex:1 1 640px;min-width:0;background:#fff;border:var(--line);border-radius:22px;box-shadow:6px 6px 0 var(--ink);overflow:hidden}
@@ -145,7 +195,7 @@ tr.me td{background:var(--mint)}
     <p>Join with a username, choose which providers to share, and ClaudeBar uploads your daily token totals so you can see where you rank. Pop theme. Sample data throughout.</p>
   </div>
   <div class="legend">
-    <span class="tag">1 · Join</span><span class="tag">2 · Your rank</span><span class="tag">3 · Settings</span><span class="tag">4 · Web board</span>
+    <span class="tag">1 · Join</span><span class="tag">2 · Your rank</span><span class="tag">3 · Settings</span><span class="tag">4 · Web board</span><span class="tag" style="background:var(--sun)">5 · Turn it off</span>
   </div>
 </header>
 
@@ -161,7 +211,7 @@ tr.me td{background:var(--mint)}
         <div><h2>ClaudeBar</h2><small>Your quotas, the cute way</small></div>
         <span class="pill" id="statusPill">NOT JOINED</span>
       </div>
-      <div class="tabs" aria-hidden="true"><span>Claude</span><span>Codex</span><span class="on">Leaderboard</span><span>Gemini</span></div>
+      <div class="tabs" aria-hidden="true"><span class="on" id="lbTab">🏆 Leaderboard</span><span id="claudeTab">Claude</span><span>Codex</span><span>Gemini</span></div>
 
       <!-- JOIN -->
       <form id="joinView" class="col" style="gap:12px" novalidate>
@@ -186,48 +236,90 @@ tr.me td{background:var(--mint)}
           <button class="btn" id="joinBtn" type="submit" disabled>Join leaderboard</button>
           <p class="hint">Daily totals only. Never prompts, file names, projects or your account email. Leave any time; leaving deletes your rows.</p>
         </div>
+        <button class="linkbtn" type="button" id="hideLb">Not for me · hide Leaderboard</button>
       </form>
 
-      <!-- JOINED -->
-      <div id="boardView" class="col" style="gap:12px" hidden>
-        <div class="card col" style="gap:10px">
-          <div class="rank-hero">
-            <span class="rank-num" id="myRank">#7</span>
-            <div class="meta">
-              <b id="myName">@you</b>
-              <span class="mono" style="font-size:13px"><span id="myTok">0</span> tokens · <span id="myPeriod">7 days</span></span>
-              <span class="hint ok" id="myMove">▲ 2 since yesterday</span>
-            </div>
-          </div>
-          <div class="seg" role="group" aria-label="Period" id="periodSeg"></div>
-          <div class="chips" role="group" aria-label="Provider" id="provChips"></div>
+      <!-- LEADERBOARD OFF: the popover is back to providers only -->
+      <div id="providerView" class="col" style="gap:12px" hidden>
+        <div class="toast" id="hiddenToast" role="status" hidden>
+          <span id="toastText">Leaderboard hidden. Turn it back on in Settings → Leaderboard.</span>
+          <button class="btn small ghost" type="button" id="undoHide">Undo</button>
         </div>
-        <div class="card col" style="gap:8px">
-          <p class="label">Top of the board</p>
-          <ol class="board" id="miniBoard"></ol>
+        <div class="card quota">
+          <p class="label">Claude · Session</p>
+          <b style="font-size:28px;line-height:1">62% left</b>
+          <span class="bar" aria-hidden="true"><i style="width:62%"></i></span>
+          <span class="hint">Resets in 2 h 14 min · sample data</span>
         </div>
-        <div class="foot">
-          <span>Uploaded 2 min ago · next in 1 h</span>
-          <a href="#web" class="btn small ghost" style="text-decoration:none;display:inline-flex;align-items:center">Full board</a>
+        <div class="card quota">
+          <p class="label">Claude · Weekly</p>
+          <b style="font-size:28px;line-height:1">81% left</b>
+          <span class="bar" aria-hidden="true"><i style="width:81%"></i></span>
+          <span class="hint">Resets Mon 09:00</span>
         </div>
       </div>
+
+      <!-- JOINED: as the app draws it -->
+      <div id="boardView" class="col" style="gap:12px" hidden>
+        <div class="card col" style="gap:10px">
+          <div class="rowx"><p class="label">Your rank · <span id="myPeriod">7 days</span></p><button class="btn small ghost pillbtn" type="button">↗ Share</button></div>
+          <div class="rank-grid">
+            <span class="rank-num" id="myRank">#9</span>
+            <div class="meta">
+              <b><span id="myName">@you</span><button class="eye" type="button" id="eyeBtn" aria-label="Hide my name" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></b>
+              <span class="mono" style="font-size:13px;font-weight:700"><span id="myTok">0</span> tokens</span>
+              <span class="hint" id="myBehind">–</span>
+            </div>
+            <div><p class="label" style="font-size:9px">Your mix</p><span class="mixbar" id="myMixBar"></span><ul class="mixlist" id="myMix"></ul></div>
+          </div>
+        </div>
+        <div class="card col" style="gap:10px">
+          <div class="rowx"><p class="label">The board · <span id="memberCount">0</span> members</p><div class="seg" role="group" aria-label="Period" id="periodSeg" style="flex:none" data-compact></div></div>
+          <div class="chips" role="group" aria-label="Provider" id="provChips"></div>
+          <ol class="board" id="miniBoard"></ol>
+        </div>
+        <div class="col" style="gap:4px">
+          <div class="line">
+            <span aria-hidden="true">🌍</span><span class="grow" id="globeText">You're on the globe as 🌍 •• · Members in 17 countries</span>
+            <span class="morewrap" id="offWrap">
+              <button class="btn small ghost pillbtn" type="button" id="offBtn" aria-haspopup="menu" aria-expanded="false">Turn off ▾</button>
+              <div class="menu" role="menu" id="offMenu" hidden>
+                <button role="menuitem" type="button" id="miGlobe">My country on the globe<small>The server forgets it at once.</small></button>
+                <button role="menuitem" type="button" id="miPause">Leaderboard: pause &amp; hide<small>Stops uploads, hides this tab. Your name and days stay.</small></button>
+                <hr>
+                <button role="menuitem" type="button" class="destructive" id="miLeave">Leave and delete my data…<small>Removes your name and every day from the server.</small></button>
+              </div>
+            </span>
+          </div>
+          <div class="line">
+            <span aria-hidden="true">↻</span>
+            <span class="grow">Uploaded 6 minutes ago · hourly</span>
+            <a href="#web" class="btn small ghost pillbtn" style="text-decoration:none;display:inline-flex;align-items:center">↗ Full board</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottombar" aria-hidden="true"><span class="btn ghost">◎ Dashboard</span><span class="btn ghost">↻ Refresh</span><span style="flex:1"></span><span class="sq">🎁</span><span class="sq">⚙</span><span class="sq">✕</span></div>
     </div>
-    <p class="caption"><b>Try it:</b> type a username and press Join. Ticked providers are the only ones uploaded. Providers without local token logs can't be shared yet, so they're greyed out.</p>
+    <p class="caption"><b>Try it:</b> type a username and press Join. Ticked providers are the only ones uploaded. Providers without local token logs can't be shared yet, so they're greyed out. <b>Not for me · hide Leaderboard</b> takes the tab away at once; the switch in Settings brings it back.</p>
   </div>
 
   <!-- 3: settings -->
-  <div class="col">
+  <div class="col" id="settingsCol">
     <p class="section-title">Settings → Leaderboard</p>
     <div class="pop" style="gap:10px" aria-label="Leaderboard settings">
       <p style="font-weight:800;font-size:22px">Leaderboard</p>
+      <div class="card" id="onCard">
+        <div class="setrow lead">
+          <div><b>Leaderboard in ClaudeBar</b><span class="new">NEW</span><p id="onSub">Shows the Leaderboard tab in the menu.</p></div>
+          <span class="sw"><input type="checkbox" id="lbOn" checked aria-label="Leaderboard in ClaudeBar"><i></i></span>
+        </div>
+      </div>
+      <div class="col" id="memberCards" style="gap:10px">
       <div class="card">
         <div class="setrow">
           <div><b>Username</b><p class="mono" id="setName">@not-joined</p></div>
           <button class="btn small ghost" type="button">Rename</button>
-        </div>
-        <div class="setrow">
-          <div><b>Upload automatically</b><p>Every hour while ClaudeBar runs</p></div>
-          <span class="sw"><input type="checkbox" checked aria-label="Upload automatically"><i></i></span>
         </div>
         <div class="setrow">
           <div><b>Show me on the web board</b><p>Off keeps you ranked only in your own app</p></div>
@@ -240,9 +332,10 @@ tr.me td{background:var(--mint)}
         <div class="setrow"><div><b>Codex</b><p>From ~/.codex session logs</p></div><span class="sw"><input type="checkbox" checked aria-label="Share Codex"><i></i></span></div>
         <div class="setrow"><div><b>Mistral</b><p>From usage history</p></div><span class="sw"><input type="checkbox" aria-label="Share Mistral"><i></i></span></div>
       </div>
-      <button class="btn danger" type="button">Leave and delete my data</button>
+      <button class="btn danger" type="button" id="leaveBtn">Leave and delete my data</button>
+      </div>
     </div>
-    <p class="caption">Leaving removes your username and every uploaded row from the server, not just from the board.</p>
+    <p class="caption" id="setCaption">Leaving removes your username and every uploaded row from the server, not just from the board.</p>
   </div>
 
   <!-- 4: web -->
@@ -277,6 +370,13 @@ tr.me td{background:var(--mint)}
 <section class="notes">
   <div class="card"><h3>What's uploaded</h3><p>One row per user, provider and day: input, output, cache-write and cache-read tokens. Computed locally from the same logs that drive Daily usage. Nothing else leaves the Mac.</p></div>
   <div class="card"><h3>Which providers</h3><p>Only providers with local token logs can be ranked: Claude today, plus Codex and Mistral. Quota-only providers (Gemini, Copilot, Cursor…) report percentages, not tokens, so they're greyed out.</p></div>
+  <div class="card" style="background:#FFF4C2"><h3>Turning it off</h3><ul>
+    <li><b>Home:</b> the first card in Settings → Leaderboard, joined or not. Search finds it as <i>hide</i>, <i>disable</i>, <i>turn off</i>.</li>
+    <li><b>Not joined:</b> <i>Not for me · hide Leaderboard</i> under the join form, where someone who never wants it is looking.</li>
+    <li><b>Joined:</b> the tab's one <b>Turn off ▾</b>, on the globe line, now says what to turn off: <i>My country on the globe</i> (only while you're on it), <i>Leaderboard: pause &amp; hide</i>, and <i>Leave and delete my data…</i> apart and in red. One control for every way out, shown whenever you're joined.</li>
+    <li><b>Off:</b> no Leaderboard tab, no uploads, and the pane is just the switch.</li>
+    <li><b>Joined and off is a pause:</b> your name, key and uploaded days stay; your row stays on the web board with its last totals. Back on, it catches up (up to 30 days) at once. To be gone, <i>Leave</i>.</li>
+  </ul></div>
   <div class="card"><h3>Open questions</h3><ul><li>Backend and hosting: a small API plus a static page on GitHub Pages?</li><li>Anti-cheat: totals are self-reported. A per-install key signs uploads, and outliers get flagged.</li><li>Rank by total tokens, or output only, or cost?</li></ul></div>
 </section>
 </div>
@@ -301,7 +401,8 @@ const USERS=[
   ['merge-conflict',{codex:33}],['quietcoder',{claude:19}]
 ];
 const ME_SAMPLE={claude:79,codex:14,mistral:2};
-const state={user:'',share:{claude:true,codex:true,mistral:false},joined:false,period:'7d',prov:'all'};
+const state={user:'',share:{claude:true,codex:true,mistral:false},joined:false,period:'7d',prov:'all',on:true,masked:false};
+const MIX={claude:'#F4B09C',codex:'#A9D9CF',mistral:'#F2C97E'};
 
 const $=s=>document.querySelector(s);
 const fmt=n=>n>=1000?(n/1000).toFixed(2)+'B':n>=10?n.toFixed(0)+'M':n.toFixed(1)+'M';
@@ -356,14 +457,22 @@ function render(){
   // popover
   const me=R.find(r=>r.me);
   if(state.joined){
+    const name=r=>r.me&&state.masked?'@'+r.name[0]+'•••':'@'+r.name;
+    $('#memberCount').textContent=R.length;
     $('#myRank').textContent=me?'#'+me.rank:'–';
+    $('#myName').textContent=me?name(me):'@'+state.user;
     $('#myTok').textContent=me?fmt(me.total):'0';
     $('#myPeriod').textContent=per.label.toLowerCase();
-    $('#myMove').textContent=me?'▲ 2 since yesterday':'Not shared for this provider';
-    $('#myMove').className=me?'hint ok':'hint';
-    const top=R.slice(0,5),max=R[0]?R[0].total:1;
-    let html=top.map((r,i)=>`<li class="${r.me?'me':''}"><span class="pos">${r.rank}</span>${avatar(r,i)}<span class="who"><b>@${r.name}</b><span class="bar" aria-hidden="true"><i style="width:${Math.max(4,r.total/max*100)}%"></i></span></span><span class="tok mono">${fmt(r.total)}</span></li>`).join('');
-    if(me&&me.rank>5)html+=`<li class="gap" aria-hidden="true">· · ·</li><li class="me"><span class="pos">${me.rank}</span>${avatar(me,0)}<span class="who"><b>@${me.name} (you)</b><span class="bar" aria-hidden="true"><i style="width:${Math.max(4,me.total/max*100)}%"></i></span></span><span class="tok mono">${fmt(me.total)}</span></li>`;
+    const ahead=me&&R[me.rank-2];
+    $('#myBehind').textContent=!me?'Not shared for this provider':ahead?fmt(ahead.total-me.total)+' behind #'+ahead.rank:'Top of the board';
+    const mine=me?PROVIDERS.filter(p=>p.has&&state.share[p.id]):[];
+    $('#myMixBar').innerHTML=mine.map(p=>`<i style="width:${(me.parts[p.id]||0)/me.total*100}%;background:${MIX[p.id]}"></i>`).join('');
+    $('#myMix').innerHTML=mine.map(p=>`<li><span class="dot" style="background:${MIX[p.id]}"></span><span>${p.name}</span><span>${Math.round((me.parts[p.id]||0)/me.total*100)}%</span></li>`).join('');
+    const max=R[0]?R[0].total:1;
+    const row=r=>{const fill=PROVIDERS.filter(p=>r.parts[p.id]).map(p=>`<i style="width:${r.parts[p.id]/max*100}%;background:${MIX[p.id]||'#ddd'}"></i>`).join('');
+      return `<li class="${r.me?'me':''}"><span class="fill" aria-hidden="true">${fill}</span><span class="badge">${r.rank}</span><span>${name(r)}</span>${r.me?'<span class="you">YOU</span>':''}<span class="tok mono">${fmt(r.total)}</span></li>`};
+    let html=R.slice(0,7).map(row).join('');
+    if(me&&me.rank>7)html+=`<li class="cut" aria-hidden="true"></li>`+row(me);
     $('#miniBoard').innerHTML=html;
   }
   // web
@@ -379,10 +488,46 @@ $('#joinView').onsubmit=e=>{
   e.preventDefault();if($('#joinBtn').disabled)return;
   state.joined=true;
   $('#joinView').hidden=true;$('#boardView').hidden=false;
-  $('#statusPill').textContent='RANKED';$('#myName').textContent='@'+state.user;$('#setName').textContent='@'+state.user;
+  applyOn();$('#myName').textContent='@'+state.user;$('#setName').textContent='@'+state.user;
   render();
 };
-provList();payload();check();render();
+// Leaderboard in ClaudeBar: off hides the tab and stops uploads; a member is paused, not removed.
+function applyOn(){
+  const on=state.on;
+  $('#lbOn').checked=on;
+  $('#lbTab').hidden=!on;
+  $('#lbTab').className=on?'on':'';
+  $('#claudeTab').className=on?'':'on';
+  $('#joinView').hidden=!on||state.joined;
+  $('#boardView').hidden=!on||!state.joined;
+  $('#providerView').hidden=on;
+  $('#memberCards').hidden=!on||!state.joined;
+  $('#statusPill').textContent=on?(state.joined?'RANKED':'NOT JOINED'):'HEALTHY';
+  $('#onSub').textContent=on
+    ?(state.joined?'Shows the Leaderboard tab and uploads your totals every hour.':'Shows the Leaderboard tab in the menu, where you can join.')
+    :(state.joined?'Paused. Nothing is uploaded; your name and uploaded days stay, and your row stays on the web board with its last totals. Turn on to catch up.':'Off. No Leaderboard tab in the menu. Turn on to join.');
+  $('#setCaption').textContent=on
+    ?(state.joined?'Leaving removes your username and every uploaded row from the server, not just from the board.':'Not joined yet: join from the Leaderboard tab, or here.')
+    :(state.joined?'Off is a pause, not leaving. To remove yourself from the board, turn it on and Leave.':'Nothing is uploaded until you turn it on and join.');
+}
+$('#lbOn').onchange=e=>{state.on=e.target.checked;$('#hiddenToast').hidden=true;applyOn()};
+function hide(text){state.on=false;applyOn();$('#toastText').textContent=text;$('#hiddenToast').hidden=false}
+$('#hideLb').onclick=()=>hide('Leaderboard hidden. Turn it back on in Settings → Leaderboard.');
+const PAUSED='Leaderboard paused and hidden. Nothing uploads; your name and days stay. Turn it back on in Settings → Leaderboard.';
+state.onGlobe=true;
+function closeMenu(){$('#offMenu').hidden=true;$('#offBtn').setAttribute('aria-expanded','false')}
+$('#offBtn').onclick=e=>{e.stopPropagation();const open=$('#offMenu').hidden;$('#offMenu').hidden=!open;$('#offBtn').setAttribute('aria-expanded',String(open))};
+document.addEventListener('click',e=>{if(!e.target.closest('#offWrap'))closeMenu()});
+function point(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
+function applyGlobe(){$('#miGlobe').hidden=!state.onGlobe;
+  $('#globeText').textContent=state.onGlobe?"You're on the globe as 🌍 •• · Members in 17 countries":'Members in 17 countries · see the globe'}
+$('#miGlobe').onclick=()=>{closeMenu();state.onGlobe=false;applyGlobe()};
+$('#miPause').onclick=()=>{closeMenu();hide(PAUSED)};
+$('#miLeave').onclick=()=>{closeMenu();point($('#leaveBtn'))};
+$('#eyeBtn').onclick=()=>{state.masked=!state.masked;$('#eyeBtn').setAttribute('aria-pressed',String(state.masked));render()};
+applyGlobe();
+$('#undoHide').onclick=()=>{state.on=true;$('#hiddenToast').hidden=true;applyOn()};
+provList();payload();check();render();applyOn();
 </script>
 </body>
 </html>

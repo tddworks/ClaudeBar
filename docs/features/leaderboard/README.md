@@ -55,6 +55,7 @@ The image is drawn on your Mac in the theme you use, Platformer, Pop, Dark or an
 
 | Setting | Does |
 |---|---|
+| **Leaderboard in ClaudeBar** | Off hides the Leaderboard tab and uploads nothing. See [Turning it off](#turning-it-off) |
 | **Username → Rename** | Takes a new name if it's free |
 | **Show me on the web board** | Off keeps you ranked only in your own ClaudeBar |
 | **Profile link** | One handle on X, Instagram or GitHub, shown as an icon after your name on the board. Not verified. **Remove** takes it off |
@@ -63,13 +64,25 @@ The image is drawn on your Mac in the theme you use, Platformer, Pop, Dark or an
 | **Export my data** | Saves everything the server holds about you as JSON |
 | **Leave and delete my data** | Deletes your username and every uploaded day from the server, then this Mac's key |
 
+## Turning it off
+
+Don't want the Leaderboard at all? Turn **Leaderboard in ClaudeBar** off in **Settings → Leaderboard**, or pick **Not for me · hide Leaderboard** under the join form. The tab goes away and nothing is uploaded.
+
+Already joined? **Turn off ▾**, under the board in the Leaderboard tab, offers:
+
+- **My country on the globe** (while you're on it): takes your country off the globe.
+- **Leaderboard: pause & hide**: stops uploads and hides the tab. Your name and uploaded days stay, and your row stays on the board with its last totals. Turn it back on in Settings and it catches up on the days you missed (up to 30).
+- **Leave and delete my data…**: opens Settings → Leaderboard to confirm. Deletes your name and every uploaded day from the server.
+
+Pausing keeps you on the web board; to be off it, untick **Show me on the web board** first, or leave.
+
 ## Profile link
 
 Add one place people on the board can find you: an **X**, **Instagram** or **GitHub** handle, when you join or in **Settings → Leaderboard → Profile link**. It shows as that platform's icon after your name, in the app and on the web board; clicking it opens the profile. You type only the handle; the link is always built from the platform's own address. Links aren't verified, and the board says so.
 
 ## The globe
 
-The web board's globe shows where ClaudeBar is used, by country, from members who opted in. Turn it on when you join, from the **New** card in the Leaderboard tab, or in **Settings → Leaderboard**. The tab's **🌍 Members in N countries** line opens it. Once you're on it, that line names your country; the **eye** next to it shows it as `🌍 ••` for screen shares, like the eye that masks account emails, and **Turn off** takes you off the globe.
+The web board's globe shows where ClaudeBar is used, by country, from members who opted in. Turn it on when you join, from the **New** card in the Leaderboard tab, or in **Settings → Leaderboard**. The tab's **🌍 Members in N countries** line opens it. Once you're on it, that line names your country; the **eye** next to it shows it as `🌍 ••` for screen shares, like the eye that masks account emails, and **Turn off ▾ → My country on the globe** takes you off the globe.
 
 ## Gotchas
 

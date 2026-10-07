@@ -27,12 +27,14 @@ struct LeaderboardPane: View {
             title: "Leaderboard",
             subtitle: "Share daily token totals from the providers you choose and see where you rank. Only token counts leave this Mac, signed by a key that never does."
         ) {
-            if membership.isJoined {
+            onCard
+            // Off: only the switch, until it's turned back on.
+            if membership.isOn, membership.isJoined {
                 accountCard
                 profileLinkCard
                 sharingCard
                 dataCard
-            } else {
+            } else if membership.isOn {
                 // Joinable here too: Overview mode hides the popover's tabs.
                 LeaderboardJoinView(leaderboard: leaderboard, monitor: monitor)
                     .frame(maxWidth: 520, alignment: .leading)
@@ -42,6 +44,28 @@ struct LeaderboardPane: View {
                     .font(theme.font(size: 11, weight: .semibold))
                     .foregroundStyle(theme.textSecondary)
             }
+        }
+    }
+
+    /// *LEADERBOARD IN CLAUDEBAR* — on or off, joined or not. Off is a
+    /// pause: no tab, no uploads, the membership kept.
+    private var onCard: some View {
+        SettingsCard {
+            SettingsRow(title: "Leaderboard in ClaudeBar", subtitle: onSubtitle) {
+                SettingsSwitch(isOn: Binding(
+                    get: { membership.isOn },
+                    set: { on in on ? leaderboard.turnOn() : leaderboard.turnOff(noting: false) }
+                ))
+            }
+        }
+    }
+
+    private var onSubtitle: String {
+        switch (membership.isOn, membership.isJoined) {
+        case (true, true): "Shows the Leaderboard tab and uploads your totals every hour."
+        case (true, false): "Shows the Leaderboard tab in the menu, where you can join."
+        case (false, true): "Paused. Nothing is uploaded; your name and uploaded days stay, and your row stays on the web board with its last totals. Turn on to catch up. To be off the board, turn on and Leave."
+        case (false, false): "Off. No Leaderboard tab in the menu. Turn on to join."
         }
     }
 
