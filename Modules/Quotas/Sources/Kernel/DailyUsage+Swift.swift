@@ -1,5 +1,5 @@
 import Foundation
-import QuotaKernel
+import ClaudeBarKit
 
 extension DailyUsageStat {
     public convenience init(

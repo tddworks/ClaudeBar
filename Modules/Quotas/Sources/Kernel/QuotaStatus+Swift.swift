@@ -1,4 +1,4 @@
-import QuotaKernel
+import ClaudeBarKit
 
 extension QuotaStatus: @retroactive Comparable {
     /// The status for the percentage left.

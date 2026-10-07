@@ -1,5 +1,5 @@
 import Foundation
-import QuotaKernel
+import ClaudeBarKit
 
 extension Money {
     /// An amount in one currency.

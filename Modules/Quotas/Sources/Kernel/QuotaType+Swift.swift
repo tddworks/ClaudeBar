@@ -1,4 +1,4 @@
-import QuotaKernel
+import ClaudeBarKit
 
 extension QuotaType {
     /// Rolling 5-hour session limit.

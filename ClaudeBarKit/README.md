@@ -1,13 +1,13 @@
-# QuotaKernel: the Quotas kernel in Kotlin
+# ClaudeBarKit: everything but the UI, in Kotlin
 
 `UsageSnapshot` and every value it holds (`UsageQuota`, `QuotaType`,
 `QuotaStatus`, `StatusPolicy`, `UsagePace`, `PaceLevel`, `QuotaDuration`, `Left`,
 `Money`, `Window`, `QuotaGroup`, `AccountTier`, `CostUsage`, `CostLine`,
 `BudgetStatus`, `DailyUsageStat`, `DailyUsageReport`, `ExtensionMetric`,
 `MetricDelta`), with their laws, are written once in Kotlin Multiplatform, so a second platform reads
-quotas with the same code. The Swift app links them as `QuotaKernel.xcframework`
+quotas with the same code. The Swift app links them as `ClaudeBarKit.xcframework`
 through the `Quotas` module, whose `Sources/Kernel/` is their Swift face. The
-design and its rules: [MODULAR_DESIGN](../../../docs/architecture/MODULAR_DESIGN.md#1--two-halves-a-kotlin-sdk-and-a-native-ui).
+design and its rules: [MODULAR_DESIGN](../docs/architecture/MODULAR_DESIGN.md#1--two-halves-a-kotlin-sdk-and-a-native-ui).
 
 ```bash
 ./scripts/build-kotlin.sh          # from the repo root: the release XCFramework Tuist links
@@ -48,7 +48,7 @@ with it.
   default arguments. Kotlin defaults don't reach Swift.
 - **Swift never implements a Kotlin interface.** The edges stay Swift ports.
 - Every new class gets its `@retroactive @unchecked Sendable` line in
-  `Sources/Kernel/QuotaKernel.swift`. SKIE marks enums `Sendable` itself.
+  `Modules/Quotas/Sources/Kernel/ClaudeBarKit+Swift.swift`. SKIE marks enums `Sendable` itself.
 
 ## Why SKIE, and what the spike found
 

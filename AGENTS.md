@@ -7,7 +7,7 @@ ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them fro
 ## Build & test
 
 ```bash
-./scripts/build-kotlin.sh                # the Kotlin kernel Quotas links (needs JDK 21); rerun after editing it
+./scripts/build-kotlin.sh                # ClaudeBarKit, the Kotlin SDK (needs JDK 21); rerun after editing Kotlin
 tuist install && tuist generate          # generated *.xcodeproj / *.xcworkspace are git-ignored
 tuist test                               # every target: module tests, DomainTests, InfrastructureTests, AppTests, AcceptanceTests
 tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
@@ -23,7 +23,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 | Where | Holds |
 |---|---|
-| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageSnapshot`, `UsageQuota` and their laws are Kotlin (`Kotlin/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §1, §8](docs/architecture/MODULAR_DESIGN.md#8--migration-bottom-up-one-context-at-a-time) |
+| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageSnapshot`, `UsageQuota` and their laws are Kotlin (`ClaudeBarKit/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §1, §8](docs/architecture/MODULAR_DESIGN.md#8--migration-bottom-up-one-context-at-a-time) |
 | `Modules/DataSources` | `DataSource` (credential lookup → fetch → mapping) and its workers: OAuth, HTTP, JSON-RPC, CLI, JSON/text/script mapping |
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |

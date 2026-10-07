@@ -53,9 +53,9 @@ let project = Project(
             bundleId: "com.tddworks.claudebar.quotas",
             deploymentTargets: .macOS("15.0"),
             sources: ["Modules/Quotas/Sources/**"],
-            // The kernel, written once in Kotlin (MODULAR_DESIGN §3.1); scripts/build-kotlin.sh builds it.
+            // ClaudeBarKit, the Kotlin SDK (MODULAR_DESIGN); scripts/build-kotlin.sh builds it.
             dependencies: [
-                .xcframework(path: "Modules/Quotas/Kotlin/build/XCFrameworks/release/QuotaKernel.xcframework"),
+                .xcframework(path: "ClaudeBarKit/build/XCFrameworks/release/ClaudeBarKit.xcframework"),
             ],
             settings: .settings(
                 base: [

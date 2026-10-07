@@ -1,4 +1,4 @@
-@_exported import QuotaKernel
+@_exported import ClaudeBarKit
 import Foundation
 
 // The Swift face of the Kotlin kernel (docs/architecture/MODULAR_DESIGN.md §3.1).

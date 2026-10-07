@@ -1,5 +1,5 @@
 import Foundation
-import QuotaKernel
+import ClaudeBarKit
 
 extension BudgetStatus: @retroactive Comparable {
     /// The status of a cost against a budget.

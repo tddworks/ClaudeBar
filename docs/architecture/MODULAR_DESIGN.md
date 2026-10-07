@@ -9,9 +9,9 @@ description: How ClaudeBar's code is cut — everything but the UI is one Kotlin
 > may use, and what stays native · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: PROPOSED (rethink of 2026-10-07)** — the target below replaces the
-> Swift-modules design. Built so far: the `quotas` package (§8, phases 0–1 of
-> the migration, still under `Modules/Quotas/Kotlin` as `QuotaKernel`).
+> **Status: IN PROGRESS (rethink of 2026-10-07)** — the target below replaces
+> the Swift-modules design. Built: phases 0–1 (§8) — `ClaudeBarKit/` with the
+> `quotas` package and `ArchitectureTest`.
 
 ---
 
@@ -217,7 +217,7 @@ to link), kotlinx.coroutines, kotlinx.serialization, kotlinx-io, Ktor,
 Intel support ends when Kotlin removes it) plus `jvm()` for tests.
 `scripts/build-kotlin.sh` builds the framework before `tuist generate`.
 **Why SKIE, not Swift export**, and the friction met:
-[`Modules/Quotas/Kotlin/README.md`](../../Modules/Quotas/Kotlin/README.md).
+[`ClaudeBarKit/README.md`](../../ClaudeBarKit/README.md).
 
 ## 7 · Testing
 
@@ -244,9 +244,9 @@ them.
 
 | Phase | Moves | Replaces | Status |
 |---|---|---|---|
-| 0 | `Modules/Quotas/Kotlin` becomes `ClaudeBarKit/` (framework `ClaudeBarKit`, package `quotas`); `ArchitectureTest` | `QuotaKernel` | next |
-| 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** (as `QuotaKernel`) |
-| 2 | `diagnostics`, `storage` (settings.json, vault, ledger files) | `Modules/Diagnostics`, `Infrastructure/Storage`, `Domain/Settings` | |
+| 0 | `Modules/Quotas/Kotlin` becomes `ClaudeBarKit/` (framework `ClaudeBarKit`, package `quotas`); `ArchitectureTest` | `QuotaKernel` | **built** |
+| 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** |
+| 2 | `diagnostics`, `storage` (settings.json, vault, ledger files) | `Modules/Diagnostics`, `Infrastructure/Storage`, `Domain/Settings` | next |
 | 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
 | 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history | `Modules/Providers`, `Domain/Provider` | |
 | 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |

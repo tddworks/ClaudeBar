@@ -4,11 +4,11 @@ Thanks for helping. This page covers building, testing and getting a PR merged. 
 
 ## Build & test
 
-Needs macOS 15+, Xcode with Swift 6.2+, [Tuist](https://tuist.io) (`brew install tuist`), and JDK 21 for the Kotlin kernel in `Modules/Quotas/Kotlin` (`brew install --cask zulu@21`).
+Needs macOS 15+, Xcode with Swift 6.2+, [Tuist](https://tuist.io) (`brew install tuist`), and JDK 21 for ClaudeBarKit, the Kotlin SDK in `ClaudeBarKit/` (`brew install --cask zulu@21`).
 
 ```bash
 git clone https://github.com/tddworks/ClaudeBar.git && cd ClaudeBar
-./scripts/build-kotlin.sh      # build the Kotlin kernel (QuotaKernel.xcframework); rerun after editing it
+./scripts/build-kotlin.sh      # build ClaudeBarKit.xcframework; rerun after editing Kotlin
 tuist install                  # resolve dependencies
 tuist generate                 # generate and open ClaudeBar.xcworkspace; ⌘R runs the app
 tuist test                     # all tests (DomainTests, InfrastructureTests, AppTests, AcceptanceTests)
@@ -17,7 +17,7 @@ tuist build ClaudeBar -C Release
 ```
 
 - `tuist test` caches results and skips targets it thinks are unchanged. To force a real run: `xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace -destination 'platform=macOS,arch=arm64'`.
-- The kernel's own tests are JUnit: `Modules/Quotas/Kotlin/gradlew -p Modules/Quotas/Kotlin jvmTest`.
+- ClaudeBarKit's tests are JUnit, the package rules included: `ClaudeBarKit/gradlew -p ClaudeBarKit jvmTest`.
 - Coverage: `tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES`.
 - SwiftUI previews work in Xcode (`⌘⌥↩`); the project sets `ENABLE_DEBUG_DYLIB` for them.
 - "No such module" errors from SourceKit in your editor are expected; modules resolve when Tuist builds.

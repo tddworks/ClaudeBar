@@ -11,4 +11,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "QuotaKernel"
+rootProject.name = "ClaudeBarKit"

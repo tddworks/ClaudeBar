@@ -57,15 +57,15 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.konan
-          key: kotlin-v1-${{ runner.os }}-${{ hashFiles('Modules/Quotas/Kotlin/*.gradle.kts', 'Modules/Quotas/Kotlin/gradle/wrapper/gradle-wrapper.properties') }}
+          key: kotlin-v1-${{ runner.os }}-${{ hashFiles('ClaudeBarKit/*.gradle.kts', 'ClaudeBarKit/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             kotlin-v1-${{ runner.os }}-
 
-      - name: Build the Kotlin kernel
+      - name: Build ClaudeBarKit
         run: ./scripts/build-kotlin.sh
 
-      - name: Test the Kotlin kernel (JUnit)
-        run: Modules/Quotas/Kotlin/gradlew -p Modules/Quotas/Kotlin jvmTest --console=plain
+      - name: Test ClaudeBarKit (JUnit)
+        run: ClaudeBarKit/gradlew -p ClaudeBarKit jvmTest --console=plain
 
       - name: Install Dependencies
         run: tuist install

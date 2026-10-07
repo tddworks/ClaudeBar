@@ -1,7 +1,8 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
-// The Quotas kernel, written once (docs/architecture/MODULAR_DESIGN.md §3.1).
-// scripts/build-kotlin.sh builds QuotaKernel.xcframework; Project.swift links it into Quotas.
+// ClaudeBarKit: everything but the UI, one Kotlin Multiplatform project with a package per
+// context (docs/architecture/MODULAR_DESIGN.md). scripts/build-kotlin.sh builds
+// ClaudeBarKit.xcframework; Project.swift links it.
 plugins {
     kotlin("multiplatform") version "2.4.20"
     id("co.touchlab.skie") version "0.10.15"
@@ -16,12 +17,12 @@ kotlin {
     // JVM runs the JUnit suite; macOS is what the app links. Releases are universal.
     jvm()
 
-    val xcf = XCFramework("QuotaKernel")
+    val xcf = XCFramework("ClaudeBarKit")
     listOf(macosArm64(), macosX64()).forEach {
         it.binaries.framework {
-            baseName = "QuotaKernel"
+            baseName = "ClaudeBarKit"
             isStatic = true
-            binaryOption("bundleId", "com.tddworks.claudebar.quotakernel")
+            binaryOption("bundleId", "com.tddworks.claudebar.kit")
             xcf.add(this)
         }
     }
@@ -33,6 +34,8 @@ kotlin {
             implementation(project.dependencies.platform("org.junit:junit-bom:6.1.3"))
             implementation("org.junit.jupiter:junit-jupiter")
             runtimeOnly("org.junit.platform:junit-platform-launcher")
+            // ArchitectureTest: the package rules of MODULAR_DESIGN §3.
+            implementation("com.lemonappdev:konsist:0.17.3")
         }
     }
 }

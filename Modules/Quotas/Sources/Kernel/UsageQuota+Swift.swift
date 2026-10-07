@@ -1,5 +1,5 @@
 import Foundation
-import QuotaKernel
+import ClaudeBarKit
 
 extension UsageQuota {
     /// A quota in today's shape. A balance with no ceiling written as 100% reads as money.
