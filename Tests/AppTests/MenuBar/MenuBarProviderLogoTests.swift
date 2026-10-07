@@ -1,6 +1,6 @@
 import Testing
 import AppKit
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// *Show Provider Logo*: a single readout can start with its provider's

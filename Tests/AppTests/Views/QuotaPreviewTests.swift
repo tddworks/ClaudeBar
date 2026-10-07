@@ -1,4 +1,4 @@
-import Domain
+import Kit
 import Foundation
 import Testing
 @testable import ClaudeBar

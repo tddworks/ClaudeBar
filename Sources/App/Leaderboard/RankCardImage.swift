@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// The shared image of a `RankCard`, in the theme the member wears: a card
 /// of that theme on its background, the way the popover draws one.
@@ -18,10 +18,12 @@ struct RankCardImage: View {
     /// Drawn at a third of its pixels; rendered at 3×.
     static let scale: CGFloat = 3
     static func points(_ shape: RankCard.Shape) -> CGSize {
-        CGSize(width: shape.pixels.width / scale, height: shape.pixels.height / scale)
+        CGSize(width: CGFloat(shape.width) / scale, height: CGFloat(shape.height) / scale)
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Group {
             switch shape {
             case .square: square
@@ -184,7 +186,7 @@ struct RankCardImage: View {
     }
 
     private var placementText: String? {
-        switch card.placement {
+        switch card.placementShape {
         case .top(let percent): "Top \(percent)%"
         case .rank(let members): "#\(card.rank) of \(members)"
         case .topHundred: "Top 100"

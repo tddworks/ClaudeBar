@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
  * when the popover opens. The login owns it, as `account.usageHistory` (CANONICAL §2.1); how the
  * days are extracted is its provider's `usageHistory`, run as a [UsageLog].
  */
-internal class UsageHistory(
+public class UsageHistory internal constructor(
     private val log: UsageLog,
     /** Where closed days are kept; without one every read goes to the logs. */
     private val ledger: DayLedger? = null,
@@ -25,7 +25,7 @@ internal class UsageHistory(
      * A login's history as its definition says, with one history per other app — each its own
      * log and, under `ledger("<login>/<label>")`, its own kept days.
      */
-    constructor(
+    internal constructor(
         definition: UsageLog.Definition,
         login: String,
         log: (UsageLog.Definition) -> UsageLog,
@@ -64,7 +64,7 @@ internal class UsageHistory(
      * One day per date of [range], every date present. Closed days come from the ledger; the
      * logs are read only from the first day the ledger doesn't hold.
      */
-    suspend fun days(range: DateRange): List<DailyUsageStat> {
+    internal suspend fun days(range: DateRange): List<DailyUsageStat> {
         val ledger = ledger ?: return log.days(range)
         val calendar = log.calendar
         val now = log.currentTimeSeconds

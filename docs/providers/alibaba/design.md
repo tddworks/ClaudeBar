@@ -4,7 +4,7 @@ Research notes for the Alibaba Coding Plan probe. Written 2026-09 from the code,
 
 ## As data
 
-Alibaba is `Modules/Providers/Resources/Providers/alibaba.json` and `alibaba-quota.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #394. The sections below are the research the old probe was built on; the requests are unchanged.
+Alibaba is `ClaudeBarKit/definitions/alibaba.json` and `alibaba-quota.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #394. The sections below are the research the old probe was built on; the requests are unchanged.
 
 - **Region is one choice setting** whose options carry the gateway, console host, console action, commodity code, region id and dashboard (`alibaba.region`, `intl` / `cn`, as before).
 - **Two data sources.** `api` (the key) hands over to `cookie` when no key is saved (`fallbackOn.authenticationRequired`), which is what the old probe did by checking for a key first.

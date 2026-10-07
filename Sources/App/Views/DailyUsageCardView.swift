@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Displays a single daily usage metric (cost, tokens, or working time)
 /// matching the existing WrappedStatCard glassmorphism style.
@@ -15,6 +15,8 @@ struct DailyUsageCardView: View {
     @State private var animateProgress = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 6) {
             // Header row with icon and label
             HStack(alignment: .top, spacing: 0) {

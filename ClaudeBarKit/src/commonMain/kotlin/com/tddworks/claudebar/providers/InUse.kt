@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
  * CLI, not a product, so two products on one CLI share its record and the last choice wins.
  * Running sessions keep theirs.
  */
-internal class InUse internal constructor(
+public class InUse internal constructor(
     /** Its product's logins — below it; never the product itself (TARGET §2.1). */
     private val accounts: Accounts,
     private val productId: String,
@@ -27,7 +27,7 @@ internal class InUse internal constructor(
 ) {
     /** The login new sessions start with, by id. A record naming a folder no login has is the plain login. */
     private val loginId = ObservableState(
-        record.folder(command.name)?.let { folder -> accounts.firstOrNull { it.folder?.path == folder }?.id } ?: accounts.plain.id,
+        record.folder(command.name)?.let { folder -> accounts.all.firstOrNull { it.folder?.path == folder }?.id } ?: accounts.plain.id,
     )
 
     /** The suggestion already told — `<in use>><suggested>` — so a low is told once. */
@@ -38,10 +38,10 @@ internal class InUse internal constructor(
     val revision: StateFlow<Long> get() = loginId.revision
 
     /** The login new sessions start with — the plain login until another is chosen. */
-    val login: Account get() = accounts.firstOrNull { it.id == loginId.current } ?: accounts.plain
+    val login: Account get() = accounts.all.firstOrNull { it.id == loginId.current } ?: accounts.plain
 
     /** The logins new sessions can start on: the plain login and every folder login. */
-    val logins: List<Account> get() = accounts.filter { it.isDefault || it.folder != null }
+    val logins: List<Account> get() = accounts.all.filter { it.isDefault || it.folder != null }
 
     /** Whether there is a choice to offer: more than one login to start on. */
     val offersChoice: Boolean get() = logins.size > 1
@@ -106,14 +106,14 @@ internal class InUse internal constructor(
 }
 
 /** The command new terminal sessions run, and the variable that starts it on a login's folder: `claude` with `CLAUDE_CONFIG_DIR`. */
-internal data class TerminalCommand(
+public data class TerminalCommand(
     /** The CLI — and the name its choice is recorded under. */
     val name: String,
     val variable: String,
 )
 
 /** What *In use* has to tell the person after a refresh. Logins compare as themselves. */
-internal sealed class InUseNotice {
+public sealed class InUseNotice {
     abstract val from: Account
     abstract val to: Account
 

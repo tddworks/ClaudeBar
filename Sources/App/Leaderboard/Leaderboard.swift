@@ -1,16 +1,16 @@
 import AppKit
 import Observation
-import Domain
-import Infrastructure
+import Kit
 
-/// The leaderboard as the app runs it: the membership, the uploader, and the
-/// checks that keep the server current. Views read `membership` and
-/// `uploader` directly; this only wires them and reads the public board.
+/// The leaderboard's page state: what the popover shows over the board — the rank being shared,
+/// the notice after turning it off, the *Turn off ▾* menu. The membership, uploads and the
+/// board are Kotlin's (`ClaudeBarKit.Leaderboard`); views read `membership` and `uploader`.
 @MainActor
 @Observable
 final class Leaderboard {
-    let membership: LeaderboardMembership
-    let uploader: LeaderboardUploader
+    @ObservationIgnored let kit: ClaudeBarKit.Leaderboard
+    var membership: LeaderboardMembership { kit.membership }
+    var uploader: LeaderboardUploader { kit.uploader }
     let boardPage = URL(string: "https://claudebar.tddworks.com/leaderboard/")!
     let globePage = URL(string: "https://claudebar.tddworks.com/leaderboard/#globe-section")!
     /// The rank the member is sharing, while *Share my rank* is open over the popover.
@@ -20,60 +20,26 @@ final class Leaderboard {
     /// *Turn off ▾* is open over the popover.
     private(set) var showsTurnOffMenu = false
 
-    @ObservationIgnored private let api: any LeaderboardAPI
-    @ObservationIgnored private let logs: MonitorTokenLogs
-    @ObservationIgnored private var timer: Timer?
-    @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
-
-    init(monitor: QuotaMonitor,
-         api: any LeaderboardAPI = LeaderboardHTTPClient(),
-         keys: any SigningKeyStore = CredentialSigningKeyStore(),
-         settings: any LeaderboardSettingsRepository = JSONSettingsRepository.shared) {
-        let logs = MonitorTokenLogs(monitor: monitor)
-        self.api = api
-        self.logs = logs
-        membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs)
-        uploader = LeaderboardUploader(membership: membership, logs: logs, api: api)
-    }
-
-    /// Uploads once soon after launch, then asks every five minutes and on
-    /// wake; the uploader decides whether the hour has passed. A `Timer`'s
-    /// clock stops while the Mac sleeps, so it can't keep the hour itself.
-    func start() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.uploader.uploadDue() }
-        }
-        if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in await self?.uploader.uploadDue() }
-        }
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(30))
-            await self?.uploader.uploadDue()
-        }
+    init(_ kit: ClaudeBarKit.Leaderboard) {
+        self.kit = kit
     }
 
     /// Joins, then sends the last thirty days in the background so the first
     /// rank shows without waiting an hour, and the tab switches at once.
     func join(as username: Username, sharing: Set<String>, sharesCountry: Bool = false, link: ProfileLink? = nil) async throws {
-        try await membership.join(as: username, sharing: sharing, sharesCountry: sharesCountry, link: link)
-        Task { await uploader.uploadNow() }
+        try value(of: await kit.join(username: username, sharing: sharing, sharesCountry: sharesCountry, link: link))
     }
 
     /// The popover's Refresh: uploads now, whatever tab is open. Nothing
     /// happens when not joined.
     func refresh() async {
-        await uploader.uploadNow()
+        try? await kit.refresh()
     }
 
     /// Today's days for `providers`, exactly as an upload would send them —
     /// for the join form's preview.
     func preview(sharing providers: Set<String>) async -> [DailyTokens] {
-        let today = DateRange.last(1)
-        return DailyTokens.summed(await logs.days(in: today), providers: providers)
+        (try? await kit.preview(providers: providers)) ?? []
     }
 
     // MARK: On and off
@@ -83,14 +49,13 @@ final class Leaderboard {
     func turnOff(noting: Bool = true) {
         showsTurnOffMenu = false
         offNotice = noting ? (membership.isJoined ? .paused : .hidden) : nil
-        membership.turnOff()
+        kit.turnOff()
     }
 
     /// Brings the tab back and catches up at once on the days missed.
     func turnOn() {
         offNotice = nil
-        membership.turnOn()
-        Task { await uploader.uploadNow() }
+        kit.turnOn()
     }
 
     func dismissOffNotice() {
@@ -114,12 +79,47 @@ final class Leaderboard {
         sharing = nil
     }
 
-    func board(in view: BoardView) async throws -> [Standing] {
-        try await api.board(in: view)
+    // MARK: Membership — Kotlin answers with an outcome; a refusal throws its words here.
+
+    func rename(to name: Username) async throws {
+        try value(of: await kit.rename(newName: name))
     }
 
-    func globe() async throws -> GlobeSummary {
-        try await api.globe(in: BoardView(period: .thirtyDays))
+    func setVisible(_ visible: Bool) async throws {
+        try value(of: await kit.setVisible(visible: visible))
+    }
+
+    func setSharesCountry(_ shares: Bool) async throws {
+        try value(of: await kit.setSharesCountry(shares: shares))
+    }
+
+    func setLink(_ link: ProfileLink?) async throws {
+        try value(of: await kit.setLink(link: link))
+    }
+
+    func leave() async throws {
+        try value(of: await kit.leave())
+    }
+
+    func share(provider: String) throws {
+        try value(of: kit.share(provider: provider))
+    }
+
+    /// *Export my data* — the file's text.
+    func exportMyData() async throws -> String {
+        try value(of: await kit.exportMyData()).map { String($0) } ?? ""
+    }
+
+    func myStanding(in view: BoardView) async throws -> MemberSummary? {
+        try value(of: await kit.myStanding(view: view))
+    }
+
+    func board(in view: BoardView) async throws -> [Standing] {
+        (try value(of: await kit.board(view: view)) as? [Standing]) ?? []
+    }
+
+    func globe() async throws -> GlobeSummary? {
+        try value(of: await kit.globe())
     }
 }
 
@@ -154,31 +154,4 @@ func leaderboardCountryLabel(_ code: String) -> String {
     let flag = String(String.UnicodeScalarView(code.uppercased().unicodeScalars.compactMap { Unicode.Scalar(0x1F1E6 + $0.value - 65) }))
     let name = Locale.current.localizedString(forRegionCode: code) ?? code
     return "\(flag) \(name)"
-}
-
-/// This Mac's token logs, from every login whose provider reads usage
-/// history: Claude, Codex, Mistral and Oh My Pi today.
-@MainActor
-final class MonitorTokenLogs: TokenLogs {
-    private let monitor: QuotaMonitor
-
-    init(monitor: QuotaMonitor) {
-        self.monitor = monitor
-    }
-
-    private var logins: [(providerId: String, history: UsageHistory)] {
-        monitor.logins.compactMap { account in
-            account.usageHistory.map { (account.providerId, $0) }
-        }
-    }
-
-    var providersWithLogs: Set<String> { Set(logins.map(\.providerId)) }
-
-    func days(in range: DateRange) async -> [LoginDays] {
-        var result: [LoginDays] = []
-        for login in logins {
-            result.append(LoginDays(providerId: login.providerId, days: await login.history.days(in: range)))
-        }
-        return result
-    }
 }

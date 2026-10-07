@@ -1,21 +1,21 @@
 package com.tddworks.claudebar.leaderboard
 
 /** *TODAY · 7 DAYS · 30 DAYS* — the periods a board can be read over. Closed. */
-internal enum class BoardPeriod(val rawValue: String, val label: String) {
+public enum class BoardPeriod(val rawValue: String, val label: String) {
     TODAY("today", "Today"),
     SEVEN_DAYS("7d", "7 days"),
     THIRTY_DAYS("30d", "30 days"),
 }
 
 /** A period and, optionally, one provider: `7 days · Claude`. A rank only means something within one view. */
-internal data class BoardView(
+public data class BoardView(
     val period: BoardPeriod,
     /** `null` is every provider. */
     val provider: String? = null,
 )
 
 /** One member's place in one board view. */
-internal data class Standing(
+public data class Standing(
     val rank: Int,
     val username: String,
     val total: Long,
@@ -31,7 +31,7 @@ internal data class Standing(
 }
 
 /** What the server holds about you: your standing in a view, whether you're shown, whether your country is on the globe, and every day you uploaded. */
-internal data class MemberSummary(
+public data class MemberSummary(
     val standing: Standing?,
     val days: List<DailyTokens>,
     val visible: Boolean,
@@ -60,7 +60,7 @@ internal data class MemberChange(
  * at least three are ([countries]); the rest are named without a number ([present]), so no
  * number is one person's own.
  */
-internal data class GlobeSummary(val countries: List<Country>, val present: List<String>) {
+public data class GlobeSummary(val countries: List<Country>, val present: List<String>) {
     data class Country(val country: String, val members: Long, val tokens: Long)
 
     /** Every country on the globe, with numbers or without. */

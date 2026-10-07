@@ -7,7 +7,7 @@ import com.tddworks.claudebar.quotas.DailyUsageStat
  * everything about a day that leaves the Mac. Cost, sessions, working time, models and paths
  * can't be expressed in it.
  */
-internal data class DailyTokens(
+public data class DailyTokens(
     val provider: String,
     /** The member's own date, `yyyy-MM-dd`. */
     val day: String,
@@ -29,7 +29,7 @@ internal data class DailyTokens(
 
     companion object {
         /** A day of a login's usage history, kept to its token counts. */
-        fun of(provider: String, stat: DailyUsageStat, calendar: MemberCalendar) = DailyTokens(
+        internal fun of(provider: String, stat: DailyUsageStat, calendar: MemberCalendar) = DailyTokens(
             provider = provider,
             day = calendar.day(stat.dateSeconds),
             input = stat.inputTokens,
@@ -44,7 +44,7 @@ internal data class DailyTokens(
          * without tokens left out, oldest first. What an upload sends and what its preview shows
          * are both this.
          */
-        fun summed(logins: List<LoginDays>, providers: Set<String>, calendar: MemberCalendar): List<DailyTokens> {
+        internal fun summed(logins: List<LoginDays>, providers: Set<String>, calendar: MemberCalendar): List<DailyTokens> {
             val byDay = mutableMapOf<String, DailyTokens>()
             for (login in logins) {
                 if (login.providerId !in providers) continue

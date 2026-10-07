@@ -1,6 +1,6 @@
 import Testing
 import AppKit
-import Domain
+import Kit
 @testable import ClaudeBar
 
 @Suite @MainActor

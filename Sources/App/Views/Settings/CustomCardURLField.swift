@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A text field for configuring a custom web card URL per provider.
 /// Shows below the provider toggle when enabled.
@@ -13,6 +13,8 @@ struct CustomCardURLField: View {
     @State private var isEditing: Bool = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: "globe")
@@ -29,7 +31,7 @@ struct CustomCardURLField: View {
                 if !urlText.isEmpty {
                     Button {
                         urlText = ""
-                        settings.provider.setCustomCardURL(nil, forProvider: providerId)
+                        Kit.shared.setCustomCardURL(url: nil, providerId: providerId)
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 10))
@@ -60,16 +62,16 @@ struct CustomCardURLField: View {
                 }
         }
         .onAppear {
-            urlText = settings.provider.customCardURL(forProvider: providerId) ?? ""
+            urlText = Kit.shared.customCardURL(providerId: providerId) ?? ""
         }
     }
 
     private func saveURL() {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            settings.provider.setCustomCardURL(nil, forProvider: providerId)
+            Kit.shared.setCustomCardURL(url: nil, providerId: providerId)
         } else {
-            settings.provider.setCustomCardURL(trimmed, forProvider: providerId)
+            Kit.shared.setCustomCardURL(url: trimmed, providerId: providerId)
         }
     }
 }

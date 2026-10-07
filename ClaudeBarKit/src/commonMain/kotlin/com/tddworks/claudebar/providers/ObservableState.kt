@@ -1,5 +1,6 @@
 package com.tddworks.claudebar.providers
 
+import com.tddworks.claudebar.storage.Revision
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,17 +16,17 @@ import kotlinx.coroutines.flow.update
 internal class ObservableState<T>(initial: T) {
     private val lock = SynchronizedObject()
     private var value: T = initial
-    private val changes = MutableStateFlow(0L)
+    private val changes = Revision()
 
     /** Bumped after every change. */
-    val revision: StateFlow<Long> = changes.asStateFlow()
+    val revision: StateFlow<Long> = changes.flow
 
     val current: T get() = synchronized(lock) { value }
 
     /** Replaces the state with [transform] of it, atomically, and bumps the revision. */
     fun update(transform: (T) -> T): T {
         val updated = synchronized(lock) { transform(value).also { value = it } }
-        changes.update { it + 1 }
+        changes.bump()
         return updated
     }
 }

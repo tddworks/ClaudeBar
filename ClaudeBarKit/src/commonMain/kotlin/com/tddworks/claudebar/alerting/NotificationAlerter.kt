@@ -14,7 +14,7 @@ internal fun interface LineupNames {
 }
 
 /** Tells the person, as a system notification, when a login's status gets worse: warning, critical, depleted. */
-internal class NotificationAlerter(
+public class NotificationAlerter internal constructor(
     private val alertSender: AlertSender,
     private val names: LineupNames,
 ) {

@@ -12,7 +12,7 @@ import java.io.File
 
 /** The definitions ClaudeBar ships: every `usageHistory` block and price file they name reads in Kotlin as it did in Swift. */
 class BundledUsageHistoryTest {
-    private val folder = File("../Modules/Providers/Resources/Providers")
+    private val folder = File("definitions")
     private val scripts = { name: String -> File(folder, name).takeIf { it.exists() }?.readText() }
 
     /** Each definition's own block, and its added logins' patch, by provider id. */

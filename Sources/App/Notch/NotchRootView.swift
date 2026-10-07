@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 import Matrix
 
 /// The notch's contents: two lanes flanking the physical cutout when collapsed,
@@ -29,6 +29,8 @@ struct NotchRootView: View {
     private var barHeight: CGFloat { state.metrics.closedSize.height }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         // Nothing to report draws nothing at all — not even the closed shape.
         // See NotchWindowController.update(content:).
         if state.activity == nil {
@@ -205,6 +207,8 @@ private struct NotchLane<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 7) { content }
     }
 }
@@ -214,6 +218,8 @@ private struct NotchLabel: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text(text)
             .font(.system(size: 11.5, weight: .semibold))
             .foregroundStyle(.white.opacity(0.92))
@@ -226,6 +232,8 @@ private struct NotchMeta: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text(text)
             .font(.system(size: 11, weight: .medium))
             .monospacedDigit()
@@ -240,6 +248,8 @@ private struct ElapsedLabel: View {
     let session: Session
 
     var body: some View {
+
+        let _ = KitObservation.track()
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             NotchMeta(session.durationDescription)
         }
@@ -253,6 +263,8 @@ private struct PhaseDot: View {
     @State private var isBreathing = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Circle()
             .fill(color)
             .frame(width: 8, height: 8)
@@ -277,6 +289,8 @@ private struct QuotaBar: View {
     let color: Color
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Capsule()
             .fill(.white.opacity(0.16))
             .frame(width: 52, height: 4)

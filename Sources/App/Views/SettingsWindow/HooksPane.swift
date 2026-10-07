@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Hooks pane: Claude Code session tracking via the local hook server.
 /// Ports the popover hooks card logic: install/uninstall on toggle and a
@@ -14,6 +13,8 @@ struct HooksPane: View {
     @State private var hookError: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Hooks",
             subtitle: "Let Claude Code push live session events into ClaudeBar."

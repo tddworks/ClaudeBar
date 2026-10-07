@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
  * out: below [below] percent left, to the ticked login with the most left. Off until the
  * person turns it on; every login is ticked until they untick it. Kept in the provider's own settings.
  */
-internal class SwitchWhenLow internal constructor(
+public class SwitchWhenLow internal constructor(
     private val providerId: String,
     private val settings: ProviderSettingsRepository,
 ) {

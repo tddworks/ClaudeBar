@@ -5,7 +5,7 @@ Contributor notes for the Claude provider. For setup, see the [README](README.md
 ## Current shape: Claude is data
 
 Claude has no provider class or probes of its own. It is
-[`Modules/Providers/Resources/Providers/claude.json`](../../../Modules/Providers/Resources/Providers/claude.json)
+[`ClaudeBarKit/definitions/claude.json`](../../../ClaudeBarKit/definitions/claude.json)
 plus two mapping scripts beside it (the `/usage` and `/cost` screens), run by the one `Provider` and the
 `DataSources` workers ([TARGET_ARCHITECTURE.md](../../architecture/TARGET_ARCHITECTURE.md)):
 

@@ -32,7 +32,7 @@ class AccountOrderTest {
     fun `should list logins in the order they were added, the default first`() {
         val codex = codex(saved("work", "side"))
 
-        assertEquals(listOf("default", "work", "side"), codex.accounts.map { it.accountId })
+        assertEquals(listOf("default", "work", "side"), codex.accounts.all.map { it.accountId })
     }
 
     @Test
@@ -42,8 +42,8 @@ class AccountOrderTest {
 
         first.accounts.move(first.accounts[2], 0)
 
-        assertEquals(listOf("side", "default", "work"), first.accounts.map { it.accountId })
-        assertEquals(listOf("side", "default", "work"), codex(settings).accounts.map { it.accountId })
+        assertEquals(listOf("side", "default", "work"), first.accounts.all.map { it.accountId })
+        assertEquals(listOf("side", "default", "work"), codex(settings).accounts.all.map { it.accountId })
     }
 
     @Test
@@ -54,7 +54,7 @@ class AccountOrderTest {
 
         assertTrue(codex.defaultAccount.isDefault)
         assertEquals("codex", codex.defaultAccount.id)
-        assertEquals(listOf("work", "default"), codex.accounts.map { it.accountId })
+        assertEquals(listOf("work", "default"), codex.accounts.all.map { it.accountId })
     }
 
     @Test
@@ -65,7 +65,7 @@ class AccountOrderTest {
 
         first.accounts.add(login("new"))
 
-        assertEquals(listOf("side", "default", "work", "new"), codex(settings).accounts.map { it.accountId })
+        assertEquals(listOf("side", "default", "work", "new"), codex(settings).accounts.all.map { it.accountId })
     }
 
     @Test
@@ -74,6 +74,6 @@ class AccountOrderTest {
 
         codex.accounts.move(codex.accounts[0], 99)
 
-        assertEquals(listOf("work", "side", "default"), codex.accounts.map { it.accountId })
+        assertEquals(listOf("work", "side", "default"), codex.accounts.all.map { it.accountId })
     }
 }

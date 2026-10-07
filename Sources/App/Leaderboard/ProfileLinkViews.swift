@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 extension ProfileLink.Platform {
     /// The brand mark in the asset catalog (Simple Icons 16.34.0, CC0), a template image.
@@ -22,7 +22,9 @@ struct ProfileLinkIcon: View {
     @State private var isHovering = false
 
     var body: some View {
-        Link(destination: link.url) {
+
+        let _ = KitObservation.track()
+        Link(destination: URL(string: link.url)!) {
             Image(link.platform.markImage)
                 .renderingMode(.template)
                 .resizable()
@@ -52,6 +54,8 @@ struct ProfileLinkField: View {
     var link: ProfileLink? { platform.flatMap { ProfileLink.typed(handle, on: $0) } }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 if offersNone {

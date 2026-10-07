@@ -221,7 +221,7 @@ X-Nonce:     <16 random bytes, base64url>
 X-Signature: base64url( sign( METHOD \n PATH?QUERY \n TIMESTAMP \n NONCE \n hex(SHA256(body bytes)) ) )
 ```
 
-The Worker verifies with WebCrypto's Ed25519 against the stored public key, over **the exact bytes received**, never re-serialised JSON. The canonical string is pinned by `Tests/DomainTests/Leaderboard/vectors.json`, of which the server keeps an identical copy.
+The Worker verifies with WebCrypto's Ed25519 against the stored public key, over **the exact bytes received**, never re-serialised JSON. The canonical string is pinned by `ClaudeBarKit/src/jvmTest/resources/leaderboard/vectors.json`, of which the server keeps an identical copy.
 
 CryptoKit's Ed25519 signatures are randomised, so the shared vectors are **verified** on both sides, never compared byte for byte.
 
@@ -289,7 +289,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | Codex `usageHistory` (JSON) | Codex daily tokens from its session logs | Each `token_count` line's `last_token_usage`, deduplicated by the session's running total (Codex writes some lines twice). No cost: the lines name no model |
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
 | `LeaderboardMembership` | The laws of §4 on this Mac | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed |
-| `RequestSigner` | The canonical string, signed with CryptoKit Ed25519 | Pinned by `Tests/DomainTests/Leaderboard/vectors.json`; the server checks an identical copy |
+| `RequestSigner` | The canonical string, signed with CryptoKit Ed25519 | Pinned by `ClaudeBarKit/src/jvmTest/resources/leaderboard/vectors.json`; the server checks an identical copy |
 | `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload`, and now when you ask | `lastUpload` moves only on success. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 

@@ -1,5 +1,4 @@
-import DataSources
-import Domain
+import Kit
 import Foundation
 import Testing
 @testable import ClaudeBar
@@ -22,7 +21,7 @@ struct RefreshReportTests {
     func `should keep the last usage marked last seen, and say the key couldn't be read, when a refresh fails at the key`() {
         let report = RefreshReport(
             age: "3h ago", source: "API",
-            error: UsageError.sessionExpired(hint: "Run `codex` in terminal to log in again."), step: .lookup,
+            error: UsageError.SessionExpired(hint: "Run `codex` in terminal to log in again."), step: .lookup,
             hasUsage: true
         )
 
@@ -43,7 +42,7 @@ struct RefreshReportTests {
     func `should show only the error's message when no step is known to have failed`() {
         let report = RefreshReport(
             age: nil, source: nil,
-            error: UsageError.executionFailed("Codex CLI session not checked."), step: nil, hasUsage: false
+            error: UsageError.ExecutionFailed(reason: "Codex CLI session not checked."), step: nil, hasUsage: false
         )
 
         #expect(report.freshness == nil)

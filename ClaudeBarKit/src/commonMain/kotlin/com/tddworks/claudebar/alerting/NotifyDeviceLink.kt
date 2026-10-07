@@ -5,7 +5,7 @@ package com.tddworks.claudebar.alerting
  * Made by [of] from the pane's two fields, or by [fromPastedText] from whatever is on the
  * clipboard — a Notify! URL with both inside, or a bare `id token` pair.
  */
-internal class NotifyDeviceLink private constructor(
+public class NotifyDeviceLink private constructor(
     /** As the gateway spells it: `IO`+14 or legacy 8 (iPhone, iPad), `WB`+14, `MC`+14, `GRP`+5. */
     val deviceId: String,
     /** The per-device secret: never logged, never in settings.json, never in [toString]. */
@@ -146,7 +146,7 @@ private class PastedUrl(private val path: String, private val rawQuery: String?)
  * that cannot are named and everything else is allowed — app device ids are not one shape,
  * and refusing an unknown one would break a real phone the day Notify! mints a new format.
  */
-internal enum class NotifyDeviceKind {
+public enum class NotifyDeviceKind {
     /** An iPhone or iPad: `IO`+14, or the legacy 8 characters (which older poll-only Macs share). */
     APP_DEVICE,
 

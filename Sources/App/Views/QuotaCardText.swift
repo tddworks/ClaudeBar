@@ -1,4 +1,4 @@
-import Domain
+import Kit
 
 /// The words on a quota card. An outlined theme (Pop) prints them its own
 /// way: a short "left"/"used" beside the number, and the reset line's time

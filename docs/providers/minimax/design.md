@@ -4,7 +4,7 @@ Research notes for MiniMax's Token Plan usage, from the code, [#115](https://git
 
 ## As data
 
-MiniMax is `Modules/Providers/Resources/Providers/minimax.json` and `minimax-remains.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
+MiniMax is `ClaudeBarKit/definitions/minimax.json` and `minimax-remains.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
 
 | Setting | Kind · scope | Kept at | Used as |
 |---|---|---|---|

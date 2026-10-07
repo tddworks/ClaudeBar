@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonElement
  * turned into a `ProviderDefinition`: the same data a built-in is, run by the same `Provider`.
  * Pure: no I/O, so every step is tested on its own.
  */
-internal class ProviderDraft(val start: Start) {
+public class ProviderDraft(val start: Start) {
     /** *Start from: API · CLI · File · Copy a provider* — a closed list in the words Settings prints (USER_JOURNEYS F4). */
     sealed class Start {
         data object Api : Start()
@@ -100,7 +100,21 @@ internal class ProviderDraft(val start: Start) {
     var dashboard = ""
 
     /** The definition this draft describes, under [id] — minted once by the catalog, never derived from the name alone. Throws what is missing. */
-    fun definition(id: String): ProviderDefinition {
+    /** What the draft still needs before its numbers can be previewed — anything but a name; null when nothing. */
+    val missingForPreview: String? get() = runCatching { previewDefinition() }.exceptionOrNull()?.let { it.message ?: it.toString() }
+
+    /** The definition to preview with: a draft not yet named is called *Preview*. */
+    internal fun previewDefinition(): ProviderDefinition {
+        val typed = name
+        if (typed.isBlank()) name = "Preview"
+        try {
+            return definition(ProviderWorkshop.DRAFT_ID)
+        } finally {
+            name = typed
+        }
+    }
+
+    internal fun definition(id: String): ProviderDefinition {
         val name = name.trim()
         if (name.isEmpty()) throw Missing.Name
 
@@ -130,7 +144,7 @@ internal class ProviderDraft(val start: Start) {
     }
 
     /** *Connect → Test Connection*: the key lookup and the fetch, nothing mapped yet — so a person sees what comes back before mapping it (F5). */
-    fun connection(): DataSourceDefinition {
+    internal fun connection(): DataSourceDefinition {
         if (start is Start.Copy) return start.source.dataSource(start.source.defaultDataSource) ?: start.source.dataSources[0]
         return DataSourceDefinition(kind = kind, label = label, credential = credential(), fetch = fetch(), mapping = Mapping.Json(JSONMapping(quotas = emptyList())))
     }

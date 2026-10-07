@@ -68,8 +68,8 @@ one `DataSource`.
 
 ```swift
 // App — the composition root, in a few lines; it starts the kit and shows its state
-let kit = ClaudeBarCore.companion.start(home: NSHomeDirectory())   // the class can't share the framework's name
-KitObservation.shared.follow(kit.changes)          // one revision; views re-render on it
+let kit = ClaudeBarCore.start(definitions: bundled, home: NSHomeDirectory())  // Kit.shared; the class can't share the framework's name
+KitObservation.shared.follow(kit)                  // one revision; views re-render on it
 Button("Refresh") { kit.monitor.refreshAll() }     // views tell; Kotlin decides
 ```
 
@@ -185,11 +185,13 @@ views call monitor.refreshAll(), accounts.add(…) ──▶ Kotlin commands
 
 1. **Kotlin owns state and concurrency; Swift observes one change signal.** Every
    aggregate the UI shows (`QuotaMonitor`, `Providers`, `Provider`, `Account`,
-   `SessionMonitor` …) keeps its state in Kotlin and, after any change, bumps the
-   kit's single `changes` revision. One Swift class, `KitObservation`
-   (`@Observable`), collects it on the main actor. Every face property that reads
-   changing state touches `KitObservation` first, so SwiftUI re-renders whatever
-   read it. Views keep writing `monitor.lineup` and `account.snapshot`, as they do
+   `SessionMonitor` …) keeps its state in Kotlin and, after any change, bumps its
+   own `storage.Revision`, which also moves one process-wide counter,
+   `ClaudeBarCore.changes`. (A list of revisions fixed at start can't work: logins,
+   configurations and guest passes come and go while the app runs.) One Swift class,
+   `KitObservation` (`@Observable`), collects it on the main actor. Every view's
+   `body` and every `ObservationRenderSync` read touches `KitObservation` first, so
+   SwiftUI and the AppKit drivers re-render whatever read Kotlin state. Views keep writing `monitor.lineup` and `account.snapshot`, as they do
    today. Invalidation is coarse — a change re-evaluates the visible views — which a
    menu-bar popover affords, and which spares a mirror type per aggregate. A view
    that needs one value's stream (a countdown, a session's activity) may take
@@ -269,10 +271,17 @@ them.
 | 1 | `quotas`: `UsageSnapshot` and everything it holds | `Modules/Quotas` (except `DateRange`, `UsageError`, `UsageDisplayMode`, `StatusInfo`, which move with their users) | **built** |
 | 2 | `diagnostics` | `Modules/Diagnostics` (the face moves to the new `Modules/Kit`) | **built** |
 | 2 | `storage`: `SettingsFile`, `KeychainCredentials` (Swift's `JSONSettingsStore` and `KeychainCredentialRepository` become faces over them) | `Infrastructure/Storage`'s file and Keychain code | **built** |
-| 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | |
-| 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history; with them the vault (`ProviderVault`, the legacy-key migration, the UserDefaults store), which composes the Swift `CredentialRepository` that Swift tests mock until this phase | `Modules/Providers`, `Domain/Provider`, the rest of `Infrastructure/Storage` | |
-| 5 | `monitoring`, `alerting`, `activity`, `leaderboard`, `kit` | `Domain`, `Infrastructure` | |
-| 6 | the App on the face and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable | — | |
+| 3 | `datasources`: definitions, look-ups, fetches, mappings, usage logs, the AWS clients | `Modules/DataSources`, `Modules/AWSClients`, SwiftTerm, SweetCookieKit, Subprocess, SQLite.swift, the AWS SDK | **built** |
+| 4 | `providers`: lifecycle, accounts, catalog, extensions, usage history; with them the vault (`ProviderVault`, the legacy-key migration, the UserDefaults store) | `Modules/Providers`, `Domain/Provider`, the rest of `Infrastructure/Storage` | **built** |
+| 5 | `monitoring`, `alerting` (with the Notify! publisher), `activity`, `leaderboard` (with its upload schedule), `kit` (`ClaudeBarCore.start` composes them all) | `Domain`, `Infrastructure` | **built** |
+| 6 | the App on the face and commands alone; delete the Swift modules, `Domain`, `Infrastructure`, Mockable; the acceptance specs become JUnit (`acceptance/`) | — | **built**, but for the face's folder (still `Modules/Kit`) |
+
+Phase 6 left in Swift only what pages own (`Sources/App/PageState`: the menu-bar
+labels, popover sizes, status colours, the app's own settings, `RefreshInterval`,
+the terminal-theme import) and the drivers that push state to AppKit surfaces
+(menu bar, notch, Touch Bar, `status.json`). The App reads the kit through
+`Kit.shared`; App tests that need providers start a kit of their own over a
+temporary home (`Tests/AppTests/Support/TestKit.swift`).
 
 Phase 3 is the largest and the riskiest: it replaces four Swift libraries.
 `TerminalScreen` is proven first against `scripts/claude-usage-captures/`
@@ -281,8 +290,8 @@ before any interactive CLI moves.
 **Each context keeps its own settings.** `settings.json` is one file, owned by
 `storage`'s `SettingsFile`; the *repositories* over it (app settings, provider
 settings, hooks, Notify!, Leaderboard, accounts) belong to their contexts and
-move with them. Until then Swift's `JSONSettingsRepository` keeps its code and
-runs on `SettingsFile` through `JSONSettingsStore`.
+move with them. Swift's `JSONSettingsRepository` keeps only the app's own
+settings (how pages look), on `SettingsFile` through `JSONSettingsStore`.
 
 ## 9 · Open
 
@@ -300,4 +309,12 @@ runs on `SettingsFile` through `JSONSettingsStore`.
   golden tests of a definition's `.js` need a JVM engine (Rhino or GraalJS), or
   run in the native suite.
 - **Swift export.** Re-checked with each Kotlin release (next: 2.5, December
-  2026); §5 rule 3 keeps the switch to one folder.
+  2026); §5 rule 4 keeps the switch to one folder.
+- **The face's folder.** The face is still the Swift module `Modules/Kit`;
+  moving it to `Sources/App/Kit/` is a rename, left until nothing else moves.
+- **Drivers that decide.** The status export, the notch, the Touch Bar and the
+  menu-bar label drivers are App code; what they compute beyond pixels (the
+  `status.json` shape, the menu-bar text) could move to `kit` the way the Notify!
+  publisher did.
+- **DeepSeek's card.** Its key is the one setting a definition can't yet ask for
+  (no `secret` setting on DeepSeek); the card stays until it is one.

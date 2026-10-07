@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Select providers once, then configure each provider independently.
 struct MenuBarPane: View {
@@ -13,6 +12,8 @@ struct MenuBarPane: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(title: "Menu Bar", subtitle: "Choose what appears in your menu bar.") {
             SettingsCard {
                 SettingsFieldLabel(text: "QUOTA DISPLAY")
@@ -117,6 +118,8 @@ private struct MenuBarProviderCard: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsCard {
             HStack(spacing: 10) {
                 ProviderIconView(providerId: provider.id, size: 24, showGlow: false)
@@ -212,6 +215,8 @@ private struct MenuBarChoices<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) { content }
                 .padding(.vertical, 4)

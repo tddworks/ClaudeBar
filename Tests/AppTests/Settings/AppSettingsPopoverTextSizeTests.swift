@@ -1,7 +1,6 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
+import Kit
 @testable import ClaudeBar
 
 @Suite @MainActor

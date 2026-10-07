@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A simple overlay that shows the referral link with copy functionality.
 struct SharePassOverlay: View {
@@ -11,6 +11,8 @@ struct SharePassOverlay: View {
     @State private var copied = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             // Dimmed background
             Color.black.opacity(0.4)
@@ -45,7 +47,7 @@ struct SharePassOverlay: View {
 
                 // Referral Link
                 HStack(spacing: 8) {
-                    Text(pass.referralURL.absoluteString)
+                    Text(pass.referralURL)
                         .popoverFont(11, weight: .medium)
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(1)
@@ -91,7 +93,7 @@ struct SharePassOverlay: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        NSWorkspace.shared.open(pass.referralURL)
+                        if let url = URL(string: pass.referralURL) { NSWorkspace.shared.open(url) }
                         onDismiss()
                     } label: {
                         HStack(spacing: 5) {
@@ -141,7 +143,7 @@ struct SharePassOverlay: View {
 
     private func copyToClipboard() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(pass.referralURL.absoluteString, forType: .string)
+        NSPasteboard.general.setString(pass.referralURL, forType: .string)
 
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             copied = true
@@ -167,6 +169,8 @@ struct SharePassErrorOverlay: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()
@@ -234,9 +238,7 @@ struct SharePassErrorOverlay: View {
         DarkTheme().backgroundGradient
 
         SharePassOverlay(
-            pass: GuestPass(
-                referralURL: URL(string: "https://claude.ai/referral/DJ_kWX90Xw")!
-            ),
+            pass: GuestPass.sharing("https://claude.ai/referral/DJ_kWX90Xw"),
             onDismiss: {}
         )
     }

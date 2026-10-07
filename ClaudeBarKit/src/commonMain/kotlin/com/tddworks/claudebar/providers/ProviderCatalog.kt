@@ -15,8 +15,8 @@ import kotlin.uuid.Uuid
  * **custom**), and extensions in `~/.claudebar/extensions`. A definition on disk is a
  * provider; no code lists one. Keys never live here — a definition names a key, the vault holds it.
  */
-internal class ProviderCatalog(
-    val builtIns: BuiltInDefinitions,
+public class ProviderCatalog internal constructor(
+    internal val builtIns: BuiltInDefinitions,
     /** `~/.claudebar/providers`. */
     val directory: String,
     /** `~/.claudebar/extensions`. */

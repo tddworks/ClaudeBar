@@ -1,5 +1,5 @@
 import Foundation
-import Domain
+import Kit
 
 /// The score line across the top of a `.scoreLine` header, read from the
 /// selected provider: who's playing and how it's doing, what's left of its

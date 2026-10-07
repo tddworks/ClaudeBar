@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 import WebKit
 
@@ -11,6 +12,8 @@ struct CustomWebCardView: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 6) {
             // Header with link icon and domain
             HStack(spacing: 5) {

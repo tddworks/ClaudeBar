@@ -34,7 +34,7 @@ internal data class QuotaAlert(
  * again only after the login climbed back a point above it. The caller hands it each refresh
  * (the monitor knows nothing of it); [changed] is told when [percents] changes, for the UI.
  */
-internal class QuotaAlerts(
+public class QuotaAlerts internal constructor(
     private val settings: QuotaAlertSettingsRepository,
     private val announcer: QuotaAlertAnnouncer,
     private val changed: () -> Unit = {},

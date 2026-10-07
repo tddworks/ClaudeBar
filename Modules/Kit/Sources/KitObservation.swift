@@ -32,7 +32,10 @@ public final class KitObservation: @unchecked Sendable {
 /// The kit this app runs — built once, on first use. Starting it builds every context; nothing
 /// listens or refreshes until the app turns that on.
 public enum Kit {
-    public static let shared: ClaudeBarCore = ClaudeBarCore.companion.start(home: NSHomeDirectory())
+    public static let shared: ClaudeBarCore = ClaudeBarCore.start(
+        definitions: Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/definitions").path,
+        home: NSHomeDirectory()
+    )
 }
 
 extension ClaudeBarCore: @retroactive @unchecked Sendable {}

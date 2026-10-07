@@ -1,8 +1,6 @@
 import SwiftUI
 import AppKit
-import DataSources
-import Domain
-import Providers
+import Kit
 
 /// Settings' *Data source* section for any provider that is data (#352):
 /// the data sources to pick from, where the key is looked for, the fallback
@@ -27,6 +25,8 @@ struct DataSourceSection: View {
     private var text: DataSourceSectionText { DataSourceSectionText(definition: provider.configuration.definitionAsRun) }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         DisclosureGroup(isExpanded: $expanded) {
             Divider()
                 .background(theme.glassBorder)
@@ -60,7 +60,7 @@ struct DataSourceSection: View {
         )
         .onAppear {
             kind = provider.configuration.activeKind
-            fallbackOn = provider.configuration.isFallbackEnabled(from: kind)
+            fallbackOn = provider.configuration.isFallbackEnabled(kind: kind)
         }
     }
 
@@ -178,7 +178,7 @@ struct DataSourceSection: View {
 
     private func saveCLIPath() {
         do {
-            try provider.configuration.setCLIPath(cliPath)
+            try value(of: provider.configuration.setCLIPath(path: cliPath))
             cliPathError = nil
             cliPath = provider.configuration.cliPath ?? ""
         } catch {
@@ -224,7 +224,7 @@ struct DataSourceSection: View {
     }
 
     private func keyLookup(_ order: String) -> some View {
-        let found = provider.hasKey(for: kind)
+        let found = provider.hasKey(kind: kind, account: nil)
         return VStack(alignment: .leading, spacing: 6) {
             sectionLabel("KEY LOOKUP ORDER")
 
@@ -263,7 +263,7 @@ struct DataSourceSection: View {
                     .accessibilityLabel(sentence)
             }
             .onChange(of: fallbackOn) { _, newValue in
-                provider.configuration.setFallbackEnabled(newValue, from: kind)
+                provider.configuration.setFallbackEnabled(on: newValue, kind: kind)
             }
         } else {
             HStack(alignment: .top, spacing: 8) {
@@ -284,7 +284,8 @@ struct DataSourceSection: View {
                 isTesting = true
                 testResult = nil
                 Task {
-                    let result = await provider.testConnection()
+                    // Nil only when the test was cancelled.
+                    guard let result = await provider.testConnection()?.result else { isTesting = false; return }
                     testResult = DataSourceSectionText.testResult(result)
                     if case .failure = result { testFailed = true } else { testFailed = false }
                     isTesting = false
@@ -315,15 +316,15 @@ struct DataSourceSection: View {
     /// only when the new source needs no explicit check first — picking is not
     /// intent to start a CLI that may open a login on its own (#216).
     private func pick(_ newKind: String) {
-        guard provider.configuration.use(newKind) else { return }
-        fallbackOn = provider.configuration.isFallbackEnabled(from: newKind)
+        guard provider.configuration.use(kind: newKind) else { return }
+        fallbackOn = provider.configuration.isFallbackEnabled(kind: newKind)
         testResult = nil
-        if let ttl = provider.definition.dataSource(newKind)?.cache?.ttl,
+        if let ttl = provider.definition.dataSource(kind: newKind)?.cache?.ttl,
            let seconds = settings.refreshInterval.seconds, Double(seconds) < ttl {
             settings.refreshInterval = RefreshInterval.allCases
                 .first { ($0.seconds).map { Double($0) >= ttl } ?? false } ?? settings.refreshInterval
         }
-        guard provider.definition.dataSource(newKind)?.verifyBeforeBackground != true else { return }
+        guard provider.definition.dataSource(kind: newKind)?.verifyBeforeBackground != true else { return }
         Task {
             for account in provider.accounts where account.isEnabled {
                 await monitor.refresh(providerId: account.id)

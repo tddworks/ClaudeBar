@@ -49,6 +49,31 @@ internal object LeaderboardWire {
         },
     )
 
+    fun encode(standing: Standing) = JsonObject(
+        buildMap {
+            put("rank", JsonPrimitive(standing.rank))
+            put("username", JsonPrimitive(standing.username))
+            put("total", JsonPrimitive(standing.total))
+            put("input", JsonPrimitive(standing.input))
+            put("output", JsonPrimitive(standing.output))
+            put("cache", JsonPrimitive(standing.cache))
+            put("byProvider", JsonObject(standing.byProvider.mapValues { JsonPrimitive(it.value) }))
+            standing.link?.let { put("link", encode(it)) }
+        },
+    )
+
+    /** What the server holds about you, as *Export my data* saves it; absent values are left out. */
+    fun encode(summary: MemberSummary) = JsonObject(
+        buildMap {
+            summary.standing?.let { put("standing", encode(it)) }
+            put("days", JsonArray(summary.days.map(::encode)))
+            put("visible", JsonPrimitive(summary.visible))
+            put("shareCountry", JsonPrimitive(summary.sharesCountry))
+            summary.country?.let { put("country", JsonPrimitive(it)) }
+            summary.link?.let { put("link", encode(it)) }
+        },
+    )
+
     fun upload(today: String, days: List<DailyTokens>) =
         JsonObject(mapOf("today" to JsonPrimitive(today), "days" to JsonArray(days.map(::encode))))
 

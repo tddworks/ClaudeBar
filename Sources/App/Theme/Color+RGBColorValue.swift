@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import Domain
+import Kit
 
 extension Color {
     init(_ rgb: RGBColorValue) {

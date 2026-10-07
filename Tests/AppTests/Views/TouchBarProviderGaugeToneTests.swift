@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// The Touch Bar gauge draws the same number the menu bar does (remaining or used,

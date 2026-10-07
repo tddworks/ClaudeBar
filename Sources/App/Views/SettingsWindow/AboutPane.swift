@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// About pane: version info and project links.
 struct AboutPane: View {
@@ -15,6 +14,8 @@ struct AboutPane: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "About",
             subtitle: "Version \(appVersion) (\(appBuild))"

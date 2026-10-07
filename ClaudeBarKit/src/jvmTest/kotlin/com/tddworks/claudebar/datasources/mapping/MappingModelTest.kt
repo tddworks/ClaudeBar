@@ -12,7 +12,7 @@ import org.junit.jupiter.api.assertThrows
 import java.io.File
 
 class MappingModelTest {
-    private val definitions = File("../Modules/Providers/Resources/Providers").listFiles { f -> f.extension == "json" }.orEmpty()
+    private val definitions = File("definitions").listFiles { f -> f.extension == "json" }.orEmpty()
 
     private fun mappings() = definitions.flatMap { file ->
         val provider = Json.parseToJsonElement(file.readText()) as JsonObject

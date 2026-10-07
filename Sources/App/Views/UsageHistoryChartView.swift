@@ -1,6 +1,6 @@
 import Charts
 import SwiftUI
-import Domain
+import Kit
 
 /// *DAILY USAGE — LAST 30 DAYS* — a login's usage history as a chart: one
 /// bar a day, by cost, by tokens (input and output), or by cache (writes and
@@ -44,6 +44,8 @@ struct UsageHistoryChartView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 8) {
             header
             HStack(spacing: 4) {

@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A card that displays cost-based usage data for Claude accounts.
 /// Shows total cost, optional budget progress, and reset time for Pro Extra usage.
@@ -65,6 +65,8 @@ struct CostStatCard: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 10) {
             if let budget = printedBudget {
                 printedHeader(budget: budget)

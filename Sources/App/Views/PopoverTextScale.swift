@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Text Scale
 

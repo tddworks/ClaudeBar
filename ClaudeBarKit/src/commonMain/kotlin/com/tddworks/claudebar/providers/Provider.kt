@@ -42,7 +42,7 @@ import kotlin.time.Clock
  * rate-limit memory. Overlapping refreshes of one login share one fetch, run in [scope] so a
  * caller that gives up never cancels it for the others.
  */
-internal class Provider(
+public class Provider internal constructor(
     val definition: ProviderDefinition,
     internal val settings: MultiAccountSettingsRepository,
     saved: List<ProviderAccountConfig> = emptyList(),
@@ -132,7 +132,7 @@ internal class Provider(
     // Data sources
 
     /** The live data sources a login runs — made from the configuration at its current revision, here and nowhere else. */
-    fun dataSources(account: Account): List<DataSource> = synchronized(lock) {
+    internal fun dataSources(account: Account): List<DataSource> = synchronized(lock) {
         val revision = configuration.sourcesRevision
         bound[account.id]?.takeIf { it.first == revision }?.let { return@synchronized it.second }
         try {
@@ -175,7 +175,7 @@ internal class Provider(
     val backgroundRefreshFloorSeconds: Double? get() = definition.dataSource(configuration.activeKind)?.cache?.ttl
 
     /** The worst quota health across the enabled logins. */
-    val status: QuotaStatus get() = accounts.filter { it.isEnabled }.maxOfOrNull { it.status } ?: QuotaStatus.HEALTHY
+    val status: QuotaStatus get() = accounts.all.filter { it.isEnabled }.maxOfOrNull { it.status } ?: QuotaStatus.HEALTHY
 
     /**
      * *Test Connection* — the active data source looks up the key and fetches for a login (the

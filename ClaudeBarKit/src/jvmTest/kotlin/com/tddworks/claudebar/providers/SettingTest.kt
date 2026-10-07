@@ -143,7 +143,7 @@ class DefaultPathIsolationTest {
     @Test
     fun `should restore a saved tilde path as an absolute folder`() {
         val owner = provider("kiro", listOf(ProviderAccountConfig("work", "Work", probeConfig = mapOf("home" to "~/work"), madeBy = AccountOrigin.FORM)))
-        val account = owner.accounts.first { it.accountId == "work" }
+        val account = owner.accounts.all.first { it.accountId == "work" }
         assertEquals("/Users/me/work", account.values["home"])
     }
 
@@ -153,7 +153,7 @@ class DefaultPathIsolationTest {
             "codex",
             listOf(ProviderAccountConfig("work", "Work", probeConfig = mapOf("codexHome" to "~/work", "chatgptAccountId" to "work-id"), madeBy = AccountOrigin.FOLDER)),
         )
-        val account = owner.accounts.first { it.accountId == "work" }
+        val account = owner.accounts.all.first { it.accountId == "work" }
         assertEquals("/Users/me/work", account.values["codexHome"])
         val rpc = owner.dataSources(account).first { it.kind == "rpc" }
         assertEquals("/Users/me/work", (rpc.definition.fetch as Fetch.JsonRpc).call.environment.set["CODEX_HOME"])

@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Updates pane: Sparkle auto-update controls. In non-Sparkle builds the
 /// pane explains that updates are unavailable.
@@ -21,6 +20,8 @@ struct UpdatesPane: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Updates",
             subtitle: status.summary

@@ -59,7 +59,7 @@ class ProductTabsTest {
 
         assertFalse(monitor.productTabs[0].isEnabled)
         assertTrue(monitor.lineup.none { it.id.startsWith("codex") })
-        assertTrue(codex.accounts.all { it.isEnabled })
+        assertTrue(codex.accounts.all.all { it.isEnabled })
     }
 
     @Test
@@ -98,5 +98,73 @@ class ProductTabsTest {
         val (monitor, codex, _) = monitor()
 
         assertSame(codex.defaultAccount, monitor.productTabs[0].page)
+    }
+
+    // The popover's pills: a provider's logins share one tab, in the person's order, and ⌘1 is the first tab.
+
+    /** Claude, then Codex with *work* and *side*. */
+    private fun lineup(): Triple<QuotaMonitor, Provider, Provider> {
+        fun login(id: String) = ProviderAccountConfig(id, id.replaceFirstChar { it.uppercase() }, "$id@example.com",
+            probeConfig = mapOf("codexHome" to "/tmp/$id", "chatgptAccountId" to id))
+        val claude = stub.makeProvider("claude")
+        val codex = stub.makeProvider("codex", listOf(login("work"), login("side")))
+        val catalog = ProviderCatalog(TestDefinitions.builtIns, File(folder, "providers").path, File(folder, "extensions").path)
+        val providers = Providers(listOf(claude, codex), catalog, stub.settings, customs = CustomDefinitions(), make = { error("tests don't add providers") })
+        return Triple(QuotaMonitor(providers, settingsRepository = stub.settings), claude, codex)
+    }
+
+    @Test
+    fun `should show a provider's logins under one tab`() {
+        val (monitor, _, codex) = lineup()
+
+        val tabs = ProductTab.tabs(monitor.logins, monitor.providers)
+
+        assertEquals(listOf("claude", "codex"), tabs.map { it.id })
+        assertEquals(codex.accounts.all.map { it.id }, tabs[1].accounts.map { it.id })
+        assertEquals("Codex", tabs[1].name)
+    }
+
+    @Test
+    fun `should keep the person's order in a tab and leave out paused logins`() {
+        val (monitor, _, codex) = lineup()
+        codex.accounts.move(codex.accounts[2], 0)
+        codex.accounts[1].isEnabled = false
+
+        val tab = ProductTab.tabs(codex.accounts.all.filter { it.isEnabled }, monitor.providers).first()
+
+        assertEquals(listOf("codex.side", "codex.work"), tab.accounts.map { it.id })
+    }
+
+    @Test
+    fun `should hold every one of its provider's logins in a tab, and no other's`() {
+        val (monitor, _, _) = lineup()
+
+        val codex = ProductTab.tabs(monitor.logins, monitor.providers).last()
+
+        assertTrue(codex.contains("codex.work"))
+        assertTrue(codex.contains("codex"))
+        assertFalse(codex.contains("claude"))
+    }
+
+    @Test
+    fun `should select the second tab with ⌘2 and keep it selected for any of its logins`() {
+        val (monitor, _, codex) = lineup()
+
+        monitor.selectProvider(atPosition = 2)
+
+        assertEquals("codex", monitor.selectedTab?.id)
+        assertEquals(codex.accounts[0].id, monitor.selectedProviderId)
+        monitor.selectedProviderId = "codex.side"
+        assertEquals("codex", monitor.selectedTab?.id)
+        assertEquals(codex.accounts.all.map { it.id }, monitor.selectedLogins.map { it.id })
+    }
+
+    @Test
+    fun `should hide a quota for every account of a provider once it is hidden (#140)`() {
+        stub.settings.setHiddenQuotaKeys(setOf("model:codex-spark"), "codex")
+        val (monitor, _, codex) = lineup()
+
+        assertEquals(setOf("model:codex-spark"), monitor.hiddenQuotaKeys(codex.accounts[0]))
+        assertEquals(setOf("model:codex-spark"), monitor.hiddenQuotaKeys(codex.accounts[1]))
     }
 }

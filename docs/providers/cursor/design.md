@@ -4,7 +4,7 @@ Contributor notes for Cursor. User-facing setup is in [README.md](README.md).
 
 ## As data
 
-Cursor is `Modules/Providers/Resources/Providers/cursor.json` and `cursor-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
+Cursor is `ClaudeBarKit/definitions/cursor.json` and `cursor-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
 
 - **Key — default login.** `CredentialLookup.sqlite` reads `cursorAuth/accessToken` from the app's `state.vscdb`. The database is opened read-only, and a query that would change it is refused. The lookup's `hint` ("Sign in again in Cursor settings, then refresh.") is what the Accounts card says when the key is gone. `requiresFiles` makes a missing database *Couldn't read your key* and not *Configured*.
 - **Key — added account.** Its patch drops the database and `requiresFiles`, and reads its own saved `accessToken` (account scope, in the vault).

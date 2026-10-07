@@ -10,7 +10,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * hand out. An action, not usage, so it lives beside the provider's usage and never touches a
  * login's `lastError`.
  */
-internal class GuestPasses(private val source: GuestPassSource) {
+public class GuestPasses internal constructor(private val source: GuestPassSource) {
     private data class Seen(val pass: GuestPass? = null, val isFetching: Boolean = false, val error: UsageError? = null)
 
     private val state = ObservableState(Seen())

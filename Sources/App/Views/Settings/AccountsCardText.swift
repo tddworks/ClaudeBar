@@ -1,6 +1,5 @@
 import Foundation
-import Providers
-import Quotas
+import Kit
 
 /// The words of the Accounts card, read from the provider's definition —
 /// one card for every provider that can have accounts.
@@ -37,8 +36,7 @@ struct AccountsCardText {
 
     /// The login a person runs themselves to sign in to `folder`.
     func signInCommand(in folder: String) -> String? {
-        guard let call = provider.definition.accounts?.signIn else { return nil }
-        return (["\(call.homeVariable)=\(Self.shellQuoted(folder))", call.cli] + call.args.map(Self.shellQuoted)).joined(separator: " ")
+        provider.definition.accounts?.signInCommand(folder: folder)
     }
 
     func removeMessage(for account: Account) -> String {
@@ -53,7 +51,7 @@ struct AccountsCardText {
 
     /// Whether the last refresh says the login needs signing in again.
     func needsReauth(_ account: Account) -> Bool {
-        guard let tag = (account.lastError as? UsageError)?.tag else { return false }
+        guard let tag = account.lastError?.tag else { return false }
         return tag == "sessionExpired" || tag == "authenticationRequired"
     }
 
@@ -71,19 +69,12 @@ struct AccountsCardText {
             return provider.configuration.keyHint ?? "Update the default account's key in Settings, then refresh."
         }
         guard let folder = account.folder, !folder.goesWithAccount else { return nil }
-        guard let command = signInCommand(in: folder.url.path) else { return "Sign in again in \(folder.url.path), then refresh." }
+        guard let command = signInCommand(in: folder.path) else { return "Sign in again in \(folder.path), then refresh." }
         return "Sign in again yourself: \(command) — then refresh."
-    }
-
-    /// As a shell needs it to arrive unchanged — so a pasted command works.
-    private static func shellQuoted(_ argument: String) -> String {
-        let plain = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_./=:@~"))
-        guard argument.unicodeScalars.contains(where: { !plain.contains($0) }) else { return argument }
-        return "'" + argument.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
     }
 
     /// The folder an account made by the form signed in at — its path setting.
     private func signedInFolder(of account: Account) -> String? {
-        fields.lazy.compactMap { $0.path(in: account.values) }.first
+        fields.lazy.compactMap { $0.path(values: account.values) }.first
     }
 }

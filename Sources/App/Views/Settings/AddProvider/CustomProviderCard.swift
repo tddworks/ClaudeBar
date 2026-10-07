@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
-import Providers
+import Kit
 
 /// A provider someone made: *Export…* it to share (the file names its key,
 /// never holds it), or *Delete* it — its definition file and saved key go, and
@@ -17,6 +15,8 @@ struct CustomProviderCard: View {
     @State private var error: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsCard {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -48,7 +48,7 @@ struct CustomProviderCard: View {
         panel.begin { result in
             guard result == .OK, let url = panel.url else { return }
             do {
-                try provider.definition.exported().write(to: url, options: .atomic)
+                try provider.definition.exported().write(to: url, atomically: true, encoding: .utf8)
             } catch {
                 self.error = error.localizedDescription
             }
@@ -57,7 +57,7 @@ struct CustomProviderCard: View {
 
     private func delete() {
         do {
-            try monitor.providers.remove(provider.id)
+            try value(of: monitor.providers.remove(id: provider.id))
         } catch {
             self.error = error.localizedDescription
             return

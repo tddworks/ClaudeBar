@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Displays the Claude Code session's status in the menu popover.
 /// `SessionsCardView` shows it when exactly one session is running.
@@ -9,6 +9,8 @@ struct SessionIndicatorView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 10) {
             // Phase indicator dot
             Circle()

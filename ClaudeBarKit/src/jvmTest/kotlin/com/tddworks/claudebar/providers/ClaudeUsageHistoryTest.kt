@@ -260,7 +260,7 @@ class ClaudeUsageHistoryTest {
         File(work, "projects/p/s.jsonl").writeText(line(input = 2000, output = 1000))
         write(line())
         val provider = provider(work)
-        val added = provider.accounts.first { !it.isDefault }
+        val added = provider.accounts.all.first { !it.isDefault }
 
         provider.defaultAccount.usageHistory?.read()
         added.usageHistory?.read()
@@ -276,7 +276,7 @@ class ClaudeUsageHistoryTest {
         File(work, "projects/p").mkdirs()
         File(work, "projects/p/s.jsonl").writeText(line("acme-internal-7b"))
         File(work, ".claude.json").writeText("""{"env":{"ANTHROPIC_BASE_URL":"http://localhost:11434"}}""")
-        val added = provider(work).accounts.first { !it.isDefault }
+        val added = provider(work).accounts.all.first { !it.isDefault }
 
         added.usageHistory?.read()
 
@@ -286,7 +286,7 @@ class ClaudeUsageHistoryTest {
     @Test
     fun `should drop an added login's usage history when the login is removed`() {
         val provider = provider(File(home, "work-claude"))
-        val added = provider.accounts.first { !it.isDefault }
+        val added = provider.accounts.all.first { !it.isDefault }
         assertNotNull(added.usageHistory)
 
         provider.accounts.remove(added)

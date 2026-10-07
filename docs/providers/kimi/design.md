@@ -4,7 +4,7 @@ Contributor notes for Kimi's two data sources. User-facing setup is in [README.m
 
 ## As data
 
-Kimi is `Modules/Providers/Resources/Providers/kimi.json` with `kimi-cli.js` and `kimi-api.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #393.
+Kimi is `ClaudeBarKit/definitions/kimi.json` with `kimi-cli.js` and `kimi-api.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #393.
 
 - **Region is one choice setting** whose options carry `site` and `domain`: the URL, `Origin`, `Referer`, cookie domains and dashboard are `{{setting.region.site}}` / `{{setting.region.domain}}`. Saved where the old card kept it (`kimi.region`); the old Probe Mode is the data source (`kimi.probeMode`).
 - **CLI.** A `cli` (terminal) fetch with `inputDelay: 1.5`, the `💫` / `context:` auto-responses, the trust-folder Enter and the ready markers below. Checked live with Kimi Code CLI 1.x: the screen settles, `/usage` is typed, and a signed-out CLI's "Authorization failed" now asks for `/login` instead of "No quota data found".

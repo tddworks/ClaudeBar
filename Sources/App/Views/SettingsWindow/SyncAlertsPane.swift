@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Sync & Alerts pane: background refresh cadence and the person's quota alerts.
 struct SyncAlertsPane: View {
@@ -8,6 +7,8 @@ struct SyncAlertsPane: View {
     @State private var settings = AppSettings.shared
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Sync & Alerts",
             subtitle: "Background refresh cadence, and the quota alerts you choose."
@@ -49,12 +50,14 @@ private struct QuotaAlertsCard: View {
     @State private var refusal: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsCard {
             SettingsRow(
                 title: "Quota Alerts",
                 subtitle: "Tell me when a login's quota falls below a percentage I pick — once, and again only after it climbs back."
             ) {
-                Text("\(alerts.percents.count) / \(QuotaAlerts.most)")
+                Text("\(alerts.percentValues.count) / \(QuotaAlerts.most)")
                     .font(theme.font(size: 11, weight: .semibold))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -65,8 +68,8 @@ private struct QuotaAlertsCard: View {
                 SettingsFieldLabel(text: "ALERT ME BELOW")
 
                 HStack(spacing: 6) {
-                    ForEach(alerts.percents, id: \.self) { percent in
-                        chip("\(percent)%") { alerts.remove(percent); refusal = nil }
+                    ForEach(alerts.percentValues, id: \.self) { percent in
+                        chip("\(percent)%") { alerts.remove(percent: percent); refusal = nil }
                     }
                     ForEach(QuotaAlerts.alreadyAlerted.sorted(by: >), id: \.self) { percent in
                         chip(percent == 0 ? "Empty · built in" : "\(percent)% · built in", remove: nil)
@@ -78,7 +81,7 @@ private struct QuotaAlertsCard: View {
                         .frame(width: 72)
                         .onSubmit(add)
                     SettingsActionButton(title: "Add", iconName: "plus", style: .secondary, action: add)
-                        .disabled(alerts.percents.count >= QuotaAlerts.most)
+                        .disabled(alerts.percentValues.count >= QuotaAlerts.most)
                 }
 
                 Text(refusal ?? "ClaudeBar already alerts at 20% and when a quota is empty.")
@@ -89,13 +92,8 @@ private struct QuotaAlertsCard: View {
     }
 
     private func add() {
-        do {
-            try alerts.add(entry)
-            entry = ""
-            refusal = nil
-        } catch {
-            refusal = error.errorDescription
-        }
+        refusal = alerts.add(entry: entry)?.message
+        if refusal == nil { entry = "" }
     }
 
     private func chip(_ title: String, remove: (() -> Void)?) -> some View {

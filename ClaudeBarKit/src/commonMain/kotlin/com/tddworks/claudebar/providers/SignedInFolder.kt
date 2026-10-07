@@ -10,7 +10,7 @@ import kotlin.uuid.Uuid
  * is ClaudeBar's, and goes with the account (docs/features/in-use/design.md).
  */
 @ConsistentCopyVisibility
-internal data class SignedInFolder private constructor(val path: String, val madeBy: AccountOrigin) {
+public data class SignedInFolder private constructor(val path: String, val madeBy: AccountOrigin) {
     /**
      * Whether *Remove* takes the folder with the account: only one ClaudeBar made by signing in,
      * named as it names them. A live refresh token left behind would be a login nobody can see.

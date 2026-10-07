@@ -323,7 +323,7 @@ class ProviderTest {
         network.answer(api, login = "low", used = 90)
         network.answer(api, login = "high", used = 10)
         val acme = acme(network, logins = listOf("low", "high"))
-        for (account in acme.accounts) acme.refreshNow(account).usage()
+        for (account in acme.accounts.all) acme.refreshNow(account).usage()
 
         assertEquals(QuotaStatus.CRITICAL, acme.status)
         assertEquals("high", acme.accounts.best?.accountId)
@@ -340,7 +340,7 @@ class ProviderTest {
         val acme = acme(network, logins = listOf("low"))
 
         assertNull(acme.accounts.worst)
-        for (account in acme.accounts) acme.refreshNow(account).usage()
+        for (account in acme.accounts.all) acme.refreshNow(account).usage()
 
         assertEquals("low", acme.accounts.worst?.accountId)
         acme.accounts[1].isEnabled = false

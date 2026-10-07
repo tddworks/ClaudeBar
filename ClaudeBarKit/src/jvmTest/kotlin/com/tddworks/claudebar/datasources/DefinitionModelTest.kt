@@ -15,7 +15,7 @@ import java.io.File
 class DefinitionModelTest {
     @Test
     fun `should read every data source of every bundled definition and write it back the same`() {
-        val files = File("../Modules/Providers/Resources/Providers").listFiles { f -> f.extension == "json" }.orEmpty()
+        val files = File("definitions").listFiles { f -> f.extension == "json" }.orEmpty()
         var count = 0
         for (file in files) {
             val provider = Json.parseToJsonElement(file.readText()) as JsonObject

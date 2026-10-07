@@ -15,10 +15,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * (`"setting": "apiKey"`); its value lives in the vault, so no exported file holds one
  * (USER_JOURNEYS F9). The origin is left out: whoever imports it decides.
  */
-internal fun ProviderDefinition.exported(): String = prettyJson(toJson(), "")
+public fun ProviderDefinition.exported(): String = prettyJson(toJson(), "")
 
 /** *Key needed* — the settings this definition asks whoever adds it for. */
-internal val ProviderDefinition.neededSettings: List<String>
+public val ProviderDefinition.neededSettings: List<String>
     get() = dataSources.flatMap { source -> source.credential?.let(::keyNames) ?: emptyList() }.toSet().sorted()
 
 /**
@@ -35,7 +35,7 @@ internal val ProviderDefinition.commands: List<String>
     get() = dataSources.flatMap { it.fetch.commands }.map { it.joinToString(" ") }.distinct()
 
 /** What a shared file would do, shown BEFORE anything is saved or run (USER_JOURNEYS F10). */
-internal data class ImportReview(
+public data class ImportReview(
     /** As it will be saved: origin custom, its id kept unless taken. */
     val definition: ProviderDefinition,
     /** "It will send your key to that address." */

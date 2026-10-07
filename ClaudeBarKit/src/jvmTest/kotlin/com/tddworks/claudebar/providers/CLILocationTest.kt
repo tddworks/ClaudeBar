@@ -40,7 +40,7 @@ class CLILocationTest {
     fun `should run the CLI inside the app when it isn't on the PATH`() {
         val codex = stub.makeProvider("codex", listOf(login("work")), isExecutable = { it == app }, locate = { null })
 
-        for (account in codex.accounts) assertTrue(codex.clis(account).all { it == app })
+        for (account in codex.accounts.all) assertTrue(codex.clis(account).all { it == app })
         assertNull(codex.configuration.cliPath)
     }
 
@@ -76,7 +76,7 @@ class CLILocationTest {
 
         codex.configuration.setCLIPath(path).done()
 
-        for (account in codex.accounts) {
+        for (account in codex.accounts.all) {
             val clis = codex.clis(account)
             assertFalse(clis.isEmpty())
             assertTrue(clis.all { it == path })

@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 /// A segmented picker in an outlined theme's ink: one outlined capsule, the
@@ -14,6 +15,8 @@ struct InkSegmentedPicker<Option: Hashable & Identifiable>: View {
     @Namespace private var thumb
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 0) {
             ForEach(options) { option in
                 segment(option)

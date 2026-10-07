@@ -8,7 +8,7 @@ import com.tddworks.claudebar.quotas.QuotaStatus
  * usage that says all is well — a failed fetch used to show a green HEALTHY pill above a card
  * reading "Unavailable" (#259).
  */
-internal sealed class ProviderBadgeState {
+public sealed class ProviderBadgeState {
     /** A refresh is in flight. */
     data object Syncing : ProviderBadgeState()
 

@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Progress Bar
 
@@ -19,6 +19,8 @@ struct QuotaProgressBar<Fill: ShapeStyle>: View {
     private var fraction: Double { max(0, min(100, percent)) / 100 }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         switch theme.progressStyle {
         case .blocks(let count): blocks(count)
         case .bar: if theme.isOutlined { outlined } else { glass }
@@ -94,6 +96,8 @@ private struct StripedTrack: View {
     let stripe: Color
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Canvas { context, size in
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(base))
             var x: CGFloat = -size.height
@@ -120,6 +124,8 @@ struct OutlinedNumber: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if theme.isOutlined {
             let stroke: CGFloat = size >= 24 ? 1.5 : 1
             let face = Text(text).font(theme.displayFont(size: size))
@@ -163,6 +169,8 @@ struct PaceBadge: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Group {
             if compact {
                 Image(systemName: pace.symbolName)

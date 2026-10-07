@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A card view displaying a single quota metric.
 /// Directly uses the rich domain model - no ViewModel needed.
@@ -35,6 +35,8 @@ struct QuotaCardView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 4) {
             // Label
             Text(quota.quotaType.displayName)

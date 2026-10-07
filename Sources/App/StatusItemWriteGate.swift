@@ -1,6 +1,6 @@
 import Dispatch
 import Foundation
-import Infrastructure
+import Kit
 
 /// Coalesces writes into the menu bar's status item: at most one actual write
 /// per minimum interval, with a guaranteed trailing flush of the latest

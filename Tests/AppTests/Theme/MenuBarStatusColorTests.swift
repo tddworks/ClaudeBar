@@ -1,4 +1,4 @@
-import Domain
+import Kit
 import SwiftUI
 import Testing
 @testable import ClaudeBar

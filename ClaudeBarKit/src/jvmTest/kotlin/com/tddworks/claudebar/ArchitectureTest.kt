@@ -72,7 +72,7 @@ class ArchitectureTest {
 
     @Test
     fun `should name no vendor outside the definitions`() {
-        val vendors = File("../Modules/Providers/Resources/Providers").listFiles().orEmpty()
+        val vendors = File("definitions").listFiles().orEmpty()
             .map { it.name.substringBefore('.').substringBefore('-').lowercase() }
             .toSet()
         val names = production.classes() + production.interfaces() + production.objects() +

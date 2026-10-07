@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
-import Domain
-import Providers
+import Kit
 
 /// *Add Account*: how (the definition's ways) → verify (who it is, then a
 /// first fetch) → an optional name. Nothing is added until ClaudeBar knows
@@ -34,6 +33,8 @@ struct AddAccountSheet: View {
     private var text: AccountsCardText { AccountsCardText(provider: provider) }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 16) {
             Text("Add \(provider.name) Account").font(.title3.bold()).foregroundStyle(theme.textPrimary)
             content
@@ -71,7 +72,7 @@ struct AddAccountSheet: View {
         case .form:
             ForEach(text.fields) { setting in
                 SettingField(setting: setting, value: Binding(
-                    get: { setting.value(from: entered[setting.id]) },
+                    get: { setting.value(typed: entered[setting.id]) },
                     set: { entered[setting.id] = $0 }
                 ))
             }
@@ -109,7 +110,7 @@ struct AddAccountSheet: View {
             }
             HStack {
                 if case .failed = fetch {
-                    Button("Remove") { provider.accounts.remove(account); dismiss() }
+                    Button("Remove") { provider.accounts.remove(account: account); dismiss() }
                     Spacer()
                     Button("Retry") { verify(account) }
                     // Only a login ClaudeBar knows the owner of may stay unchecked.
@@ -130,7 +131,7 @@ struct AddAccountSheet: View {
             HStack {
                 Spacer()
                 Button("Done") {
-                    provider.accounts.rename(account, to: name == account.accountEmail ? "" : name)
+                    provider.accounts.rename(account: account, name: name == account.accountEmail ? "" : name)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -160,7 +161,7 @@ struct AddAccountSheet: View {
         case .signIn:
             let task = Task { @MainActor in
                 do {
-                    let account = try await provider.accounts.signIn()
+                    guard let account = try await value(of: provider.accounts.signIn()) else { return }
                     added(account)
                 } catch is CancellationError {
                     step = .how
@@ -178,7 +179,7 @@ struct AddAccountSheet: View {
 
     private func addFromForm() {
         do {
-            added(try provider.accounts.add(filling: entered))
+            if let account = try value(of: provider.accounts.add(filling: entered)) { added(account) }
         } catch {
             step = .failed(error.localizedDescription)
         }
@@ -195,7 +196,7 @@ struct AddAccountSheet: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                added(try provider.accounts.add(signedInAt: url))
+                if let account = try value(of: provider.accounts.add(signedInAt: url.path)) { added(account) }
             } catch {
                 step = .failed(error.localizedDescription)
             }
@@ -210,7 +211,7 @@ struct AddAccountSheet: View {
         step = .verify(account, fetch: .running)
         Task { @MainActor in
             do {
-                try await provider.refresh(account)
+                try await provider.refreshing(account)
                 step = .verify(account, fetch: .passed)
             } catch {
                 step = .verify(account, fetch: .failed(error.localizedDescription))

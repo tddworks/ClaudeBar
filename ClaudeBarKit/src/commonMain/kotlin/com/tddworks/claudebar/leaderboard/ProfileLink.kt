@@ -7,7 +7,7 @@ package com.tddworks.claudebar.leaderboard
  * the server checks too. Not verified: anyone can type any handle.
  */
 @ConsistentCopyVisibility
-internal data class ProfileLink private constructor(val platform: Platform, val handle: String) {
+public data class ProfileLink private constructor(val platform: Platform, val handle: String) {
     enum class Platform(val rawValue: String, val displayName: String, val prefix: String, val rule: String, pattern: String) {
         X("x", "X", "x.com/", "1–15 letters, numbers or _", """^[A-Za-z0-9_]{1,15}$"""),
         INSTAGRAM(

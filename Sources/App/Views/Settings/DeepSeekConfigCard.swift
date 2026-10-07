@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// DeepSeek provider configuration card for SettingsView.
 /// Mirrors MiniMaxConfigCard (minus the region picker) — DeepSeek has a single global endpoint.
@@ -18,7 +17,20 @@ struct DeepSeekConfigCard: View {
     @State private var isTestingDeepSeek = false
     @State private var deepSeekTestResult: String?
 
+    /// *API key environment variable* — the definition's `authEnvVar` setting.
+    private func authEnvVar() -> String {
+        guard let product = monitor.providers.provider(id: "deepseek"),
+              let setting = product.definition.setting(id: "authEnvVar") else { return "" }
+        return product.configuration.value(setting: setting, ownValues: [:]) ?? ""
+    }
+
+    private func setAuthEnvVar(_ name: String) {
+        monitor.providers.provider(id: "deepseek")?.configuration.set(setting: "authEnvVar", value: name)
+    }
+
     var body: some View {
+
+        let _ = KitObservation.track()
         DisclosureGroup(isExpanded: $deepSeekConfigExpanded) {
             Divider()
                 .background(theme.glassBorder)
@@ -53,8 +65,8 @@ struct DeepSeekConfigCard: View {
                 )
         )
         .onAppear {
-            deepSeekAuthEnvVarInput = settings.deepseek.deepseekAuthEnvVar()
-            hasStoredDeepSeekApiKey = settings.deepseek.hasDeepSeekApiKey()
+            deepSeekAuthEnvVarInput = authEnvVar()
+            hasStoredDeepSeekApiKey = (Kit.shared.secret(name: "apiKey", providerId: "deepseek") != nil)
         }
     }
 
@@ -174,7 +186,7 @@ struct DeepSeekConfigCard: View {
                             )
                     )
                     .onChange(of: deepSeekAuthEnvVarInput) { _, newValue in
-                        settings.deepseek.setDeepSeekAuthEnvVar(newValue)
+                        setAuthEnvVar(newValue)
                     }
             }
 
@@ -247,8 +259,8 @@ struct DeepSeekConfigCard: View {
             // Delete API key
             if hasStoredDeepSeekApiKey {
                 Button {
-                    settings.deepseek.deleteDeepSeekApiKey()
-                    hasStoredDeepSeekApiKey = settings.deepseek.hasDeepSeekApiKey()
+                    Kit.shared.deleteSecret(name: "apiKey", providerId: "deepseek")
+                    hasStoredDeepSeekApiKey = (Kit.shared.secret(name: "apiKey", providerId: "deepseek") != nil)
                     deepSeekApiKeyInput = ""
                     deepSeekTestResult = hasStoredDeepSeekApiKey ? "Failed: ClaudeBar could not remove the API key securely." : nil
                 } label: {
@@ -272,12 +284,12 @@ struct DeepSeekConfigCard: View {
         deepSeekTestResult = nil
         defer { isTestingDeepSeek = false }
 
-        settings.deepseek.setDeepSeekAuthEnvVar(deepSeekAuthEnvVarInput)
+        setAuthEnvVar(deepSeekAuthEnvVarInput)
         let apiKey = deepSeekApiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if !apiKey.isEmpty {
             AppLog.credentials.info("Saving DeepSeek API key for connection test")
-            settings.deepseek.saveDeepSeekApiKey(apiKey)
-            guard settings.deepseek.getDeepSeekApiKey() == apiKey else {
+            Kit.shared.saveSecret(value: apiKey, name: "apiKey", providerId: "deepseek")
+            guard Kit.shared.secret(name: "apiKey", providerId: "deepseek") == apiKey else {
                 deepSeekTestResult = "Failed: ClaudeBar could not save the API key securely."
                 return
             }
@@ -290,20 +302,24 @@ struct DeepSeekConfigCard: View {
             return
         }
 
-        guard await provider.isAvailable(provider.defaultAccount) else {
+        guard await provider.canRefresh(provider.defaultAccount) else {
             deepSeekTestResult = "Failed: No API key found"
             return
         }
 
         AppLog.credentials.info("Testing DeepSeek connection via provider refresh")
         do {
-            _ = try await provider.refresh(provider.defaultAccount)
+            let outcome = try await provider.refresh(account: provider.defaultAccount, kind: .interactive)
+            if let failed = outcome as? RefreshOutcome.Failed {
+                let message = failed.error.tag == "authenticationRequired"
+                    ? "DeepSeek rejected the API key. New keys may take a moment to activate."
+                    : failed.error.localizedDescription
+                AppLog.credentials.error("DeepSeek connection test failed: \(message)")
+                deepSeekTestResult = "Failed: \(message)"
+                return
+            }
             AppLog.credentials.info("DeepSeek connection test succeeded")
             deepSeekTestResult = "Success: Connection verified"
-        } catch UsageError.authenticationRequired {
-            let message = "DeepSeek rejected the API key. New keys may take a moment to activate."
-            AppLog.credentials.error("DeepSeek connection test failed: \(message)")
-            deepSeekTestResult = "Failed: \(message)"
         } catch {
             AppLog.credentials.error("DeepSeek connection test failed: \(error.localizedDescription)")
             deepSeekTestResult = "Failed: \(error.localizedDescription)"

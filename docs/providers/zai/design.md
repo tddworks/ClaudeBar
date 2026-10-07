@@ -14,7 +14,7 @@ Research notes for Z.ai (GLM Coding Plan), from the code, [#22](https://github.c
 
 ## As data
 
-Z.ai is `Modules/Providers/Resources/Providers/zai.json` and `zai-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #392.
+Z.ai is `ClaudeBarKit/definitions/zai.json` and `zai-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #392.
 
 - **The key and its host travel together.** The credential is a `firstOf`: the saved `apiKey` setting, Claude Code's settings file, then an environment variable. Each one yields a `token` and a `baseURL`, and the request goes to `https://{{baseURL#host}}/api/monitor/usage/quota/limit`. A saved key or an environment key gets its `baseURL` from the `platform` choice setting (`with`); the file gives its own.
 - **A file key is used only for a Z.ai host.** `jsonFile` reads `env.ANTHROPIC_AUTH_TOKEN`/`env.ANTHROPIC_BASE_URL`, then `providers[0].api_key`/`base_url`, then top-level `api_key`; `match` refuses the record unless `baseURL` is on `api.z.ai`, `open.bigmodel.cn` or `dev.bigmodel.cn` (anchored, so `api.z.ai.example.com` is not one). The old probe also searched the whole file for a host, which could pair one entry's key with another's URL; that's gone, as is the `claude`-on-PATH check, which the quota API never needed.

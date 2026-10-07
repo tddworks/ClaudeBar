@@ -1,5 +1,6 @@
 package com.tddworks.claudebar.leaderboard
 
+import com.tddworks.claudebar.storage.Revision
 import com.tddworks.claudebar.diagnostics.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * one resumes from the day of the last good upload, so a missed hour or a Mac asleep for days
  * heals itself. Re-sending a day replaces it on the server, never adds.
  */
-internal class LeaderboardUploader(
+public class LeaderboardUploader internal constructor(
     private val membership: LeaderboardMembership,
     private val logs: TokenLogs,
     private val api: LeaderboardAPI,
@@ -19,13 +20,16 @@ internal class LeaderboardUploader(
     private val now: () -> Double,
 ) {
     /** Why the last upload failed, until one succeeds. */
-    var lastError: LeaderboardError? = null
+    internal var lastError: LeaderboardError? = null
         private set
+
+    /** Why the last upload failed, in the person's words, until one succeeds. */
+    val lastFailure: String? get() = lastError?.message
     var isUploading = false
         private set
 
-    private val changes = MutableStateFlow(0L)
-    val revision: StateFlow<Long> = changes.asStateFlow()
+    private val changes = Revision()
+    val revision: StateFlow<Long> = changes.flow
 
     /**
      * Uploads when an hour has passed since the last good upload, by the wall clock: callers may
@@ -43,7 +47,7 @@ internal class LeaderboardUploader(
         val credentials = membership.uploadCredentials ?: return
         if (isUploading) return
         isUploading = true
-        changes.value += 1
+        changes.bump()
         try {
             val now = now()
             val tokens = membership.dailyTokens(logs.days(range(now)))
@@ -64,7 +68,7 @@ internal class LeaderboardUploader(
             }
         } finally {
             isUploading = false
-            changes.value += 1
+            changes.bump()
         }
     }
 

@@ -41,7 +41,7 @@ A key that's missing means "use the default", so a fresh install starts with an 
 | `leaderboard.*` | [Leaderboard](features/leaderboard/README.md) membership (name, what you share, last upload) and `leaderboard.on`, which outlives leaving | `"leaderboard": { "on": false, "username": "tokenwhale" }` |
 | `ext-<extension-id>.*` | A user [extension](features/extensions/README.md)'s non-secret config fields, as provider settings. Values an older version kept under `extensions.<extension-id>.*` move here once | `"ext-my-api": { "baseURL": "https://…" }` |
 
-Provider ids are the folder names under [providers/](providers/) (`claude`, `codex`, `zai`, `opencode-go`…). A provider's settings are listed in its definition, `Modules/Providers/Resources/Providers/<id>.json`; an added account's own values are kept with that account. A value an older version saved under another key, or as a number or a list, is still read, and moves to `<id>.<setting>` the first time it's saved.
+Provider ids are the folder names under [providers/](providers/) (`claude`, `codex`, `zai`, `opencode-go`…). A provider's settings are listed in its definition, `ClaudeBarKit/definitions/<id>.json`; an added account's own values are kept with that account. A value an older version saved under another key, or as a number or a list, is still read, and moves to `<id>.<setting>` the first time it's saved.
 
 A few `app.*` keys worth knowing:
 

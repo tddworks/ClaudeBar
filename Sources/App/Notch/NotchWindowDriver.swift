@@ -1,6 +1,5 @@
 import AppKit
-import Domain
-import Infrastructure
+import Kit
 
 /// Keeps the notch in sync with the app's state.
 ///

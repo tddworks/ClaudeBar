@@ -6,7 +6,7 @@
 
 ## As data
 
-Bedrock is `Modules/Providers/Resources/Providers/bedrock.json` and `bedrock-cost.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift outside `AWSClients` names it. Ported from #398. The sections below are the original design, kept as history.
+Bedrock is `ClaudeBarKit/definitions/bedrock.json` and `bedrock-cost.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift outside `AWSClients` names it. Ported from #398. The sections below are the original design, kept as history.
 
 - **`cloudWatch` fetch.** Today's sums of `InputTokenCount`, `OutputTokenCount` and `Invocations` per `ModelId` in each region, through DataSources' `CloudWatchClient` port; `prices: "AmazonBedrock"` adds each model's prices from the `PriceCatalog` port. Both are implemented in the `AWSClients` module, the only one that links the AWS SDK (MODULAR_DESIGN §2): the SDK client (an SSO-aware named profile, or the default chain) and the pricing API with its bundled fallback table.
 - **One `Cost` with lines** (CANONICAL §9, answered). The script prices tokens exactly (`decimalMultiply`, `decimalAdd`) into a line per model, largest first, and their total; it resets at local midnight.

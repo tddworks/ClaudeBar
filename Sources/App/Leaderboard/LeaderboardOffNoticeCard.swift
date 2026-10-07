@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 /// Said once in the popover after the Leaderboard was turned off there:
@@ -9,6 +10,8 @@ struct LeaderboardOffNoticeCard: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 10) {
             Text(notice.text)
                 .font(theme.font(size: 11, weight: .semibold))

@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Full-height sidebar for the Settings window. Hosts the traffic-light
 /// gap at the top (the window has a hidden title bar), grouped navigation,
@@ -39,6 +39,8 @@ struct SettingsSidebarView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 2) {
             // Traffic lights overlay this region (hidden title bar).
             Color.clear
@@ -119,6 +121,8 @@ private struct SidebarItem: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 10) {
                 ZStack {

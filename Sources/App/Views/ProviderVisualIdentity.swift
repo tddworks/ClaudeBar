@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
-import Domain
-import Providers
+import Kit
 import Synchronization
 
 // MARK: - Provider Visual Identity Protocol
@@ -78,8 +77,8 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider theme color by ID
     /// The look a definition gives, for screens that only hold an id.
-    private static func look(for providerId: String) -> ProviderLook? {
-        ProviderFactory.definition(forLineupId: providerId)?.profile.look
+    private static func look(for providerId: String, in kit: ClaudeBarCore = Kit.shared) -> ProviderLook? {
+        kit.definition(lineupId: providerId)?.profile.look
     }
 
     static func color(for providerId: String, scheme: ColorScheme) -> Color {
@@ -122,15 +121,15 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider display name by ID
     static func name(for providerId: String) -> String {
-        if let definition = ProviderFactory.definition(forLineupId: providerId) { return definition.profile.name }
+        if let definition = Kit.shared.definition(lineupId: providerId) { return definition.profile.name }
         switch providerId {
         default: return providerId.capitalized
         }
     }
 
     /// Get provider SF symbol icon by ID
-    static func symbolIcon(for providerId: String) -> String {
+    static func symbolIcon(for providerId: String, in kit: ClaudeBarCore = Kit.shared) -> String {
         // A symbol a person wrote (an extension's icon) must exist, or the question mark.
-        validSymbol(look(for: providerId)?.symbol) ?? "questionmark.circle.fill"
+        validSymbol(look(for: providerId, in: kit)?.symbol) ?? "questionmark.circle.fill"
     }
 }

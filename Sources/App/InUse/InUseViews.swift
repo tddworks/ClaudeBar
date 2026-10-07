@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
-import Domain
-import Providers
+import Kit
 
 /// Under a product's account chips: what `NewSessions.state(of:)` says —
 /// the setup a choice waits for, the login worth moving to, or the login in
@@ -13,8 +12,10 @@ struct InUseStrip: View {
     private var settings: AppSettings { .shared }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 8) {
-            switch state {
+            switch state.shape {
             case .waitingForSetup:
                 InUseSetupCard()
             case let .worthSwitching(from, to):
@@ -48,7 +49,7 @@ struct InUseStrip: View {
                 .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
-            InUseButton(title: "Use \(settings.shown(to.displayName))", prominent: true) { sessions.use(to) }
+            InUseButton(title: "Use \(settings.shown(to.displayName))", prominent: true) { sessions.use(account: to) }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(theme.statusWarning.opacity(0.12)))
@@ -63,6 +64,8 @@ struct InUseSetupCard: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         @Bindable var sessions = sessions
         VStack(alignment: .leading, spacing: 8) {
             Text("Let ClaudeBar choose the login?")
@@ -74,7 +77,7 @@ struct InUseSetupCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 4) {
                 ForEach(LoginShell.allCases, id: \.self) { shell in
-                    InUseButton(title: shell.rawValue, prominent: sessions.shell == shell) { sessions.shell = shell }
+                    InUseButton(title: shell.tag, prominent: sessions.shell == shell) { sessions.shell = shell }
                 }
             }
             ScrollView {
@@ -118,14 +121,16 @@ struct InUseSettingsSection: View {
     private var settings: AppSettings { .shared }
 
     var body: some View {
-        @Bindable var policy = inUse.switchWhenLow
+
+        let _ = KitObservation.track()
+        let policy = inUse.switchWhenLow
         VStack(alignment: .leading, spacing: 10) {
             Divider()
             Text("New terminal sessions").font(.subheadline.bold()).foregroundStyle(theme.textPrimary)
             Text("The account marked IN USE above is the one `\(inUse.command.name)` starts with in your terminal. Sessions already running keep theirs; Claude Desktop and IDE extensions keep their own login.")
                 .font(.caption).foregroundStyle(theme.textSecondary)
 
-            if settingUp || sessions.isWaiting(for: inUse.login) {
+            if settingUp || sessions.isWaiting(login: inUse.login) {
                 InUseSetupCard()
                     .onChange(of: sessions.isSetUp) { _, done in if done { settingUp = false } }
             } else {
@@ -150,7 +155,7 @@ struct InUseSettingsSection: View {
                         .font(.caption).foregroundStyle(theme.textSecondary)
                 }
                 Spacer(minLength: 0)
-                Toggle("Switch when low", isOn: $policy.isOn)
+                Toggle("Switch when low", isOn: Binding(get: { policy.isOn }, set: { policy.isOn = $0 }))
                     .labelsHidden()
                     .toggleStyle(.switch)
             }
@@ -158,7 +163,7 @@ struct InUseSettingsSection: View {
             if policy.isOn {
                 HStack {
                     Text("When the login in use drops below").font(.caption).foregroundStyle(theme.textSecondary)
-                    Picker("", selection: $policy.below) {
+                    Picker("", selection: Binding(get: { policy.belowPercent }, set: { policy.belowPercent = $0 })) {
                         ForEach([5, 10, 20, 30], id: \.self) { Text("\($0)%").tag($0) }
                     }
                     .labelsHidden()
@@ -166,8 +171,8 @@ struct InUseSettingsSection: View {
                 }
                 ForEach(inUse.logins, id: \.id) { login in
                     Toggle(settings.shown(login.displayName), isOn: Binding(
-                        get: { policy.mayPick(login) },
-                        set: { policy.setMayPick($0, login) }
+                        get: { policy.mayPick(account: login) },
+                        set: { policy.setMayPick(allowed: $0, account: login) }
                     ))
                     .toggleStyle(.checkbox)
                     .font(.caption)
@@ -192,6 +197,8 @@ struct InUseBadge: View {
     static func gap(in theme: any AppThemeProvider) -> CGFloat { (inset + theme.cardBorderWidth / 2).rounded() }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text("IN USE")
             .font(theme.font(size: 8, weight: .heavy))
             .padding(.horizontal, 6)
@@ -211,6 +218,8 @@ struct InUseButton: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             Text(title)
                 .font(theme.font(size: 10.5, weight: .bold))
@@ -225,10 +234,10 @@ struct InUseButton: View {
     }
 }
 
-private extension URL {
+private extension String {
     /// `~/.zshrc` rather than `/Users/you/.zshrc`.
     var abbreviatingHome: String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
+        return hasPrefix(home) ? "~" + dropFirst(home.count) : self
     }
 }

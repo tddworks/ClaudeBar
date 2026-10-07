@@ -212,17 +212,17 @@ class AddProviderTest {
     fun `should offer each value of a response as a path to click`() {
         val fields = ResponseFields(Response(status = 200, body = """{"data":{"limit":50,"label":"key","items":[{"x":1}],"ok":true}}""".encodeToByteArray()))
 
-        assertEquals(listOf("$.data.items.0.x", "$.data.label", "$.data.limit", "$.data.ok"), fields.map { it.path })
-        assertEquals("50", fields.first { it.path == "$.data.limit" }.value)
-        assertTrue(fields.first { it.path == "$.data.limit" }.isNumber)
-        assertFalse(fields.first { it.path == "$.data.label" }.isNumber)
+        assertEquals(listOf("$.data.items.0.x", "$.data.label", "$.data.limit", "$.data.ok"), fields.all.map { it.path })
+        assertEquals("50", fields.all.first { it.path == "$.data.limit" }.value)
+        assertTrue(fields.all.first { it.path == "$.data.limit" }.isNumber)
+        assertFalse(fields.all.first { it.path == "$.data.label" }.isNumber)
     }
 
     @Test
     fun `should offer a response's lines when it is not JSON`() {
         val fields = ResponseFields(Response("Quota: 42% left\nPlan: Pro"))
 
-        assertTrue(fields.isEmpty())
+        assertTrue(fields.isEmpty)
         assertEquals(listOf("Quota: 42% left", "Plan: Pro"), ResponseFields.lines(Response("Quota: 42% left\nPlan: Pro")))
     }
 

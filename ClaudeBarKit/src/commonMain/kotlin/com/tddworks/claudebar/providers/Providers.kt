@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  * one. The Monitor holds it and only watches; a login added to a provider is the provider's own
  * business, never this collection's.
  */
-internal class Providers(
+public class Providers internal constructor(
     providers: List<Provider>,
     private val catalog: ProviderCatalog,
     private val settings: ProviderSettingsRepository? = null,
@@ -31,13 +31,13 @@ internal class Providers(
     // Read
 
     /** Every login of every provider, on or off, in the pane's order. */
-    val logins: List<Account> get() = all.flatMap { it.accounts }
+    val logins: List<Account> get() = all.flatMap { it.accounts.all }
 
     /**
      * The enabled logins of enabled providers, in the pane's order — what the pills, the menu
      * bar, refreshes and alerts show. Derived, never kept.
      */
-    val lineup: List<Account> get() = all.flatMap { provider -> provider.accounts.filter(provider::isInLineup) }
+    val lineup: List<Account> get() = all.flatMap { provider -> provider.accounts.all.filter(provider::isInLineup) }
 
     fun provider(id: String): Provider? = all.firstOrNull { it.id == id }
 
@@ -96,7 +96,7 @@ internal class Providers(
         catalog.remove(id)
         for (setting in provider.definition.settings) {
             if (setting.kind != Setting.Kind.Secret) continue
-            for (login in provider.accounts) vault?.delete(setting.id, login.id)
+            for (login in provider.accounts.all) vault?.delete(setting.id, login.id)
         }
         customs.unregister(id)
         state.update { providers -> providers.filterNot { it.id == id } }
@@ -110,7 +110,7 @@ internal class Providers(
             val rank = mutableMapOf<String, Int>()
             order.forEachIndexed { index, id -> rank.getOrPut(id) { index } }
             return providers.withIndex()
-                .sortedBy { (offset, provider) -> provider.accounts.mapNotNull { rank[it.id] }.minOrNull() ?: (order.size + offset) }
+                .sortedBy { (offset, provider) -> provider.accounts.all.mapNotNull { rank[it.id] }.minOrNull() ?: (order.size + offset) }
                 .map { it.value }
         }
     }

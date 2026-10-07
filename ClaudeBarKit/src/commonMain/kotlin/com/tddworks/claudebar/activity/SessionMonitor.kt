@@ -1,5 +1,6 @@
 package com.tddworks.claudebar.activity
 
+import com.tddworks.claudebar.storage.Revision
 import kotlin.native.ObjCName
 
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -27,10 +28,10 @@ public class SessionMonitor internal constructor(private val maxRecentSessions: 
     /** When each running session last sent an event, by session ID. */
     private val lastEventAt = mutableMapOf<String, Double>()
 
-    private val changes = MutableStateFlow(0L)
+    private val changes = Revision()
 
     /** Bumped after every change to the sessions. */
-    val revision: StateFlow<Long> = changes.asStateFlow()
+    val revision: StateFlow<Long> = changes.flow
 
     /** Every running session, in the order first seen. */
     @ObjCName("sessionsUntracked")
@@ -63,7 +64,7 @@ public class SessionMonitor internal constructor(private val maxRecentSessions: 
             running = running.toMutableList().also { it[index] = session }
             true
         }
-        if (changed) changes.update { it + 1 }
+        if (changed) changes.bump()
     }
 
     /**
@@ -74,7 +75,7 @@ public class SessionMonitor internal constructor(private val maxRecentSessions: 
         val gone = sessions.filter { session -> session.processId?.let { !liveness.isRunning(it) } ?: false }
         if (gone.isEmpty()) return
         val changed = synchronized(lock) { gone.map { endSession(it.id, atSeconds) }.any { it } }
-        if (changed) changes.update { it + 1 }
+        if (changed) changes.bump()
     }
 
     /**

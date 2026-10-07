@@ -21,7 +21,7 @@ import kotlin.uuid.Uuid
  * or let go — it reports through `onChange`, the one callback the provider gives it: an event
  * going out, never a reference up. Read as a list, it is the logins in the person's order.
  */
-internal class Accounts internal constructor(
+public class Accounts internal constructor(
     private val definition: ProviderDefinition,
     private val settings: MultiAccountSettingsRepository,
     private val configuration: Configuration,
@@ -32,7 +32,7 @@ internal class Accounts internal constructor(
     private val signInRunner: AccountSignIn?,
     /** Where *Sign in with browser* makes its folders — `~/.claudebar/accounts`. */
     private val signInRoot: String,
-) : AbstractList<Account>() {
+) {
     /** What happened to the logins, for the provider to follow. */
     sealed class Change {
         /** A login was kept; [byKey] when the person supplied its key — an opt-in to the product too. */
@@ -52,9 +52,12 @@ internal class Accounts internal constructor(
 
     private val logins: List<Account> get() = state.current
 
-    override val size: Int get() = logins.size
+    /** The logins, in the person's order. */
+    val all: List<Account> get() = logins
 
-    override fun get(index: Int): Account = logins[index]
+    val size: Int get() = logins.size
+
+    operator fun get(index: Int): Account = logins[index]
 
     /**
      * The logins saved for this provider, made — the plain login first (with the history and
@@ -171,7 +174,9 @@ internal class Accounts internal constructor(
      * *Sign in with browser* — runs the definition's login into a new folder under [root], then
      * adds it as *Choose Signed-in Folder* would. A folder that ends up holding no new login is deleted.
      */
-    suspend fun signIn(runner: AccountSignIn? = signInRunner, root: String = signInRoot): Outcome<Account> = outcome {
+    suspend fun signIn(): Outcome<Account> = signIn(signInRunner, signInRoot)
+
+    internal suspend fun signIn(runner: AccountSignIn?, root: String = signInRoot): Outcome<Account> = outcome {
         val call = configuration.running.accounts?.signIn
         if (call == null || runner == null) throw UsageError.ExecutionFailed("$name has no sign-in.")
         val folder = SignedInFolder.forSignIn(id, root)
@@ -189,7 +194,9 @@ internal class Accounts internal constructor(
      * login's own folder. Refresh it after, so the identity rule decides whether the same person
      * came back. A folder the person chose is theirs to sign in to; ClaudeBar never runs a login there.
      */
-    suspend fun signInAgain(account: Account, runner: AccountSignIn? = signInRunner): Outcome<Unit> = outcome {
+    suspend fun signInAgain(account: Account): Outcome<Unit> = signInAgain(account, signInRunner)
+
+    internal suspend fun signInAgain(account: Account, runner: AccountSignIn?): Outcome<Unit> = outcome {
         val call = configuration.running.accounts?.signIn
         val folder = account.folder
         if (call == null || runner == null || folder == null || !folder.goesWithAccount) {

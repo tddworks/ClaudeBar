@@ -1,9 +1,7 @@
 import AppKit
 import CoreText
 import SwiftUI
-import Domain
-import Infrastructure
-import Providers
+import Kit
 
 /// Drives the menu-bar status item imperatively (AppKit), bypassing SwiftUI's
 /// `MenuBarExtra` label hosting entirely.
@@ -784,7 +782,7 @@ final class StatusItemLabelDriver {
         }
         AppLog.monitor.info("Background refresh starting (interval: \(key.seconds)s, providers: \(key.providerIds?.joined(separator: ",") ?? "selected"))")
         let stream = monitor.startMonitoring(
-            interval: .seconds(key.seconds),
+            intervalSeconds: Double(key.seconds),
             providerIds: key.providerIds
         )
         streamConsumer = Task {

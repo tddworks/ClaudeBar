@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A section showing all quotas for a single AI provider.
 /// Uses the rich UsageSnapshot domain model directly.
@@ -13,6 +13,8 @@ struct ProviderSectionView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {

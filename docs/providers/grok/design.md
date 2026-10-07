@@ -4,7 +4,7 @@ Contributor research for the Grok provider (`grok`, xAI Grok Build). User-facing
 
 ## As data
 
-Grok is `Modules/Providers/Resources/Providers/grok.json` and `grok-billing.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
+Grok is `ClaudeBarKit/definitions/grok.json` and `grok-billing.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
 
 - **The login file holds several records**, keyed `<issuer>::<client-id>`. `jsonFile.record` picks the one that has a refresh token, then the one that expires last; a record with no expiry counts as never ending. Its fields are read inside that record, and a refreshed token is written back into it alone. `defaults` gives a record with no `oidc_issuer` the issuer `https://auth.x.ai`, which is never written back.
 - **The refresh goes to the record's own issuer.** It is `{{issuer}}/oauth2/token` (no doubled slash when the issuer ends in `/`), with `client_id` only when the record names one. This is where the refresh token came from, recorded in the same file, so a definition cannot send it anywhere else. It refreshes 5 minutes before an ISO 8601 `expires_at`, never for a record with none, and once on a 401/403. An empty `refresh_token` in the answer never replaces the saved one.

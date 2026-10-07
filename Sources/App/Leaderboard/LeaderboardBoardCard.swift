@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// *THE BOARD* — up to a hundred places in a list of fixed height that
 /// scrolls inside the card, with the period and provider filters in its
@@ -30,9 +30,11 @@ struct LeaderboardBoardCard: View {
     /// Room round each row for its outline, inside the list's clip.
     private static let inset: CGFloat = 2
 
-    private var leader: Int { max(top.first?.total ?? 0, 1) }
+    private var leader: Int { max(Int(top.first?.total ?? 0), 1) }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         LeaderboardCard {
             header
             providerFilter
@@ -208,8 +210,9 @@ struct LeaderboardBoardCard: View {
 
     /// Each provider's share of a standing, largest first.
     private func mix(of standing: Standing) -> [(provider: String, share: Double)] {
-        let total = max(1, standing.byProvider.values.reduce(0, +))
-        return standing.byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / Double(total)) }
+        let byProvider = standing.tokensByProvider
+        let total = max(1, byProvider.values.reduce(0, +))
+        return byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / Double(total)) }
     }
 }
 
@@ -224,6 +227,8 @@ struct FilterChip: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             Text(title)
                 .font(theme.font(size: 9.5, weight: .heavy))

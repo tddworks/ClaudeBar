@@ -1,5 +1,5 @@
 import SwiftUI
-import Providers
+import Kit
 
 /// One `Setting`, drawn by its kind — a picker for a choice, a secure field
 /// for a secret, a text field otherwise, with the default as its placeholder.
@@ -12,12 +12,14 @@ struct SettingField: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 4) {
             Text(setting.label).font(.callout).foregroundStyle(theme.textSecondary)
-            switch setting.kind {
+            switch setting.shape {
             case .choice(let options):
                 Picker(setting.label, selection: $value) {
-                    ForEach(options) { Text($0.label).tag($0.id) }
+                    ForEach(options, id: \.id) { Text($0.label).tag($0.id) }
                 }
                 .labelsHidden()
             case .secret:

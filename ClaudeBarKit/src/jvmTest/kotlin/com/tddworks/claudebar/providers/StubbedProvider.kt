@@ -169,7 +169,7 @@ internal class StubbedProvider(
     /** The provider with one saved login added, and that login — ask the provider about it. */
     fun makeAdded(id: String, account: ProviderAccountConfig): Pair<Provider, Account> {
         val provider = makeProvider(id, listOf(account))
-        return provider to provider.accounts.first { it.accountId == account.accountId }
+        return provider to provider.accounts.all.first { it.accountId == account.accountId }
     }
 
     /** A sign-in whose CLI, wherever it is, does [run] in the folder it is given. */

@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Component Previews
 // Preview all UI components in one place

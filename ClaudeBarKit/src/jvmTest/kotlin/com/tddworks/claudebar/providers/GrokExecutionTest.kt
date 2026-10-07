@@ -247,7 +247,7 @@ class GrokExecutionTest {
         assertEquals(90.0, provider.refreshPlain().usage().quotas[0].percentRemaining)
         assertEquals(40.0, provider.refreshNow(account).usage().quotas[0].percentRemaining)
         val restored = factory()
-        val restoredWork = restored.accounts.firstOrNull { it.id == account.id }
+        val restoredWork = restored.accounts.all.firstOrNull { it.id == account.id }
         assertNotNull(restoredWork)
         assertEquals("Work", restoredWork!!.displayName)
         assertEquals(40.0, restored.refreshNow(restoredWork).usage().quotas[0].percentRemaining)

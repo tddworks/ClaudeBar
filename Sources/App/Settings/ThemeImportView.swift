@@ -1,5 +1,5 @@
 import SwiftUI
-import Infrastructure
+import Kit
 import UniformTypeIdentifiers
 
 /// Import button for terminal color scheme files.
@@ -14,6 +14,8 @@ struct ThemeImportButton: View {
     @State private var importedThemeName: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(spacing: 6) {
             Button {
                 isImporting = true

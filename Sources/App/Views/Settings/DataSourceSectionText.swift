@@ -1,6 +1,5 @@
-import DataSources
+import Kit
 import Foundation
-import Providers
 
 /// The words of Settings' *Data source* section, all read from a provider's
 /// definition — so a provider that is data needs no card of its own (#352).
@@ -48,33 +47,33 @@ struct DataSourceSectionText {
 
     /// *KEY LOOKUP ORDER* — `nil` for a data source that needs no key.
     func lookupOrder(for kind: String) -> String? {
-        guard let lookup = definition.dataSource(kind)?.credential else { return nil }
-        return lookup.lookupOrder.joined(separator: " → ")
+        guard let order = definition.dataSource(kind: kind)?.credentialLookupOrder else { return nil }
+        return order.joined(separator: " → ")
     }
 
     /// What to do when no key answers.
     func keyHint(for kind: String) -> String? {
-        definition.dataSource(kind)?.credential?.hint
+        definition.dataSource(kind: kind)?.credentialHint
     }
 
     func note(for kind: String) -> String? {
-        definition.dataSource(kind)?.note
+        definition.dataSource(kind: kind)?.note
     }
 
     /// The fallback as one sentence — "If API is unavailable, ClaudeBar tries CLI."
     func fallback(for kind: String) -> String? {
-        guard let fallback = definition.dataSource(kind)?.fallback else { return nil }
+        guard let fallback = definition.dataSource(kind: kind)?.fallback else { return nil }
         return "If \(label(of: kind)) is unavailable, ClaudeBar tries \(label(of: fallback.to))."
     }
 
     /// Whether the person can switch the fallback off.
     func fallbackIsSwitchable(for kind: String) -> Bool {
-        definition.dataSource(kind)?.fallback?.enabledBySetting != nil
+        definition.dataSource(kind: kind)?.fallback?.enabledBySetting != nil
     }
 
     /// A cached data source caps the background refresh (#204).
     func cacheNote(for kind: String) -> String? {
-        guard let ttl = definition.dataSource(kind)?.cache?.ttl else { return nil }
+        guard let ttl = definition.dataSource(kind: kind)?.cache?.ttl else { return nil }
         let minutes = Int(ttl / 60)
         return "Usage data is cached for \(minutes) min, so background refresh is capped at \(minutes) min while \(label(of: kind)) is in use."
     }
@@ -89,6 +88,6 @@ struct DataSourceSectionText {
     }
 
     private func label(of kind: String) -> String {
-        definition.dataSource(kind)?.label ?? kind
+        definition.dataSource(kind: kind)?.label ?? kind
     }
 }

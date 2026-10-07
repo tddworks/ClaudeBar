@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Where *Turn off ▾* sits in the popover, so the popover's top layer can
 /// draw its menu just above it, outside the scroll view that would clip it.
@@ -24,11 +24,13 @@ struct TurnOffMenu: View {
     private var membership: LeaderboardMembership { leaderboard.membership }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 0) {
             if membership.sharesCountry {
                 TurnOffMenuItem(title: "My country on the globe", detail: "The server forgets it at once.") {
                     leaderboard.closeTurnOffMenu()
-                    Task { try? await membership.setSharesCountry(false) }
+                    Task { try? await leaderboard.setSharesCountry(false) }
                 }
             }
             TurnOffMenuItem(title: "Leaderboard: pause & hide",
@@ -76,6 +78,8 @@ private struct TurnOffMenuItem: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)

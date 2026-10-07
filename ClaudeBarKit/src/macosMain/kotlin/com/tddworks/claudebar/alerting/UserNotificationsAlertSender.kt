@@ -120,6 +120,6 @@ internal class UserNotificationsAlertSender : AlertSender {
 
     companion object {
         /** The button's id: the app opens `userInfo["link"]` when it is pressed. */
-        const val LINK_ACTION = "OPEN_LINK"
+        const val LINK_ACTION = AlertActions.OPEN_LINK
     }
 }

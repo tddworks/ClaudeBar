@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftUI
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// When no usage text is shown, the menu bar draws the theme's status icon,

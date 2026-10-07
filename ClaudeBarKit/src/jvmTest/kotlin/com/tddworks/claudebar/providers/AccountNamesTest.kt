@@ -55,7 +55,7 @@ class AccountNamesTest {
         val codex = codex(InMemoryProviderSettings(), listOf(login("a", "a@example.com", "Work")))
 
         assertTrue(codex.accounts.hasSeveral)
-        assertEquals(listOf("Codex", "Work"), codex.accounts.map(codex::lineupName))
+        assertEquals(listOf("Codex", "Work"), codex.accounts.all.map(codex::lineupName))
     }
 
     @Test

@@ -4,7 +4,7 @@ description: OpenRouter as data — its definition, credits mapping, settings, a
 
 # OpenRouter: design
 
-`Modules/Providers/Resources/Providers/openrouter.json` runs on the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names OpenRouter. Ported from the Swift provider of issue #89, which followed the old DeepSeek probe.
+`ClaudeBarKit/definitions/openrouter.json` runs on the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names OpenRouter. Ported from the Swift provider of issue #89, which followed the old DeepSeek probe.
 
 ## Source
 

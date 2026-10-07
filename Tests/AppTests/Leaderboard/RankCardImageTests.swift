@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import Testing
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// *Share my rank*'s image: posted where its shape fits, so it must come out
@@ -9,7 +9,7 @@ import Domain
 @Suite
 @MainActor
 struct RankCardImageTests {
-    private let card = RankCard(
+    private let card = RankCard.of(
         standing: Standing(rank: 8, username: "tokenwhale", total: 3_820_000_000, byProvider: ["claude": 3, "codex": 1]),
         in: BoardView(period: .sevenDays),
         board: (1...34).map { Standing(rank: $0, username: "m\($0)", total: 1) })!
@@ -25,11 +25,11 @@ struct RankCardImageTests {
         let png = try #require(image.png())
         let bitmap = try #require(NSBitmapImageRep(data: png))
 
-        #expect(CGSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh) == shape.pixels)
+        #expect(CGSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh) == CGSize(width: CGFloat(shape.width), height: CGFloat(shape.height)))
 
         // RANK_CARD_DUMP=<folder> (as TEST_RUNNER_RANK_CARD_DUMP) writes the images, for a visual check.
         if let folder = ProcessInfo.processInfo.environment["RANK_CARD_DUMP"] {
-            try png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("rank-\(themeId)-\(shape.rawValue).png"))
+            try png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("rank-\(themeId)-\(shape.id).png"))
         }
     }
 }

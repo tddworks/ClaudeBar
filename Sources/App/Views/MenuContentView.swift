@@ -1,7 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
-import Providers
+import Kit
 #if ENABLE_SPARKLE
 import Sparkle
 #endif
@@ -11,7 +9,7 @@ import Sparkle
 struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
-    let quotaAlerter: QuotaAlerter
+    let quotaAlerter: NotificationAlerter
     let leaderboard: Leaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
@@ -62,6 +60,8 @@ struct MenuContentView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             // Gradient background from theme
             theme.backgroundGradient
@@ -202,7 +202,7 @@ struct MenuContentView: View {
             // Request alert permission once (after app run loop is active)
             if !hasRequestedNotificationPermission {
                 hasRequestedNotificationPermission = true
-                let granted = await quotaAlerter.requestPermission()
+                let granted = await quotaAlerter.askPermission()
                 AppLog.notifications.info("Alert permission request result: \(granted ? "granted" : "denied")")
             }
 
@@ -294,7 +294,7 @@ struct MenuContentView: View {
             if !settings.overviewModeEnabled {
                 ForEach(1...9, id: \.self) { position in
                     Button("Select provider \(position)") {
-                        monitor.selectProvider(atPosition: position)
+                        monitor.selectTab(at: position)
                     }
                     .keyboardShortcut(KeyEquivalent(Character(String(position))))
                 }
@@ -382,7 +382,7 @@ struct MenuContentView: View {
     /// its first quota's coins, the tab's place, the minutes to its reset.
     private var scoreLine: ScoreLine {
         let tabs = monitor.tabs
-        let index = tabs.firstIndex { $0.contains(selectedProviderId) } ?? 0
+        let index = tabs.firstIndex { $0.contains(lineupId: selectedProviderId) } ?? 0
         return ScoreLine(
             providerName: tabs.indices.contains(index) ? settings.shown(tabs[index].name) : "ClaudeBar",
             status: statusText,
@@ -403,7 +403,7 @@ struct MenuContentView: View {
         // An explicit refresh is the moment a user who just installed a
         // CLI expects it to be picked up, so drop the cached lookups
         // instead of waiting for their TTL to lapse.
-        BinaryLocator.invalidateCaches()
+        Kit.shared.forgetFoundCLIs()
         Task { await leaderboard.refresh() }
         if settings.overviewModeEnabled {
             Task { await refreshAllEnabled() }
@@ -494,13 +494,13 @@ struct MenuContentView: View {
         let statusColor = selectedProviderBadge.badgeColor(theme)
         // An outlined theme fills the badge with its status colour, inked —
         // syncing and waiting with a light "in progress" colour, never dark.
-        let fill: Color = switch selectedProviderBadge {
+        let fill: Color = switch selectedProviderBadge.shape {
         case .syncing, .awaitingData: theme.accentSecondary
         default: statusColor
         }
         // Nothing to say about limits it can't read while its usage shows
         // below: hidden, not removed, so the header keeps its height.
-        return headerPill(text: statusText, color: statusColor, fill: fill, pulsing: selectedProviderBadge == .syncing)
+        return headerPill(text: statusText, color: statusColor, fill: fill, pulsing: selectedProviderBadge.shape == .syncing)
             .opacity(selectedProviderBadge.showsBadge ? 1 : 0)
     }
 
@@ -509,7 +509,7 @@ struct MenuContentView: View {
         let membership = leaderboard.membership
         let (text, color): (String, Color) = if !membership.isJoined {
             ("NOT JOINED", theme.accentSecondary)
-        } else if leaderboard.uploader.lastError != nil {
+        } else if leaderboard.uploader.lastFailure != nil {
             ("UPLOAD FAILED", theme.statusWarning)
         } else {
             ("RANKED", theme.statusHealthy)
@@ -587,12 +587,12 @@ struct MenuContentView: View {
                     ProviderPill(
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
-                        isSelected: !showsLeaderboard && tab.contains(selectedProviderId),
+                        isSelected: !showsLeaderboard && tab.contains(lineupId: selectedProviderId),
                         hasData: tab.accounts.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
                         showsLeaderboard = false
-                        if !tab.contains(selectedProviderId), let first = tab.accounts.first {
+                        if !tab.contains(lineupId: selectedProviderId), let first = tab.accounts.first {
                             selectedProviderId = first.id
                         }
                     }
@@ -706,7 +706,7 @@ struct MenuContentView: View {
     private func accountsContent(_ tab: ProductTab) -> some View {
         VStack(spacing: 12) {
             accountChips(tab)
-            if let state = newSessions.state(of: tab.provider) {
+            if let state = newSessions.state(product: tab.provider) {
                 InUseStrip(state: state)
             }
             ForEach(tab.accounts.filter { !hiddenAccountIds.contains($0.id) }, id: \.id) { account in
@@ -727,51 +727,7 @@ struct MenuContentView: View {
                     .popoverFont(9, weight: .semibold)
                     .foregroundStyle(theme.textTertiary)
                 ForEach(tab.accounts, id: \.id) { account in
-                    let hidden = hiddenAccountIds.contains(account.id)
-                    HStack(spacing: 4) {
-                        Button {
-                            if hidden { hiddenAccountIds.remove(account.id) } else { hiddenAccountIds.insert(account.id) }
-                        } label: {
-                            HStack(spacing: 4) {
-                                if tab.provider.inUse?.isInUse(account) == true { InUseBadge() }
-                                Text(settings.shown(tab.provider.lineupName(of: account))).lineLimit(1)
-                                Circle()
-                                    .fill(account.lastError != nil ? theme.textTertiary
-                                          : theme.statusColor(for: monitor.status(of: account) ?? .healthy))
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .help(hidden ? "Show \(settings.shown(tab.provider.lineupName(of: account)))" : "Hide \(settings.shown(tab.provider.lineupName(of: account))) from this view")
-                        // One click switches: the other logins end in "Use".
-                        if tab.provider.inUse?.canBeInUse(account) == true, tab.provider.inUse?.isInUse(account) != true {
-                            Button { newSessions.use(account) } label: {
-                                Text("Use")
-                                    .popoverFont(10, weight: .bold)
-                                    .foregroundStyle(theme.accentPrimary)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Use \(settings.shown(tab.provider.lineupName(of: account))) for new terminal sessions")
-                            .accessibilityLabel("Use \(settings.shown(tab.provider.lineupName(of: account))) for new terminal sessions")
-                        }
-                    }
-                    .popoverFont(11, weight: .medium)
-                    // The provider pills' shape and height. A leading IN USE badge sits
-                    // concentric: the same gap on its left as above and below it.
-                    .frame(height: InUseBadge.chipHeight(in: theme))
-                    .padding(.leading, tab.provider.inUse?.isInUse(account) == true ? InUseBadge.gap(in: theme) : 10)
-                    .padding(.trailing, 10)
-                    .background(RoundedRectangle(cornerRadius: theme.pillCornerRadius).fill(hidden ? Color.clear : theme.glassBackground))
-                    // Stroked across the edge, as the provider pills and the cards are:
-                    // its anti-aliasing falls evenly on both sides, so the bottom edge
-                    // is as heavy as the top. (strokeBorder lost the bottom's half pixel.)
-                    .overlay(RoundedRectangle(cornerRadius: theme.pillCornerRadius).stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
-                    .foregroundStyle(hidden ? theme.textTertiary : theme.textPrimary)
-                    .contextMenu {
-                        if tab.provider.inUse?.canBeInUse(account) == true {
-                            Button("Use for New Terminal Sessions") { newSessions.use(account) }.disabled(tab.provider.inUse?.isInUse(account) == true)
-                        }
-                    }
+                    accountChip(tab, account)
                 }
             }
             // As the provider pills: a scroll view clips at its edges, so leave
@@ -779,6 +735,55 @@ struct MenuContentView: View {
             .padding(.vertical, theme.isOutlined ? 5 : 1)
             .padding(.leading, theme.isOutlined ? 2 : 1)
             .padding(.trailing, theme.isOutlined ? 5 : 1)
+        }
+    }
+
+    /// One login's chip: hides it from this view, and makes it the one in use.
+    @ViewBuilder
+    private func accountChip(_ tab: ProductTab, _ account: Account) -> some View {
+        let hidden = hiddenAccountIds.contains(account.id)
+        HStack(spacing: 4) {
+            Button {
+                if hidden { hiddenAccountIds.remove(account.id) } else { hiddenAccountIds.insert(account.id) }
+            } label: {
+                HStack(spacing: 4) {
+                    if tab.provider.inUse?.isInUse(account: account) == true { InUseBadge() }
+                    Text(settings.shown(tab.provider.lineupName(account: account))).lineLimit(1)
+                    Circle()
+                        .fill(dotColor(of: account))
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .buttonStyle(.plain)
+            .help(hidden ? "Show \(settings.shown(tab.provider.lineupName(account: account)))" : "Hide \(settings.shown(tab.provider.lineupName(account: account))) from this view")
+            // One click switches: the other logins end in "Use".
+            if tab.provider.inUse?.canBeInUse(account: account) == true, tab.provider.inUse?.isInUse(account: account) != true {
+                Button { newSessions.use(account: account) } label: {
+                    Text("Use")
+                        .popoverFont(10, weight: .bold)
+                        .foregroundStyle(theme.accentPrimary)
+                }
+                .buttonStyle(.plain)
+                .help("Use \(settings.shown(tab.provider.lineupName(account: account))) for new terminal sessions")
+                .accessibilityLabel("Use \(settings.shown(tab.provider.lineupName(account: account))) for new terminal sessions")
+            }
+        }
+        .popoverFont(11, weight: .medium)
+        // The provider pills' shape and height. A leading IN USE badge sits
+        // concentric: the same gap on its left as above and below it.
+        .frame(height: InUseBadge.chipHeight(in: theme))
+        .padding(.leading, tab.provider.inUse?.isInUse(account: account) == true ? InUseBadge.gap(in: theme) : 10)
+        .padding(.trailing, 10)
+        .background(RoundedRectangle(cornerRadius: theme.pillCornerRadius).fill(hidden ? Color.clear : theme.glassBackground))
+        // Stroked across the edge, as the provider pills and the cards are:
+        // its anti-aliasing falls evenly on both sides, so the bottom edge
+        // is as heavy as the top. (strokeBorder lost the bottom's half pixel.)
+        .overlay(RoundedRectangle(cornerRadius: theme.pillCornerRadius).stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
+        .foregroundStyle(hidden ? theme.textTertiary : theme.textPrimary)
+        .contextMenu {
+            if tab.provider.inUse?.canBeInUse(account: account) == true {
+                Button("Use for New Terminal Sessions") { newSessions.use(account: account) }.disabled(tab.provider.inUse?.isInUse(account: account) == true)
+            }
         }
     }
 
@@ -850,7 +855,7 @@ struct MenuContentView: View {
             Spacer()
 
             // The same word the header uses: no "HEALTHY" without data (#259).
-            let badge = ProviderBadgeState(of: [provider], quotaStatus: monitor.status(of: provider))
+            let badge = ProviderBadgeState.of([provider], quotaStatus: monitor.status(of: provider))
             Text(badge.badgeText(in: theme))
                 .badge(badge.badgeColor(theme))
                 .opacity(badge.showsBadge ? 1 : 0)
@@ -1078,7 +1083,7 @@ struct MenuContentView: View {
             }
 
             // Show custom web card if URL is configured for this provider
-            if let urlString = settings.provider.customCardURL(forProvider: snapshot.providerId),
+            if let urlString = Kit.shared.customCardURL(providerId: snapshot.providerId),
                let url = URL(string: urlString) {
                 let cardDelay = Double(snapshot.quotas.count + 2) * 0.08
                 CustomWebCardView(url: url, delay: cardDelay)
@@ -1154,7 +1159,7 @@ struct MenuContentView: View {
                 .foregroundStyle(theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
             if let url = setup.url {
-                Button(setup.button) { NSWorkspace.shared.open(url) }
+                Button(setup.button) { if let link = URL(string: url) { NSWorkspace.shared.open(link) } }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
@@ -1210,7 +1215,7 @@ struct MenuContentView: View {
                 label: "Dashboard",
                 gradient: theme.accentGradient
             ) {
-                if let url = selectedLogin.flatMap(monitor.dashboardURL(of:)) {
+                if let url = selectedLogin.flatMap(monitor.dashboardURL(of:)).flatMap(URL.init(string:)) {
                     NSWorkspace.shared.open(url)
                 }
             }
@@ -1231,7 +1236,7 @@ struct MenuContentView: View {
             Spacer()
 
             // Share Button (Claude only) - icon only
-            if let guestPasses, guestPasses.isOffered(for: selectedLogin?.snapshot) {
+            if let guestPasses, guestPasses.isOffered(usage: selectedLogin?.snapshot) {
                 let isFetchingPasses = guestPasses.isFetching
                 Button {
                     Task { await fetchAndShowPasses() }
@@ -1330,7 +1335,7 @@ struct MenuContentView: View {
                 guard let product = monitor.product(of: provider) else { continue }
                 group.addTask {
                     do {
-                        try await product.refresh(provider, kind)
+                        _ = try await product.refresh(account: provider, kind: kind)
                     } catch {
                         // Provider stores error in lastError
                     }
@@ -1338,24 +1343,31 @@ struct MenuContentView: View {
             }
         }
         for provider in monitor.lineup {
-            await provider.usageHistory?.read()
+            try? await provider.usageHistory?.read()
         }
     }
 
     /// Refresh a specific provider by ID
     /// - Parameter kind: `.interactive` for explicit clicks (Refresh button,
     ///   provider switch), `.passive` for the popover-open refresh (issue #216).
+    /// A login's dot in a tab: grey when its last refresh failed, else its status.
+    private func dotColor(of account: Account) -> Color {
+        if account.lastError != nil { return theme.textTertiary }
+        let status: QuotaStatus = monitor.status(of: account) ?? .healthy
+        return theme.statusColor(for: status)
+    }
+
     private func refresh(providerId: String, kind: RefreshKind = .interactive) async {
         // A tab of logins refreshes every login it shows.
-        let members = monitor.tabs.first { $0.contains(providerId) }?.accounts
+        let members = monitor.tabs.first { $0.contains(lineupId: providerId) }?.accounts
             ?? monitor.login(id: providerId).map { [$0] } ?? []
         // Provider stores error in lastError; isSyncing prevents duplicates.
         let refreshes: [Task<Void, Never>] = members.filter { !$0.isSyncing }.compactMap { login in
             guard let product = monitor.product(of: login) else { return nil }
-            return Task { _ = try? await product.refresh(login, kind) }
+            return Task { _ = try? await product.refresh(account: login, kind: kind) }
         }
         // Today's usage is read with the popover open, never in the background.
-        let history = members.compactMap(\.usageHistory).map { history in Task { await history.read() } }
+        let history = members.compactMap { $0.usageHistory }.map { history in Task { try? await history.read() } }
         for refresh in refreshes { await refresh.value }
         for read in history { await read.value }
     }
@@ -1401,6 +1413,8 @@ struct ProviderPill: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: symbol ?? providerIcon)
@@ -1454,6 +1468,8 @@ struct LeaderboardPill: View {
     let action: () -> Void
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ProviderPill(providerId: "leaderboard", providerName: "Leaderboard", isSelected: isSelected, hasData: true,
                      symbol: "trophy.fill", action: action)
     }
@@ -1539,6 +1555,8 @@ struct TwoColumnCardGrid<Item, ID: Hashable, Cell: View>: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(spacing: spacing) {
             ForEach(rows, id: \.id) { row in
                 HStack(spacing: spacing) {
@@ -1605,6 +1623,8 @@ struct WrappedStatCard: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 6) {
             // Header row with icon, type, and badge
             HStack(alignment: .top, spacing: 0) {
@@ -1843,6 +1863,8 @@ struct LoadingSpinnerView: View {
     @State private var isSpinning = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(spacing: 16) {
             ZStack {
                 Circle()
@@ -1889,6 +1911,8 @@ struct WrappedActionButton: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 6) {
                 if isLoading {
@@ -2057,6 +2081,8 @@ struct PulsingStatusDot: View {
     @State private var pulsePhase: CGFloat = 0
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             // Solid center dot
             Circle()
@@ -2121,6 +2147,8 @@ struct UpdateBadge: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             // Outer glow
             Circle()

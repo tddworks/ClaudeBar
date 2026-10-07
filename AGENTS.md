@@ -2,17 +2,17 @@
 
 Rules for AI coding agents (Claude Code, Codex, Cursor, …) in this repo. This is the only agent-instructions file; there is no `CLAUDE.md`. Everything else is one link away: [docs index](docs/README.md) · [architecture](docs/architecture/ARCHITECTURE.md) · [contributing](CONTRIBUTING.md) · [docs design](docs/documentation-design/README.md).
 
-ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files for 27 built-in providers, plus user extensions from `~/.claudebar/extensions/`. The code is moving from three layers to modules ([MODULAR_DESIGN.md](docs/architecture/MODULAR_DESIGN.md)). Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, found by `ProviderCatalog.detect()` (no Swift lists one) and run by one generic `Provider` on one shared `Engine`; what one needs that the engine can't say yet becomes a general rule in `DataSources`.
+ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files for 27 built-in providers, plus user extensions from `~/.claudebar/extensions/`. Everything but the UI is a Kotlin SDK, `ClaudeBarKit/`; the UI is SwiftUI ([MODULAR_DESIGN.md](docs/architecture/MODULAR_DESIGN.md)). Every built-in provider is a JSON definition in `ClaudeBarKit/definitions/`, found by `ProviderCatalog.detect()` (no Swift lists one) and run by one generic `Provider` on one shared `Engine`; what one needs that the engine can't say yet becomes a general rule in `datasources`.
 
 ## Build & test
 
 ```bash
 ./scripts/build-kotlin.sh                # ClaudeBarKit, the Kotlin SDK (needs JDK 21); rerun after editing Kotlin
 tuist install && tuist generate          # generated *.xcodeproj / *.xcworkspace are git-ignored
-tuist test                               # every target: module tests, DomainTests, InfrastructureTests, AppTests, AcceptanceTests
-tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
-xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
-  -destination 'platform=macOS,arch=arm64' -only-testing:DomainTests   # bypasses Tuist's result cache
+(cd ClaudeBarKit && ./gradlew jvmTest macosArm64Test)   # everything but the UI: JUnit, plus the native suite
+tuist test                               # AppTests: the SwiftUI app's own page state and views
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
+  -destination 'platform=macOS,arch=arm64'   # bypasses Tuist's result cache
 ```
 
 - `tuist test` caches results; use `xcodebuild test` when you need a test to really run.
@@ -23,19 +23,15 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 
 | Where | Holds |
 |---|---|
-| `Modules/Quotas` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError` (interim shapes, each marked with its final one). Imports nothing. `UsageSnapshot`, `UsageQuota` and their laws are Kotlin (`ClaudeBarKit/`, JUnit-tested); `Sources/Kernel` is their Swift face, the only code that names the bridge → [MODULAR_DESIGN §1, §8](docs/architecture/MODULAR_DESIGN.md#8--migration-bottom-up-one-context-at-a-time) |
-| `Modules/DataSources` | `DataSource` (credential lookup → fetch → mapping) and its workers: OAuth, HTTP, JSON-RPC, CLI, JSON/text/script mapping |
-| `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
-| `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
-| `Modules/Kit` | the Swift face of ClaudeBarKit (`AppLog`, the usage model): the only target that links the framework |
-| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions. Re-exports the modules |
-| `Sources/Infrastructure` | storage, notifications, hooks, Claude's guest-pass source |
-| `Sources/App` | SwiftUI views that read the domain directly; the composition root |
+| `ClaudeBarKit/` | **everything but the UI**, one Kotlin Multiplatform SDK (SKIE framework), a package per context: `quotas`, `datasources`, `providers`, `monitoring`, `alerting`, `activity`, `leaderboard`, `storage`, `diagnostics`, `kit` (`ClaudeBarCore.start`, the composition root). `definitions/<id>.json` are the built-in providers. JUnit-tested → [MODULAR_DESIGN](docs/architecture/MODULAR_DESIGN.md) |
+| `Modules/Kit` | the Swift face of ClaudeBarKit, the only target that links the framework: Sendable lines, `Date`/`Decimal`/`Int` views, `shape` enums, `KitObservation`, `Kit.shared` |
+| `Sources/App` | SwiftUI and AppKit: views, the drivers that push state to the menu bar, notch and Touch Bar, and page state (`PageState/`) |
 
-- **Modules never `import Domain`**, and no module's Swift names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `DataSources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md).
+- **Kotlin never calls Swift**, and no Kotlin names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `datasources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md). The package rules are `ArchitectureTest`'s.
+- **Only `Modules/Kit` names the bridge** (`onEnum`, `KotlinLong`, `companion`, `…Seconds`): views read Swift types and call commands; a command that can fail answers with an `Outcome`, read with `value(of:)` → [MODULAR_DESIGN §5](docs/architecture/MODULAR_DESIGN.md#5--the-ui-bridge).
 
-- **`QuotaMonitor` is the single source of truth** for provider state. No ViewModel or AppState layer; views consume the domain.
-- **Settings**: a provider's settings are its definition's `settings`, read with the generic `value`/`dataSourceKind`/`isOn` of `ProviderSettingsRepository`; a value an old card saved elsewhere is read through the compatibility tables in `JSONSettingsRepository` and `ProviderVault`. All settings persist through `JSONSettingsRepository` to `~/.claudebar/settings.json` → [docs/settings.md](docs/settings.md).
+- **`QuotaMonitor` is the single source of truth** for provider state (`Kit.shared.monitor`). No ViewModel or AppState layer; views read the kit, and every `body` calls `KitObservation.track()` so the kit's one change signal re-renders it.
+- **Settings**: a provider's settings are its definition's `settings`, read with the generic `value`/`dataSourceKind`/`isOn` of Kotlin's `ProviderSettingsRepository`; a value an old card saved elsewhere is read through the compatibility tables in `JsonProviderSettings` and `ProviderVault`. Everything persists to `~/.claudebar/settings.json` through `storage`'s `SettingsFile`; Swift's `JSONSettingsRepository` keeps only the app's own settings → [docs/settings.md](docs/settings.md).
 - **Notify! and session hooks are destinations, not providers**: they get standalone repositories beside `HookSettingsRepository`, never under `ProviderSettingsRepository` → [features/notify/design.md](docs/features/notify/design.md).
 - **Themes** implement `AppThemeProvider` and register in `ThemeRegistry` → [themes design](docs/features/themes/design.md). Card backgrounds use `theme.cardGradient` / `theme.glassBorder`.
 - The design is five documents read in order, journeys first: [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) maps them.
@@ -55,10 +51,10 @@ UI changes come with a mockup in `design-concept/<feature>/` first, and, once bu
 
 ## TDD is the default
 
-- Write the failing test first. Swift Testing (`@Suite`, `@Test`, `#expect`) with Mockable (`given(mock).method().willReturn(…)`).
+- Write the failing test first: JUnit for anything in `ClaudeBarKit/` (fakes, no mocking framework), Swift Testing (`@Suite`, `@Test`, `#expect`) for the App's page state.
 - **Chicago school**: assert on resulting state and return values; stub dependencies, don't `verify()` calls.
 - **Name a test for the behaviour it guards**: `` `should <outcome> [when <situation>]` `` in the person's words, never a method, type or mechanism verb. Rename an old test when you change its file; don't sweep → [Naming tests](.claude/skills/implement-feature/references/tdd-patterns.md#naming-tests).
-- Protocols that cross a boundary are `@Mockable` so tests never touch a real CLI, network or Keychain.
+- Ports that cross a boundary are Kotlin interfaces with fakes in `jvmTest`, so tests never touch a real CLI, network or Keychain. An App test that needs providers starts its own kit over a temporary home (`Tests/AppTests/Support/TestKit.swift`).
 
 ## Logging
 

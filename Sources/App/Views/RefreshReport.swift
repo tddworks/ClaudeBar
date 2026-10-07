@@ -1,7 +1,5 @@
-import DataSources
-import Domain
+import Kit
 import Foundation
-import Providers
 
 /// What the popover prints about a provider's last refresh — which data source
 /// answered (*via RPC*, so a fallback is never silent), and which step failed
@@ -22,7 +20,7 @@ struct RefreshReport: Equatable {
     /// The usage on screen is from before a failed refresh — shown dimmed.
     let isLastSeen: Bool
 
-    init(age: String?, source: String?, error: Error?, step: DataSourceError.Step?, hasUsage: Bool) {
+    init(age: String?, source: String?, error: UsageError?, step: DataSourceError.Step?, hasUsage: Bool) {
         isLastSeen = hasUsage && error != nil
         if hasUsage, let age {
             let when = (error == nil ? "Updated " : "Last seen ") + age

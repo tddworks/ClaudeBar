@@ -13,7 +13,7 @@ internal data class NotifyQuotaReading(
 )
 
 /** Which window the widget gauge shows; either half empty means "whichever needs attention most". */
-internal data class NotifyGaugeSelection(
+public data class NotifyGaugeSelection(
     val providerId: String = "",
     val quotaKey: String = "",
 ) {

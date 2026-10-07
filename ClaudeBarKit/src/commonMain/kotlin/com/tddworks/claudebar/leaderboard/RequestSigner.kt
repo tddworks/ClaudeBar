@@ -6,7 +6,7 @@ import org.kotlincrypto.hash.sha2.SHA256
  * Signs a request the way the Worker checks it: over the method, the path and query, the time,
  * a nonce and the body's SHA-256, joined by newlines. The server verifies the exact bytes it
  * received, so the body signed here must be the body sent. Pinned by
- * `Tests/DomainTests/Leaderboard/vectors.json`, which the server checks an identical copy of.
+ * `ClaudeBarKit/src/jvmTest/resources/leaderboard/vectors.json`, which the server checks an identical copy of.
  */
 internal object RequestSigner {
     fun canonical(method: String, pathAndQuery: String, timestamp: Long, nonce: String, body: ByteArray): String {

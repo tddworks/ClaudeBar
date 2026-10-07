@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Appearance pane: theme selection, custom theme import, and status colors.
 struct AppearancePane: View {
@@ -8,6 +7,8 @@ struct AppearancePane: View {
     @State private var settings = AppSettings.shared
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Appearance",
             subtitle: "Themes apply across the popover, menu bar, and this window."
@@ -130,6 +131,8 @@ private struct StatusColorRow: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsRow(title: title, subtitle: subtitle) {
             HStack(spacing: 8) {
                 if isOverridden {

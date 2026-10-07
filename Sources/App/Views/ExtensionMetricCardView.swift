@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Displays a single extension metric card with value, unit, progress bar, and optional delta.
 /// Follows the same glassmorphism style as DailyUsageCardView.
@@ -12,6 +12,8 @@ struct ExtensionMetricCardView: View {
     @State private var animateProgress = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 6) {
             // Header row with icon and label
             HStack(alignment: .top, spacing: 0) {

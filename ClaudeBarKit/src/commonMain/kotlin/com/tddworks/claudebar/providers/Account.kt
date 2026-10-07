@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
  * what its definition alone says. It names its product by id and never refers to it — ask the
  * product about a login (`provider.refresh(account)`, `provider.isInLineup(account)`).
  */
-internal class Account internal constructor(
+public class Account internal constructor(
     /** What its product's definition says — data, given at birth. */
     internal val definition: ProviderDefinition,
     /** Where its own pause is kept. */

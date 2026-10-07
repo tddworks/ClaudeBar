@@ -14,7 +14,12 @@ import kotlinx.serialization.json.booleanOrNull
  * response with the path that reaches it (`$.data.limit`), so a person maps *Used · Remaining ·
  * Limit · Resets* by pointing.
  */
-internal class ResponseFields private constructor(private val fields: List<Field>) : List<ResponseFields.Field> by fields {
+public class ResponseFields private constructor(private val fields: List<Field>) {
+    /** Every value, sorted by path. */
+    val all: List<Field> get() = fields
+
+    val isEmpty: Boolean get() = fields.isEmpty()
+
     data class Field(val path: String, val value: String, val isNumber: Boolean)
 
     override fun equals(other: Any?) = other is ResponseFields && other.fields == fields
@@ -24,6 +29,12 @@ internal class ResponseFields private constructor(private val fields: List<Field
     companion object {
         /** Enough to map a response, not to drown in one. */
         private const val LIMIT = 500
+
+        /** No values — before anything came back. */
+        val empty: ResponseFields = ResponseFields(emptyList())
+
+        /** The response's values, sorted by path; empty when it isn't JSON. */
+        fun of(response: Response): ResponseFields = invoke(response)
 
         /** The response's values, sorted by path; empty when it isn't JSON. */
         operator fun invoke(response: Response): ResponseFields {

@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// The panel that hangs below the notch on hover: what is running, what is
 /// nearly out, and what you can do about it.
@@ -11,6 +11,8 @@ struct NotchPanelView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 12) {
             header
 
@@ -228,6 +230,8 @@ private struct NotchActionButton: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             Text(title)
                 .font(.system(size: 10.5, weight: .semibold))

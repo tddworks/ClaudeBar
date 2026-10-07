@@ -1,6 +1,5 @@
 import Foundation
-import Domain
-import Infrastructure
+import Kit
 import ServiceManagement
 
 /// Observable settings manager for ClaudeBar preferences.
@@ -9,10 +8,13 @@ import ServiceManagement
 @MainActor
 @Observable
 public final class AppSettings {
-    public static let shared = AppSettings()
+    public static let shared = AppSettings(notifySettings: Kit.shared.notifySettings)
 
     /// The underlying repository (internal - views access settings through AppSettings properties/methods)
     private let repository: JSONSettingsRepository
+
+    /// Notify!'s settings are Kotlin's (alerting); nil in a test, where its switches stay off.
+    private let notifySettings: NotifySettingsRepository?
 
     // MARK: - Theme Settings
 
@@ -253,21 +255,21 @@ public final class AppSettings {
     /// can never come up switched on.
     public var notifyEnabled: Bool {
         didSet {
-            repository.setNotifyEnabled(notifyEnabled)
+            notifySettings?.setNotifyEnabled(enabled: notifyEnabled)
         }
     }
 
     /// Whether the Lock Screen Live Activity is one of the surfaces published.
     public var notifyLiveActivityEnabled: Bool {
         didSet {
-            repository.setNotifyLiveActivityEnabled(notifyLiveActivityEnabled)
+            notifySettings?.setNotifyLiveActivityEnabled(enabled: notifyLiveActivityEnabled)
         }
     }
 
     /// Whether the Lock Screen widget gauge is one of the surfaces published.
     public var notifyWidgetEnabled: Bool {
         didSet {
-            repository.setNotifyWidgetEnabled(notifyWidgetEnabled)
+            notifySettings?.setNotifyWidgetEnabled(enabled: notifyWidgetEnabled)
         }
     }
 
@@ -275,7 +277,7 @@ public final class AppSettings {
     /// carries the same content as the Live Activity, and unlike it, it stays.
     public var notifyScreenWidgetEnabled: Bool {
         didSet {
-            repository.setNotifyScreenWidgetEnabled(notifyScreenWidgetEnabled)
+            notifySettings?.setNotifyScreenWidgetEnabled(enabled: notifyScreenWidgetEnabled)
         }
     }
 
@@ -284,14 +286,14 @@ public final class AppSettings {
     /// user has picked anything.
     public var notifyGaugeProviderId: String {
         didSet {
-            repository.setNotifyGaugeProviderId(notifyGaugeProviderId)
+            notifySettings?.setNotifyGaugeProviderId(providerId: notifyGaugeProviderId)
         }
     }
 
     /// Quota window the widget gauge shows. Empty is automatic, as above.
     public var notifyGaugeQuotaKey: String {
         didSet {
-            repository.setNotifyGaugeQuotaKey(notifyGaugeQuotaKey)
+            notifySettings?.setNotifyGaugeQuotaKey(quotaKey: notifyGaugeQuotaKey)
         }
     }
 
@@ -450,8 +452,9 @@ public final class AppSettings {
 
     // MARK: - Initialization
 
-    init(repository: JSONSettingsRepository = .shared) {
+    init(repository: JSONSettingsRepository = .shared, notifySettings: NotifySettingsRepository? = nil) {
         self.repository = repository
+        self.notifySettings = notifySettings
 
         // Load all values from repository
         self.themeMode = repository.themeMode()
@@ -476,12 +479,12 @@ public final class AppSettings {
         self.popoverTextSize = PopoverTextSize(storedRawValue: repository.popoverTextSize())
         self.notchEnabled = repository.notchEnabled()
         self.touchBarEnabled = repository.touchBarEnabled()
-        self.notifyEnabled = repository.isNotifyEnabled()
-        self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()
-        self.notifyWidgetEnabled = repository.isNotifyWidgetEnabled()
-        self.notifyScreenWidgetEnabled = repository.isNotifyScreenWidgetEnabled()
-        self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
-        self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
+        self.notifyEnabled = notifySettings?.isNotifyEnabled() ?? false
+        self.notifyLiveActivityEnabled = notifySettings?.isNotifyLiveActivityEnabled() ?? false
+        self.notifyWidgetEnabled = notifySettings?.isNotifyWidgetEnabled() ?? false
+        self.notifyScreenWidgetEnabled = notifySettings?.isNotifyScreenWidgetEnabled() ?? false
+        self.notifyGaugeProviderId = notifySettings?.notifyGaugeProviderId() ?? ""
+        self.notifyGaugeQuotaKey = notifySettings?.notifyGaugeQuotaKey() ?? ""
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
@@ -540,12 +543,8 @@ public final class AppSettings {
 
     /// Access provider-specific settings for reading/writing in Settings UI.
     /// These are non-observable (loaded into @State) - only app-level settings are @Observable.
-    public var provider: ProviderSettingsRepository { repository }
-    public var claude: ClaudeSettingsRepository { repository }
-    public var codex: CodexSettingsRepository { repository }
-    public var deepseek: DeepSeekSettingsRepository { repository }
     public var hook: HookSettingsRepository { Kit.shared.hookSettings }
-    public var notify: NotifySettingsRepository { repository }
+    public var notify: NotifySettingsRepository { notifySettings ?? Kit.shared.notifySettings }
 }
 
 // MARK: - Notification Names

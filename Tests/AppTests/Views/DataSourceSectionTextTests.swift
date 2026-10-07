@@ -1,7 +1,5 @@
-import DataSources
-import Domain
+import Kit
 import Foundation
-import Providers
 import Testing
 @testable import ClaudeBar
 
@@ -9,8 +7,9 @@ import Testing
 /// provider that is data needs no card of its own.
 @Suite
 struct DataSourceSectionTextTests {
-    private func codex() throws -> ProviderDefinition { try ProviderFactory.builtIn("codex") }
-    private func claude() throws -> ProviderDefinition { try ProviderFactory.builtIn("claude") }
+    private static let kit = try! TestKit.start()
+    private func codex() throws -> ProviderDefinition { try #require(Self.kit.definition(lineupId: "codex")) }
+    private func claude() throws -> ProviderDefinition { try #require(Self.kit.definition(lineupId: "claude")) }
 
     @Test
     func `should title the data source section with the provider's name and that it is built in`() throws {
@@ -26,8 +25,8 @@ struct DataSourceSectionTextTests {
     func `should offer only the data sources a person can pick`() throws {
         let text = DataSourceSectionText(definition: try codex())
 
-        #expect(text.choices.map(\.kind) == ["rpc", "api"])
-        #expect(text.choices.map(\.label) == ["RPC", "API"])
+        #expect(text.choices.map { $0.kind } == ["rpc", "api"])
+        #expect(text.choices.map { $0.label } == ["RPC", "API"])
     }
 
     @Test
@@ -54,9 +53,9 @@ struct DataSourceSectionTextTests {
 
     @Test
     func `should say what came back from a connection test, or which step failed`() {
-        #expect(DataSourceSectionText.testResult(.success(Response(status: 200, body: Data()))) == "Connected · 200")
+        #expect(DataSourceSectionText.testResult(.success(Response(status: 200))) == "Connected · 200")
         #expect(DataSourceSectionText.testResult(.success(Response(text: "screen"))) == "Connected")
-        #expect(DataSourceSectionText.testResult(.failure(DataSourceError(.lookup, .authenticationRequired)))
+        #expect(DataSourceSectionText.testResult(.failure(DataSourceError(step: .lookup, reason: UsageError.AuthenticationRequired.shared)))
             .hasPrefix("Couldn't read your key · "))
     }
 
@@ -70,13 +69,15 @@ struct DataSourceSectionTextTests {
 
     @Test
     func `should show no CLI location for a provider without a CLI`() throws {
-        var draft = ProviderDraft(start: .api)
+        var draft = ProviderDraftForm(start: .api)
         draft.url = "https://example.test/usage"
         draft.key = .apiKey
         draft.measure = .percentUsed
         draft.used = "$.used"
         draft.name = "Example"
 
-        #expect(DataSourceSectionText(definition: try draft.definition(id: "custom-example")).cliLocation == nil)
+        let kit = try TestKit.start()
+        let provider = try #require(try value(of: kit.workshop.add(draft: draft.draft, key: "")))
+        #expect(DataSourceSectionText(definition: provider.definition).cliLocation == nil)
     }
 }

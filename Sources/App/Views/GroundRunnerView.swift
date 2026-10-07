@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A theme's runner in its lane above the floor, drawn while the popover is
 /// open. It takes no clicks; the action bar above it keeps them.
@@ -27,6 +27,8 @@ struct GroundRunnerView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         TimelineView(.animation(paused: !isShown)) { timeline in
             Canvas { context, size in
                 level.advance(to: timeline.date, pace: runner.pace(for: status), width: size.width, reduceMotion: reduceMotion)

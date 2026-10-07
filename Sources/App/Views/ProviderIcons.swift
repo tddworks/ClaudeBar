@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 // MARK: - Provider Icon View
@@ -13,6 +14,8 @@ struct ProviderIconView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             if showGlow {
                 // Subtle glow behind icon - adapts to theme

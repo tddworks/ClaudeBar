@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Pop Theme
 
@@ -133,6 +133,7 @@ public struct PopTheme: AppThemeProvider {
 /// Cream paper's dot grid, drawn once.
 struct PopDotGrid: View {
     var body: some View {
+        let _ = KitObservation.track()
         Canvas { context, size in
             let spacing: CGFloat = 18
             var y: CGFloat = spacing / 2

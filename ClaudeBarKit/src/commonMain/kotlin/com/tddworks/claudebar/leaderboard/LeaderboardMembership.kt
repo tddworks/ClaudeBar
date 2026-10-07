@@ -1,5 +1,6 @@
 package com.tddworks.claudebar.leaderboard
 
+import com.tddworks.claudebar.storage.Revision
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +13,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * fail throw [LeaderboardError] and leave the membership as it was. [revision] moves after
  * every change, for the UI (MODULAR_DESIGN §5).
  */
-internal class LeaderboardMembership(
+public class LeaderboardMembership internal constructor(
     private val api: LeaderboardAPI,
     private val keys: SigningKeyStore,
     private val settings: LeaderboardSettingsRepository,
@@ -43,8 +44,8 @@ internal class LeaderboardMembership(
         private set
     private var key: SigningKey? = null
 
-    private val changes = MutableStateFlow(0L)
-    val revision: StateFlow<Long> = changes.asStateFlow()
+    private val changes = Revision()
+    val revision: StateFlow<Long> = changes.flow
 
     init {
         restore()
@@ -55,7 +56,7 @@ internal class LeaderboardMembership(
     /** Providers that can be ticked: those with token logs on this Mac. */
     val shareableProviders: Set<String> get() = logs.providersWithLogs
 
-    val credentials: MemberCredentials?
+    internal val credentials: MemberCredentials?
         get() {
             val username = username ?: return null
             val key = key ?: return null
@@ -63,11 +64,11 @@ internal class LeaderboardMembership(
         }
 
     /** What an upload is signed with: nothing while not joined or turned off, so nothing leaves the Mac and `lastUpload` stays where it stopped. */
-    val uploadCredentials: MemberCredentials? get() = if (isOn) credentials else null
+    internal val uploadCredentials: MemberCredentials? get() = if (isOn) credentials else null
 
     // — Joining and leaving —
 
-    suspend fun join(username: Username, sharing: Set<String>, sharesCountry: Boolean = false, link: ProfileLink? = null) {
+    internal suspend fun join(username: Username, sharing: Set<String>, sharesCountry: Boolean = false, link: ProfileLink? = null) {
         if (sharing.isEmpty()) throw LeaderboardError.NothingShared
         requireShareable(sharing)
         val key = SigningKey.generate(random)
@@ -90,7 +91,7 @@ internal class LeaderboardMembership(
      * Deletes the member and every row on the server first; the key is forgotten only once the
      * server confirmed, or the name would be lost with the data still there.
      */
-    suspend fun leave() {
+    internal suspend fun leave() {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         api.leave(credentials)
         forget()
@@ -101,7 +102,7 @@ internal class LeaderboardMembership(
      * removed): forget it here too, so the join form shows again instead of a key that will never
      * be accepted.
      */
-    fun forgetUnknownMember() = forget()
+    internal fun forgetUnknownMember() = forget()
 
     private fun forget() {
         keys.delete()
@@ -134,7 +135,7 @@ internal class LeaderboardMembership(
 
     // — What is shared —
 
-    fun share(provider: String) {
+    internal fun share(provider: String) {
         requireShareable(setOf(provider))
         sharing = sharing + provider
         save()
@@ -146,24 +147,24 @@ internal class LeaderboardMembership(
     }
 
     /** The days that may leave the Mac: shared providers only, each provider's logins added up per day, days without tokens left out. */
-    fun dailyTokens(logins: List<LoginDays>): List<DailyTokens> =
+    internal fun dailyTokens(logins: List<LoginDays>): List<DailyTokens> =
         if (isJoined) DailyTokens.summed(logins, sharing, calendar) else emptyList()
 
-    fun recordUpload(atSeconds: Double) {
+    internal fun recordUpload(atSeconds: Double) {
         lastUploadSeconds = atSeconds
         save()
     }
 
     // — Name and visibility —
 
-    suspend fun setVisible(visible: Boolean) {
+    internal suspend fun setVisible(visible: Boolean) {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         api.update(MemberChange(visible = visible), credentials)
         isVisible = visible
         save()
     }
 
-    suspend fun rename(newName: Username) {
+    internal suspend fun rename(newName: Username) {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         api.update(MemberChange(username = newName.value), credentials)
         username = newName
@@ -173,7 +174,7 @@ internal class LeaderboardMembership(
     // — Profile link —
 
     /** Adds, replaces or — with `null` — removes your profile link on the board. */
-    suspend fun setLink(newLink: ProfileLink?) {
+    internal suspend fun setLink(newLink: ProfileLink?) {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         val change = newLink?.let { MemberChange.LinkChange.Set(it) } ?: MemberChange.LinkChange.Remove
         api.update(MemberChange(link = change), credentials)
@@ -184,7 +185,7 @@ internal class LeaderboardMembership(
     // — The globe —
 
     /** Puts your country on the globe, or takes it off: the server forgets it at once when you turn this off. */
-    suspend fun setSharesCountry(shares: Boolean) {
+    internal suspend fun setSharesCountry(shares: Boolean) {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         api.update(MemberChange(sharesCountry = shares), credentials)
         sharesCountry = shares
@@ -201,7 +202,7 @@ internal class LeaderboardMembership(
 
     // — Reading the board —
 
-    suspend fun myStanding(view: BoardView): MemberSummary {
+    internal suspend fun myStanding(view: BoardView): MemberSummary {
         val credentials = credentials ?: throw LeaderboardError.NotJoined
         return api.me(view, credentials)
     }
@@ -256,6 +257,6 @@ internal class LeaderboardMembership(
     }
 
     private fun changed() {
-        changes.value += 1
+        changes.bump()
     }
 }

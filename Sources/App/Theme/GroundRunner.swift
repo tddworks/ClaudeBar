@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// A runner on a theme's floor: it shows the selected provider's status by
 /// how it moves, and jumps for a coin when a refresh finishes. Nobody plays

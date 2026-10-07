@@ -1,5 +1,5 @@
 import AppKit
-import Infrastructure
+import Kit
 import UserNotifications
 
 /// Receives `claudebar://` URLs for the app's whole lifetime.
@@ -50,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard response.actionIdentifier == SystemAlertSender.linkAction,
+        guard response.actionIdentifier == AlertActions.shared.OPEN_LINK,
               let link = (response.notification.request.content.userInfo["link"] as? String).flatMap(URL.init(string:)) else { return }
         await MainActor.run { application(NSApplication.shared, open: [link]) }
     }

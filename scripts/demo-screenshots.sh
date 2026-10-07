@@ -60,7 +60,7 @@ def quota(kind, key, name=None):
 
 def look(builtin):
     # The built-in's own face: name, icon and colours.
-    with open(f"Modules/Providers/Resources/Providers/{builtin}.json") as f:
+    with open(f"ClaudeBarKit/definitions/{builtin}.json") as f:
         profile = json.load(f)["profile"]
     return profile["name"], profile["look"]
 

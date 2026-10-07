@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftUI
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// The popover's text scale is the whole feature: every popover font goes

@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 // Selection controls shared by the Settings window panes.
 // Relocated from the retired inline SettingsView (menu bar popover).
@@ -23,6 +22,8 @@ struct ThemeOptionButton: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             VStack(alignment: .leading, spacing: 6) {
                 ThemePreview(themeProvider: themeProvider)
@@ -85,6 +86,8 @@ struct ThemePreview: View {
     let themeProvider: any AppThemeProvider
 
     var body: some View {
+
+        let _ = KitObservation.track()
         let t = themeProvider
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 9)
@@ -136,6 +139,8 @@ struct DisplayModeButton: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: iconName)
@@ -172,6 +177,8 @@ struct MenuBarProviderChoiceButton: View {
     let action: () -> Void
 
     var body: some View {
+
+        let _ = KitObservation.track()
         MenuBarChoiceButton(
             iconName: ProviderVisualIdentityLookup.symbolIcon(for: providerId),
             label: providerName,
@@ -187,6 +194,8 @@ struct MenuBarQuotaChoiceButton: View {
     let action: () -> Void
 
     var body: some View {
+
+        let _ = KitObservation.track()
         MenuBarChoiceButton(
             iconName: "gauge.with.needle.fill",
             label: title,
@@ -206,6 +215,8 @@ struct MenuBarChoiceButton: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: iconName)

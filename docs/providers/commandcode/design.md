@@ -4,7 +4,7 @@ Contributor research for the Command Code provider (`commandcode`). User-facing 
 
 ## As data
 
-Command Code is `Modules/Providers/Resources/Providers/commandcode.json` and `commandcode-credits.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
+Command Code is `ClaudeBarKit/definitions/commandcode.json` and `commandcode-credits.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
 
 - **Fetch** — `http.steps`: `whoami` keeps `orgId` from `$.data.org.id` or `$.org.id`, then `credits` calls `…/billing/credits?orgId={{orgId}}`, with `dropEmpty` leaving the parameter out when there is none. The mapping script reads both answers by name.
 - **Key** — `COMMAND_CODE_API_KEY`, `COMMANDCODE_API_KEY`, `~/.commandcode/auth.json`'s `apiKey`, then a key saved in ClaudeBar (`apiKey`, account scope). An added account uses only its own saved key.

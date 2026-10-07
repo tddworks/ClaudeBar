@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// The popover's *LEADERBOARD* tab: join with a username, or see your rank.
 struct LeaderboardPopoverView: View {
@@ -7,6 +7,8 @@ struct LeaderboardPopoverView: View {
     let monitor: QuotaMonitor
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if leaderboard.membership.isJoined {
             LeaderboardStandingsView(leaderboard: leaderboard, monitor: monitor)
         } else {
@@ -29,6 +31,8 @@ struct LeaderboardCard<Content: View>: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 10) { content }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -46,6 +50,8 @@ private struct CardLabel: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text(text)
             .font(theme.font(size: 10, weight: .bold))
             .tracking(1)
@@ -79,7 +85,7 @@ struct LeaderboardJoinView: View {
         return ProfileLink.typed(linkHandle, on: linkPlatform) == nil
     }
 
-    private var username: Username? { Username(name) }
+    private var username: Username? { Username.named(name) }
 
     /// The body of `PUT /usage` for today, as the client encodes it.
     private var payload: String {
@@ -101,6 +107,8 @@ struct LeaderboardJoinView: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(spacing: 12) {
             LeaderboardCard {
                 CardLabel(text: "JOIN THE BOARD")
@@ -233,7 +241,7 @@ struct LeaderboardJoinView: View {
                                        link: linkPlatform.flatMap { ProfileLink.typed(linkHandle, on: $0) })
             error = nil
         } catch {
-            self.error = (error as? LeaderboardError)?.errorDescription ?? error.localizedDescription
+            self.error = error.localizedDescription
         }
     }
 }
@@ -261,6 +269,8 @@ struct LeaderboardStandingsView: View {
     private var membership: LeaderboardMembership { leaderboard.membership }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(spacing: 12) {
             rankCard
             if membership.showsGlobeHint { globeHint }
@@ -303,7 +313,7 @@ struct LeaderboardStandingsView: View {
                 .accessibilityLabel("Dismiss")
             }
             HStack(spacing: 8) {
-                Button { Task { try? await membership.setSharesCountry(true) } } label: {
+                Button { Task { try? await leaderboard.setSharesCountry(true) } } label: {
                     Label("Turn on", systemImage: "globe.europe.africa.fill")
                         .font(theme.font(size: 11, weight: .bold))
                         .foregroundStyle(theme.textOnStatus)
@@ -373,7 +383,7 @@ struct LeaderboardStandingsView: View {
                 CardLabel(text: (["YOUR RANK", period.label] + [provider.map { leaderboardProviderName($0, in: monitor) }].compactMap { $0 })
                     .joined(separator: " · ").uppercased())
                 Spacer()
-                if let card = RankCard(standing: mine?.standing, in: view, board: top) {
+                if let card = RankCard.of(standing: mine?.standing, in: view, board: top) {
                     Button { leaderboard.share(card) } label: {
                         Label("Share", systemImage: "arrow.up.right")
                             .font(theme.font(size: 11, weight: .bold))
@@ -409,7 +419,7 @@ struct LeaderboardStandingsView: View {
                 }
                 Spacer(minLength: 8)
                 if let standing = mine?.standing, !standing.byProvider.isEmpty {
-                    YourMix(byProvider: standing.byProvider, monitor: monitor)
+                    YourMix(byProvider: standing.tokensByProvider, monitor: monitor)
                         .frame(width: 112)
                 }
             }
@@ -442,7 +452,7 @@ struct LeaderboardStandingsView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            Image(systemName: leaderboard.uploader.lastError == nil ? "arrow.triangle.2.circlepath" : "exclamationmark.triangle.fill")
+            Image(systemName: leaderboard.uploader.lastFailure == nil ? "arrow.triangle.2.circlepath" : "exclamationmark.triangle.fill")
                 .font(.system(size: 10, weight: .semibold))
             Text(status)
                 .font(theme.font(size: 11, weight: .medium))
@@ -459,12 +469,12 @@ struct LeaderboardStandingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .foregroundStyle(leaderboard.uploader.lastError == nil ? theme.textTertiary : theme.statusWarning)
+        .foregroundStyle(leaderboard.uploader.lastFailure == nil ? theme.textTertiary : theme.statusWarning)
         .padding(.horizontal, 4)
     }
 
     private var status: String {
-        if let error = leaderboard.uploader.lastError { return "Upload failed: \(error.errorDescription ?? "")" }
+        if let error = leaderboard.uploader.lastFailure { return "Upload failed: \(error)" }
         if leaderboard.uploader.isUploading { return "Uploading…" }
         guard let last = membership.lastUpload else { return "Waiting for the first upload" }
         return "Uploaded \(last.formatted(.relative(presentation: .named))) · hourly"
@@ -473,12 +483,16 @@ struct LeaderboardStandingsView: View {
     private func load() async {
         do {
             async let board = leaderboard.board(in: view)
-            async let me = membership.myStanding(in: view)
+            async let me = leaderboard.myStanding(in: view)
             (top, mine) = try await (board, me)
             error = nil
         } catch {
-            self.error = (error as? LeaderboardError)?.errorDescription ?? error.localizedDescription
+            self.error = error.localizedDescription
         }
+    }
+
+    static func tokens(_ count: Int64) -> String {
+        tokens(Int(count))
     }
 
     static func tokens(_ count: Int) -> String {
@@ -506,6 +520,8 @@ private struct YourMix: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 5) {
             Text("YOUR MIX")
                 .font(theme.font(size: 9, weight: .bold))

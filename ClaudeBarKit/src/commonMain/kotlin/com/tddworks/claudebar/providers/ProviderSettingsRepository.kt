@@ -98,7 +98,7 @@ internal data class ProviderAccountConfig(
 }
 
 /** How a login was added: *Choose Signed-in Folder*, *Sign in with browser* (into a folder ClaudeBar made), or the account's form. */
-internal enum class AccountOrigin(val tag: String) {
+public enum class AccountOrigin(val tag: String) {
     FOLDER("folder"),
     SIGN_IN("signIn"),
     FORM("form"),

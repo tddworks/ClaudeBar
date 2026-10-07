@@ -16,7 +16,8 @@ import kotlinx.serialization.json.encodeToJsonElement
  * One data source as data — the JSON a provider definition lists under `dataSources`. No
  * behaviour: `DataSources.make` turns it into a `DataSource` that fetches.
  */
-internal data class DataSourceDefinition(
+@ConsistentCopyVisibility
+public data class DataSourceDefinition internal constructor(
     /** What the person picks — `rpc`, `api`, `cli` … — and the value of `<id>.probeMode`. */
     val kind: String,
     val label: String? = null,
@@ -25,38 +26,44 @@ internal data class DataSourceDefinition(
     val note: String? = null,
     /** Only ever reached as another one's fallback. */
     val hidden: Boolean = false,
-    val credential: CredentialLookup? = null,
-    val fetch: Fetch,
-    val mapping: Mapping,
+    internal val credential: CredentialLookup? = null,
+    internal val fetch: Fetch,
+    internal val mapping: Mapping,
     /** The data source to try when this one fails, optionally only while a setting allows it. */
     val fallback: Fallback? = null,
     /** Hand-offs by failure: `{ "subscriptionRequired": "cliCost" }`, tried before `fallback`. */
-    val fallbackOn: Map<String, String> = emptyMap(),
+    internal val fallbackOn: Map<String, String> = emptyMap(),
     /** Serve the last usage this long instead of fetching again; also the background refresh floor. */
     val cache: Cache? = null,
     /** JSON files the mapping may read. */
-    val context: Map<String, JSONFileCredential> = emptyMap(),
+    internal val context: Map<String, JSONFileCredential> = emptyMap(),
     /** What to do once when the mapping reports a failure, then try again. */
-    val recover: Map<String, Recovery> = emptyMap(),
+    internal val recover: Map<String, Recovery> = emptyMap(),
     /** Files that must exist before anything runs (#216); missing is *Key needed*. */
-    val requiresFiles: List<String> = emptyList(),
+    internal val requiresFiles: List<String> = emptyList(),
     /** The credential must belong to this account, before and after the fetch. */
-    val identity: Identity? = null,
+    internal val identity: Identity? = null,
     /** A background refresh must not run this until one explicit refresh has succeeded (#216). */
     val verifyBeforeBackground: Boolean = false,
     /** What a held-back refresh says until then. */
     val unverifiedMessage: String? = null,
     /** What a fact a worker reported means here, in the reasons the screen prints. */
-    val errors: Map<ErrorFact, ErrorRef> = emptyMap(),
+    internal val errors: Map<ErrorFact, ErrorRef> = emptyMap(),
 ) {
+    /** Where the key is looked for, in order, as Settings lists it. */
+    val credentialLookupOrder: List<String>? get() = credential?.lookupOrder
+
+    /** How to get the key, when the definition says. */
+    val credentialHint: String? get() = credential?.hint
+
     /** What a failure a worker reported means here: the definition's word for its fact, else the worker's. */
-    fun reason(failure: ReportedFailure): UsageError {
+    internal fun reason(failure: ReportedFailure): UsageError {
         val fact = failure.fact ?: return failure.reason
         val meaning = errors[fact] ?: fact.broader?.let { errors[it] }
         return meaning?.usageError ?: failure.reason
     }
 
-    fun toJson(): JsonObject = JsonObject(buildMap {
+    internal fun toJson(): JsonObject = JsonObject(buildMap {
         put("kind", JsonPrimitive(kind))
         label?.let { put("label", JsonPrimitive(it)) }
         summary?.let { put("summary", JsonPrimitive(it)) }
@@ -79,7 +86,7 @@ internal data class DataSourceDefinition(
         }
     })
 
-    companion object {
+    internal companion object {
         fun from(json: JsonElement): DataSourceDefinition {
             val o = json as? JsonObject ?: throw DefinitionError("a data source is an object")
             val kind = o.requireString("kind", "data source")
@@ -117,14 +124,14 @@ internal data class DataSourceDefinition(
     // the login's values for `{{account.x}}`. Written once; nothing is copied per login.
 
     /** The definition with [patch] merged in (RFC 7396). */
-    fun patched(patch: JsonElement): DataSourceDefinition = from(toJson().merged(patch))
+    internal fun patched(patch: JsonElement): DataSourceDefinition = from(toJson().merged(patch))
 
     /** Every `{{<scope>.<name>}}` in its strings replaced by `values[name]`; other placeholders stay. */
-    fun filled(values: Map<String, String>, scope: String): DataSourceDefinition =
+    internal fun filled(values: Map<String, String>, scope: String): DataSourceDefinition =
         from(toJson().mapStrings { Placeholders.fill(it, values, scope) })
 
     /** The `{{<scope>.<name>}}` names still in the definition, sorted. */
-    fun unfilled(scope: String): List<String> {
+    internal fun unfilled(scope: String): List<String> {
         val names = mutableSetOf<String>()
         toJson().mapStrings { names += Placeholders.names(it, scope); it }
         return names.sorted()
@@ -132,11 +139,11 @@ internal data class DataSourceDefinition(
 }
 
 /** `"fallback": "tty"`, or `{ "to": "cli", "enabledBySetting": "cliFallbackEnabled" }` — on unless the setting says no. */
-internal data class Fallback(val to: String, val enabledBySetting: String? = null) {
-    fun toJson(): JsonElement = if (enabledBySetting == null) JsonPrimitive(to)
+public data class Fallback internal constructor(val to: String, val enabledBySetting: String? = null) {
+    internal fun toJson(): JsonElement = if (enabledBySetting == null) JsonPrimitive(to)
     else JsonObject(mapOf("to" to JsonPrimitive(to), "enabledBySetting" to JsonPrimitive(enabledBySetting)))
 
-    companion object {
+    internal companion object {
         fun from(json: JsonElement): Fallback = when (json) {
             is JsonPrimitive -> Fallback(json.content)
             is JsonObject -> Fallback(json.requireString("to", "fallback"), json.string("enabledBySetting"))
@@ -146,7 +153,7 @@ internal data class Fallback(val to: String, val enabledBySetting: String? = nul
 }
 
 /** How long a fetched usage is served again, in seconds. */
-internal data class Cache(val ttl: Double)
+public data class Cache internal constructor(val ttl: Double)
 
 /** A fix tried once when the mapping reports a failure. */
 internal sealed class Recovery {

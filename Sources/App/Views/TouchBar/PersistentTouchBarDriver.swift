@@ -1,6 +1,5 @@
 import AppKit
-import Domain
-import Infrastructure
+import Kit
 
 // MARK: - Persistent Touch Bar Driver
 

@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 /// Shared layout primitives for Settings window panes: pane scaffold,
@@ -12,6 +13,8 @@ struct SettingsPane<Content: View>: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -42,6 +45,8 @@ struct SettingsCard<Content: View>: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 0) {
             content
         }
@@ -69,6 +74,8 @@ struct SettingsRow<Trailing: View>: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -95,6 +102,8 @@ struct SettingsRowDivider: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if theme.isOutlined {
             // Printed rows part with a dashed rule, as on paper.
             Line()
@@ -122,6 +131,8 @@ struct SettingsSwitch: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if theme.isOutlined {
             // An outlined theme's switch: an inked capsule, healthy when on.
             Button {
@@ -157,6 +168,8 @@ struct SettingsFieldLabel: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text(text)
             .font(theme.font(size: 9, weight: .semibold))
             .foregroundStyle(theme.textSecondary)
@@ -175,6 +188,8 @@ struct SettingsSegmentedControl<Option: Hashable>: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
                 SegmentButton(
@@ -208,6 +223,8 @@ private struct SegmentButton: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             Text(title)
                 .font(theme.font(size: 11, weight: isSelected ? .semibold : .medium))
@@ -257,6 +274,8 @@ struct SettingsActionButton: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: action) {
             HStack(spacing: 6) {
                 if isBusy {
@@ -300,6 +319,8 @@ struct SettingsTextField: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(theme.textTertiary))
             .textFieldStyle(.plain)
             .font(theme.font(size: 12, weight: .medium))

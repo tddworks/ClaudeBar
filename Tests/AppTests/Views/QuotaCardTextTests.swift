@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import Domain
+import Kit
 @testable import ClaudeBar
 
 /// The words on a quota card. An outlined theme (Pop) prints them the

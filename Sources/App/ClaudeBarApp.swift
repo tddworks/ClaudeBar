@@ -1,8 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
-import Providers
-import AWSClients
+import Kit
 import MenuBarExtraAccess
 #if ENABLE_SPARKLE
 import Sparkle
@@ -11,25 +8,19 @@ import Sparkle
 extension Notification.Name {
     static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
 
-    /// Posted by the Notify! pane when the device link or a stored surface
-    /// handle changes. Those live outside observable state, so nothing the
-    /// publish driver watches would otherwise tell it to try again.
-    static let notifySettingsChanged = Notification.Name("com.tddworks.claudebar.notifySettingsChanged")
 }
 
 /// Started by `ClaudeBarMain` — never while it hosts tests (see `LaunchMode`).
 struct ClaudeBarApp: App {
-    /// The main domain service - monitors all AI providers
-    /// This is the single source of truth for providers and their state
-    @State private var monitor: QuotaMonitor
+    /// The single source of truth for providers and their state — Kotlin's (MODULAR_DESIGN §5).
+    private let monitor: QuotaMonitor = Kit.shared.monitor
 
     /// *New terminal sessions* — which login `claude` / `codex` start with.
-    @State private var newSessions: NewSessions
+    private let newSessions: NewSessions = Kit.shared.newSessions
 
     /// *Quota alerts* — the person's own percentages (#68).
-    @State private var quotaAlerts: QuotaAlerts
+    private let quotaAlerts: QuotaAlerts = Kit.shared.quotaAlerts
 
-    /// Monitors Claude Code sessions via hook events
     /// Claude Code's sessions — Kotlin's, read through the kit (MODULAR_DESIGN §5).
     private let sessionMonitor: SessionMonitor = Kit.shared.sessions
 
@@ -44,9 +35,6 @@ struct ClaudeBarApp: App {
 
     /// Exports quota and menu-bar status to ~/.claudebar/status.json for Touch Bar, BTT, and external scripts.
     private let statusExportDriver: StatusExportDriver
-    /// Publishes quota state to a linked Notify! device. Comes up and goes down
-    /// with `notify.enabled`; does nothing until a device is linked.
-    private let notifyDriver: NotifyPublishDriver
     private let leaderboard: Leaderboard
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
@@ -59,15 +47,8 @@ struct ClaudeBarApp: App {
     /// which cannot reach a MenuBarExtra (see AppDelegate).
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    /// The hook HTTP server that receives events from Claude Code
-
-    /// Task for the hook server event loop (allows cancellation on toggle off)
-
     /// Alerts users when quota status degrades
-    private let quotaAlerter = NotificationAlerter(accountSettings: JSONSettingsRepository.shared)
-
-    /// Sends session start/end notifications
-    private let sessionAlertSender = SystemAlertSender()
+    private let quotaAlerter: NotificationAlerter = Kit.shared.notifications
 
     #if ENABLE_SPARKLE
     /// Sparkle updater for auto-updates
@@ -79,76 +60,14 @@ struct ClaudeBarApp: App {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         AppLog.ui.info("ClaudeBar v\(version) (\(build)) initializing...")
 
-        // Create the shared settings repository (JSON-backed: ~/.claudebar/settings.json)
-        // JSONSettingsRepository implements all sub-protocols:
-        // - AppSettingsRepository (app-level display/sync settings)
-        // - ProviderSettingsRepository + all provider sub-protocols
-        // - HookSettingsRepository
-        let settingsRepository = JSONSettingsRepository.shared
+        // Every provider, login, alert and upload is built once by the kit
+        // (ClaudeBarCore.start): no line here names a provider (TARGET_ARCHITECTURE §10).
+        let kit = Kit.shared
+        KitObservation.shared.follow(kit)
+        AppLog.providers.info("Created \(kit.monitor.providers.all.count) providers")
 
-        // Every provider is a definition on disk — the bundle, Add Provider's
-        // ~/.claudebar/providers and ~/.claudebar/extensions — found by the
-        // catalog and made on one engine; no line here names a provider
-        // (TARGET_ARCHITECTURE §10). The engine is everything that touches
-        // this Mac: a definition uses what its cases ask for.
-        let vault = ProviderVault()
-        // A variable exported only in the login shell (#170), for a lookup that says `loginShell`.
-        let shellEnvironment = ShellEnvironment()
-        let engine = Engine(
-            settings: settingsRepository,
-            vault: vault,
-            loginsInUse: DiskLoginsInUse(),
-            loginShell: { shellEnvironment.value($0) },
-            // The AWS SDK, linked by AWSClients alone, made once for a definition that reads the cloud.
-            cloud: { (AWSClients.makeCloudWatch(), AWSClients.makePriceCatalog()) },
-            // Guest passes run the declaring definition's CLI, at its CLI location (#210).
-            guestPasses: { cli in ClaudeGuestPassSource(claudeBinary: cli) }
-        )
-        let definitions = ProviderCatalog().detect()
-        // What was saved for an extension before it was a definition moves once.
-        ExtensionSettingsUpgrade.run(definitions.filter { $0.profile.origin == .extension },
-                                     store: .shared, settings: settingsRepository, vault: vault)
-        // The products, in lineup order; each holds its logins, and the
-        // lineup is the enabled logins of enabled products (CANONICAL §1).
-        let providers = ProviderFactory.make(definitions, engine: engine)
-        AppLog.providers.info("Created \(providers.count) providers")
-
-        // *In use*: every product whose definition declares it — chosen by the
-        // definition, never by a provider's name (CANONICAL §2.1).
-        let products = providers
-        let newSessions = NewSessions(products: products,
-                                      shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
-                                      announcer: InUseNotifications())
-        self.newSessions = newSessions
-
-        // Initialize the domain service with quota alerter
-        // QuotaMonitor automatically validates selected provider on init
-        // The settings repository carries the user's provider order (issue #141),
-        // so the popover, overview and ⌘1–⌘9 follow it.
-        // Alerts and every status follow the person's burn-rate setting (#357).
-        // Hidden quotas (#140) are read from the same settings, per product.
-        let monitor = QuotaMonitor(
-            providers: Providers(providers, settings: settingsRepository, vault: vault, make: { definition in
-                ProviderFactory.make(definition, engine: engine)
-            }),
-            alerter: quotaAlerter,
-            settingsRepository: settingsRepository,
-            statusPolicy: { AppSettings.shared.statusPolicy }
-        )
-        self.monitor = monitor
-        // *In use* follows every refresh: Switch when low, or a login worth moving to.
-        monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
-        // *Quota alerts* follow every refresh too, on what the person sees.
-        let quotaAlerts = QuotaAlerts(settings: settingsRepository, announcer: QuotaAlertNotifications())
-        self.quotaAlerts = quotaAlerts
-        monitor.onRefreshed { [weak monitor] refreshed in
-            guard let monitor else { return }
-            await quotaAlerts.review(refreshed.id, named: monitor.lineupName(of: refreshed), usage: monitor.usage(of: refreshed))
-        }
-        AppLog.monitor.info("QuotaMonitor initialized")
-
-        let sessionMonitor = Kit.shared.sessions
-        KitObservation.shared.follow(Kit.shared)
+        let monitor = kit.monitor
+        let sessionMonitor = kit.sessions
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle
         // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
@@ -182,18 +101,13 @@ struct ClaudeBarApp: App {
             sessionMonitor: sessionMonitor
         )
         PersistentTouchBarDriver.shared.start()
-        // Started here rather than deferred to `didFinishLaunching` like the
-        // notch driver: the surface it drives is on the user's phone, so it
-        // touches no AppKit window and has nothing to wait for.
-        notifyDriver = NotifyPublishDriver(
-            monitor: monitor,
-            settings: AppSettings.shared
-        )
-        notifyDriver.start()
+
+        // Publishes to a linked Notify! device; sends nothing until one is linked and the switch is on.
+        kit.notifyPublisher.start()
 
         // Uploads only once the user joined; until then it reads nothing.
-        leaderboard = Leaderboard(monitor: monitor)
-        leaderboard.start()
+        leaderboard = Leaderboard(kit.leaderboard)
+        kit.leaderboard.start()
 
         // Start hook server if hooks are enabled
         if Kit.shared.hookSettings.isHookEnabled() {
@@ -237,7 +151,7 @@ struct ClaudeBarApp: App {
         switch action {
         case .refresh:
             Task {
-                await monitor.refreshAll()
+                try? await monitor.refreshAll()
             }
         case .open:
             isMenuPresented = true
@@ -246,7 +160,7 @@ struct ClaudeBarApp: App {
             openWindow(id: "settings")
             NSApp.activate(ignoringOtherApps: true)
         case let .use(providerId, name):
-            switch newSessions.use(providerId: providerId, account: name) {
+            switch newSessions.use(providerId: providerId, name: name) {
             case .used:
                 break
             case .unknown:
@@ -313,13 +227,13 @@ struct ClaudeBarApp: App {
         Window("ClaudeBar Settings", id: "settings") {
             Group {
                 #if ENABLE_SPARKLE
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, leaderboard: leaderboard) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, leaderboard: leaderboard) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
@@ -354,6 +268,8 @@ struct StatusBarIcon: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if let session = activeSession {
             // Active session: show terminal icon with phase color
             HStack(spacing: 3) {

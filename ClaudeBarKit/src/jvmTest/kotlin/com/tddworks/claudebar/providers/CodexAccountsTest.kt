@@ -242,13 +242,13 @@ class CodexAccountsTest {
         before.accounts.add(signedInAt = b.path).done()
 
         val codex = stub.makeProvider("codex", accounts = stub.settings.accounts("codex"))
-        val added = codex.accounts.drop(1)
+        val added = codex.accounts.all.drop(1)
         added[0].isEnabled = false
 
         assertEquals(3, codex.accounts.size)
         assertEquals("codex", codex.defaultAccount.id)
         assertEquals(listOf("a@example.com", "b@example.com"), added.map(codex::lineupName))
-        assertEquals(3, codex.accounts.map { it.id }.toSet().size)
+        assertEquals(3, codex.accounts.all.map { it.id }.toSet().size)
         assertTrue(added[1].isEnabled)
         assertEquals(false, stub.settings.isEnabled(added[0].id, true))
     }
@@ -304,7 +304,7 @@ class CodexAccountsTest {
         codex.accounts.remove(first!!)
 
         assertNull(again)
-        assertEquals(listOf("codex"), codex.accounts.map { it.id })
+        assertEquals(listOf("codex"), codex.accounts.all.map { it.id })
     }
 
     @Test

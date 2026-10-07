@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Providers
+import Kit
 
 /// *REGION*, *API KEY*, *CLI DATA FOLDER* … — a provider's form, drawn from
 /// its definition. Values here are the provider's, and the default login's;
@@ -14,6 +13,8 @@ struct ProviderSettingsSection: View {
     @State private var saved = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "slider.horizontal.3").foregroundStyle(theme.textSecondary)
@@ -21,10 +22,10 @@ struct ProviderSettingsSection: View {
                 Spacer()
             }
             ForEach(provider.definition.defaultLoginSettings) { setting in
-                let kept = provider.configuration.hasSaved(setting, for: provider.defaultAccount)
+                let kept = provider.configuration.hasSaved(setting: setting, account: provider.defaultAccount)
                 HStack(alignment: .bottom, spacing: 8) {
                     SettingField(setting: setting, value: Binding(
-                        get: { entered[setting.id] ?? provider.configuration.value(of: setting, for: provider.defaultAccount) ?? "" },
+                        get: { entered[setting.id] ?? provider.configuration.value(setting: setting, account: provider.defaultAccount) ?? "" },
                         set: { entered[setting.id] = $0; saved = false }
                     ), secretPlaceholder: kept ? "Saved in Keychain — type to replace" : nil)
                     if kept {
@@ -49,7 +50,7 @@ struct ProviderSettingsSection: View {
 
     private func clear(_ setting: Setting) {
         do {
-            try provider.configuration.set(setting.id, to: nil)
+            try value(of: provider.configuration.set(setting: setting.id, value: nil))
             entered[setting.id] = nil
             problem = nil
         } catch {
@@ -59,7 +60,7 @@ struct ProviderSettingsSection: View {
 
     private func save() {
         do {
-            for (id, value) in entered { try provider.configuration.set(id, to: value) }
+            for (id, typed) in entered { try value(of: provider.configuration.set(setting: id, value: typed)) }
             entered = [:]
             problem = nil
             saved = true

@@ -13,7 +13,7 @@ import java.io.File
 
 /** Every bundled definition's key lookup reads, and writes back as it came; a broken one says where. */
 class CredentialDefinitionsTest {
-    private val definitions = File("../Modules/Providers/Resources/Providers").listFiles { f -> f.extension == "json" }.orEmpty()
+    private val definitions = File("definitions").listFiles { f -> f.extension == "json" }.orEmpty()
 
     private fun credentials() = definitions.flatMap { file ->
         val provider = Json.parseToJsonElement(file.readText()) as JsonObject

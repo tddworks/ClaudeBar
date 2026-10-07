@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Notify! pane: publishing quota state to a linked iPhone.
 ///
@@ -28,7 +27,6 @@ struct NotifyPane: View {
     /// including this pane's own button: it serialises publishes, and two
     /// publishers racing to start a tile is exactly how a phone ends up with
     /// two of them.
-    let driver: NotifyPublishDriver
 
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
@@ -54,6 +52,8 @@ struct NotifyPane: View {
     @State private var publishOutcome: NotifyActionOutcome?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Notify!",
             subtitle: "Push your quota to an iPhone as a Lock Screen Live Activity, a Lock Screen widget and a Home Screen widget, using the Notify! app."
@@ -226,7 +226,7 @@ struct NotifyPane: View {
             return
         }
 
-        if let link = NotifyDeviceLink(pastedText: text) {
+        if let link = NotifyDeviceLink.pasted(text) {
             deviceIdField = link.deviceId
             tokenField = link.token
             return
@@ -543,7 +543,7 @@ struct NotifyPane: View {
     /// The link the field currently spells out, or nil when it is empty or does
     /// not parse.
     private var pendingLink: NotifyDeviceLink? {
-        NotifyDeviceLink(deviceId: deviceIdField, token: tokenField)
+        NotifyDeviceLink.link(deviceId: deviceIdField, token: tokenField)
     }
 
     /// Which namespace the saved id belongs to, and so which surfaces the link
@@ -557,7 +557,7 @@ struct NotifyPane: View {
     /// on `isLinked`, and dimming its rows a second time would blame the user's
     /// phone for a link they have not pasted yet.
     private var linkedKind: NotifyDeviceKind {
-        NotifyDeviceKind.kind(ofDeviceId: linkedDeviceId)
+        NotifyDeviceKind.of(deviceId: linkedDeviceId)
     }
 
     /// Whether the saved link can hold a tile.
@@ -644,7 +644,7 @@ struct NotifyPane: View {
         // The repository decides whether the previous device's handles survive
         // this, because it is the only part of that rule that can be tested: a
         // link naming the same phone keeps them, a different phone does not.
-        settings.notify.saveNotifyDeviceLink(link)
+        settings.notify.saveNotifyDeviceLink(link: link)
 
         refreshLinkState()
 
@@ -672,22 +672,21 @@ struct NotifyPane: View {
         // a log reader nothing they could act on.
         AppLog.credentials.info("Saved a Notify! device link")
 
-        // Credentials live outside observable state, so the publish driver has
-        // no way to notice this on its own.
-        NotificationCenter.default.post(name: .notifySettingsChanged, object: nil)
+        // A save is the moment to find out whether the pair works.
+        Task { _ = try? await Kit.shared.notifyPublisher.publishNow() }
     }
 
     private func removeLink() {
-        settings.notify.setNotifyDeviceId("")
+        settings.notify.setNotifyDeviceId(deviceId: "")
         settings.notify.deleteNotifyDeviceToken()
 
         // The handles name a tile and two widgets belonging to credentials that
         // are now gone. Keeping them would risk writing to a stranger's surface
         // if the gateway ever reuses an id, so a later link starts by creating
         // its own.
-        settings.notify.setNotifyActivityId(nil)
-        settings.notify.setNotifyWidgetId(nil)
-        settings.notify.setNotifyScreenWidgetId(nil)
+        settings.notify.setNotifyActivityId(activityId: nil)
+        settings.notify.setNotifyWidgetId(widgetId: nil)
+        settings.notify.setNotifyScreenWidgetId(screenWidgetId: nil)
 
         deviceIdField = ""
         tokenField = ""
@@ -710,23 +709,16 @@ struct NotifyPane: View {
         }
 
         do {
-            let info = try await NotifyGatewayClient().deviceInfo(link: link)
-            verifyOutcome = NotifyActionOutcome(message: info.displayDescription, isFailure: false)
+            let description = try await value(of: Kit.shared.notifyPublisher.deviceDescription(link: link))
+            verifyOutcome = NotifyActionOutcome(message: description.map { String($0) } ?? "", isFailure: false)
         } catch {
             verifyOutcome = NotifyActionOutcome(message: error.localizedDescription, isFailure: true)
         }
     }
 
-    /// Publishes the current reading on the spot.
+    /// Publishes right now through the kit's publisher, and reports what happened.
     ///
-    /// Writes to the gateway directly rather than nudging the publish driver,
-    /// because the driver is deliberately governed by `NotifyPublishGate` and
-    /// this button exists precisely to skip the waiting. Each surface is sent
-    /// and reported separately: a device that cannot do Live Activities at all
-    /// still polls its widget happily, and one failure should not read as two.
-    /// Publishes right now through the app's driver, and reports what happened.
-    ///
-    /// The pane deliberately owns none of this. The driver holds the stored tile
+    /// The pane deliberately owns none of this. The publisher holds the stored tile
     /// and widget handles, the single in-flight publish, and the recovery paths
     /// for a dismissed tile and a refused handle. A second copy here would race
     /// the first over the same two handles.
@@ -735,7 +727,7 @@ struct NotifyPane: View {
         publishOutcome = nil
         defer { isPublishing = false }
 
-        if let failure = await driver.publishNow() {
+        if let failure = try? await Kit.shared.notifyPublisher.publishNow() {
             publishOutcome = NotifyActionOutcome(message: failure, isFailure: true)
         } else {
             publishOutcome = NotifyActionOutcome(
@@ -772,6 +764,8 @@ private struct NotifyOutcomeLine: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Text(outcome.message)
             .font(theme.font(size: 11, weight: .medium))
             .foregroundStyle(outcome.isFailure ? theme.statusCritical : theme.statusHealthy)

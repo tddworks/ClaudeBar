@@ -1,8 +1,5 @@
 import SwiftUI
-import DataSources
-import Domain
-import Infrastructure
-import Providers
+import Kit
 
 /// *Import provider* — USER_JOURNEYS moment 11. Before anything is saved or
 /// run it says where the key will be sent, shows every command a CLI provider
@@ -22,6 +19,8 @@ struct ImportProviderSheet: View {
     @State private var error: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: review.definition.profile.look.symbol ?? "square.and.arrow.down")
@@ -116,21 +115,14 @@ struct ImportProviderSheet: View {
     }
 
     private func testConnection() {
-        let definition = review.definition
-        guard let source = definition.dataSource(definition.defaultDataSource) else { return }
         isTesting = true
         testText = nil
         Task {
             defer { isTesting = false }
-            let live = DataSources.make(source, providerId: definition.id, scripts: ProviderFactory.builtInScripts,
-                                        secrets: TypedKeys(values: keys))
             do {
-                let response = try await live.fetchResponse()
-                testFailed = false
-                testText = DataSourceSectionText.testResult(.success(response))
-            } catch let failure as DataSourceError {
-                testFailed = true
-                testText = DataSourceSectionText.testResult(.failure(failure))
+                let result = try await Kit.shared.workshop.testConnection(review: review, keys: keys).result
+                if case .failure = result { testFailed = true } else { testFailed = false }
+                testText = DataSourceSectionText.testResult(result)
             } catch {
                 testFailed = true
                 testText = error.localizedDescription
@@ -140,11 +132,7 @@ struct ImportProviderSheet: View {
 
     private func add() {
         do {
-            let provider = try monitor.providers.import(review)
-            let vault = ProviderVault()
-            for (name, value) in keys where !value.isEmpty {
-                vault.save(value, name, provider: provider.id)
-            }
+            guard let provider = try value(of: Kit.shared.workshop.import(review: review, keys: keys)) else { return }
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()
         } catch {
@@ -167,14 +155,5 @@ struct ImportProviderSheet: View {
             .font(theme.font(size: 9, weight: .semibold))
             .foregroundStyle(theme.textSecondary)
             .tracking(0.5)
-    }
-}
-
-/// The keys typed while reviewing, for *Test Connection* before anything is saved.
-private struct TypedKeys: SecretStore {
-    let values: [String: String]
-
-    func secret(_ name: String, provider: String) -> String? {
-        values[name].flatMap { $0.isEmpty ? nil : $0 }
     }
 }

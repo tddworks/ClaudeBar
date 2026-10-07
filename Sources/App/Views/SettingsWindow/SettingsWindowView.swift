@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Root view of the standalone Settings window: a full-height sidebar plus
 /// the selected pane, over the theme's background — seamless chrome (the
@@ -11,7 +10,6 @@ struct SettingsWindowView: View {
     /// The one object allowed to write to the linked device. The Notify pane
     /// sends through it rather than opening a second publishing path of its own,
     /// so a button press and the background publish cannot both start a tile.
-    let notifyDriver: NotifyPublishDriver
 
     let leaderboard: Leaderboard
 
@@ -23,6 +21,8 @@ struct SettingsWindowView: View {
     @State private var searchText = ""
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack {
             // Real glass: the desktop blurs through the window (Liquid Glass
             // on macOS 26+), with the theme gradient as a translucent tint so
@@ -107,7 +107,7 @@ struct SettingsWindowView: View {
         case .hooks:
             HooksPane()
         case .notify:
-            NotifyPane(monitor: monitor, driver: notifyDriver)
+            NotifyPane(monitor: monitor)
         case .leaderboard:
             LeaderboardPane(leaderboard: leaderboard, monitor: monitor)
         case .updates:

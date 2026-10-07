@@ -1,6 +1,5 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// General pane: startup behavior, popover overview, and burn-rate warnings.
 struct GeneralPane: View {
@@ -8,6 +7,8 @@ struct GeneralPane: View {
     @State private var settings = AppSettings.shared
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "General",
             subtitle: "Startup behavior and core app preferences."

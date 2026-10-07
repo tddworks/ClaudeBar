@@ -2,7 +2,7 @@ package com.tddworks.claudebar.providers
 
 /** Guest passes a plan lets the person hand out — each gives a friend a free week of the product. */
 @ConsistentCopyVisibility
-internal data class GuestPass private constructor(
+public data class GuestPass private constructor(
     /** The passes left; null when unknown. */
     val passesRemaining: Long?,
     /** The referral link to share. */
@@ -23,6 +23,9 @@ internal data class GuestPass private constructor(
         /** A count below zero is none. */
         operator fun invoke(passesRemaining: Long? = null, referralURL: String) =
             GuestPass(passesRemaining?.let { maxOf(0, it) }, referralURL)
+
+        /** A pass to share; a count below zero is none. */
+        fun of(passesRemaining: Long?, referralURL: String): GuestPass = invoke(passesRemaining, referralURL)
     }
 }
 

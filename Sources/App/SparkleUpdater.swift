@@ -1,7 +1,7 @@
 #if ENABLE_SPARKLE
 import Sparkle
 import SwiftUI
-import Infrastructure
+import Kit
 
 /// Delegate to receive update notifications from Sparkle
 private class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate, @unchecked Sendable {

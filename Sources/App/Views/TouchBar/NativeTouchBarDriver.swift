@@ -1,7 +1,6 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 // MARK: - Native Touch Bar Driver
 
@@ -88,7 +87,7 @@ public final class NativeTouchBarDriver: NSObject, NSTouchBarDelegate {
         guard let monitor else { return }
         PersistentTouchBarDriver.shared.triggerRefreshPulse()
         Task {
-            await monitor.refreshAll()
+            try? await monitor.refreshAll()
         }
     }
 
@@ -273,7 +272,7 @@ public struct ClaudeBarNativeTouchBar: View {
                 Spacer()
 
                 Button {
-                    Task { await monitor.refreshAll() }
+                    Task { try? await monitor.refreshAll() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

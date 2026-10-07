@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Platformer Theme
 
@@ -204,6 +204,8 @@ struct PlatformerScenery: View {
     static let floorHeight: CGFloat = px * 12
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Canvas { context, size in
             let floorHeight = Self.floorHeight
             // As the design has them: a small one under the score line, left

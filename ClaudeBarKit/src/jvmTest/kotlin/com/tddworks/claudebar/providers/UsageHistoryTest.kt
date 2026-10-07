@@ -127,7 +127,7 @@ class UsageHistoryTest {
     fun `should show no usage history for an added login whose logs are not read`() {
         val provider = stub.makeProvider("grok", accounts = listOf(login("work")), usageHistory = history())
 
-        assertNull(provider.accounts.first { !it.isDefault }.usageHistory)
+        assertNull(provider.accounts.all.first { !it.isDefault }.usageHistory)
     }
 
     @Test

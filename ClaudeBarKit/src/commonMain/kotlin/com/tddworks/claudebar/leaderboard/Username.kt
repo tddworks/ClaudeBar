@@ -3,10 +3,10 @@ package com.tddworks.claudebar.leaderboard
 /**
  * *USERNAME* — the name on the board, chosen at join and shown publicly. An invalid name can't
  * be held at all; whether it is free is the server's to answer. The rule is pinned by
- * `Tests/DomainTests/Leaderboard/vectors.json`, which the Worker checks too.
+ * `ClaudeBarKit/src/jvmTest/resources/leaderboard/vectors.json`, which the Worker checks too.
  */
 @ConsistentCopyVisibility
-internal data class Username private constructor(val value: String) {
+public data class Username private constructor(val value: String) {
     override fun toString() = "@$value"
 
     companion object {

@@ -33,7 +33,7 @@ import org.kotlincrypto.hash.sha2.SHA256
  * folds the account form into the settings: one form, asked by Settings and *Add Account* alike.
  */
 @ConsistentCopyVisibility
-internal data class ProviderDefinition private constructor(
+public data class ProviderDefinition private constructor(
     /** WHO IT IS — the only place an id becomes a face. */
     val profile: ProviderProfile,
     /** The CLI a person would run, when there is one. */
@@ -44,7 +44,7 @@ internal data class ProviderDefinition private constructor(
     /** Where the product sits in the lineup by default; none → after the rest, by name (TARGET_ARCHITECTURE §10). */
     val order: Int?,
     /** The guest-passes capability (CANONICAL §2.1): the `guestPasses` block — its command and how to read the link; null when not declared. */
-    val guestPasses: GuestPassCommand?,
+    internal val guestPasses: GuestPassCommand?,
     val dataSources: List<DataSourceDefinition>,
     val defaultDataSource: String,
     /** Every data source answers on each refresh and the usage is their union — an extension's sections. */
@@ -54,7 +54,7 @@ internal data class ProviderDefinition private constructor(
     /** What it needs from the person; the account-scope ones are what *Add Account* asks for. */
     val settings: List<Setting>,
     /** *TODAY'S USAGE* — how to extract a login's usage history from its tool's own logs. */
-    val usageHistory: UsageLog.Definition?,
+    internal val usageHistory: UsageLog.Definition?,
     /** What it takes to see this provider's limits, said where an error would otherwise be. */
     val setup: Setup?,
 ) {
@@ -88,7 +88,7 @@ internal data class ProviderDefinition private constructor(
      * some sources ask for (`"for"`) is left out of a login added without it; a value every
      * source asks for, missing, throws.
      */
-    fun dataSourcesForAccount(values: Map<String, String>): List<DataSourceDefinition> {
+    internal fun dataSourcesForAccount(values: Map<String, String>): List<DataSourceDefinition> {
         val patch = accounts?.patch ?: emptyMap()
         return dataSources.mapNotNull { source ->
             var adapted = source
@@ -112,7 +112,7 @@ internal data class ProviderDefinition private constructor(
      * `{{account.<name>}}` filled. Null when the patch doesn't say where the login's own logs
      * are — it would read the default login's — or a value is missing.
      */
-    fun usageHistoryForAccount(values: Map<String, String>): UsageLog.Definition? {
+    internal fun usageHistoryForAccount(values: Map<String, String>): UsageLog.Definition? {
         val history = usageHistory ?: return null
         val patch = accounts?.patch?.get("usageHistory") ?: return null
         if (patch is JsonNull) return null
@@ -156,9 +156,9 @@ internal data class ProviderDefinition private constructor(
     }
 
     /** The same definition, as loaded from [origin]. */
-    fun withOrigin(origin: ProviderProfile.Origin): ProviderDefinition = copy(profile = profile.copy(origin = origin))
+    internal fun withOrigin(origin: ProviderProfile.Origin): ProviderDefinition = copy(profile = profile.copy(origin = origin))
 
-    fun toJson(): JsonObject = JsonObject(buildMap {
+    internal fun toJson(): JsonObject = JsonObject(buildMap {
         put("profile", profile.toJson())
         cli?.let { put("cli", if (cliPlaces.isEmpty()) JsonPrimitive(it) else JsonArray((listOf(it) + cliPlaces).map(::JsonPrimitive))) }
         put("enabledByDefault", JsonPrimitive(enabledByDefault))
@@ -247,16 +247,26 @@ internal data class ProviderDefinition private constructor(
      * sources with `patch` merged in (RFC 7396) and its saved values filling
      * `{{account.<name>}}` — one definition, never a copy per login.
      */
-    data class Accounts(
+    @ConsistentCopyVisibility
+    data class Accounts internal constructor(
         /** How a person adds one: by choosing the folder its login lives in. */
-        val folder: Folder? = null,
+        internal val folder: Folder? = null,
         /** …or by running the vendor's login into a new folder, which `folder` then checks. */
-        val signIn: SignInCall? = null,
+        internal val signIn: SignInCall? = null,
         /** …or by filling in the account's own settings. Written once, as the definition's account-scope `settings`. */
         val form: List<Setting> = emptyList(),
         /** By data source kind, what an added login changes; `null` leaves that data source out for added logins. */
         val patch: Map<String, JsonElement> = emptyMap(),
     ) {
+        /**
+         * The login a person runs themselves to sign in to [folder] — `CODEX_HOME=/x codex login` —
+         * quoted so it arrives unchanged when pasted; null when the definition has no sign-in.
+         */
+        fun signInCommand(folder: String): String? {
+            val call = signIn ?: return null
+            return (listOf("${call.homeVariable}=${shellQuoted(folder)}", call.cli) + call.args.map(::shellQuoted)).joinToString(" ")
+        }
+
         /** The ways *Add Account* offers, easiest first. */
         val ways: List<AddAccountWay>
             get() = listOfNotNull(
@@ -277,7 +287,7 @@ internal data class ProviderDefinition private constructor(
          * — the folder and the login's account id are saved as the account's values;
          * `notSignedIn` is what a folder without a login says.
          */
-        data class Folder(
+        internal data class Folder(
             val savedAs: String,
             /** The default login's folder — never added a second time. */
             val default: String? = null,
@@ -352,7 +362,7 @@ internal data class ProviderDefinition private constructor(
 
     companion object {
         /** One form: the account-scope settings are also what *Add Account* asks. */
-        operator fun invoke(
+        internal operator fun invoke(
             profile: ProviderProfile,
             cli: String? = null,
             cliPlaces: List<String> = emptyList(),
@@ -379,7 +389,7 @@ internal data class ProviderDefinition private constructor(
         }
 
         /** Decodes and checks the laws; [origin] is whoever loads it — the file never says. */
-        fun parse(text: String, origin: ProviderProfile.Origin = ProviderProfile.Origin.BUILT_IN): ProviderDefinition {
+        internal fun parse(text: String, origin: ProviderProfile.Origin = ProviderProfile.Origin.BUILT_IN): ProviderDefinition {
             val json = try {
                 Json.parseToJsonElement(text)
             } catch (error: Exception) {
@@ -389,7 +399,7 @@ internal data class ProviderDefinition private constructor(
         }
 
         /** The definition as written, with each setting's id used once; not yet [validate]d. */
-        fun from(json: JsonElement): ProviderDefinition {
+        internal fun from(json: JsonElement): ProviderDefinition {
             val o = json as? JsonObject ?: throw DefinitionError("a provider definition is an object")
             val profile = ProviderProfile.from(o["profile"] ?: throw DefinitionError("a provider definition needs \"profile\""))
             return decoding("provider ${profile.id}") {
@@ -449,7 +459,7 @@ internal object DefinitionErrors {
 }
 
 /** WHO IT IS — name, face and links; data, never a `when` on id. */
-internal data class ProviderProfile(
+public data class ProviderProfile(
     /** Stable forever: settings, the menu-bar choice and the lineup are keyed by it. */
     val id: String,
     val name: String,
@@ -494,7 +504,7 @@ internal data class ProviderProfile(
  * The face — an SF Symbol, an icon in the asset catalog, and a colour with the gradient it
  * runs into, for light and dark. Plain data: the app turns it into colours.
  */
-internal data class ProviderLook(
+public data class ProviderLook(
     val symbol: String? = null,
     val icon: String? = null,
     val color: Shades? = null,
@@ -542,7 +552,7 @@ internal data class ProviderLook(
 }
 
 /** A way *Add Account* offers — one per key of a definition's `accounts`. */
-internal enum class AddAccountWay {
+public enum class AddAccountWay {
     /** *Sign in with browser* */
     SIGN_IN,
 
@@ -559,4 +569,10 @@ internal fun JsonObject.present(key: String): JsonElement? = this[key]?.takeUnle
 /** A map of text, every value text. */
 internal fun JsonObject.textMap(key: String): Map<String, String>? = (present(key) as? JsonObject)?.mapValues { (name, value) ->
     (value as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw DefinitionError("\"$key.$name\" is text")
+}
+
+/** As a shell needs it to arrive unchanged. */
+private fun shellQuoted(argument: String): String {
+    val plain = argument.all { it.isLetterOrDigit() || it in "-_./=:@~" }
+    return if (plain) argument else "'" + argument.replace("'", "'\\''") + "'"
 }

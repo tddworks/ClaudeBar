@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
-import Providers
+import Kit
 
 /// Providers pane: master list of every registered provider with enable
 /// toggles; selecting a row drills into that provider's configuration.
@@ -18,6 +16,8 @@ struct ProvidersPane: View {
     @State private var listOrder: [String] = []
 
     var body: some View {
+
+        let _ = KitObservation.track()
         if let productId = selectedProviderId,
            let tab = monitor.productTabs.first(where: { $0.id == productId }) {
             ProviderDetailView(monitor: monitor, tab: tab, provider: tab.page) {
@@ -90,7 +90,9 @@ struct ProvidersPane: View {
             guard result == .OK, let url = panel.url else { return }
             do {
                 importError = nil
-                importing = IdentifiedReview(value: try ProviderCatalog().review(Data(contentsOf: url)))
+                let file = try String(contentsOf: url, encoding: .utf8)
+                guard let review = try value(of: Kit.shared.workshop.review(file: file)) else { return }
+                importing = IdentifiedReview(value: review)
             } catch {
                 importError = "Not a ClaudeBar provider: \(error.localizedDescription)"
             }
@@ -124,6 +126,8 @@ private struct ProviderListRow: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button(action: onSelect) {
             HStack(spacing: 12) {
                 ProviderIconView(providerId: tab.id, size: 26)
@@ -145,7 +149,7 @@ private struct ProviderListRow: View {
                     VStack(alignment: .trailing, spacing: 4) {
                         ForEach(tab.accounts, id: \.id) { login in
                             if let quota = monitor.usage(of: login)?.lowestQuota {
-                                LoginMeter(name: tab.loginName(login).map(AppSettings.shared.shown), quota: quota)
+                                LoginMeter(name: tab.loginName(login: login).map(AppSettings.shared.shown), quota: quota)
                             }
                         }
                     }
@@ -157,7 +161,7 @@ private struct ProviderListRow: View {
                     get: { tab.isEnabled },
                     set: { newValue in
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            monitor.setProductEnabled(tab, enabled: newValue)
+                            monitor.setProductEnabled(tab: tab, enabled: newValue)
                         }
                     }
                 ))
@@ -231,6 +235,8 @@ private struct ProviderDetailView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 14) {
                 backButton
@@ -254,7 +260,7 @@ private struct ProviderDetailView: View {
                         get: { tab.isEnabled },
                         set: { newValue in
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                monitor.setProductEnabled(tab, enabled: newValue)
+                                monitor.setProductEnabled(tab: tab, enabled: newValue)
                             }
                         }
                     ))
@@ -351,6 +357,8 @@ private struct QuotaVisibilityCard: View {
     @State private var refused: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsCard {
             SettingsFieldLabel(text: "QUOTAS")
                 .padding(.bottom, 12)
@@ -380,9 +388,9 @@ private struct QuotaVisibilityCard: View {
         let key = quota.quotaType.quotaKey
         return SettingsRow(title: quota.compactTitle ?? quota.quotaType.displayName, subtitle: nil) {
             SettingsSwitch(isOn: Binding(
-                get: { !monitor.hiddenQuotaKeys(for: provider).contains(key) },
+                get: { !monitor.hiddenQuotaKeys(of: provider).contains(key) },
                 set: { watched in
-                    refused = monitor.setQuota(key, hidden: !watched, for: provider)
+                    refused = monitor.setQuota(key: key, hidden: !watched, of: provider)
                         ? nil : "Keep at least one quota: \(monitor.lineupName(of: provider)) needs something to watch."
                 }
             ))
@@ -404,6 +412,8 @@ private struct LoginMeter: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         let color = theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy))
         HStack(spacing: 6) {
             if let name {

@@ -17,7 +17,7 @@
 
 ## As data
 
-Copilot is `Modules/Providers/Resources/Providers/copilot.json` with `copilot-billing.js` and `copilot-user.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #391. The plan below is the history of the old probes.
+Copilot is `ClaudeBarKit/definitions/copilot.json` with `copilot-billing.js` and `copilot-user.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #391. The plan below is the history of the old probes.
 
 - **Two data sources**, `billing` and `copilotAPI`, the old Probe Mode's values, so `copilot.probeMode` is read as it was.
 - **The username travels with the key.** Billing's credential adds `username` from its setting (`with`) and refuses a blank or malformed one (`match`, checked after `with`), so Billing without a username is not ready rather than a bad URL.

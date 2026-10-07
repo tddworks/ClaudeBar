@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
 /** What the background loop reports. */
-internal sealed class MonitoringEvent {
+public sealed class MonitoringEvent {
     /** A refresh cycle completed. */
     data object Refreshed : MonitoringEvent()
 
@@ -48,7 +48,7 @@ internal sealed class MonitoringEvent {
  * ordering them is `Providers`' (TARGET §2.1). Its own state — the selection, whether it
  * monitors, the hidden quotas — bumps [revision] after every change (MODULAR_DESIGN §5).
  */
-internal class QuotaMonitor(
+public class QuotaMonitor internal constructor(
     /** The providers you keep — each with its logins, in the pane's order (CANONICAL §1). */
     val providers: Providers,
     /** Tells the person about a status change — the composition root adapts alerting to it. */

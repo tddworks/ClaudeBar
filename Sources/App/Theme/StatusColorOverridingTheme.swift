@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// Forwards everything to `base` except the four status colors, which come
 /// from `policy`. Built only by `ThemeRegistry.resolveTheme`.

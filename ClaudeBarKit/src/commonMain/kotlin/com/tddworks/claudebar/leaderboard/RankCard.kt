@@ -9,7 +9,7 @@ import kotlin.math.floor
  * and no other member's name.
  */
 @ConsistentCopyVisibility
-internal data class RankCard private constructor(
+public data class RankCard private constructor(
     val rank: Int,
     val username: String,
     val total: Long,

@@ -4,7 +4,7 @@ description: Kiro as data — kiro-cli given /usage on stdin, the usage mapping,
 
 # Kiro: design
 
-Kiro is `Modules/Providers/Resources/Providers/kiro.json` and `kiro-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
+Kiro is `ClaudeBarKit/definitions/kiro.json` and `kiro-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it.
 
 ## Source
 

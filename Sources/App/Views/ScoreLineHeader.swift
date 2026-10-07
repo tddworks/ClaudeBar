@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 // MARK: - Score Line
@@ -10,6 +11,8 @@ struct ScoreLineView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(alignment: .top) {
             slot(line.player, line.status)
             Spacer(minLength: 6)
@@ -45,6 +48,8 @@ struct PixelCoin: View {
     let edge: Color
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Canvas { context, size in
             let unit = min(size.width / 5, size.height / 7)
             func fill(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ c: Color) {
@@ -61,6 +66,8 @@ struct QuestionMark: View {
     let color: Color
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Canvas { context, size in
             let unit = min(size.width / 4, size.height / 7)
             for (x, y, w, h) in [(0, 0, 4, 1), (3, 1, 1, 2), (0, 1, 1, 1), (1, 3, 2, 1), (1, 4, 1, 1), (1, 6, 1, 1)] as [(CGFloat, CGFloat, CGFloat, CGFloat)] {
@@ -84,6 +91,8 @@ struct QuestionBlockButton: View {
     @State private var bob = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button {
             withAnimation(.easeOut(duration: 0.12)) { bump = true; coin = true }
             withAnimation(.easeIn(duration: 0.14).delay(0.12)) { bump = false }

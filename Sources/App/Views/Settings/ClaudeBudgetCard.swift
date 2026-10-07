@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// The Claude API Budget — the person's own ceiling on Claude's API cost.
 /// A budget belongs to the account whose cost it judges (CANONICAL_MODEL §1),
@@ -12,6 +12,8 @@ struct ClaudeBudgetCard: View {
     @State private var budgetInput: String = ""
 
     var body: some View {
+
+        let _ = KitObservation.track()
         DisclosureGroup(isExpanded: $claudeBudgetExpanded) {
             Divider()
                 .background(theme.glassBorder)

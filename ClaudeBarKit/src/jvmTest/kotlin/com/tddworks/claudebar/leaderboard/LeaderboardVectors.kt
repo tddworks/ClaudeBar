@@ -6,7 +6,7 @@ import java.io.File
 import kotlin.io.encoding.Base64
 
 /**
- * `Tests/DomainTests/Leaderboard/vectors.json`: the username rule and the signing cases. The
+ * `ClaudeBarKit/src/jvmTest/resources/leaderboard/vectors.json`: the username rule and the signing cases. The
  * server (tddworks/claudebar-server) checks an identical copy, so the two sides can't drift
  * apart: change both together. Read from the Swift tests' folder, so there is one copy here too.
  */
@@ -36,7 +36,7 @@ internal data class LeaderboardVectors(val usernames: Usernames, val signing: Si
         private val json = Json { ignoreUnknownKeys = true }
 
         fun load(): LeaderboardVectors =
-            json.decodeFromString(serializer(), File("../Tests/DomainTests/Leaderboard/vectors.json").readText())
+            json.decodeFromString(serializer(), File("src/jvmTest/resources/leaderboard/vectors.json").readText())
     }
 }
 

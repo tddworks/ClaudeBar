@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
-import Domain
-import Infrastructure
+import Kit
 
 /// *SETTINGS → LEADERBOARD*: your name, whether you're shown, what you share,
 /// your own data, and leaving. Joining is here or in the popover's tab.
@@ -23,6 +22,8 @@ struct LeaderboardPane: View {
     private var membership: LeaderboardMembership { leaderboard.membership }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Leaderboard",
             subtitle: "Share daily token totals from the providers you choose and see where you rank. Only token counts leave this Mac, signed by a key that never does."
@@ -76,9 +77,9 @@ struct LeaderboardPane: View {
                     SettingsTextField(placeholder: "new-name", text: $newName)
                         .frame(width: 140)
                     SettingsActionButton(title: "Rename", iconName: "pencil", style: .secondary) {
-                        run { try await membership.rename(to: Username(newName)!); newName = "" }
+                        run { try await leaderboard.rename(to: Username.named(newName)!); newName = "" }
                     }
-                    .disabled(Username(newName) == nil || isWorking)
+                    .disabled(Username.named(newName) == nil || isWorking)
                 }
             }
             SettingsRowDivider()
@@ -86,19 +87,19 @@ struct LeaderboardPane: View {
                         subtitle: "Off keeps you ranked only in your own ClaudeBar.") {
                 SettingsSwitch(isOn: Binding(
                     get: { membership.isVisible },
-                    set: { visible in run { try await membership.setVisible(visible) } }
+                    set: { visible in run { try await leaderboard.setVisible(visible) } }
                 ))
             }
             SettingsRowDivider()
             SettingsRow(title: "Show my country on the globe", subtitle: globeSubtitle) {
                 SettingsSwitch(isOn: Binding(
                     get: { membership.sharesCountry },
-                    set: { shares in run { try await membership.setSharesCountry(shares) } }
+                    set: { shares in run { try await leaderboard.setSharesCountry(shares) } }
                 ))
             }
             .task(id: membership.sharesCountry) {
                 storedCountry = membership.sharesCountry
-                    ? (try? await membership.myStanding(in: BoardView(period: .sevenDays)))?.country
+                    ? (try? await leaderboard.myStanding(in: BoardView(period: .sevenDays)))?.country
                     : nil
             }
         }
@@ -128,12 +129,12 @@ struct LeaderboardPane: View {
                 .padding(.top, 8)
             HStack(spacing: 8) {
                 SettingsActionButton(title: "Save link", iconName: "link", style: .prominent) {
-                    if let typed { run { try await membership.setLink(typed); message = "Link saved." } }
+                    if let typed { run { try await leaderboard.setLink(typed); message = "Link saved." } }
                 }
                 .disabled(typed == nil || typed == membership.link || isWorking)
                 if membership.link != nil {
                     SettingsActionButton(title: "Remove", iconName: "xmark", style: .secondary) {
-                        run { try await membership.setLink(nil); linkHandle = ""; message = "Link removed." }
+                        run { try await leaderboard.setLink(nil); linkHandle = ""; message = "Link removed." }
                     }
                     .disabled(isWorking)
                 }
@@ -155,8 +156,8 @@ struct LeaderboardPane: View {
                     SettingsSwitch(isOn: Binding(
                         get: { membership.sharing.contains(id) },
                         set: { on in
-                            if on { try? membership.share(id) } else { membership.stopSharing(id) }
-                            Task { await leaderboard.uploader.uploadNow() }
+                            if on { try? leaderboard.share(provider: id) } else { membership.stopSharing(provider: id) }
+                            Task { try? await leaderboard.uploader.uploadNow() }
                         }
                     ))
                 }
@@ -186,7 +187,7 @@ struct LeaderboardPane: View {
             }
             .confirmationDialog("Leave the leaderboard?", isPresented: $confirmLeave) {
                 Button("Leave and delete my data", role: .destructive) {
-                    run { try await membership.leave(); message = "You left the leaderboard. Your data was deleted." }
+                    run { try await leaderboard.leave(); message = "You left the leaderboard. Your data was deleted." }
                 }
             } message: {
                 Text("Your username and every uploaded day are deleted from the server. This can't be undone.")
@@ -195,10 +196,7 @@ struct LeaderboardPane: View {
     }
 
     private func export() async throws {
-        let summary = try await membership.myStanding(in: BoardView(period: .thirtyDays))
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(summary)
+        let data = Data(try await leaderboard.exportMyData().utf8)
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.nameFieldStringValue = "claudebar-leaderboard-\(membership.username?.value ?? "me").json"
@@ -214,7 +212,7 @@ struct LeaderboardPane: View {
             do {
                 try await work()
             } catch {
-                message = (error as? LeaderboardError)?.errorDescription ?? error.localizedDescription
+                message = error.localizedDescription
             }
         }
     }

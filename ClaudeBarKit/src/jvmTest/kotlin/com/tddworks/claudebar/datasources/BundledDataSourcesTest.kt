@@ -19,7 +19,7 @@ class BundledDataSourcesTest {
         var count = 0
         try {
             val sources = testDataSources(home = home.path)
-            val files = File("../Modules/Providers/Resources/Providers").listFiles { f -> f.extension == "json" }.orEmpty()
+            val files = File("definitions").listFiles { f -> f.extension == "json" }.orEmpty()
             for (file in files.sortedBy { it.name }) {
                 val provider = Json.parseToJsonElement(file.readText()) as JsonObject
                 val id = ((provider["profile"] as? JsonObject)?.get("id") as? JsonPrimitive)?.content ?: file.nameWithoutExtension

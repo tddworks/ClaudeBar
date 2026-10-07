@@ -7,7 +7,7 @@ import com.tddworks.claudebar.providers.Provider
 import kotlinx.coroutines.flow.StateFlow
 
 /** The shell the lines are written for. */
-internal enum class LoginShell(val tag: String) {
+public enum class LoginShell(val tag: String) {
     ZSH("zsh"),
     BASH("bash"),
     FISH("fish"),
@@ -47,7 +47,7 @@ internal interface ShellLines {
  * choice count. A login chosen before the lines are in the shell waits for them, so a switch
  * never silently does nothing; the plain login needs no lines and is never kept waiting.
  */
-internal class NewSessions(
+public class NewSessions internal constructor(
     products: List<Provider>,
     private val shellLines: ShellLines,
     private val announcer: InUseAnnouncer? = null,

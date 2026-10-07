@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
-import DataSources
-import Domain
-import Infrastructure
-import Providers
+import Kit
 
 /// *Add Provider* — USER_JOURNEYS moments 5–9. Four steps build a
 /// `ProviderDraft`: *Start from*, *Connect* (with *Test Connection*), *Map
@@ -47,7 +44,7 @@ struct AddProviderSheet: View {
 
     @State private var step: Step = .start
     @State private var origin: Origin = .api
-    @State private var draft = ProviderDraft(start: .api)
+    @State private var draft = ProviderDraftForm(start: .api)
     @State private var copySourceId: String?
 
     // Connect
@@ -72,6 +69,8 @@ struct AddProviderSheet: View {
     @State private var saveError: String?
 
     var body: some View {
+
+        let _ = KitObservation.track()
         VStack(alignment: .leading, spacing: 16) {
             header
             Divider()
@@ -147,7 +146,7 @@ struct AddProviderSheet: View {
         switch step {
         case .start: origin != .copy || copySourceId != nil
         case .connect: response != nil
-        case .map: (try? previewDefinition()) != nil
+        case .map: draft.draft.missingForPreview == nil
         case .look: true
         }
     }
@@ -180,19 +179,19 @@ struct AddProviderSheet: View {
     }
 
     private var copyableDefinitions: [ProviderDefinition] {
-        (Array(ProviderFactory.builtInDefinitions.values) + ProviderCatalog().custom())
+        Kit.shared.workshop.templates
             .sorted { $0.profile.name < $1.profile.name }
     }
 
     private func applyOrigin() {
-        let start: ProviderDraft.Start = switch origin {
+        let start: ProviderDraftForm.Start = switch origin {
         case .api: .api
         case .cli: .cli
         case .file: .file
-        case .copy: copyableDefinitions.first { $0.id == copySourceId }.map(ProviderDraft.Start.copy) ?? .api
+        case .copy: copyableDefinitions.first { $0.id == copySourceId }.map(ProviderDraftForm.Start.copy) ?? .api
         }
         guard draft.start != start else { return }
-        var fresh = ProviderDraft(start: start)
+        var fresh = ProviderDraftForm(start: start)
         if case .copy = start { fresh.name = "\(fresh.name) copy" }
         draft = fresh
         response = nil
@@ -298,18 +297,16 @@ struct AddProviderSheet: View {
         Task {
             defer { isTesting = false }
             do {
-                let source = DataSources.make(
-                    try draft.connection(), providerId: "draft",
-                    scripts: ProviderFactory.builtInScripts, secrets: TypedKey(value: apiKey)
-                )
-                let answer = try await source.fetchResponse()
-                response = answer
-                testFailed = false
-                testText = DataSourceSectionText.testResult(.success(answer))
-            } catch let failure as DataSourceError {
-                response = nil
-                testFailed = true
-                testText = DataSourceSectionText.testResult(.failure(failure))
+                let result = try await Kit.shared.workshop.testConnection(draft: draft.draft, key: apiKey).result
+                switch result {
+                case .success(let answer):
+                    response = answer
+                    testFailed = false
+                case .failure:
+                    response = nil
+                    testFailed = true
+                }
+                testText = DataSourceSectionText.testResult(result)
             } catch {
                 response = nil
                 testFailed = true
@@ -334,7 +331,7 @@ struct AddProviderSheet: View {
 
     @ViewBuilder
     private var mapStep: some View {
-        let fields = response.map(ResponseFields.init) ?? ResponseFields(Response(body: Data()))
+        let fields = ResponseFields.of(response)
 
         label("WHAT THE NUMBERS MEAN")
         Picker("", selection: $measure) {
@@ -349,15 +346,15 @@ struct AddProviderSheet: View {
         } else {
             switch measure {
             case .percentUsed:
-                fieldPicker("Used", selection: $draft.used, fields: fields.filter(\.isNumber))
+                fieldPicker("Used", selection: $draft.used, fields: fields.all.filter(\.isNumber))
             case .percentLeft:
-                fieldPicker("Remaining", selection: $draft.remaining, fields: fields.filter(\.isNumber))
+                fieldPicker("Remaining", selection: $draft.remaining, fields: fields.all.filter(\.isNumber))
             case .money:
-                fieldPicker("Remaining", selection: $draft.remaining, fields: fields.filter(\.isNumber))
+                fieldPicker("Remaining", selection: $draft.remaining, fields: fields.all.filter(\.isNumber))
                 Toggle("never — a balance (no limit)", isOn: $isBalance)
                     .onChange(of: isBalance) { _, balance in if balance { draft.limit = nil } }
                 if !isBalance {
-                    fieldPicker("Limit", selection: $draft.limit, fields: fields.filter(\.isNumber))
+                    fieldPicker("Limit", selection: $draft.limit, fields: fields.all.filter(\.isNumber))
                 }
                 HStack {
                     Text("Currency").font(theme.font(size: 11))
@@ -367,9 +364,9 @@ struct AddProviderSheet: View {
                         .onChange(of: currency) { _, _ in applyMeasure() }
                 }
             }
-            fieldPicker("Resets", selection: $draft.resets, fields: Array(fields), allowsNever: true)
+            fieldPicker("Resets", selection: $draft.resets, fields: fields.all, allowsNever: true)
                 .onChange(of: draft.resets) { _, path in
-                    let value = fields.first { $0.path == path }
+                    let value = fields.all.first { $0.path == path }
                     draft.resetsFormat = value?.isNumber == true ? .epochSeconds : .iso8601
                 }
         }
@@ -428,25 +425,16 @@ struct AddProviderSheet: View {
         }
     }
 
-    private func previewDefinition() throws -> ProviderDefinition {
-        var preview = draft
-        if preview.name.trimmingCharacters(in: .whitespaces).isEmpty { preview.name = "Preview" }
-        return try preview.definition(id: "draft")
-    }
-
     private var livePreview: String {
         guard let response else { return "Test the connection first." }
-        do {
-            let definition = try previewDefinition()
-            let usage = try DataSources.make(definition.dataSources[0], providerId: "draft").read(response)
+        switch Kit.shared.workshop.preview(draft: draft.draft, response: response).shape {
+        case .usage(let usage):
             guard let quota = usage.quotas.first else { return "No numbers found yet." }
             return QuotaPreview.text(quota)
-        } catch let missing as ProviderDraft.Missing {
-            return missing.localizedDescription
-        } catch let failure as DataSourceError {
-            return "\(RefreshReport.headline(for: failure.step)) · \(failure.reason.localizedDescription)"
-        } catch {
-            return error.localizedDescription
+        case .incomplete(let reason):
+            return reason
+        case .failed(let error):
+            return "\(RefreshReport.headline(for: error.step)) · \(error.reason.localizedDescription)"
         }
     }
 
@@ -513,12 +501,8 @@ struct AddProviderSheet: View {
             draft.color = Self.shades(of: color)
         }
         do {
-            let catalog = ProviderCatalog()
-            let definition = try draft.definition(id: catalog.mintId(for: draft.name))
-            let provider = try monitor.providers.add(definition)
-            if !apiKey.isEmpty, draft.key == .apiKey || needsKeyForCopy {
-                ProviderVault().save(apiKey, "apiKey", provider: provider.id)
-            }
+            let key = draft.key == .apiKey || needsKeyForCopy ? apiKey : ""
+            guard let provider = try value(of: Kit.shared.workshop.add(draft: draft.draft, key: key)) else { return }
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()
         } catch {
@@ -528,7 +512,7 @@ struct AddProviderSheet: View {
 
     private static func shades(of color: Color) -> ProviderLook.Shades? {
         guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return nil }
-        let value = ProviderLook.RGB(Double(rgb.redComponent), Double(rgb.greenComponent), Double(rgb.blueComponent))
+        let value = ProviderLook.RGB(red: Double(rgb.redComponent), green: Double(rgb.greenComponent), blue: Double(rgb.blueComponent))
         return ProviderLook.Shades(light: value, dark: value)
     }
 
@@ -546,14 +530,5 @@ struct AddProviderSheet: View {
             .font(theme.font(size: 10, weight: .medium))
             .foregroundStyle(theme.textTertiary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// The key typed in *Connect*, for *Test Connection* before anything is saved.
-private struct TypedKey: SecretStore {
-    let value: String
-
-    func secret(_ name: String, provider: String) -> String? {
-        value.isEmpty ? nil : value
     }
 }

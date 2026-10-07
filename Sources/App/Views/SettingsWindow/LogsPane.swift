@@ -1,12 +1,13 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Kit
 
 /// Logs pane: quick access to the file log.
 struct LogsPane: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         SettingsPane(
             title: "Logs",
             subtitle: "~/Library/Logs/ClaudeBar/ClaudeBar.log · rotates at 5 MB"

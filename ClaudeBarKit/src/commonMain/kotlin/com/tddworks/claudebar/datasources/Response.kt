@@ -1,7 +1,7 @@
 package com.tddworks.claudebar.datasources
 
 /** What came back from a fetch, before anyone read it — what *Test Connection* shows. */
-internal class Response(
+public class Response(
     /** The HTTP status, when the fetch was over HTTP. */
     val status: Int? = null,
     headers: Map<String, String> = emptyMap(),

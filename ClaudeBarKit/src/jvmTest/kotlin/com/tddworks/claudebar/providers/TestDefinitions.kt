@@ -5,7 +5,7 @@ import java.nio.file.Files
 
 /** The definitions the app ships, read from the repository as the bundle holds them. */
 object TestDefinitions {
-    const val FOLDER = "../Modules/Providers/Resources/Providers"
+    const val FOLDER = "definitions"
 
     internal val builtIns = BuiltInDefinitions(FolderDefinitionFiles(FOLDER))
 

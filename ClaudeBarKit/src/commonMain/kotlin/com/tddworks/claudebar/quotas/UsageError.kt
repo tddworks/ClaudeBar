@@ -5,7 +5,7 @@ package com.tddworks.claudebar.quotas
  * One closed sum; its [tag]s are what a definition's `fallbackOn` and `recover` name.
  * Thrown inside the SDK; across the bridge it travels as a value (MODULAR_DESIGN §5).
  */
-internal sealed class UsageError(message: String) : Exception(message) {
+public sealed class UsageError(message: String) : Exception(message) {
     /** The name a definition uses for this failure. */
     abstract val tag: String
 

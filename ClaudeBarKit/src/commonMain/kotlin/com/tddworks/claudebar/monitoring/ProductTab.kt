@@ -8,7 +8,7 @@ import com.tddworks.claudebar.providers.Providers
  * A pill in the popover: one product with every enabled login of it — three Claude logins are
  * one *Claude* tab, side by side, not three tabs. Its logins come in the person's order.
  */
-internal class ProductTab(
+public class ProductTab internal constructor(
     /** The product. */
     val provider: Provider,
     /** Its logins in the lineup, in the person's order. */
@@ -37,7 +37,7 @@ internal class ProductTab(
             return lineup.mapNotNull { login ->
                 val product = providers.provider(of = login) ?: return@mapNotNull null
                 if (!seen.add(product.id)) return@mapNotNull null
-                ProductTab(product, product.accounts.filter { it.id in shown })
+                ProductTab(product, product.accounts.all.filter { it.id in shown })
             }
         }
     }

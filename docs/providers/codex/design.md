@@ -7,7 +7,7 @@ Add API-based usage probing for Codex, following the same dual-probe pattern as 
 ## Current shape: Codex is data
 
 Since `20be605` Codex has no Swift of its own. It is
-[`Modules/Providers/Resources/Providers/codex.json`](../../../Modules/Providers/Resources/Providers/codex.json),
+[`ClaudeBarKit/definitions/codex.json`](../../../ClaudeBarKit/definitions/codex.json),
 run by the one `Provider` and the `DataSources` workers
 ([TARGET_ARCHITECTURE.md](../../architecture/TARGET_ARCHITECTURE.md) §3):
 

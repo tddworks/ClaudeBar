@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 // MARK: - Theme Mode
 
@@ -749,7 +749,7 @@ extension ProviderBadgeState {
     /// Text for the header pill. States without data say so rather than
     /// borrowing "HEALTHY" from a snapshot that does not exist (#259).
     var badgeText: String {
-        switch self {
+        switch shape {
         case .syncing: "Syncing..."
         case .unavailable: "UNAVAILABLE"
         case .notSetUp: "NOT SET UP"
@@ -761,13 +761,13 @@ extension ProviderBadgeState {
 
     /// The header pill's text in `theme`'s own words for a quota's status.
     func badgeText(in theme: any AppThemeProvider) -> String {
-        if case .quota(let status) = self { return theme.statusWord(for: status) }
+        if case .quota(let status) = shape { return theme.statusWord(for: status) }
         return badgeText
     }
 
     /// Pill accent color, resolved against the active theme.
     func badgeColor(_ theme: any AppThemeProvider) -> Color {
-        switch self {
+        switch shape {
         case .syncing, .awaitingData, .notSetUp, .usageOnly: theme.textTertiary
         // Matches the warning triangle on the "Unavailable" card below it.
         case .unavailable: theme.statusWarning
@@ -846,6 +846,8 @@ struct ThemeSwitcherButton: View {
     @State private var isHovering = false
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 cycleTheme()

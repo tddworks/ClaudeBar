@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
  * what a login runs ([sources]), and every change that alters that grows [sourcesRevision] —
  * the provider pulls, and remakes a login's data sources when they are older.
  */
-internal class Configuration internal constructor(
+public class Configuration internal constructor(
     private val definition: ProviderDefinition,
     private val settings: ProviderSettingsRepository,
     internal val vault: SecretVault?,

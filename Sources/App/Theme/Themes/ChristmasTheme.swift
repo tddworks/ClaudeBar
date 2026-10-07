@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 // MARK: - Christmas Theme
@@ -142,6 +143,8 @@ struct ChristmasSnowfallOverlay: View {
     let snowflakeCount: Int
     
     var body: some View {
+    
+        let _ = KitObservation.track()
         SnowfallOverlay(snowflakeCount: snowflakeCount)
     }
 }
@@ -150,6 +153,7 @@ struct ChristmasSnowfallOverlay: View {
 
 struct ChristmasBackgroundOrbs: View {
     var body: some View {
+        let _ = KitObservation.track()
         GeometryReader { geo in
             ZStack {
                 // BIG VIBRANT RED orb (top left)
@@ -338,6 +342,8 @@ struct SnowfallOverlay: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
 

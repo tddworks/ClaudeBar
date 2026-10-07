@@ -1,3 +1,4 @@
+import Kit
 import SwiftUI
 
 /// The small eye that masks something personal in the popover for screen
@@ -11,6 +12,8 @@ struct PrivacyEyeBadge: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+
+        let _ = KitObservation.track()
         Button {
             isHidden.toggle()
         } label: {

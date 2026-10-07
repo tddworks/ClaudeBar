@@ -15,7 +15,7 @@ internal object RepoDefinitions {
     val builtIns: BuiltInDefinitions by lazy { BuiltInDefinitions(FolderDefinitionFiles(folder())) }
 
     private fun folder(): String {
-        val relative = "Modules/Providers/Resources/Providers"
+        val relative = "ClaudeBarKit/definitions"
         var directory = NSFileManager.defaultManager.currentDirectoryPath
         repeat(8) {
             val candidate = "$directory/$relative"

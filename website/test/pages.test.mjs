@@ -38,7 +38,7 @@ test("Sparkle's feed stays on GitHub Pages", () => {
 
 // The built-in providers, as the app finds them: every definition in the bundle, in lineup order.
 const definitions = (() => {
-  const folder = new URL("../../Modules/Providers/Resources/Providers/", import.meta.url);
+  const folder = new URL("../../ClaudeBarKit/definitions/", import.meta.url);
   return readdirSync(folder)
     .filter((file) => file.endsWith(".json"))
     .map((file) => JSON.parse(readFileSync(new URL(file, folder), "utf8")))

@@ -1082,7 +1082,7 @@ internal class CursorAccountTest {
             assertEquals(20.0, first.refreshNow(second).usage().quotas[0].percentRemaining)
             assertTrue(settings.accounts("cursor").all { it.probeConfig.isEmpty() })
             val relaunched = make()
-            val saved = required(relaunched.accounts.firstOrNull { it.id == added.id })
+            val saved = required(relaunched.accounts.all.firstOrNull { it.id == added.id })
             assertEquals("Work", saved.displayName)
             assertEquals(40.0, relaunched.refreshNow(saved).usage().quotas[0].percentRemaining)
             vault.delete("accessToken", saved.id)

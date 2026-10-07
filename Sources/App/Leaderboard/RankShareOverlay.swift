@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
-import Domain
 import Kit
 
 /// *SHARE MY RANK* — over the popover: the image as it will be posted, its
@@ -24,6 +23,8 @@ struct RankShareOverlay: View {
     }
 
     var body: some View {
+
+        let _ = KitObservation.track()
         ZStack(alignment: .bottom) {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()

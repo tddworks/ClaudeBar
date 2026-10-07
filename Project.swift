@@ -21,50 +21,8 @@ let project = Project(
         ]
     ),
     targets: [
-        // MARK: - Domain Layer
-        .target(
-            name: "Domain",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.domain",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Sources/Domain/**"],
-            dependencies: [
-                .target(name: "Quotas"),
-                .target(name: "DataSources"),
-                .target(name: "Providers"),
-                .external(name: "Mockable"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // MARK: - Modules (one per bounded context — docs/architecture/MODULAR_DESIGN.md)
-
-        // Quotas — the usage model every module speaks: UsageSnapshot,
-        // UsageQuota, UsageError, plans and costs. Depends on nothing.
-        .target(
-            name: "Quotas",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.quotas",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/Quotas/Sources/**"],
-            dependencies: [
-                .target(name: "Kit"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // Kit — the Swift face of ClaudeBarKit, the Kotlin SDK (MODULAR_DESIGN §5), and the
-        // only target that links it; scripts/build-kotlin.sh builds the framework.
+        // Kit — the Swift face of ClaudeBarKit, the Kotlin SDK that holds everything but the UI
+        // (MODULAR_DESIGN §5), and the only target that links it; scripts/build-kotlin.sh builds it.
         .target(
             name: "Kit",
             destinations: .macOS,
@@ -74,160 +32,6 @@ let project = Project(
             sources: ["Modules/Kit/Sources/**"],
             dependencies: [
                 .xcframework(path: "ClaudeBarKit/build/XCFrameworks/release/ClaudeBarKit.xcframework"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // DataSources — DataSource, its definition, the closed sums and their
-        // workers, and the ports for what lies outside (CLI, network, RPC).
-        .target(
-            name: "DataSources",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.datasources",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/DataSources/Sources/**"],
-            dependencies: [
-                .target(name: "Quotas"),
-                .target(name: "Kit"),
-                .external(name: "Mockable"),
-                .external(name: "SwiftTerm"),
-                .external(name: "Subprocess"),
-                .external(name: "SweetCookieKit"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // AWSClients — the only module that links the AWS SDK: CloudWatch
-        // sums and the Bedrock price list, behind DataSources' ports.
-        .target(
-            name: "AWSClients",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.awsclients",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/AWSClients/Sources/**"],
-            dependencies: [
-                .target(name: "DataSources"),
-                .target(name: "Kit"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // Providers — the one Provider lifecycle, ProviderDefinition and the
-        // catalog; the built-in definitions ship in its Resources.
-        .target(
-            name: "Providers",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.providers",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/Providers/Sources/**"],
-            resources: ["Modules/Providers/Resources/**"],
-            dependencies: [
-                .target(name: "Quotas"),
-                .target(name: "DataSources"),
-                .target(name: "Kit"),
-                .external(name: "Mockable"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        .target(
-            name: "AWSClientsTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.awsclients-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/AWSClients/Tests/**"],
-            dependencies: [
-                .target(name: "AWSClients"),
-                .target(name: "DataSources"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
-        .target(
-            name: "DataSourcesTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.datasources-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/DataSources/Tests/**"],
-            dependencies: [
-                .target(name: "DataSources"),
-                .target(name: "Quotas"),
-                .external(name: "Mockable"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
-        .target(
-            name: "ProvidersTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.providers-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Modules/Providers/Tests/**"],
-            dependencies: [
-                .target(name: "Providers"),
-                .target(name: "DataSources"),
-                .target(name: "Quotas"),
-                .external(name: "Mockable"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
-        // MARK: - Infrastructure Layer
-        .target(
-            name: "Infrastructure",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.infrastructure",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Sources/Infrastructure/**"],
-            dependencies: [
-                .target(name: "Domain"),
-                .target(name: "Kit"),
-                .target(name: "DataSources"),
-                .external(name: "Mockable"),
-                .external(name: "SwiftTerm"),
-                .external(name: "SweetCookieKit"),
-                .external(name: "Subprocess"),
             ],
             settings: .settings(
                 base: [
@@ -247,15 +51,12 @@ let project = Project(
             sources: ["Sources/App/**"],
             resources: [
                 "Sources/App/Resources/**",
+                // The built-in provider definitions, read by ClaudeBarCore.start(definitions:).
+                .folderReference(path: "ClaudeBarKit/definitions"),
             ],
             entitlements: .file(path: "Sources/App/entitlements.plist"),
             dependencies: [
-                .target(name: "Domain"),
                 .target(name: "Kit"),
-                .target(name: "DataSources"),
-                .target(name: "Providers"),
-                .target(name: "AWSClients"),
-                .target(name: "Infrastructure"),
                 .external(name: "Sparkle"),
                 .external(name: "MenuBarExtraAccess"),
                 .external(name: "Matrix"),
@@ -283,60 +84,6 @@ let project = Project(
             )
         ),
 
-        // MARK: - Domain Tests
-        .target(
-            name: "DomainTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.domain-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/DomainTests/**"],
-            dependencies: [
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
-                .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
-        // MARK: - Infrastructure Tests
-        .target(
-            name: "InfrastructureTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.infrastructure-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/InfrastructureTests/**"],
-            dependencies: [
-                .target(name: "Infrastructure"),
-                .target(name: "DataSources"),
-                .target(name: "Kit"),
-                .target(name: "Domain"),
-                .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
         // MARK: - App Tests
         .target(
             name: "AppTests",
@@ -347,37 +94,8 @@ let project = Project(
             sources: ["Tests/AppTests/**"],
             dependencies: [
                 .target(name: "ClaudeBar"),
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
+                .target(name: "Kit"),
             ]
-        ),
-
-        // MARK: - Acceptance Tests (BDD - Outer Loop)
-        .target(
-            name: "AcceptanceTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.acceptance-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/AcceptanceTests/**"],
-            dependencies: [
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
-                .target(name: "DataSources"),
-                .target(name: "Providers"),
-                .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
         ),
     ],
     schemes: [
@@ -387,13 +105,7 @@ let project = Project(
             buildAction: .buildAction(targets: ["ClaudeBar"]),
             testAction: .targets(
                 [
-                    .testableTarget(target: .target("AcceptanceTests")),
-                    .testableTarget(target: .target("DomainTests")),
-                    .testableTarget(target: .target("InfrastructureTests")),
                     .testableTarget(target: .target("AppTests")),
-                    .testableTarget(target: .target("DataSourcesTests")),
-                    .testableTarget(target: .target("AWSClientsTests")),
-                    .testableTarget(target: .target("ProvidersTests")),
                 ],
                 configuration: .debug
             ),

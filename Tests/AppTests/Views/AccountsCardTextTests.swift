@@ -1,8 +1,5 @@
-import DataSources
-import Domain
+import Kit
 import Foundation
-import Infrastructure
-import Providers
 import Testing
 @testable import ClaudeBar
 
@@ -11,15 +8,12 @@ import Testing
 @MainActor
 @Suite
 struct AccountsCardTextTests {
-    private func codex(_ logins: [ProviderAccountConfig] = []) throws -> Provider {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json")))
-        return try ProviderFactory.make("codex", settings: settings, accounts: logins)
+    private func codex(_ logins: [[String: Any]] = []) throws -> Provider {
+        try TestKit.start(settings: TestKit.settings("codex", logins: logins)).provider("codex")
     }
 
-    private func login(_ id: String, folder: String, madeBy: AccountOrigin) -> ProviderAccountConfig {
-        ProviderAccountConfig(accountId: id, label: "", email: "\(id)@example.com",
-                              probeConfig: ["codexHome": folder, "chatgptAccountId": id], madeBy: madeBy)
+    private func login(_ id: String, folder: String, madeBy: AccountOrigin) -> [String: Any] {
+        TestKit.login(id, email: "\(id)@example.com", values: ["codexHome": folder, "chatgptAccountId": id], madeBy: madeBy)
     }
 
     @Test
@@ -32,30 +26,28 @@ struct AccountsCardTextTests {
     func `should offer Codex's ways to add an account, easiest first`() throws {
         let text = AccountsCardText(provider: try codex())
 
-        #expect(text.ways.map(\.label) == ["Sign in with browser", "Choose Signed-in Folder"])
+        #expect(text.ways.map { $0.label } == ["Sign in with browser", "Choose Signed-in Folder"])
     }
 
     @Test
     func `should offer only to enter an API key for a provider the person added`() throws {
-        var draft = ProviderDraft(start: .api)
+        var draft = ProviderDraftForm(start: .api)
         draft.url = "https://openrouter.ai/api/v1/auth/key"
         draft.key = .apiKey
         draft.measure = .percentUsed
         draft.used = "$.used"
         draft.name = "OpenRouter"
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json")))
-        let provider = ProviderFactory.make(try draft.definition(id: "custom-openrouter"), settings: settings)
+        let kit = try TestKit.start()
+        let provider = try #require(try value(of: kit.workshop.add(draft: draft.draft, key: "")))
 
         #expect(AccountsCardText(provider: provider).ways.map(\.label) == ["Enter API key"])
     }
 
     @Test
     func `should describe, re-sign and remove an API account without mentioning a CLI or folder`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID()).json")))
-        let provider = try ProviderFactory.make("deepseek", settings: settings,
-                                          accounts: [ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: [:], madeBy: .form)])
+        let provider = try TestKit.start(settings: TestKit.settings("deepseek", logins: [
+            TestKit.login("work", label: "Work", values: [:], madeBy: .form),
+        ])).provider("deepseek")
         let text = AccountsCardText(provider: provider)
         #expect(text.defaultLoginDescription == "Default account")
         #expect(text.reauthHelp(for: provider.defaultAccount) == "Update the default account's key in Settings, then refresh.")
@@ -99,9 +91,10 @@ struct AccountsCardTextTests {
 
     @Test func `should keep a folder account's folder on removal and ask to sign in with the CLI, not for a new key`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"cli":"example","defaultDataSource":"file","dataSources":[{"kind":"file","fetch":{"file":{"path":"/tmp/example.json"}},"mapping":{"json":{"quotas":[]}}}],"settings":[{"id":"home","label":"Home Folder","scope":"account","kind":"path"}],"accounts":{"patch":{}}}"#
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
-        let account = ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: ["home": "/tmp/work profile"], madeBy: .form)
-        let provider = ProviderFactory.make(try ProviderDefinition.parse(Data(json.utf8)), settings: settings, accounts: [account])
+        let provider = try TestKit.start(
+            settings: TestKit.settings("example", logins: [TestKit.login("work", label: "Work", values: ["home": "/tmp/work profile"], madeBy: .form)]),
+            custom: ["example": json]
+        ).provider("example")
         let text = AccountsCardText(provider: provider)
 
         #expect(text.removeMessage(for: provider.accounts[1]) == "Removes Work from ClaudeBar. Its login and folder stay where they are.")
@@ -110,8 +103,7 @@ struct AccountsCardTextTests {
 
     @Test func `should show the provider's own sign-in hint when the default login's key is refused`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"defaultDataSource":"api","dataSources":[{"kind":"api","credential":{"sqlite":{"path":"~/example.db","query":"SELECT 1","fields":{},"hint":"Sign in again in Example, then refresh."}},"fetch":{"http":{"url":"https://example.test"}},"mapping":{"json":{"quotas":[]}}}]}"#
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
-        let provider = ProviderFactory.make(try ProviderDefinition.parse(Data(json.utf8)), settings: settings)
+        let provider = try TestKit.start(custom: ["example": json]).provider("example")
 
         #expect(AccountsCardText(provider: provider).reauthHelp(for: provider.defaultAccount) == "Sign in again in Example, then refresh.")
     }

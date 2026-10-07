@@ -28,7 +28,7 @@ class ProductSwitchTest {
     fun `should show every login of a provider in the lineup when the provider is on`() {
         val codex = codex(twoLogins())
 
-        val shown = codex.accounts.count(codex::isInLineup)
+        val shown = codex.accounts.all.count(codex::isInLineup)
         assertTrue(codex.isEnabled)
         assertEquals(2, shown)
     }
@@ -39,8 +39,8 @@ class ProductSwitchTest {
 
         codex.isEnabled = false
 
-        assertEquals(0, codex.accounts.count(codex::isInLineup))
-        assertEquals(2, codex.accounts.count { it.isEnabled })
+        assertEquals(0, codex.accounts.all.count(codex::isInLineup))
+        assertEquals(2, codex.accounts.all.count { it.isEnabled })
     }
 
     @Test

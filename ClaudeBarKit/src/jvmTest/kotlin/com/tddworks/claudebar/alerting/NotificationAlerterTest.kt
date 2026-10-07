@@ -31,7 +31,7 @@ internal class NotificationAlerterTest {
 
     /** The names a lineup gives: each built-in definition's profile name, as the composition root answers. */
     private val definitionNames = LineupNames { providerId ->
-        File("../Modules/Providers/Resources/Providers/$providerId.json").takeIf { it.exists() }
+        File("definitions/$providerId.json").takeIf { it.exists() }
             ?.let { Json.parseToJsonElement(it.readText()).jsonObject["profile"]?.jsonObject?.get("name")?.jsonPrimitive?.content }
     }
 

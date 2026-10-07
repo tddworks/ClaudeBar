@@ -4,7 +4,7 @@ Contributor notes for the Gemini provider. For setup, see the [README](README.md
 
 ## As data
 
-Gemini is `Modules/Providers/Resources/Providers/gemini.json` and `gemini-quota.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #395.
+Gemini is `ClaudeBarKit/definitions/gemini.json` and `gemini-quota.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #395.
 
 - **`http.steps`.** `project` (`loadCodeAssist`) is `optional` with `attempts: 3` and keeps `$.cloudaicompanionProject`; `quota` sends `{"project": …}`, or `{}` when no project was found (`dropEmpty`). A 401 on either step is the whole data source's: it renews the login.
 - **The login is renewed by its CLI** (`refresh: {"cli": …}`): on a 401, `gemini` runs with `/quit`, renews `oauth_creds.json` itself, and the file is read again. The refresher tells the data source it doesn't write back (`writesBack`), so ClaudeBar never writes Google's file. Never proactive: the expiry isn't checked, as before.

@@ -21,7 +21,7 @@ internal object NotifyConstants {
  * `HookSettingsRepository` — Notify! is written to, not read from, so no provider setting
  * applies. The device token is a secret: it goes to the credential store, never settings.json.
  */
-internal interface NotifySettingsRepository {
+public interface NotifySettingsRepository {
     fun isNotifyEnabled(): Boolean
     fun setNotifyEnabled(enabled: Boolean)
 

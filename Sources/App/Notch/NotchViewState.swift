@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import Domain
+import Kit
 
 /// Everything the notch draws, in one Equatable value.
 ///

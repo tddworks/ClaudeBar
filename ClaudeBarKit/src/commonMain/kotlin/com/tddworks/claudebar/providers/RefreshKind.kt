@@ -1,7 +1,7 @@
 package com.tddworks.claudebar.providers
 
 /** How much work a refresh should do, and whether it counts as the person asking. */
-internal enum class RefreshKind {
+public enum class RefreshKind {
     /** A genuine click: the most expensive work is allowed, and success means "the user connected". */
     INTERACTIVE,
 

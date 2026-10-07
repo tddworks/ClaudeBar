@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * `{{setting.region}}`, and a value the chosen option carries as `{{setting.region.site}}`.
  */
 @ConsistentCopyVisibility
-internal data class Setting private constructor(
+public data class Setting private constructor(
     val id: String,
     val label: String,
     val kind: Kind,
@@ -118,11 +118,11 @@ internal data class Setting private constructor(
     fun path(values: Map<String, String>): String? = if (kind is Kind.Path) values[id] else null
 
     /** Whether two logins' values are the same place — only a path can be; two spellings of one folder are. */
-    fun isSamePlace(value: String, other: String, paths: PathChecking): Boolean =
+    internal fun isSamePlace(value: String, other: String, paths: PathChecking): Boolean =
         kind is Kind.Path && paths.canonical(value) == paths.canonical(other)
 
     /** What *Add Account* prints when [value] breaks this setting's rule, or null when it keeps it. An empty value is never kept. */
-    fun check(value: String, paths: PathChecking): String? {
+    internal fun check(value: String, paths: PathChecking): String? {
         if (value.isEmpty()) return "Fill in $label."
         return when (val kind = kind) {
             Kind.Secret -> null
@@ -163,7 +163,7 @@ internal data class Setting private constructor(
     fun ownValue(values: Map<String, String>): String? = if (scope == Scope.ACCOUNT) values[id] else null
 
     /** Puts [value] where this setting keeps it: a secret with the keys for the vault, anything else with the saved values. */
-    fun keep(value: String, entry: SettingEntry, paths: PathChecking) {
+    internal fun keep(value: String, entry: SettingEntry, paths: PathChecking) {
         val kept = if (kind is Kind.Path) paths.canonical(value) else value
         if (isSecret) entry.secrets[id] = kept else entry.values[id] = kept
     }

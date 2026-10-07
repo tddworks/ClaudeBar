@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 extension Session.Phase {
     /// The display color for this session phase.

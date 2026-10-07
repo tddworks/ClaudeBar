@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Kit
 
 /// The login the popover is showing: its initial, its email or organization
 /// — masked when *Hide account email* is on (#375) — its plan badge, the eye
@@ -15,6 +15,8 @@ struct AccountCardView: View {
     @State var settings = AppSettings.shared
 
     var body: some View {
+
+        let _ = KitObservation.track()
         HStack(spacing: 10) {
             // Avatar circle
             ZStack {
