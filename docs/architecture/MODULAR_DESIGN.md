@@ -61,7 +61,7 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 
 | Module | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | `Internal/` (the implementation) |
 |---|---|---|---|
-| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O; the rules' bodies call the Kotlin core `QuotaRules` (§3.1) |
+| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O. The values are Kotlin (`Kotlin/` → `QuotaKernel`); `Sources/` is their Swift face (§3.1) |
 | `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5) |
 | `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
 | `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository` | definition-file reading, `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
@@ -89,7 +89,7 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 ```
 
 1. **Arrows point at the supplier.** `Quotas` imports nothing but Foundation
-   and its own Kotlin core (§3.1).
+   and its own Kotlin kernel (§3.1).
 2. **Siblings never import across the fence.** `Monitoring` does not import
    `Alerting`; it emits `MonitoringEvent` and `Alerting` subscribes.
 3. **No module names a vendor.** A vendor's name appears in its JSON file,
@@ -104,62 +104,89 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 The build enforces it: a forbidden import fails to compile, because the target
 has no such dependency in `Project.swift`.
 
-### 3.1 · Rules written once, in Kotlin
+### 3.1 · The kernel written once, in Kotlin
 
-> **Status: PROPOSED** — the spike that proved it is `kmp-spike/README.md`.
+> **Status: PROPOSED** — proven by the spike in `kmp-spike/README.md`.
 
-A rule that a second platform would need too (a Windows or Linux tray app, an
-Android companion, a JVM backend) is written once in Kotlin Multiplatform and
-**called from inside the Swift module that owns it**. The law keeps its one
-owner ([model §5](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
-only the language of its body changes.
+The shared kernel's values and laws are written once in Kotlin
+Multiplatform, so a second platform (a Windows or Linux tray app, an Android
+companion, a JVM backend) reads quotas with the same code. **The Kotlin types
+are the app's types**: Swift code holds a Kotlin `UsageQuota`, not a copy of
+one. Every law keeps its one owner
+([model §5](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)); only
+the language it is written in changes.
 
 ```text
 Modules/Quotas/
-├── Sources/                 THE DOMAIN, unchanged to every caller — Swift values,
-│                            Sendable, Decimal; their rules call the core
-│     UsageQuota.status      → QuotaRules.status(…)
-│     QuotaStatus.from(…)    → QuotaRules.statusFrom(…)
-└── Kotlin/                  THE CORE — a Gradle KMP project
-    ├── src/commonMain/      the rules: pure functions over numbers and strings
-    ├── src/jvmTest/         the rules' own tests, JUnit
-    └── build/…/QuotaRules.xcframework   built by Gradle, linked by Quotas only
+├── Kotlin/                     THE KERNEL — a Gradle KMP project
+│   ├── src/commonMain/         UsageQuota, QuotaType, QuotaStatus, StatusPolicy,
+│   │                           Left, Money, Window, UsagePace … and their laws
+│   ├── src/jvmTest/            the laws' tests, JUnit
+│   └── → QuotaKernel.xcframework   built by Gradle + SKIE, linked by Quotas only
+└── Sources/                    THE SWIFT FACE — extensions only, no second model
+      @_exported import QuotaKernel
+      Sendable · Comparable     conformances SKIE can't state
+      Date · Decimal · TimeInterval   Foundation views of Kotlin's millis and micros
+      init(…, resetsAt: Date? = nil, …)   the default arguments Kotlin's don't survive
+      QuotaType.session · .modelSpecific("opus")   construction shortcuts
+      quotaType.shape           a Swift enum to `switch` on, with associated values
 ```
 
-1. **The Swift module stays the face.** Callers keep `UsageQuota`,
-   `QuotaStatus`, `StatusPolicy` exactly as they are; nothing outside the
-   module changes. `Quotas` writes `internal import QuotaRules`, so no Kotlin
-   type can leak into another module's signature.
-2. **Only plain values cross.** The core takes and returns `Double`, `Long`,
-   `String` and its own enums, never a Swift type, and the Swift side
-   converts. Kotlin classes are not `Sendable` and have no `Decimal`; keeping
-   them inside one call avoids both (spike friction #1, #4).
-3. **The core is linked by exactly one module** (rule 4): `QuotaRules` →
-   `Quotas`. A second core for another module is its own framework.
-4. **Swift never implements a Kotlin interface.** The edges (CLI, network,
-   Keychain) stay Swift ports; Kotlin only decides. This avoids SKIE's hidden
-   `__name` for `suspend` requirements and the `NSObject` subclassing (spike
-   friction #2, #3).
-5. **Tooling**: Kotlin 2.4.20, SKIE 0.10.15 for the Swift API (a prebuilt
-   XCFramework; Swift export also builds for macOS but is Alpha and runs only
-   as an Xcode build phase — the switch when it is stable), JUnit 6 on a
-   `jvm()` target; `macosArm64` + `macosX64` because releases are universal
-   (`macosX64` is deprecated upstream: the day it is removed, Intel builds
-   need the Swift rules back or Intel support ends). KMMBridge is **not**
-   used while the core lives in this repo: it exists to publish a binary to
-   another repo; a Gradle task does the same here.
-6. **Built before generating**: `scripts/build-kotlin.sh` runs Gradle and
-   writes the XCFramework that `Project.swift` links; `tuist generate` and
-   every CI workflow run it first.
+1. **Kotlin owns values and their concurrency; Swift observes.** Kernel types
+   are immutable `data class`es. State that changes (later: the Monitor's) is
+   a Kotlin `StateFlow`, read in Swift as an `AsyncSequence` by a
+   `@MainActor @Observable` model the views read. Swift never mutates Kotlin
+   state.
+2. **The face vouches for `Sendable`, once per type.** Kotlin classes reach
+   Swift without `Sendable`. They are immutable, and Kotlin/Native objects are
+   safe across threads, so the face declares
+   `extension UsageQuota: @retroactive @unchecked Sendable {}` for each, in one
+   file. SKIE makes Kotlin enums `Sendable` itself. Nothing else in the app
+   writes `@unchecked`.
+3. **Only the face names the bridge.** `onEnum(of:)`, `KotlinLong`, SKIE's
+   generated type names and the millis/micros fields appear in
+   `Modules/Quotas/Sources` and nowhere else. Every other module uses the
+   face's Swift words. Moving to Swift export later then changes one folder.
+4. **Kotlin has no `Date` or `Decimal`.** Times are epoch milliseconds
+   (`Long`); money is micro-units (`Long`, exact to $0.000001). The face shows
+   them as `Date` and `Decimal`. The caller passes the clock (`nowMillis`),
+   and the face supplies `Date()`.
+5. **Sealed classes, not sealed interfaces.** A Kotlin sealed class becomes a
+   Swift class, so the face can add `.session`-style static shortcuts on it.
+   Pattern matching goes through `shape`.
+6. **Swift never implements a Kotlin interface.** The edges (CLI, network,
+   Keychain) stay Swift ports in `DataSources`. Kotlin only holds values and
+   decides. This avoids SKIE's hidden `__name` for `suspend` requirements and
+   `NSObject`-only adopters.
+7. **Linked by exactly one module** (rule 4): `QuotaKernel` → `Quotas`. Other
+   modules get it through `Quotas`' `@_exported import`.
+8. **Tooling.** Kotlin 2.4.20, SKIE 0.10.15, JUnit 6 on a `jvm()` target,
+   `macosArm64` + `macosX64` (releases are universal; `macosX64` is deprecated
+   upstream, so when it goes, Intel support goes with it). SKIE's
+   default-argument interop stays **off**: it fails to link in 0.10.15. No
+   KMMBridge: it publishes a binary to another repo, and here a Gradle task
+   does that.
+9. **Built before generating.** `scripts/build-kotlin.sh` runs Gradle and
+   writes the XCFramework that `Project.swift` links. Contributors need JDK
+   21. `tuist generate`, and every CI workflow, runs it first.
 
-**What moves first** — the status law, the one every surface reads (menu bar,
-cards, pills, Touch Bar, notch, notifications): `QuotaStatus.from` (absolute
-and pace-aware), `UsageQuota.status`, `percentTimeElapsed`,
-`status(under:)`, `UsageSnapshot.overallStatus(under:)`, and the quota key
-(`QuotaType.quotaKey` / `init(quotaKey:)`). The Swift suites that guard them
-today (`QuotaStatusTests`, `StatusPolicyTests`, `UsageQuotaTests`,
-`QuotaTypeTests`, `UsageSnapshotTests`) stay unchanged and pass: they are the
-proof the port answers the same.
+**Why SKIE, not Swift export.** Both build for macOS and both ran this
+design in the spike. SKIE produces a prebuilt XCFramework, so Xcode never
+runs Gradle. Its names look like Swift (`.healthy`, `QuotaTypeSession`) and
+it is stable. Swift export is Alpha, runs only as an Xcode build phase with
+sandboxing off, and gives sealed members mangled names. It is JetBrains'
+direction, so it is re-checked with each Kotlin release (next: 2.5,
+December 2026), and rule 3 keeps the switch to one folder.
+
+**Slice 1 — the quotas show.** The values a card, the menu bar and the
+status color read move to Kotlin: `UsageQuota`, `QuotaType`, `QuotaDuration`,
+`QuotaStatus`, `StatusPolicy`, `UsagePace`, `Left`, `Money`, `Window`.
+`UsageSnapshot` stays Swift (it holds `CostUsage`, `DailyUsageReport`,
+`AccountTier` and `ExtensionMetric`, which move with it in slice 2) and holds
+Kotlin quotas. The Swift suites that guard these laws today keep passing
+through the face, with call sites rewritten mechanically where a `switch`
+becomes `switch …shape`. The app shows the same cards on mock data
+(`scripts/demo-screenshots.sh`).
 
 ## 4 · Naming
 
@@ -278,9 +305,9 @@ testability" alone.
 - What each piece's tests guard: [TARGET §7](TARGET_ARCHITECTURE.md#7--testing).
 - `AcceptanceTests` stays at the App level and composes real modules with
   stubbed ports.
-- A Kotlin core's rules are tested in Kotlin with JUnit (`./gradlew jvmTest`);
-  the Swift module's existing tests keep guarding the same laws through the
-  Swift face, so a port is proven by the Swift suite staying green.
+- Kotlin laws are tested in Kotlin with JUnit (`./gradlew jvmTest`). The
+  Swift suites keep guarding the same laws through the face, so a port is
+  proven when the Swift suite stays green.
 - `MOCKING` is a project-level compilation condition in `Project.swift`, so
   every new target inherits it.
 
@@ -308,7 +335,8 @@ under *where the code is still behind*.
 
 ## 9 · Open
 
-- **The next Kotlin core.** After the status law: pace (`UsagePace`), then the
+- **The next Kotlin slices.** After the kernel: the Monitor's state as a
+  `StateFlow` (§3.1 rule 1), then the
   definition mappings in `DataSources` (the path dialect, `HumanDate`), which
   are pure and are what another platform would need to read the same JSON
   definitions. Not the workers: they are Apple I/O.
