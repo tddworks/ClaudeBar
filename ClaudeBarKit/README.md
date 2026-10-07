@@ -28,7 +28,7 @@ with it.
 
 ## Writing kernel code
 
-- **Times are `Double` seconds on the caller's clock; money is `Long`
+- **Times are `Double` Unix seconds (since 1970); money is `Long`
   nano-units; counts are `Long`.** Kotlin has no `Date` or `Decimal`, and a
   day's tokens pass 2³¹. A law that needs "now" takes `nowSeconds`.
 - **Use sealed classes, not sealed interfaces**, so Swift can add static
@@ -49,6 +49,38 @@ with it.
 - **Swift never implements a Kotlin interface.** The edges stay Swift ports.
 - Every new class gets its `@retroactive @unchecked Sendable` line in
   `Modules/Quotas/Sources/Kernel/ClaudeBarKit+Swift.swift`. SKIE marks enums `Sendable` itself.
+
+## Porting a Swift area
+
+The Swift is the specification: port its behaviour exactly, and port its tests.
+
+1. **Where.** What decides goes in `src/commonMain/kotlin/com/tddworks/claudebar/<context>/<area>/`
+   (e.g. `datasources/mapping`). What touches the Mac sits behind a port (an interface in
+   commonMain) with its adapter in `src/macosMain/…`, same package, calling the Apple
+   framework through Kotlin/Native (`platform.Foundation`, `platform.Security`,
+   `platform.posix`, `platform.JavaScriptCore` …). Kotlin never calls Swift.
+2. **Visibility.** Everything is `internal` until its context switches over. In one Gradle
+   module `internal` means *the whole SDK, hidden from Swift*, so a Kotlin type never
+   collides with the Swift type it replaces while both exist.
+3. **Tests.** JUnit 6 in `src/jvmTest/…`, same package; adapters in `src/macosTest/…` with
+   `kotlin.test`. Every test is `` @Test fun `should … when …`() `` in the person's words.
+   Chicago school: assert on returned values and resulting state, with hand-written fakes
+   for the ports — no mocking library. Each Swift test file becomes one Kotlin test file.
+4. **The foundation** (`datasources/*.kt`): `UsageError` (quotas), `DataSourceError`,
+   `Response`, `Credential` / `FoundCredential` / `MappingFacts`, the ports in `Ports.kt`,
+   the worker roles in `Workers.kt` (`CredentialFinding`, `CredentialRefreshing`, `Fetching`,
+   `Reading`, `Recovering`, `ReportedFailure`, `ErrorFact`, `HTTPStatusError`, `UsageMemory`),
+   `JsonScope` / `JsonPath` / `Placeholders` / RFC 7396 `merged`, `PathPattern` / `Paths`,
+   `Template` / `Jwt` / `SystemValues`, the `Fetch` model, and `DefinitionJson` with its
+   decoding helpers. Change a foundation file only through its owner, never from an area.
+5. **Definitions** decode with kotlinx.serialization: `@Serializable` data classes with the
+   Swift defaults; a shape with more than one spelling (a closed sum's single tag, a
+   string-or-object) gets a small `KSerializer` over `JsonElement`, as in `Fetch.kt`. A bad
+   definition throws `DefinitionError` saying where.
+6. **Concurrency.** A fetch is `suspend`; blocking work runs in `withContext(Dispatchers.IO)`.
+   Shared mutable state takes an atomicfu `SynchronizedObject`.
+7. **Logging.** `AppLog.probes` (and the other categories): what happened, never a token,
+   key, cookie or credential.
 
 ## Why SKIE, and what the spike found
 

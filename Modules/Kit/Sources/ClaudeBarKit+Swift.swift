@@ -30,11 +30,10 @@ extension MetricDelta: @retroactive @unchecked Sendable {}
 // MARK: - The kernel's clock and money
 
 extension Date {
-    /// Seconds on the kernel's clock. Apple's reference date keeps a `Date` exact
-    /// through the round trip; the kernel only subtracts `now`, so the epoch is ours.
-    var kernelSeconds: Double { timeIntervalSinceReferenceDate }
+    /// Seconds on the SDK's clock: since 1970 (Unix), the one epoch every platform shares.
+    var kernelSeconds: Double { timeIntervalSince1970 }
 
-    init(kernelSeconds: Double) { self.init(timeIntervalSinceReferenceDate: kernelSeconds) }
+    init(kernelSeconds: Double) { self.init(timeIntervalSince1970: kernelSeconds) }
 }
 
 enum KernelClock {

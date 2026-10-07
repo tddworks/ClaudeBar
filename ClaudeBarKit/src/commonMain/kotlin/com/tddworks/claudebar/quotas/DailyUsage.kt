@@ -7,7 +7,7 @@ import kotlin.native.ObjCName
  * Interim (CANONICAL_MODEL): leaves the kernel for `UsageHistory`; here because the snapshot carries it.
  */
 data class DailyUsageStat(
-    /** The day, as seconds on the caller's clock. */
+    /** The day, as Unix seconds (since 1970). */
     val dateSeconds: Double,
     /** Estimated cost, including cache tokens. */
     val totalCostNanos: Long,

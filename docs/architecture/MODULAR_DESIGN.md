@@ -200,7 +200,7 @@ QuotaMonitor.refresh(providerId)              ◀──  Button { kit.monitor.re
 
 | Rule | Example | Why |
 |---|---|---|
-| times are `Double` seconds on the caller's clock | `resetsAtSeconds`; laws take `nowSeconds` | Kotlin has no `Date`; the face uses Apple's reference date so a `Date` round-trips exactly |
+| times are `Double` Unix seconds (since 1970) | `resetsAtSeconds`; laws take `nowSeconds` | Kotlin has no `Date`, and once Kotlin reads times from a vendor the SDK needs one epoch every platform shares; the face turns them into `Date` (to the microsecond) |
 | money is `Long` nano-units | `totalCostNanos` | exact to $0.000000001, as per-token prices need; no `Decimal` in Kotlin |
 | counts are `Long` | `totalTokens` | a day's tokens pass 2³¹ |
 | a clean Kotlin name, renamed for Swift with `@ObjCName` when the face shows it with a Swift type | `@ObjCName("totalTokens64") val totalTokens: Long` → face `totalTokens: Int` | Kotlin stays readable for a second platform |

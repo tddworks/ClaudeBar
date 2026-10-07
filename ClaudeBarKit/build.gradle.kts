@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 // ClaudeBarKit.xcframework; Project.swift links it.
 plugins {
     kotlin("multiplatform") version "2.4.20"
+    kotlin("plugin.serialization") version "2.4.20"
     id("co.touchlab.skie") version "0.10.15"
 }
 
@@ -33,11 +34,22 @@ kotlin {
 
     sourceSets {
         // @ObjCName renames a Long count for Swift, so the face can show it as Int.
-        all { languageSettings.optIn("kotlin.experimental.ExperimentalObjCName") }
+        all {
+            languageSettings.optIn("kotlin.experimental.ExperimentalObjCName")
+            // The macOS adapters call Apple frameworks through cinterop.
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+        }
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.9.1")
             implementation("org.jetbrains.kotlinx:atomicfu:0.33.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+            implementation("io.ktor:ktor-client-core:3.6.0")
+            implementation("org.kotlincrypto.hash:sha2:0.8.0")
+            implementation("org.kotlincrypto.macs:hmac-sha2:0.8.0")
+        }
+        macosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:3.6.0")
         }
         // The adapters' native suite (kotlin.test): Keychain and friends against the real system.
         macosTest.dependencies {
@@ -46,7 +58,10 @@ kotlin {
         jvmTest.dependencies {
             implementation(project.dependencies.platform("org.junit:junit-bom:6.1.3"))
             implementation("org.junit.jupiter:junit-jupiter")
+            implementation("org.junit.jupiter:junit-jupiter-params")
             runtimeOnly("org.junit.platform:junit-platform-launcher")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+            implementation("io.ktor:ktor-client-mock:3.6.0")
             // ArchitectureTest: the package rules of MODULAR_DESIGN §3.
             implementation("com.lemonappdev:konsist:0.17.3")
         }

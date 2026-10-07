@@ -43,8 +43,9 @@ struct UsageQuotaTests {
             windowDuration: QuotaType.weekly.conventionalWindow.seconds
         )
 
-        // Then
-        #expect(quota.resetsAt == resetDate)
+        // Then — to the microsecond: the SDK's clock is Unix seconds, and moving a Date
+        // between Apple's epoch and 1970 can shift its last bit.
+        #expect(abs(quota.resetsAt!.timeIntervalSince(resetDate)) < 0.000_001)
     }
 
     @Test

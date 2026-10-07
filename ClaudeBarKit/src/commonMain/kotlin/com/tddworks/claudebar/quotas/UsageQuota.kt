@@ -10,8 +10,7 @@ import kotlin.math.min
  * One usage quota measurement for a provider — the value every card, the menu bar and
  * the status color read.
  *
- * Times are seconds on the caller's clock: the kernel only ever subtracts `nowSeconds`
- * from them, so any epoch works as long as `now` uses the same one. Money is nano-units.
+ * Times are Unix seconds (since 1970); money is nano-units.
  *
  * Interim shape (CANONICAL_MODEL): becomes `Quota` with `left: Left` — a share OR money.
  */

@@ -21,6 +21,6 @@ sealed class Left {
 
 /**
  * WHEN IT REFILLS — the length is the provider's word, never guessed from a quota's
- * name. A prepaid balance has none. Times are seconds on the caller's clock.
+ * name. A prepaid balance has none. Times are Unix seconds (since 1970).
  */
 data class Window(val lengthSeconds: Double?, val resetsAtSeconds: Double?)
