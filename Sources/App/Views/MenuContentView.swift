@@ -260,11 +260,13 @@ struct MenuContentView: View {
 
     // MARK: - Turn off ▾
 
-    /// The menu's card, its bottom-right just above the button; any click
-    /// outside it closes it.
+    /// The menu's card, just above the button, its right edge set in from
+    /// the board card's and the popover's so their outlines don't run into
+    /// its own; any click outside it closes it.
     private func turnOffMenu(above anchor: Anchor<CGRect>) -> some View {
         GeometryReader { proxy in
             let button = proxy[anchor]
+            let trailing = min(button.maxX - 10, proxy.size.width - 30)
             ZStack(alignment: .topLeading) {
                 Color.clear
                     .contentShape(.rect)
@@ -274,7 +276,7 @@ struct MenuContentView: View {
                     openWindow(id: "settings")
                     NSApp.activate(ignoringOtherApps: true)
                 }
-                .alignmentGuide(.leading) { $0[.trailing] - button.maxX }
+                .alignmentGuide(.leading) { $0[.trailing] - trailing }
                 .alignmentGuide(.top) { $0[.bottom] - (button.minY - 6) }
             }
         }
