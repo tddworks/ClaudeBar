@@ -25,7 +25,25 @@
   "cli": "claude",
   "enabledByDefault": true,
   "order": 10,
-  "guestPasses": {},
+  "guestPasses": {
+    "args": ["/passes", "--allowed-tools", ""],
+    "timeout": 20,
+    "environment": {
+      "set": {
+        "CLAUDEBAR_PROBE": "1"
+      }
+    },
+    "autoResponses": {
+      "Esc to cancel": "\r",
+      "Ready to code here?": "\r",
+      "Press Enter to continue": "\r",
+      "ctrl+t to disable": "\r"
+    },
+    "succeededWhen": ["copied to clipboard", "referral"],
+    "link": "https://claude\\.ai/referral/[A-Za-z0-9_-]+",
+    "count": "(\\d+)\\s*left",
+    "clipboard": true
+  },
   "defaultDataSource": "cli",
   "dataSources": [
     {

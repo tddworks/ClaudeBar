@@ -176,8 +176,9 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           write · cache read · cost: Cost (lines per model,
 │       │       │                           ESTIMATED unless the log states it) · sessions ·
 │       │       │                           working time · cache savings
-│       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
-│       │       │                           run by the engine; `nil` when not declared
+│       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared as a `guestPasses` block —
+│       │       │                           the CLI's args, the link's pattern, the count's, the clipboard —
+│       │       │                           run by the engine's one generic worker; `nil` when not declared
 │       │       └── status                  DERIVED — QUOTA HEALTH: the worst quota in its usage.
 │       │                                   The pill's and the menu-bar entry's colour
 │       ├── inUse: InUse?  ◆                CAPABILITY (§2.1) — "New terminal sessions use work":
@@ -306,7 +307,7 @@ its definition and **hands it out per login**; its own context runs it:
 | Capability | The person's question | Declared as | Run by | Reached as |
 |---|---|---|---|---|
 | Usage History | *how much did I use, day by day?* | `usageHistory` | the login's `UsageHistory`, over a `UsageLog` the data-source machinery runs | `account.usageHistory` → `days(in:)` |
-| Guest passes | *can I share a trial?* | `"guestPasses": {}` — Claude's alone; its runner is supplied by the engine ([TARGET §10](TARGET_ARCHITECTURE.md#10--a-definition-on-disk-is-a-provider)) | `ClaudeGuestPassSource`, at the declaring definition's CLI | `account.guestPasses` |
+| Guest passes | *can I share a trial?* | a `guestPasses` block — the command, the link's pattern, the count's, whether the link is on the clipboard; Claude's alone today ([claude design](../providers/claude/design.md#guest-passes)) | the generic `CLIGuestPassSource` the engine supplies, at the declaring definition's CLI (Swift: `ClaudeGuestPassSource`, until the context switches over) | `account.guestPasses` |
 | Budget | *am I spending more than I meant to?* | an account-scope setting on the cost | the cost judges it | `account.budget` |
 | Sign-in | *add another login* | `accounts.signIn` | `AccountSignIn` | `provider.signIn` |
 | In use | *which login does my next terminal session start with?* | `accounts.signIn` — its CLI and the variable that points it at a folder | `InUse` over the `LoginsInUse` record; `NewSessions` over the `ShellLines` port for the shell | `provider.inUse` · `account.isInUse` |

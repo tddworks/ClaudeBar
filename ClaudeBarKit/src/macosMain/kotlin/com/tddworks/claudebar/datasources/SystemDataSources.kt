@@ -10,7 +10,7 @@ import com.tddworks.claudebar.datasources.process.CommandFetcher
 import com.tddworks.claudebar.datasources.process.LoginShellEnvironment
 import com.tddworks.claudebar.datasources.process.MacProcesses
 import com.tddworks.claudebar.datasources.process.PipeCLIExecutor
-import kotlinx.coroutines.runBlocking
+import com.tddworks.claudebar.datasources.process.ShellEnvironment
 import platform.Foundation.NSDate
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.timeIntervalSince1970
@@ -41,8 +41,9 @@ internal fun systemDataSources(
         browserCookies = SystemLookup.browserCookies(home),
         browserStorage = SystemLookup.browserStorage(home),
         // Credential lookups are synchronous, as the Swift ones were: a lookup that asks the
-        // login shell waits for it (`"environment": { …, "loginShell": true }` only).
-        loginShell = { name -> runBlocking { shell.value(name) } },
+        // login shell waits for it (`"environment": { …, "loginShell": true }` only); a value
+        // found there is kept for the session (#170).
+        loginShell = ShellEnvironment(host.machine.environment, shell)::value,
         cloudWatch = AWSClients.cloudWatch(network, home, environment, now),
         priceCatalog = AWSClients.priceCatalog(network, home, environment, now),
         scriptEngine = JavaScriptCoreEngine(),

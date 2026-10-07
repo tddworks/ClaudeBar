@@ -472,7 +472,7 @@ names one.**
 | Bedrock's `cloudWatch:` and `priceCatalog:` | the engine's cloud ports, made on first use by any `cloudWatch` fetch |
 | Z.ai's closure reading one variable from the login shell (#170) | `{ "environment": "{{setting.glmAuthEnvVar}}", "loginShell": true }` |
 | DeepSeek's closure renaming its variable | `"settings": [{ "id": "authEnvVar", "default": "DEEPSEEK_API_KEY" }]` and `{{setting.authEnvVar}}` — the card already saves `deepseek.authEnvVar` |
-| Claude's `guestPasses:` argument | `"guestPasses": {}` in `claude.json`; the engine runs it |
+| Claude's `guestPasses:` argument | a `guestPasses` block in `claude.json` (the command, the link's and the count's patterns, the clipboard); the engine's one generic worker runs it |
 | the custom and extension loops | the same `detect()` — every origin made on the same engine |
 
 ### 10.2 · The pieces
@@ -559,8 +559,11 @@ names one.**
 | a capability is declared by the definition and run by the engine — never chosen by a provider's name, even when only one product has it | the definition · `Engine.capabilities` |
 
 The last law changed one row of [CANONICAL_MODEL §2.1](CANONICAL_MODEL.md):
-guest passes are declared in `claude.json`, their one runner
-(`ClaudeGuestPassSource`) supplied by the engine.
+guest passes are declared in `claude.json` as a `guestPasses` block holding
+every fact of Claude's — the command, the link's and the count's patterns, the
+clipboard — and run by one generic worker the engine supplies
+(`CLIGuestPassSource` in Kotlin; Swift's `ClaudeGuestPassSource` until the
+context switches over).
 
 ### 10.5 · Built in this order, test first, the person seeing no change
 

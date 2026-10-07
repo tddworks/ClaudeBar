@@ -36,10 +36,11 @@ internal class Engine(
     /** Where closed days are kept; without it every read goes to the logs. */
     val ledger: LedgerStore? = null,
     /**
-     * The runner for the guest-passes capability, at the declaring definition's CLI location
-     * (read each time, so a change applies at once).
+     * The runner for the guest-passes capability: the declaring definition's `guestPasses`
+     * command, at its CLI location (read each time, so a change applies at once) —
+     * `CLIGuestPassSource.runner(host, clipboard)` on the Mac.
      */
-    val guestPasses: ((cli: () -> String) -> GuestPassSource)? = null,
+    val guestPasses: ((cli: () -> String, command: GuestPassCommand) -> GuestPassSource)? = null,
     /** Now, in Unix seconds — a usage log's today. */
     val now: () -> Double,
 )

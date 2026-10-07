@@ -43,8 +43,8 @@ internal data class ProviderDefinition private constructor(
     val enabledByDefault: Boolean,
     /** Where the product sits in the lineup by default; none → after the rest, by name (TARGET_ARCHITECTURE §10). */
     val order: Int?,
-    /** The guest-passes capability (CANONICAL §2.1), declared `"guestPasses": {}`. */
-    val guestPasses: Boolean,
+    /** The guest-passes capability (CANONICAL §2.1): the `guestPasses` block — its command and how to read the link; null when not declared. */
+    val guestPasses: GuestPassCommand?,
     val dataSources: List<DataSourceDefinition>,
     val defaultDataSource: String,
     /** Every data source answers on each refresh and the usage is their union — an extension's sections. */
@@ -170,7 +170,7 @@ internal data class ProviderDefinition private constructor(
         if (settings.isNotEmpty()) put("settings", JsonArray(settings.map { it.toJson() }))
         usageHistory?.let { put("usageHistory", it.toJson()) }
         setup?.let { put("setup", it.toJson()) }
-        if (guestPasses) put("guestPasses", JsonObject(emptyMap()))
+        guestPasses?.let { put("guestPasses", it.toJson()) }
     })
 
     /** *SET UP* — a title, what it takes, and where to start. */
@@ -365,7 +365,7 @@ internal data class ProviderDefinition private constructor(
             usageHistory: UsageLog.Definition? = null,
             setup: Setup? = null,
             order: Int? = null,
-            guestPasses: Boolean = false,
+            guestPasses: GuestPassCommand? = null,
         ): ProviderDefinition {
             val form = accounts?.form ?: emptyList()
             val all = settings + form.filter { field -> settings.none { it.id == field.id } }
@@ -408,11 +408,7 @@ internal data class ProviderDefinition private constructor(
                     else -> throw DefinitionError("cli is a name or a list of them")
                 }
                 val sources = o["dataSources"] as? JsonArray ?: throw DefinitionError("needs \"dataSources\"")
-                val guestPasses = when (val value = o.present("guestPasses")) {
-                    null -> false
-                    is JsonObject -> true
-                    else -> throw DefinitionError("guestPasses is an object")
-                }
+                val guestPasses = o.present("guestPasses")?.let(GuestPassCommand::from)
                 // Through `invoke`, never the constructor: the old account form joins the settings.
                 invoke(
                     profile = profile,

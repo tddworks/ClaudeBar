@@ -354,21 +354,23 @@ a vendor; the readers are named for formats. The page owns the views:
 | a binary log format | one new reader, named for the format |
 | an added login's own usage history | nothing: `accounts.patch.usageHistory` |
 
-## 6 · Guest passes stay Swift
+## 6 · Guest passes are a block of their own, not a fetch option
 
-**Guest passes** (`ClaudeGuestPassSource`: `claude /passes` in a terminal,
-the referral link from the screen or the clipboard, an optional count) are
-**not** a definition block. Only one product has them: a `guestPasses` key
-in the shared definition, with a `clipboard` option on every `cli` fetch,
-would put one vendor's feature into the format every provider uses —
-speculative generality, the opposite of OCP. The rule that decides it is the
-one for log shapes (§2): *an idea several providers share is data; an
-idea only one product has stays at the edge.*
+**Guest passes** (`claude /passes` in a terminal, the referral link from the
+screen or the clipboard, an optional count) are **not** a `cli` fetch with a
+`clipboard` option: that would put one capability's needs into the format
+every data source uses. They are the capability's own block in the
+definition, `guestPasses`, which only a definition that offers passes
+declares ([claude design](../../providers/claude/design.md#guest-passes)).
+The law that decides it is [TARGET §10.4](../../architecture/TARGET_ARCHITECTURE.md#104--laws)'s:
+*a capability is declared by the definition and run by the engine, never
+chosen by a provider's name, even when only one product has it* — so no
+module's code names the vendor whose CLI it runs.
 
-So the capability is generic and its one source is Claude's: `GuestPasses`
-and the `@Mockable` `GuestPassSource` port live in `Providers`;
-`ClaudeGuestPassSource` is handed in by the App for Claude and reached as
-`account.guestPasses` (the default login's). It is the last file in
-`Infrastructure/Claude`, and moves to the App when `Infrastructure` is
-carved — the composition root is where a vendor may be named. If a second
-product ever offers passes or referrals, that is the moment to make it data.
+So the capability is generic and so is its one worker: `GuestPasses`, the
+`GuestPassSource` port and `CLIGuestPassSource` (the block's command, run at
+the declaring definition's CLI; the link's pattern on the screen, else the
+clipboard; the count's pattern) live in `providers`, reached as
+`account.guestPasses` (the default login's). The Swift app still runs
+`ClaudeGuestPassSource`, the same facts in code, until the Providers
+context switches over to Kotlin.

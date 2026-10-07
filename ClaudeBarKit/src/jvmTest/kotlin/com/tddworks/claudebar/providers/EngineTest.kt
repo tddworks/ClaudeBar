@@ -2,10 +2,8 @@ package com.tddworks.claudebar.providers
 
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -38,7 +36,7 @@ class EngineTest {
         isExecutable = { true },
         locate = { it },
         vault = MemoryVault(),
-        guestPasses = { cli ->
+        guestPasses = { cli, _ ->
             passes += cli()
             NoPasses
         },
@@ -94,7 +92,7 @@ class EngineTest {
 
     @Test
     fun `should read guest passes as declared in the definition`() {
-        assertTrue(TestDefinitions.builtIn("claude").guestPasses)
-        assertFalse(TestDefinitions.builtIn("codex").guestPasses)
+        assertEquals(listOf("/passes", "--allowed-tools", ""), TestDefinitions.builtIn("claude").guestPasses?.args)
+        assertNull(TestDefinitions.builtIn("codex").guestPasses)
     }
 }

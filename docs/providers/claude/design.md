@@ -32,7 +32,7 @@ still hold — they are now lines in `claude.json`, pinned by
 | API | `GET https://api.anthropic.com/api/oauth/usage`, header `anthropic-beta: oauth-2025-04-20` | Uses the Claude Code OAuth token |
 | Token refresh | `POST https://platform.claude.com/v1/oauth/token` with Claude Code's public `client_id` | Scopes: `user:profile user:inference user:sessions:claude_code` only. Asking for more scopes (e.g. `user:mcp_servers`) makes the refresh fail |
 | Account identity | `~/.claude.json` → `oauthAccount` (email, display name, `billingType`) — read by every data source as the `account` context file, so the email shows whether the CLI or the API answered | CLI v2.1.79+ moved account details to a separate Status tab |
-| Guest passes | `claude /passes`, which copies the link to the clipboard | Max only (#243) |
+| Guest passes | `claude /passes --allowed-tools ""` in a PTY, which copies the link to the clipboard — the `guestPasses` block in `claude.json` (see [Guest passes](#guest-passes)) | Max only (#243) |
 | Daily usage | `~/.claude/projects/*/*.jsonl` | Deduplicated by `(message.id, requestId)`, because Claude Code writes the same usage more than once |
 
 ## Fallback chain
@@ -114,6 +114,33 @@ A second Claude login lives in its own config folder, as `CLAUDE_CONFIG_DIR=<fol
   - `api` looks up the folder's key only. There is no `CLAUDE_CODE_OAUTH_TOKEN` step, because a shared environment token belongs to nobody in particular. The OAuth refresh block is kept by the merge, so a refreshed token is written back to the folder's file or Keychain item.
 - **Identity, fail closed.** Every data source checks `$context.account.email` against `loginEmail` before fetching. If someone else has signed in to the folder since, the account reports *Reconnect the original Claude account in this folder* and shows no usage.
 - **Default login only:** today's usage (`UsageHistory`, read from the default login's local logs) and guest passes (read with the default login's CLI).
+
+## Guest passes
+
+*Share Claude Code* is the guest-passes capability ([CANONICAL §2.1](../../architecture/CANONICAL_MODEL.md)). Claude's facts are the `guestPasses` block in `claude.json`; one generic worker (`CLIGuestPassSource` in the Kotlin `providers` package, `ClaudeGuestPassSource` in Swift until the context switches over) runs whatever block a definition declares, and names no vendor.
+
+```json
+"guestPasses": {
+  "args": ["/passes", "--allowed-tools", ""],
+  "timeout": 20,
+  "environment": { "set": { "CLAUDEBAR_PROBE": "1" } },
+  "autoResponses": { "Esc to cancel": "\r", "Ready to code here?": "\r", "Press Enter to continue": "\r", "ctrl+t to disable": "\r" },
+  "succeededWhen": ["copied to clipboard", "referral"],
+  "link": "https://claude\\.ai/referral/[A-Za-z0-9_-]+",
+  "count": "(\\d+)\\s*left",
+  "clipboard": true
+}
+```
+
+| Key | What it says | Default |
+|---|---|---|
+| `args`, `input`, `timeout`, `environment`, `autoResponses` | how the definition's CLI (at its *CLI location*) is run in a terminal, in the dedicated working directory — the same words a `cli` fetch uses. `CLAUDEBAR_PROBE=1` keeps ClaudeBar's own hook quiet (#222) | none, `""`, 20 s, nothing, none |
+| `succeededWhen` | phrases, in any case, of which the screen (ANSI codes stripped) must show one; none → *Command did not indicate success* | any screen |
+| `link` | the pattern the link to share matches — first match on the screen, else on the clipboard | required |
+| `count` | a pattern, any case, whose first group is the passes left; no match → an unknown count, still shareable | no count |
+| `clipboard` | the CLI copies the link instead of printing it: read the clipboard when the screen shows none | `false` |
+
+Laws: the link is required — none on the screen or the clipboard is *Could not find referral URL*; a run that fails is an execution failure with its own words; a count below zero is none (`GuestPass`). Passes are offered only to a plan that can issue them (`AccountTier.supportsGuestPasses`, #243) and only on the default login.
 
 ## Rate limiting (API)
 

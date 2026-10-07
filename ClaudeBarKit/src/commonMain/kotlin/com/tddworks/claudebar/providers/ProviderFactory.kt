@@ -36,10 +36,8 @@ internal class ProviderFactory(
         val id = definition.id
         val settings = engine.settings
         val cli = definition.cli ?: id
-        val guestPasses = if (definition.guestPasses) {
-            engine.guestPasses?.let { run -> GuestPasses(run { settings.cliPath(id) ?: cli }) }
-        } else {
-            null
+        val guestPasses = definition.guestPasses?.let { command ->
+            engine.guestPasses?.let { run -> GuestPasses(run({ settings.cliPath(id) ?: cli }, command)) }
         }
         return Provider(
             definition = definition,

@@ -85,8 +85,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// Where the product sits in the lineup by default; none → after the
     /// rest, by name. The person's own order wins (TARGET_ARCHITECTURE §10).
     public let order: Int?
-    /// The guest-passes capability (CANONICAL §2.1), declared `"guestPasses": {}`;
-    /// the engine runs it at this definition's CLI.
+    /// The guest-passes capability (CANONICAL §2.1), declared as a `guestPasses`
+    /// block; the engine runs it at this definition's CLI. Swift reads only that
+    /// the block is there — its facts are read by the Kotlin worker
+    /// (docs/providers/claude/design.md § Guest passes).
     public let guestPasses: Bool
     public let dataSources: [DataSourceDefinition]
     public let defaultDataSource: String
