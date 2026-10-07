@@ -29,3 +29,19 @@ internal interface HookSettingsRepository {
 
     fun setHookPort(port: Int)
 }
+
+/** The hook settings in settings.json, under the keys earlier versions wrote: `hook.enabled`, `hook.port`. */
+internal class FileHookSettings(private val file: com.tddworks.claudebar.storage.SettingsFile) : HookSettingsRepository {
+    override fun isHookEnabled(): Boolean =
+        (file.read("hook.enabled") as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false
+
+    override fun setHookEnabled(enabled: Boolean) = file.write("hook.enabled", kotlinx.serialization.json.JsonPrimitive(enabled))
+
+    /** A missing, zero or negative port falls back to the default. */
+    override fun hookPort(): Int {
+        val port = (file.read("hook.port") as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull()?.toInt()
+        return port?.takeIf { it > 0 } ?: HookConstants.DEFAULT_PORT
+    }
+
+    override fun setHookPort(port: Int) = file.write("hook.port", kotlinx.serialization.json.JsonPrimitive(port))
+}
