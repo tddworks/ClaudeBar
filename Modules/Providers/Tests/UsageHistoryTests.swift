@@ -210,16 +210,16 @@ struct UsageHistoryTests {
         let claude = try ProviderFactory.builtIn("claude")
         let codex = try ProviderFactory.builtIn("codex")
 
-        #expect(try fingerprint(claude.usageHistory) == "b3bcc70b596fd9b04e17e3db8ad24d09352051cfd8fbac03070d464826171024")
+        #expect(try fingerprint(claude.usageHistory) == "851e9eb52a92f16eaf3378180b15cb422377fdfc7cbea2026f24fbd0c8edbec3")
         #expect(try fingerprint(claude.usageHistory(forAccount: ["configDirectory": "/Users/someone/work-claude"]))
-            == "931d7ea6e4403964a2af69dd0de2d289ea13c65df6955d337b33e52173cc3f25")
+            == "ed76e0124128504ead1e34e3c8b6a16a7646a03b0ee2b697a8a091e8e9e0fe39")
         #expect(try fingerprint(claude.usageHistory?.otherApps?.first?.definition)
-            == "d43e7240f0b32898243293138562cd3503f2a69619691664482038c86e360427")
-        #expect(try fingerprint(codex.usageHistory) == "2db943b5a7ea6de29b14f66f92d48f028df8f2a176923d0ac3c9be7d1cb8b8ac")
+            == "f761decc6b879d16a902ddf10533d9c9f28a431a09e3c539ef331fc346bf89d1")
+        #expect(try fingerprint(codex.usageHistory) == "cec00b01bf43a537e7883daedb0d0a8a0022c00d6bf4bc4d6aa4b3607fe1c75a")
         #expect(try fingerprint(codex.usageHistory(forAccount: ["codexHome": "/Users/someone/work-codex"]))
-            == "f64c646a4632e6262d600ca716d13a0addcf792e9e569bfaec672b9cf7cc05b7")
+            == "ed59ec2225ee86ebbc5074952cc2e5f9697389217f1684b9fc93ac13af31ac9f")
         #expect(try fingerprint(ProviderFactory.builtIn("mistral").usageHistory)
-            == "3e1157e243aa7b8bf21ff21cdab66d73f885f72bf7bd7f0c57dee7b56543bf0d")
+            == "61bc08fa764befb72d1866ae0b317aabf3aee7b957427e41ed4fd4c5d641cd9e")
     }
 }
 
