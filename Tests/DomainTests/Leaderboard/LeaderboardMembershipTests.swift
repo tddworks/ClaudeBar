@@ -273,18 +273,19 @@ struct LeaderboardMembershipTests {
         try JSONDecoder().decode(MemberSummary.self, from: Data(json.utf8))
     }
 
-    @Test func `should follow the name, visibility, globe and link another device set, on the next read of /me`() async throws {
+    @Test func `should follow the name, visibility, globe, country and link another device set, on the next read of /me`() async throws {
         let membership = try await joined()
-        given(api).me(in: .any, as: .any).willReturn(try answer(
+        given(api).me(period: .any, provider: .any, as: .any).willReturn(try answer(
             #"{"username":"whale2","visible":false,"shareCountry":true,"country":"NL","link":{"platform":"github","handle":"octocat"},"standing":null,"days":[]}"#))
 
-        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+        _ = try await membership.summary(period: .sevenDays)
 
         #expect(membership.isJoined)
         #expect(membership.username?.value == "whale2")
         #expect(!membership.isVisible)
         #expect(membership.sharesCountry)
         #expect(membership.link == ProfileLink(platform: .github, handle: "octocat"))
+        #expect(membership.country == "NL")
         #expect(self.membership().username?.value == "whale2")
     }
 
@@ -292,9 +293,9 @@ struct LeaderboardMembershipTests {
         let membership = try await joined()
         try await membership.setSharesCountry(true)
         try await membership.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
-        given(api).me(in: .any, as: .any).willReturn(try answer(#"{"visible":true,"standing":null,"days":[]}"#))
+        given(api).me(period: .any, provider: .any, as: .any).willReturn(try answer(#"{"visible":true,"standing":null,"days":[]}"#))
 
-        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+        _ = try await membership.summary(period: .sevenDays)
 
         #expect(membership.username?.value == "tokenwhale")
         #expect(membership.sharesCountry)
@@ -304,9 +305,9 @@ struct LeaderboardMembershipTests {
     @Test func `should forget the link when /me says there is none`() async throws {
         let membership = try await joined()
         try await membership.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
-        given(api).me(in: .any, as: .any).willReturn(try answer(#"{"visible":true,"link":null,"standing":null,"days":[]}"#))
+        given(api).me(period: .any, provider: .any, as: .any).willReturn(try answer(#"{"visible":true,"link":null,"standing":null,"days":[]}"#))
 
-        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+        _ = try await membership.summary(period: .sevenDays)
 
         #expect(membership.link == nil)
     }
@@ -317,10 +318,10 @@ struct LeaderboardMembershipTests {
                                                calendar: LeaderboardFixtures.calendar)
         try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
 
-        async let read = membership.myStanding(in: BoardView(period: .sevenDays))
+        async let read = membership.summary(period: .sevenDays)
         while await !api.isAsked { await Task.yield() }
         try await membership.setVisible(false)
-        await api.answer(MemberSummary(standing: nil, days: [], visible: true))
+        await api.answer(MemberSummary(onBoard: nil, days: [], visible: true))
         _ = try await read
 
         #expect(!membership.isVisible)

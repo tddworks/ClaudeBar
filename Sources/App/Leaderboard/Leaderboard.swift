@@ -3,9 +3,10 @@ import Observation
 import Domain
 import Infrastructure
 
-/// The leaderboard as the app runs it: the membership, the uploader, and the
-/// checks that keep the server current. Views read `membership` and
-/// `uploader` directly; this only wires them and reads the public board.
+/// The leaderboard as the app runs it: the membership, the uploader, the
+/// checks that keep the server current, and each board as last read. Views
+/// read `membership`, `uploader` and `board` directly; this only wires them
+/// and keeps the boards for the app run, so they outlive the popover.
 @MainActor
 @Observable
 final class Leaderboard {
@@ -19,11 +20,14 @@ final class Leaderboard {
     private(set) var offNotice: LeaderboardOffNotice?
     /// *Turn off ▾* is open over the popover.
     private(set) var showsTurnOffMenu = false
+    /// The board you're looking at; picking another changes it.
+    private(set) var board: Board
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let logs: MonitorTokenLogs
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var boards: [Board] = []
 
     init(monitor: QuotaMonitor,
          api: any LeaderboardAPI = LeaderboardHTTPClient(),
@@ -32,8 +36,12 @@ final class Leaderboard {
         let logs = MonitorTokenLogs(monitor: monitor)
         self.api = api
         self.logs = logs
-        membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs)
+        let membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs)
+        self.membership = membership
         uploader = LeaderboardUploader(membership: membership, logs: logs, api: api)
+        let sevenDays = Board(period: .sevenDays, api: api, membership: membership)
+        board = sevenDays
+        boards = [sevenDays]
     }
 
     /// Uploads once soon after launch, then asks every five minutes and on
@@ -114,12 +122,21 @@ final class Leaderboard {
         sharing = nil
     }
 
-    func board(in view: BoardView) async throws -> [Standing] {
-        try await api.board(in: view)
+    /// The same `Board` each time you come back to it, with its last answer.
+    func board(period: BoardPeriod, provider: String?) -> Board {
+        if let board = boards.first(where: { $0.period == period && $0.provider == provider }) { return board }
+        let board = Board(period: period, provider: provider, api: api, membership: membership)
+        boards.append(board)
+        return board
+    }
+
+    /// *Today · 7 days · 30 days* and *All · Claude · …* on the tab.
+    func pick(period: BoardPeriod, provider: String?) {
+        board = board(period: period, provider: provider)
     }
 
     func globe() async throws -> GlobeSummary {
-        try await api.globe(in: BoardView(period: .thirtyDays))
+        try await api.globe(period: .thirtyDays)
     }
 }
 

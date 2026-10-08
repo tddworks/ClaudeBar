@@ -98,7 +98,7 @@ struct LeaderboardPane: View {
             }
             .task(id: membership.sharesCountry) {
                 storedCountry = membership.sharesCountry
-                    ? (try? await membership.myStanding(in: BoardView(period: .sevenDays)))?.country
+                    ? (try? await membership.summary(period: .sevenDays))?.country
                     : nil
             }
         }
@@ -195,7 +195,7 @@ struct LeaderboardPane: View {
     }
 
     private func export() async throws {
-        let summary = try await membership.myStanding(in: BoardView(period: .thirtyDays))
+        let summary = try await membership.summary(period: .thirtyDays)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(summary)

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Leaderboard tab on refresh**: opening the popover, Refresh or a new upload keeps your rank and the board on screen until the new ones arrive, instead of going back to *Loading…*; if updating fails, the last board stays with a note. ([#524](https://github.com/tddworks/ClaudeBar/pull/524))
+
 ### Added
 - **Daily usage by model**: the 30-day chart splits by model — choose what is counted (cost, tokens, cache) and split the bars by the models the log names; hover a day to see each model's part, the unnamed line included. ([#511](https://github.com/tddworks/ClaudeBar/pull/511)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/daily-usage/README.md)
 

@@ -48,8 +48,8 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         }
     }
 
-    public func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary {
-        let data = try await send("GET", "/me", query: Self.query(view), signedBy: credentials)
+    public func me(period: BoardPeriod, provider: String?, as credentials: MemberCredentials) async throws -> MemberSummary {
+        let data = try await send("GET", "/me", query: Self.query(period, provider), signedBy: credentials)
         return try decode(MemberSummary.self, data)
     }
 
@@ -61,12 +61,12 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         _ = try await send("DELETE", "/me", signedBy: credentials)
     }
 
-    public func board(in view: BoardView) async throws -> [Standing] {
-        try decode(Board.self, try await send("GET", "/board", query: Self.query(view))).standings
+    public func board(period: BoardPeriod, provider: String?) async throws -> [Board.Member] {
+        try decode(BoardAnswer.self, try await send("GET", "/board", query: Self.query(period, provider))).standings
     }
 
-    public func globe(in view: BoardView) async throws -> GlobeSummary {
-        try decode(GlobeSummary.self, try await send("GET", "/globe", query: Self.query(view)))
+    public func globe(period: BoardPeriod) async throws -> GlobeSummary {
+        try decode(GlobeSummary.self, try await send("GET", "/globe", query: Self.query(period, nil)))
     }
 
     // MARK: - Wire
@@ -100,8 +100,8 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         }
     }
 
-    private struct Board: Decodable {
-        let standings: [Standing]
+    private struct BoardAnswer: Decodable {
+        let standings: [Board.Member]
     }
 
     private struct Failure: Decodable {
@@ -109,8 +109,8 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         let message: String
     }
 
-    private static func query(_ view: BoardView) -> String {
-        "period=\(view.period.rawValue)" + (view.provider.map { "&provider=\($0)" } ?? "")
+    private static func query(_ period: BoardPeriod, _ provider: String?) -> String {
+        "period=\(period.rawValue)" + (provider.map { "&provider=\($0)" } ?? "")
     }
 
     private func send(_ method: String, _ path: String, query: String? = nil, body: Data? = nil,

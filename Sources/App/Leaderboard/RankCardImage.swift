@@ -98,7 +98,7 @@ struct RankCardImage: View {
     }
 
     private var viewPill: some View {
-        Text(Self.viewLabel(card.view, providerName: providerName))
+        Text(Self.boardLabel(period: card.period, provider: card.provider, providerName: providerName))
             .font(theme.font(size: 10, weight: .heavy))
             .lineLimit(1).fixedSize()
             .padding(.horizontal, 8).padding(.vertical, 2)
@@ -175,8 +175,8 @@ struct RankCardImage: View {
     static let boardAddress = "claudebar.tddworks.com/leaderboard"
 
     /// *7 days · All providers*, *30 days · Codex*.
-    static func viewLabel(_ view: BoardView, providerName: (String) -> String) -> String {
-        "\(view.period.label) · \(view.provider.map(providerName) ?? "All providers")"
+    static func boardLabel(period: BoardPeriod, provider: String?, providerName: (String) -> String) -> String {
+        "\(period.label) · \(provider.map(providerName) ?? "All providers")"
     }
 
     private var membersLine: String? {

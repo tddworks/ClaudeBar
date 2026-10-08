@@ -3,14 +3,13 @@ import Testing
 
 @Suite
 struct RankCardTests {
-    private let view = BoardView(period: .sevenDays)
 
-    private func board(_ count: Int) -> [Standing] {
-        (1...count).map { Standing(rank: $0, username: "member\($0)", total: 1_000 - $0) }
+    private func board(_ count: Int) -> [Board.Member] {
+        (1...count).map { Board.Member(rank: $0, username: "member\($0)", total: 1_000 - $0) }
     }
 
-    private func rankCard(rank: Int, on board: [Standing], byProvider: [String: Int] = ["claude": 10]) -> RankCard? {
-        RankCard(standing: Standing(rank: rank, username: "itshan", total: 3_820, byProvider: byProvider), in: view, board: board)
+    private func rankCard(rank: Int, on board: [Board.Member], byProvider: [String: Int] = ["claude": 10]) -> RankCard? {
+        RankCard(you: Board.Member(rank: rank, username: "itshan", total: 3_820, byProvider: byProvider), period: .sevenDays, provider: nil, board: board)
     }
 
     @Test func `should say how near the top the member is when they're in the top half`() throws {
@@ -48,8 +47,8 @@ struct RankCardTests {
     }
 
     @Test func `should offer nothing to share before the member has a rank`() {
-        #expect(RankCard(standing: nil, in: view, board: board(5)) == nil)
-        #expect(RankCard(standing: Standing(rank: 3, username: "itshan", total: 0), in: view, board: board(5)) == nil)
+        #expect(RankCard(you: nil, period: .sevenDays, provider: nil, board: board(5)) == nil)
+        #expect(RankCard(you: Board.Member(rank: 3, username: "itshan", total: 0), period: .sevenDays, provider: nil, board: board(5)) == nil)
     }
 
     @Test func `should show the providers by their share, largest first, leaving out the ones with none`() throws {
@@ -64,11 +63,11 @@ struct RankCardTests {
         #expect(card.mix == [.init(provider: "claude", percent: 100)])
     }
 
-    @Test func `should keep the board view the rank was read in`() throws {
-        let codex = BoardView(period: .thirtyDays, provider: "codex")
-        let card = try #require(RankCard(standing: Standing(rank: 1, username: "itshan", total: 5), in: codex, board: board(3)))
+    @Test func `should say which board the rank is on`() throws {
+        let card = try #require(RankCard(you: Board.Member(rank: 1, username: "itshan", total: 5), period: .thirtyDays, provider: "codex", board: board(3)))
 
-        #expect(card.view == codex)
+        #expect(card.period == .thirtyDays)
+        #expect(card.provider == "codex")
     }
 
     @Test func `should size each shape for where it gets posted`() {

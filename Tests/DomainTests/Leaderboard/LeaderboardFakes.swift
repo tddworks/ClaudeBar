@@ -78,7 +78,7 @@ actor CrossingLeaderboardAPI: LeaderboardAPI {
         pending = nil
     }
 
-    func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary {
+    func me(period: BoardPeriod, provider: String?, as credentials: MemberCredentials) async throws -> MemberSummary {
         await withCheckedContinuation { pending = $0 }
     }
 
@@ -86,6 +86,6 @@ actor CrossingLeaderboardAPI: LeaderboardAPI {
     func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] { [] }
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {}
     func leave(as credentials: MemberCredentials) async throws {}
-    func board(in view: BoardView) async throws -> [Standing] { [] }
-    func globe(in view: BoardView) async throws -> GlobeSummary { GlobeSummary(countries: [], present: []) }
+    func board(period: BoardPeriod, provider: String?) async throws -> [Board.Member] { [] }
+    func globe(period: BoardPeriod) async throws -> GlobeSummary { GlobeSummary(countries: [], present: []) }
 }

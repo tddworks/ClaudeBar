@@ -6,7 +6,7 @@ description: Contributor design for the Leaderboard. Join with a username, share
 
 **Status:** BUILT on `feat/leaderboard-app`. The server is deployed at `https://claudebar-api.tddworks.com`; its code, storage and security internals live in the private repo `tddworks/claudebar-server`. User guide: [README.md](README.md). The screens are drawn in [design-concept/leaderboard/index.html](../../../design-concept/leaderboard/index.html). This document is the contract the build follows; where code later disagrees, the code is behind until this document says otherwise. **Several devices per member ([§2a](#2a--devices-one-member-several-machines)) is built on the server, not yet in the app**, asked for in [#507](https://github.com/tddworks/ClaudeBar/issues/507); until the app has it, a member is one key on one Mac.
 
-This document owns **joining the board, what a member shares, how a member's uploads are trusted, and how standings are ranked**. Its neighbours own the rest:
+This document owns **joining the board, what a member shares, how a member's uploads are trusted, and how members are ranked on a board**. Its neighbours own the rest:
 
 | For | Read |
 |---|---|
@@ -35,7 +35,7 @@ The design concept is the only surface so far, and its words are where the names
   "Turn off ▾"                          ← one way out in the tab: globe, pause, or leave
 ```
 
-Two findings fall out of these. A rank is never a property of a member alone; it is a member's place in one **board view** (period × provider). And "leave" and "hide" are different acts: hiding keeps your rows and your own rank, leaving destroys both. Turning the Leaderboard **off** is a third: it changes nothing on the server, only stops this Mac taking part.
+Two findings fall out of these. A rank is never a property of a member alone; it is a member's place on one **board** (period × provider: *the 7-day Claude board*). And "leave" and "hide" are different acts: hiding keeps your rows and your own rank, leaving destroys both. Turning the Leaderboard **off** is a third: it changes nothing on the server, only stops this Mac taking part.
 
 ## The one sentence
 
@@ -49,7 +49,7 @@ Two findings fall out of these. A rank is never a property of a member alone; it
  │ UsageHistory per login ──▶   │            │ daily_tokens (one row per  │
  │   DailyTokens per provider   │ ◀───────── │   member·device·provider·  │
  └──────────────────────────────┘ GET /board │   day)                     │
-                                            │ standings  (ranked view)   │
+                                            │ board(period, provider)    │
                                             └────────────────────────────┘
 ```
 
@@ -59,8 +59,8 @@ Two findings fall out of these. A rank is never a property of a member alone; it
 
 | Term | Meaning | Not to be confused with |
 |---|---|---|
-| **Board** | The ranking, as one public page and one popover tab | a provider's *dashboard* link |
-| **Member** | Someone who joined: a username on the server, with one to five devices | a provider *account* (a login); a member may have several logins per provider |
+| **Board** | One ranking, for a period and a provider: *the 7-day Claude board*, *today's board for everyone*. Shown on the public page and the popover tab; a board is named by its period and provider, nothing else | a provider's *dashboard* link; a period alone |
+| **Member** | Someone who joined: a username on the server, with one to five devices. *On a board* (`Board.Member`): their rank there, name, link and tokens on that board, public only; the server's `/board` lists these as `standings` | a provider *account* (a login); a member may have several logins per provider |
 | **Membership** | One device's side of being a member: its key, what it shares, and a copy of the member's name and settings | the server's member row, which never holds a private key |
 | **Device** | One machine of a member: its own key, a label, the days it uploaded. *Removed* means its key no longer signs; its days stay until deleted | a provider *account*; "this Mac" in v1, which is one device |
 | **Device code** | The 8 characters a new device shows; a device the member already has approves it within 10 minutes, once | a password, or a recovery code |
@@ -68,9 +68,7 @@ Two findings fall out of these. A rank is never a property of a member alone; it
 | **Daily tokens** | One provider's token counts for one local calendar day on one device: input, output, cache write, cache read, and *unsplit* — tokens a log keeps only as a total (Mistral) | `DailyUsageStat`, which also carries cost, sessions and working time that are never shared |
 | **Sharing** | The providers a member chose to upload | a provider being *enabled* in ClaudeBar |
 | **Upload** | One signed `PUT /usage` carrying days of daily tokens | a *refresh*, which fetches quotas |
-| **Board view** | A period and a provider filter: `7 days · Claude` | a period alone |
 | **Period** | `today`, `7d` or `30d`. Closed | an arbitrary date range |
-| **Standing** | One member's place in one board view: rank, username, totals, provider mix | the member |
 | **Visible** | Whether the member appears on the public board. A hidden member is still ranked for themselves | membership |
 | **On / off** | Whether ClaudeBar takes part in the Leaderboard at all: its tab, and uploads. On until turned off, joined or not. Off is a **pause**: a member keeps their name, key and uploaded days, and their row stays on the board with its last totals | *visible* (a server fact) and *leaving* (deletion) |
 | **Signing key** | The Ed25519 key pair a device makes when it joins or is added. Private half on that device, public half on the server; the public half is the device's identity | an API token; there is no shared secret anywhere |
@@ -79,29 +77,84 @@ Two findings fall out of these. A rank is never a property of a member alone; it
 
 ## 2 · The aggregate, from the root down
 
-Two aggregates, one on each side of the wire. Neither reaches into the other; they meet only in the API.
+One leaderboard, seen from each side of the wire; they meet only in the API. The app's side keeps your membership and each board as it last read it. A board's read is signed by the membership, and the `/me` answer it gets also updates the membership's copy of you: the one place one reaches into the other.
 
 ```
-LeaderboardMembership                     this device's membership (aggregate root, app)
- ├─ username : Username?                  nil = not joined; the only "joined" flag. A COPY OF THE MEMBER'S, FOLLOWS /me
- ├─ sharing : Set<ProviderID>             ONLY PROVIDERS WITH USAGE HISTORY; THIS DEVICE'S OWN
- ├─ isVisible : Bool                      hidden members still see their own standing. A COPY, FOLLOWS /me
- ├─ isOn : Bool                           OFF = PAUSED: NO TAB, NOTHING UPLOADED; NAME, KEY, DAYS KEPT
- ├─ key : SigningKey                      PRIVATE HALF NEVER LEAVES THE DEVICE
- ├─ lastUpload : Date?                    the last good upload: v1 resumes there, devices time the hour by it
- ├─ refused : Set<provider · day>         DAYS THE SERVER REFUSED, LAST 30 DAYS: SENT AGAIN WITH EACH UPLOAD
- └─ machine : hash?                       THIS MAC'S HARDWARE UUID, HASHED WITH THE KEY'S PUBLIC HALF. NEVER SENT
+Leaderboard (app)                          ClaudeBar's side of the leaderboard (root, app run)
+ ├─ membership : LeaderboardMembership     this device's side of a member
+ │   ├─ the member, a copy                 FOLLOWS EVERY /me; MIRRORS THE SERVER'S MEMBER
+ │   │   ├─ username : Username?           nil = not joined; the only "joined" flag
+ │   │   ├─ isVisible : Bool               hidden members still see their own place
+ │   │   ├─ sharesCountry : Bool           country : String?   where the globe puts you, when you opted in
+ │   │   ├─ link : ProfileLink?
+ │   │   └─ devices : [Device]             IN ITS FIRST WEEK ONLY THIS ONE. NOT BUILT IN THE APP YET
+ │   └─ this device's own                  NEVER SENT, NEVER FOLLOWS /me
+ │       ├─ key : SigningKey               PRIVATE HALF NEVER LEAVES THE DEVICE; ITS PUBLIC HALF IS THIS DEVICE ON THE SERVER
+ │       ├─ sharing : Set<ProviderID>      ONLY PROVIDERS WITH USAGE HISTORY
+ │       ├─ isOn : Bool                    OFF = PAUSED: NO TAB, NOTHING UPLOADED; NAME, KEY, DAYS KEPT
+ │       ├─ lastUpload : Date?             the last good upload: v1 resumes there, devices time the hour by it
+ │       ├─ refused : Set<provider · day>  DAYS THE SERVER REFUSED, LAST 30 DAYS: SENT AGAIN WITH EACH UPLOAD
+ │       ├─ machine : hash?                THIS MAC'S HARDWARE UUID, HASHED WITH THE KEY'S PUBLIC HALF
+ │       └─ shownDevices : Set<key>        devices added that this one has already shown, once
+ ├─ board : Board                          the one you're looking at; picking changes it
+ └─ board(period, provider) → Board        THE SAME BOARD EACH TIME. MIRRORS THE SERVER'S board(period, provider)
+     ├─ period : BoardPeriod               Today · 7 days · 30 days
+     ├─ provider : String?                 nil = everyone
+     ├─ members : [Member]?                IN RANK ORDER, AS THE SERVER RANKED THEM. NIL = NEVER READ (≠ EMPTY: NO ONE ON IT)
+     ├─ you : Member?                      you on this board; nil = not ranked. READ WITH MEMBERS, NEVER APART
+     └─ failure : LeaderboardError?        THE LAST READ FAILED; BOTH ARE STILL THE LAST GOOD ONES
 
-Board                                     the server's ranking (aggregate root, Worker)
- ├─ members : Member                      username, visible, joined at
- ├─ devices.today                        EACH DEVICE'S OWN DATE: ITS ROWS' PERIODS END ON IT
- ├─ members.suspended                    SET ONLY BY A MAINTAINER, NEVER THROUGH THE API
- ├─ devices : Device                      public key, label, added at, removed at. AT MOST 5 NOT REMOVED
- └─ dailyTokens : DailyTokens             ONE ROW PER MEMBER · DEVICE · PROVIDER · DAY
-     └─ standings(view) → [Standing]      A MEMBER'S DAY IS THE SUM OF THEIR DEVICES' ROWS. RANKED BY TOTAL, TIES BY USERNAME
+Board.Member                               a member as a board shows them: public, and only for this board
+ ├─ rank : Int                             THE SERVER'S; KEPT, SINCE YOU MAY BE #340 AND NOT IN THE TOP 100
+ ├─ username : String · link : ProfileLink?
+ └─ total · input · output · cache · byProvider    tokens on this board only
+
+Leaderboard (server)                       every member and their days (aggregate root, Worker)
+ ├─ members : [Member]
+ │   ├─ username : String                  UNIQUE IGNORING CASE
+ │   ├─ visible : Bool                     hidden: off the public board, still ranked for themselves
+ │   ├─ sharesCountry : Bool               country : String?   KEPT FROM WHERE REQUESTS COME FROM, NEVER SENT BY THE APP
+ │   ├─ link : ProfileLink?
+ │   ├─ suspended : Bool                   SET ONLY BY A MAINTAINER, NEVER THROUGH THE API
+ │   ├─ joinedAt
+ │   └─ devices : [Device]                 AT MOST 5 NOT REMOVED; THE LAST ONE CAN'T BE
+ │       ├─ publicKey                      THE DEVICE'S IDENTITY: WHO SIGNED IS FOUND BY IT
+ │       ├─ label · addedAt                an added one is held to its first week
+ │       ├─ removedAt · removedBy          ITS KEY NO LONGER SIGNS; ITS DAYS STAY UNTIL DELETED
+ │       ├─ today : Day                    ITS OWN DATE: ITS DAYS' PERIODS END ON IT
+ │       └─ days : [DailyTokens]           ONE ROW PER PROVIDER · DAY; AN UPLOAD REPLACES, NEVER ADDS
+ └─ board(period, provider) → [Board.Member]  RANKED, PUBLIC PART ONLY. A MEMBER'S DAY IS THE SUM OF THEIR DEVICES' DAYS. RANKED BY TOTAL, TIES BY USERNAME
 ```
 
-There is no `Leaderboard` type on the app side that holds standings. The app does not own the ranking, so it only asks the server for a board view and draws what comes back; caching it would give the app a second opinion about rank.
+The app does not own the ranking: a `Board` keeps the server's last answer as it came, so reading again draws over it instead of going back to *Loading…*. Nothing on the app ranks, counts or merges members; that would give it a second opinion about rank.
+
+### `Board` (app): a board as last read
+
+> **Pointable as:** the board on the wall, as you saw it on your way past. You look again; until you do, it is what you last saw.
+
+The person thinks of the board as something their app has: what they saw a minute ago is still the board, and Refresh freshens it in place. The popover tab is rebuilt each time the popover opens and each time another tab is picked, so it keeps nothing: it depends only on the model, drawing the `Board` it is given and telling it to `read()`. `Leaderboard` keeps the boards for the app run ([the tree above](#2--the-aggregate-from-the-root-down)).
+
+```
+ tab (rebuilt on every open; keeps nothing, depends only on the model it is given)
+   draws  leaderboard.board.members ── nil ──▶ "Loading…"             (this board never read yet)
+                                    └─ else ─▶ the members + you, at once
+   tells  await leaderboard.board.read()          on: popover opens · Refresh · an upload done · a board picked
+
+ Board.read()
+   ├─ GET /board ───────────────┐
+   └─ signed GET /me ───────────┴─▶ both back ─▶ both replaced together; failure = nil
+                                └─▶ failed ────▶ both kept; failure = the error
+   Until then the last answer stays on screen.
+```
+
+| | |
+|---|---|
+| **Owns: a board never read says so** | `members` is `nil` until the first read comes back |
+| **Owns: reading again never blanks it** | `read()` replaces `members` and `you` together, only when both came back |
+| **Owns: a failed read keeps the last answer** | `read()` keeps both and sets `failure`; the next good read clears it |
+| **Tell it** | `read()` |
+| **It answers** | `period` · `provider` · `members` (`nil` = never read, empty = no one on it) · `you` (`nil` = not ranked) · `failure` |
+| **Never** | ranks, counts or merges · saves to disk |
 
 ### `LeaderboardMembership`: this device's membership
 
@@ -114,7 +167,7 @@ There is no `Leaderboard` type on the app side that holds standings. The app doe
 | **Owns: a turned-off Leaderboard uploads nothing** | `uploadCredentials` is `nil` while off, so the uploader has nothing to sign with and `lastUpload` stays where uploads stopped |
 | **Owns: a copied key it detects never uploads unasked** | at launch, a key whose `machine` hash isn't this Mac's uploads nothing until the member answers: this Mac gets its own key, or keeps this one and records its hash ([§2a](#2a--devices-one-member-several-machines)); every key made here is recorded with this Mac's hash, and forgetting a key forgets its hash |
 | **Tell it** | `join(as:sharing:)` · `share(_:)` · `stopSharing(_:)` · `setVisible(_:)` · `rename(to:)` · `leave()` · `turnOff()` · `turnOn()` · `requestToJoin(label:)` · `pendingDevice(code:)` · `approve(code:)` · `remove(device:deletingDays:)` · `deleteDays(of:provider:day:)` · `becomeOwnDevice()` · `keepKeyHere()` |
-| **It answers** | `isJoined` · `isOn` · `sharing` · `devices` · `myStanding(in:)` · `refused` (days the server refused, tried again) · `holdsCopiedKey` (this Mac's key came from another Mac) |
+| **It answers** | `isJoined` · `isOn` · `sharing` · `country` · `devices` · `summary(period:provider:)` (the signed `/me` read, which it follows; `Board.read()` and Settings' export use it, and the tab never calls it) · `refused` (days the server refused, tried again) · `holdsCopiedKey` (this Mac's key came from another Mac) |
 | **Never** | holds a ranking · sends a provider it was not told to share · forgets its key before the server confirmed the leave or the removal · keeps a member setting the server has changed since |
 
 ### `DailyTokens`: one provider's day
@@ -170,7 +223,7 @@ This is RFC 8628's device flow, the one GitHub's and Microsoft's sign-ins use. K
 
 ### What a new device may do: a waiting week
 
-For its first 7 days a device that was *added* uploads and changes only its own days and settings. It reads only those too, with the member's settings and standing: on `/me` it gets the member's name, visibility, globe and link, its standing in a view, which the board already shows for a visible member, and its own device and rows, but not the other devices or their rows; `/me/export` is `403 deviceTooNew`. A phished device so learns no more than the member's total before it can be seen and removed. The device that joined isn't held back: it is the member, and there is no one else to protect it from. An added device can't do these until then (`403 deviceTooNew`):
+For its first 7 days a device that was *added* uploads and changes only its own days and settings. It reads only those too, with the member's settings and place: on `/me` it gets the member's name, visibility, globe and link, its place on a board, which the board already shows for a visible member, and its own device and rows, but not the other devices or their rows; `/me/export` is `403 deviceTooNew`. A phished device so learns no more than the member's total before it can be seen and removed. The device that joined isn't held back: it is the member, and there is no one else to protect it from. An added device can't do these until then (`403 deviceTooNew`):
 - rename or hide the member, or change its globe or link;
 - approve a device, or remove another one (removing itself is allowed);
 - delete a removed device's days;
@@ -263,8 +316,8 @@ So such days count twice, bounded by the cap. Pointing them out to the member is
 
 ### What a device keeps, and what it takes from the server
 
-- **The member's, kept as a copy:** name, visibility, globe and link. The copy follows every `/me` answer, which therefore carries `username`. A rename on the MacBook reaches the Mac mini on its next upload, and never as a stale `X-Member` that forgets it.
-- **The device's own, never sent:** sharing, on/off, `lastUpload`, `refused`, the hash of its Mac's UUID, and which devices it has already shown as added. Each device ticks its own providers, pauses on its own, and uploads on its own clock.
+- **The member's, kept as a copy:** name, visibility, globe, country, link and devices. The copy follows every `/me` answer, which therefore carries `username`. A rename on the MacBook reaches the Mac mini on its next upload, and never as a stale `X-Member` that forgets it.
+- **The device's own, never sent:** sharing, on/off, `lastUpload`, `refused`, the hash of its Mac's UUID, and which devices it has already shown as added (`shownDevices`). Each device ticks its own providers, pauses on its own, and uploads on its own clock.
 
 ## 3 · The tells
 
@@ -299,9 +352,10 @@ try await membership.deleteDays(of: oldMac, provider: "claude", day: nil) // a r
 try await membership.becomeOwnDevice()                               // the key's machine hash isn't this Mac's: Make this Mac its own device
 try await membership.keepKeyHere()                                   // or: the other Mac is gone, or this is the same Mac after a repair
 
-// Popover
-let standings = try await board.standings(in: BoardView(period: .sevenDays, provider: nil))
-let mine = try await membership.myStanding(in: view)
+// Popover: the tab draws leaderboard.board and tells it to read again.
+let board = leaderboard.board(period: .sevenDays, provider: "claude")   // the same Board each time
+await leaderboard.board.read()                   // on open, Refresh, an upload, a board picked
+leaderboard.board.members                        // nil before the first read: "Loading…"
 ```
 
 The ask this design exists to prevent:
@@ -334,14 +388,14 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A username is unique ignoring case | Server |
 | A username is 3–20 of `A–Z a–z 0–9 - _` | **Two owners, deliberately:** `Username` for instant feedback, the server as authority. Both check the same `vectors.json`, so they cannot drift silently |
 | No future days, nothing older than 30 days, and no member's provider-day above the plausibility cap, summed over their devices. With devices each such day is refused alone, listed under `refused` in a `2xx`, and the rest of the upload is kept | Server |
-| Standings rank by total tokens (the five counts summed); ties by username | Server |
+| A board ranks its members by total tokens (the five counts summed); ties by username | Server |
 | Each device's rows count in periods that end on that device's own date, the one it sent with its last upload, while it is within a day of UTC's | Server |
-| A hidden member is absent from the public board and still sees their own standing | Server |
+| A hidden member is absent from the public board and still sees their own place | Server |
 | Your own upload shows on the board you read at once, the same place *Your rank* says; everyone else's within two minutes | Server (an upload counts that member's standings again and drops the boards it changes from the edge cache) |
 | A standing is counted when the days under it change, never when it is read: an upload, deleted days, or a new UTC day, which moves every period. Reading the board or *Your rank* costs the same however many members and days the board holds | Server (standings kept on write; [§5](#5--the-api) *Standings, counted when days change*) |
 | The globe shows only countries, only for members who opted in; tokens only where at least three are | Server |
 | A member who hasn't opted in sees the globe offered once, until they opt in or dismiss it | `LeaderboardMembership.showsGlobeHint` |
-| A shared rank image shows one standing in one board view (rank, where that is, tokens, the provider mix) and no other member's name; there is none to share before a rank | `RankCard` |
+| A shared rank image shows you on one board (rank, where that is, tokens, the provider mix) and no other member's name; there is none to share before a rank | `RankCard` |
 | *Top N%* only in the top half, where N is the rank over every member, rounded up; *#r of N* below it; *Top 100* on a board longer than it lists; nothing when the rank isn't among the members listed | `RankCard.placement` |
 | A profile link is a platform and a handle that fits its rules, never a URL | `ProfileLink` (the app, as you type) and the server (the authority); one `vectors.json` |
 | Leaving deletes the member, every device and every row, on the server | Server — the app forgets the key only after a 2xx |
@@ -351,17 +405,19 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | While off there is no Leaderboard tab, and the popover falls back to its provider | The popover reads `membership.isOn` |
 | A member has at most 5 devices that aren't removed | Server |
 | A device is added only when another device of the member, past its first week, approves the code it shows, within 10 minutes, once; the new device names the member and asks before it uploads | Server, and the new device |
-| For its first 7 days an added device changes and reads only its own days and settings, with the member's settings and standing: `/me` leaves out the other devices and their rows, and `/me/export` is refused; it can't rename or hide the member, change its globe or link, approve a device, remove another, delete a removed device's days, or leave. After that, and from the start for the device that joined, it may do what the member may | Server |
+| For its first 7 days an added device changes and reads only its own days and settings, with the member's settings and place: `/me` leaves out the other devices and their rows, and `/me/export` is refused; it can't rename or hide the member, change its globe or link, approve a device, remove another, delete a removed device's days, or leave. After that, and from the start for the device that joined, it may do what the member may | Server |
 | Removing a device revokes its key at once and says which device removed it; its days stay and count until deleted; removing another device in its first week, the app offers *Remove and delete its days* beside *Remove*; the last device can't be removed | Server, and the app's dialog |
 | Only a removed device's days can be deleted, by another device of the member past its first week, for one provider, one day or all | Server |
 | Every device in use past its first week shows, once, each device added since it last read `/me`, with **Remove**; a device in its first week sees only itself | `LeaderboardMembership.devices` |
 | A device whose key the server no longer knows forgets its membership | `LeaderboardUploader`, as for a member the server forgot |
-| The member's name, visibility, globe and link come from the server; a device's copy follows every `/me` | `LeaderboardMembership` |
+| The member's name, visibility, globe, country and link come from the server; a device's copy follows every `/me` | `LeaderboardMembership` |
 | A day the server refused is sent again with each upload until it is taken or 30 days old | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
 | A new device's label is filled in with the Mac's model, never its computer name | `DeviceLabel` |
 | Every request names its client in `X-Client`, signed or not; the macOS app as `claudebar-macos/<version>` | `LeaderboardHTTPClient` |
-| Until the board and your standing for the view you're looking at have come back, the tab says it is loading; it never says *0 tokens* or *No one is on the board* for an answer it doesn't have yet | The popover tab, from whether it holds an answer for its view |
+| Until a board and you on it have come back once, the tab says it is loading; it never says *0 tokens* or *No one is on the board* for an answer it doesn't have yet | `Board.members`, `nil` until then |
+| Reading a board again (opening the popover, Refresh, an upload, picking it back) keeps its last answer on screen until the new one replaces it; a failed read keeps it and says it couldn't update | `Board.read()` |
+| Coming back to a board, or opening the popover, shows the board last picked and its last answer at once | `Leaderboard.board` and `board(period:provider:)`, kept for the app run |
 | No rule lowers a member's number on a guess: two devices' rows always both count | Server |
 
 ## 5 · The API
@@ -377,7 +433,7 @@ Host: `https://claudebar-api.tddworks.com`; the public board page is `https://cl
 | `DELETE /me/devices/{publicKey}` | signed | removes a device: its key is revoked, its days stay; `409 lastDevice` for the last device; `403 deviceTooNew` from a device in its first week removing another |
 | `DELETE /me/devices/{publicKey}/days[?provider=][&day=]` | signed | deletes a removed device's days, for one provider, one day or all; `403 notYours` for a device in use, `403 deviceTooNew` from a device in its first week |
 | `PUT /usage` `{today, days: [DailyTokens]}` | signed | upserts each of the signing device's days; `today` is the device's date, refused when more than a day from UTC's. With devices, a day that is too old, in the future, or would put the member over the cap is refused alone: the answer is `200 {stored, refused: [{provider, day, reason}]}`, `provider` and `day` echoed as sent, `null` for a row that wasn't an object |
-| `GET /me` | signed | the member (`username`, `visible`, `shareCountry`, `country`, `link`), their standing in a view, their devices (`publicKey`, `label`, `addedAt`, `removedAt`, `removedBy`), and each device's rows that a period can still count (the last 31 days, all an upload ever sends), each with `device`, the public key of the device that sent it. `removedBy` is `{publicKey, label}` or `null`. From an added device in its first week, only its own device and rows, with the member and the standing. Signed by a key still waiting for approval: `202 {waiting: true, expiresIn}`; by one whose code expired: `401` |
+| `GET /me` | signed | the member (`username`, `visible`, `shareCountry`, `country`, `link`), their place on the board asked for (`standing`), their devices (`publicKey`, `label`, `addedAt`, `removedAt`, `removedBy`), and each device's rows that a period can still count (the last 31 days, all an upload ever sends), each with `device`, the public key of the device that sent it. `removedBy` is `{publicKey, label}` or `null`. From an added device in its first week, only its own device and rows, with the member and the standing. Signed by a key still waiting for approval: `202 {waiting: true, expiresIn}`; by one whose code expired: `401` |
 | `GET /me/export` | signed | the same, with every row each device ever uploaded, as a downloadable JSON file; `403 deviceTooNew` from an added device in its first week |
 | `PATCH /me` `{username?, visible?, shareCountry?, link?}` | signed | rename, hide or show; opt in to the globe (the server then keeps the country Cloudflare's edge reports for that request, and never updates it) or out (it forgets it at once); set the profile link as `{platform, handle}` (`x`, `instagram` or `github`, each with its own username rule, pinned by `vectors.json`) or remove it with `null`; `403 deviceTooNew` from a device in its first week |
 | `DELETE /me` | signed | deletes the member, every device and every row; `403 deviceTooNew` from a device in its first week |
@@ -398,7 +454,7 @@ Every request, signed or not (`POST /join` and `POST /devices` too), also carrie
 
 **A removed device's key** is answered `401 {error: "unauthorized", message, removedBy: {publicKey, label}}` on every signed route, so an app from before devices forgets its membership as it does for a member the server forgot.
 
-**Periods per device, in one query.** A board view joins each row to its device and keeps the rows inside that device's own period, v1's window ending on the device's date rather than one date, then sums per member as v1 does. The device's date is its `today` while that is within a day of UTC's, and UTC's date once it isn't, so a device that stopped uploading (removed, turned off, a wiped Mac) ages out of *Today* and *7 days* as v1's rows do. For a 7-day window, say: `end = CASE WHEN julianday(date('now')) - julianday(device.today) <= 1 THEN device.today ELSE date('now') END`, then `WHERE row.day BETWEEN date(end, '-6 days') AND end … GROUP BY member`. One member's week can span time zones that way and still be one `GROUP BY`; the indexes and the exact SQL are `claudebar-server`'s.
+**Periods per device, in one query.** A board joins each row to its device and keeps the rows inside that device's own period, v1's window ending on the device's date rather than one date, then sums per member as v1 does. The device's date is its `today` while that is within a day of UTC's, and UTC's date once it isn't, so a device that stopped uploading (removed, turned off, a wiped Mac) ages out of *Today* and *7 days* as v1's rows do. For a 7-day window, say: `end = CASE WHEN julianday(date('now')) - julianday(device.today) <= 1 THEN device.today ELSE date('now') END`, then `WHERE row.day BETWEEN date(end, '-6 days') AND end … GROUP BY member`. One member's week can span time zones that way and still be one `GROUP BY`; the indexes and the exact SQL are `claudebar-server`'s.
 
 **Standings, counted when days change.** That `GROUP BY` runs when a standing can change, never on a read, and its sums are kept: a member's total per period and per provider, and over every provider. A standing can change only when:
 - **a device uploads** (its rows and its `today` move): that member's standings are counted again, in the same transaction as the upload, from their own last 31 days, the only ones a period can hold;
@@ -459,7 +515,7 @@ Its code moves to the `Leaderboard` module of the package that also builds on Wi
 │  │  inputIncludesCacheRead (rule)  │          │  join · share · leave …        │     └───────┬────────┘  │
 │  └───────────────┬─────────────────┘          ├────────────────────────────────┤             │           │
 │                  ▼                            │ Username · DailyTokens ·       │             │           │
-│  Account.usageHistory ──days(in:)──▶ per login│ BoardView · Standing           │             │           │
+│  Account.usageHistory ──days(in:)──▶ per login│ Board · Board.Member           │             │           │
 │   (Claude, Codex, Mistral, Oh My Pi)          │ LeaderboardUploader (hourly) ◀─┼── App driver timer      │
 │                                               │ RequestSigner (canonical)      │                         │
 │                                               ├─ @Mockable ports ──────────────┤                         │
@@ -489,17 +545,17 @@ Its code moves to the `Leaderboard` module of the package that also builds on Wi
 
 | Piece | Home |
 |---|---|
-| `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `RankCard`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
+| `LeaderboardMembership`, `Board` and `Board.Member`, `DailyTokens`, `Username`, `RankCard`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
 | `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's hardware UUID and model, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the `machine` hash and the devices already shown) and `@MainActor` `TokenLogs`, faked in tests | `Sources/Domain/Leaderboard/` |
 | `Device`, `DeviceCode`, `DeviceLabel` | `Sources/Domain/Leaderboard/` |
 | `IOKitMachineIdentity`: `MachineIdentity` read through IOKit (`IOPlatformUUID`, the model) | `Sources/Infrastructure/` |
 | `LeaderboardHTTPClient`, `CredentialSigningKeyStore`; settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
-| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
+| `Leaderboard` (wiring, `board` and `board(period:provider:)`, so a board outlives the popover, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–12 and 16 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 13–15, §2a's devices in the app, are not built yet.
+Test-first slices, each green on its own. Slices 1–12 and 16 are built, 17 is next: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 13–15, §2a's devices in the app, are not built yet.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.
@@ -518,6 +574,7 @@ Test-first slices, each green on its own. Slices 1–12 and 16 are built: 11 and
 15. **Surfaces**, from a mockup in `design-concept/leaderboard/` first (AGENTS.md: a UI change starts there): the Settings pane's *Devices* list (in a device's first week, only *This Mac* and the day the week ends; after it, label, *This Mac*, added, removed and by which device, *Remove*, *Remove and delete its days* when removing another device in its first week, and *Delete its days* for a removed device), *Add a device* with the code and **Approve**, the join form's *Already a member? Add this Mac* with its code, a wait and the member's name to confirm, the notice that a device was added, the copied-key dialog, and the notice for a refused day. The copied-key dialog's *Keep the key here* says plainly that, while the other Mac is still in use, the two Macs will overwrite each other's days.
 
 16. **Worker: standings counted when days change** (in `tddworks/claudebar-server`). Pins: the board, *Your rank* and the globe answer exactly what counting every row on each read answered, for members with several devices in different time zones, hidden, suspended and tied; an upload, and deleting a removed device's days, show at once; a device that stopped uploading ages out on the next UTC day without anyone uploading; a board read, *Your rank* and an upload each read a bounded number of rows however many days are stored.
+17. **A board as last read** (`Board`, with `Board.Member` in place of `Standing` and no `BoardView`: a board is named by its period and provider). Pins: `members` is `nil` before the first read; a read keeps `members` and `you` together; `you` is `nil` when not ranked while `members` is not; a board asks the server for its own period and provider; a second read replaces both; a failed read keeps both and sets `failure`, and the next good one clears it. The tab draws `leaderboard.board` and keeps nothing, so reopening the popover or picking a board back shows its last answer at once.
 
 Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands with slice 8.
 
@@ -541,5 +598,5 @@ Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands
 - ~~**Codex tokens?**~~ In v1: Codex gets a `usageHistory` read from its session logs, needing the generic `inputIncludesCacheRead` rule.
 - ~~**What does "today" mean across time zones?**~~ Each device's own date: every upload carries the device's `today`, believable within a day of UTC's, and each device's rows count in periods ending on its own date. The board still answers in one query (§5).
 - ~~**Mistral keeps only totals?**~~ `DailyTokens.unsplit` carries tokens a log doesn't split, so they still count.
-- ~~**Where is the data stored?**~~ Cloudflare D1 behind a Worker. Settled because writes must pass server checks (a database the app writes to directly would need a secret in an open-source app), and D1's SQL answers a board view in one `GROUP BY`. Within the free tier only when that `GROUP BY` runs as days change, not on every read: [§5](#5--the-api) *Standings, counted when days change*.
+- ~~**Where is the data stored?**~~ Cloudflare D1 behind a Worker. Settled because writes must pass server checks (a database the app writes to directly would need a secret in an open-source app), and D1's SQL answers a board in one `GROUP BY`. Within the free tier only when that `GROUP BY` runs as days change, not on every read: [§5](#5--the-api) *Standings, counted when days change*.
 - ~~**Can someone use a public key to act as another member?**~~ No. A public key only verifies; signing needs the private half, which never leaves its device.

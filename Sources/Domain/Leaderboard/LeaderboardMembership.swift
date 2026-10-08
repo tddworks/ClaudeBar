@@ -5,7 +5,7 @@ import Observation
 /// This Mac's membership of the leaderboard — a name, a key in your pocket,
 /// and the providers you agreed to share. It owns what may leave the Mac:
 /// only shared providers, and only providers with token logs can be shared.
-/// It never holds a ranking; the server owns that.
+/// It never holds a ranking; the server owns that, and a `Board` keeps it.
 @MainActor
 @Observable
 public final class LeaderboardMembership {
@@ -16,6 +16,8 @@ public final class LeaderboardMembership {
     /// Your country is on the globe: kept by the server from where your
     /// requests come from, never sent by this Mac. Off until you opt in.
     public private(set) var sharesCountry = false
+    /// Where the globe puts you, when you opted in. A copy that follows `/me`.
+    public private(set) var country: String?
     private var globeHintDismissed = false
     /// Where people on the board can find you, when you added it. Not verified.
     public private(set) var link: ProfileLink?
@@ -205,10 +207,11 @@ public final class LeaderboardMembership {
 
     // MARK: - Reading the board
 
-    public func myStanding(in view: BoardView) async throws -> MemberSummary {
+    /// `/me`, signed: you on one board, and the name and settings this copy follows.
+    public func summary(period: BoardPeriod, provider: String? = nil) async throws -> MemberSummary {
         guard let credentials else { throw LeaderboardError.notJoined }
         let changesBefore = changesMadeHere
-        let summary = try await api.me(in: view, as: credentials)
+        let summary = try await api.me(period: period, provider: provider, as: credentials)
         if changesMadeHere == changesBefore { follow(summary) }
         return summary
     }
@@ -220,7 +223,10 @@ public final class LeaderboardMembership {
         guard isJoined else { return }
         if let name = summary.username.flatMap(Username.init) { username = name }
         isVisible = summary.visible
-        if summary.reportsSharesCountry { sharesCountry = summary.sharesCountry }
+        if summary.reportsSharesCountry {
+            sharesCountry = summary.sharesCountry
+            country = summary.country
+        }
         if summary.reportsLink { link = summary.link }
         save()
     }
