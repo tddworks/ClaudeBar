@@ -9,7 +9,7 @@ description: How ClaudeBar's code is cut into modules — one module per bounded
 > it may import · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: IN PROGRESS** — what is left is §8, and §10's phases (none built).
+> **Status: IN PROGRESS** — what is left is §8, and §10's phases 2 to 5 (0 and 1 are built).
 
 ---
 
@@ -340,7 +340,7 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
 | # | Phase | Done when |
 |---|---|---|
 | 0 | **Prove the toolchain.** A `windows-latest` job builds and tests `Quotas` with the Swift toolchain, Mockable included | the job is green — built ([#523](https://github.com/tddworks/ClaudeBar/pull/523)): Swift 6.3.3 builds and tests `Quotas`, and a `@Mockable` port's mock works there |
-| 1 | **The package.** Root `Package.swift` declares today's modules; Tuist consumes it; no source changes | `tuist test` and the macOS `swift test` are green |
+| 1 | **The package.** Root `Package.swift` declares today's modules; Tuist consumes it; no source changes | `tuist test` and the macOS `swift test` are green — built ([#526](https://github.com/tddworks/ClaudeBar/pull/526)): `tuist test` runs the same 3,099 tests as before, and `swift test` runs the modules' tests without Tuist |
 | 2 | **The leaderboard slice.** Carve `Leaderboard` (§8); `CryptoKit` → `Crypto` in `UsageLog`, `CLISession`, `ProviderDefinition`, `RequestSigner`, `SigningKey`; Diagnostics behind `LogSink`; the Mac-only files of `DataSources` move to `Internal/macOS/` | `Quotas`, `Diagnostics`, `DataSources`, `Providers` and `Leaderboard` build and pass on Windows, including the log-reading tests and `vectors.json` — the Windows client can start |
 | 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` on the machine GUID, `LeaderboardAPI` on `URLSession` | the Windows client joins and uploads against the real server |
 | 4 | **Paths and shells.** The engine's Mac assumptions without an import (`/bin/zsh`, `/usr/bin/security`, `~/Library/Application Support`, `:` in `PATH`) become facts each worker receives; definitions name a platform's app-data folder through the path language ([ENGINE_DESIGN](ENGINE_DESIGN.md) changes first) | the definitions that read local files resolve on Windows |
