@@ -103,7 +103,7 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │                       browserCookie(domain) — and how it stays fresh:
 │       │       │   │                       refresh: oauth2(tokenURL, clientId, every, on 401)
 │       │       │   ├── fetch: Fetch        HOW TO GET THE BYTES — "Data fetching method". A closed sum:
-│       │       │   │                       http(request | steps) · jsonRpc(cli, handshake, call) ·
+│       │       │   │                       http(request | steps) · jsonRpc(cli, handshake, call, timeout) ·
 │       │       │   │                       cli(a TUI, keys) · command(args) · file(path) · script(path)
 │       │       │   ├── mapping: Mapping    WHAT THE BYTES SAY — a closed sum:
 │       │       │   │                       json(paths, each, used|left, resets) · text(patterns) ·
@@ -423,6 +423,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a data source is handed only the connection its fetch needs — an HTTP fetch never holds a CLI | `DataSources` (the factory) |
 | a new provider is never a code change; a new protocol or format is one new case and one worker | `Fetch` · `Mapping` · `CredentialLookup` |
 | a case answers for itself — where it sends a key, what it runs, where its CLI lives; nothing outside it switches over the cases but the factory. Tell, don't ask: no caller reads a node's state to decide what the node could decide | `Fetch` (each case's `Connection`) |
+| **a fetch always ends**: every case that waits on a CLI or a server has a deadline — its `timeout` (the definition's, or the case's default), or for `cloudWatch` the AWS SDK's own; at it a stalled CLI is stopped and the fetch fails with *Request timed out*, so the fallback runs and a refresh never syncs forever (#517) | `Fetch` (each case's timeout) |
 | a setting's kind owns its rule — a secret has no default and lives in the vault, a choice takes only its options, a path can be required to exist; the setting says what a blank means | `Setting.kind` |
 | a choice's options carry their values (*China → kimi.com*), used by name — `{{setting.region.site}}` — wherever a fetch needs them; an account's own value wins over the provider's | `Setting` |
 | two logins of a provider never share a path setting — the default login's included | `Provider.accounts` |

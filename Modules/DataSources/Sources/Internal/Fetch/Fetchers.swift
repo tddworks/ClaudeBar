@@ -1,6 +1,7 @@
 import Diagnostics
 import Quotas
 import Foundation
+import Synchronization
 
 /// Fills `{{name}}` from a credential. `nil` when a placeholder has no value,
 /// so a header like `ChatGPT-Account-Id: {{account}}` is simply left out.
@@ -140,6 +141,34 @@ struct JSONRPCFetcher: Fetching {
         let transport = try makeTransport(call.cli, call.args, Self.environment(call.environment), directory)
         defer { transport.close() }
 
+        // A CLI can stall without answering or exiting (#517). A read from
+        // its pipe ignores cancellation, so at the deadline the transport is
+        // closed: that stops the CLI and ends the read.
+        let deadline = Mutex(false)
+        do {
+            return try await withThrowingTaskGroup(of: Response?.self) { group in
+                group.addTask { try await exchange(over: transport) }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(call.timeout))
+                    deadline.withLock { $0 = true }
+                    transport.close()
+                    return nil
+                }
+                while let answered = try await group.next() {
+                    if let response = answered {
+                        group.cancelAll()
+                        return response
+                    }
+                }
+                throw UsageError.timeout
+            }
+        } catch where deadline.withLock({ $0 }) {
+            AppLog.probes.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s")
+            throw UsageError.timeout
+        }
+    }
+
+    private func exchange(over transport: any RPCTransport) async throws -> Response {
         let session = RPCSession(transport: transport)
         for step in call.handshake {
             if let method = step.request {
