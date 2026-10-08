@@ -17,6 +17,8 @@ struct LeaderboardHTTPClientTests {
         HTTPURLResponse(url: host, statusCode: status, httpVersion: nil, headerFields: nil)!
     }
 
+    static let clientName = "claudebar-macos/9.9.9"
+
     /// A client whose one answer is `status` with `body`; `sent` receives the request it made.
     private func client(status: Int = 200, body: String = "{}", sent: ((URLRequest) -> Void)? = nil) -> LeaderboardHTTPClient {
         let network = MockNetworkClient()
@@ -24,7 +26,7 @@ struct LeaderboardHTTPClientTests {
             sent?(request)
             return (Data(body.utf8), Self.response(status))
         }
-        return LeaderboardHTTPClient(networkClient: network, host: Self.host, now: { Self.now })
+        return LeaderboardHTTPClient(networkClient: network, host: Self.host, client: Self.clientName, now: { Self.now })
     }
 
     private func failing(_ error: Error) -> LeaderboardHTTPClient {
@@ -71,7 +73,7 @@ struct LeaderboardHTTPClientTests {
         var sent: URLRequest?
         let days = [DailyTokens(provider: "claude", day: "2026-10-04", input: 1, output: 2, cacheWrite: 3, cacheRead: 4, unsplit: 0)]
 
-        try await client(sent: { sent = $0 }).upload(days, as: member)
+        _ = try await client(sent: { sent = $0 }).upload(days, as: member)
 
         let request = try #require(sent)
         let body = try JSONSerialization.jsonObject(with: #require(request.httpBody)) as? [String: Any]
@@ -81,6 +83,57 @@ struct LeaderboardHTTPClientTests {
         #expect((body?["days"] as? [[String: Any]])?.first?["cacheRead"] as? Int == 4)
         #expect(request.value(forHTTPHeaderField: "X-Member") == "tokenwhale")
         #expect(try isSigned(request, by: key))
+    }
+
+    @Test func `should read the days the server refused alone, each with why`() async throws {
+        let body = #"{"stored":1,"refused":[{"provider":"claude","day":"2026-10-04","reason":"cap"}]}"#
+
+        let refused = try await client(body: body).upload([], as: member)
+
+        #expect(refused == [RefusedDay(provider: "claude", day: "2026-10-04", reason: "cap")])
+    }
+
+    @Test func `should pass over a refused row that names no provider or day, and keep the rest`() async throws {
+        let body = #"{"stored":0,"refused":[{"provider":null,"day":null,"reason":"notAnObject"},{"provider":"codex","day":"2026-10-03","reason":"future"}]}"#
+
+        let refused = try await client(body: body).upload([], as: member)
+
+        #expect(refused == [RefusedDay(provider: "codex", day: "2026-10-03", reason: "future")])
+    }
+
+    @Test func `should read no refused days from a server from before devices`() async throws {
+        #expect(try await client(body: "").upload([], as: member).isEmpty)
+        #expect(try await client(body: #"{"ok":true}"#).upload([], as: member).isEmpty)
+    }
+
+    @Test(arguments: [
+        #"{"refused":"cap"}"#,
+        #"{"stored":1,"refused":null}"#,
+        #"{"refused":[{"provider":"claude","day":"2026-10-04"}]}"#,
+        #"{"stored":1,"refused":["#,
+        #"[]"#,
+        #""stored""#,
+    ])
+    func `should fail the upload when it can't read the answer, rather than take it as no refused days`(body: String) async {
+        await #expect(throws: LeaderboardError.rejected("The leaderboard answered with something unreadable.")) {
+            _ = try await client(body: body).upload([], as: member)
+        }
+    }
+
+    // MARK: - Naming the client
+
+    @Test func `should name the client on every request, signed or not`() async throws {
+        var sent: [URLRequest] = []
+        let client = client(body: #"{"standings":[],"countries":[]}"#, sent: { sent.append($0) })
+
+        try await client.join(username: "tokenwhale", publicKey: key.publicKey)
+        _ = try await client.board(in: BoardView(period: .sevenDays))
+        _ = try await client.globe(in: BoardView(period: .thirtyDays))
+        _ = try await client.upload([], as: member)
+        try await client.leave(as: member)
+
+        #expect(sent.count == 5)
+        #expect(sent.allSatisfy { $0.value(forHTTPHeaderField: "X-Client") == Self.clientName })
     }
 
     // MARK: - Reading
@@ -207,7 +260,7 @@ struct LeaderboardHTTPClientTests {
                 .leave(as: member)
         }
         await #expect(throws: LeaderboardError.rejected("a day can't be in the future")) {
-            try await client(status: 400, body: #"{"error":"badDay","message":"a day can't be in the future"}"#).upload([], as: member)
+            _ = try await client(status: 400, body: #"{"error":"badDay","message":"a day can't be in the future"}"#).upload([], as: member)
         }
     }
 

@@ -1,6 +1,7 @@
 import Diagnostics
 import Quotas
 import Foundation
+import Synchronization
 
 /// Fills `{{name}}` from a credential. `nil` when a placeholder has no value,
 /// so a header like `ChatGPT-Account-Id: {{account}}` is simply left out.
@@ -140,6 +141,39 @@ struct JSONRPCFetcher: Fetching {
         let transport = try makeTransport(call.cli, call.args, Self.environment(call.environment), directory)
         defer { transport.close() }
 
+        // A CLI can stall without answering or exiting (#517). A read from
+        // its pipe ignores cancellation, so at the deadline, or when the
+        // refresh is cancelled, the transport is closed: that stops the CLI
+        // and ends the read.
+        let deadline = Deadline()
+        do {
+            return try await withTaskCancellationHandler {
+                try await withThrowingTaskGroup(of: Response?.self) { group in
+                    group.addTask { try await exchange(over: transport) }
+                    group.addTask {
+                        try await Task.sleep(for: .seconds(call.timeout))
+                        deadline.pass()
+                        transport.close()
+                        return nil
+                    }
+                    while let answered = try await group.next() {
+                        if let response = answered {
+                            group.cancelAll()
+                            return response
+                        }
+                    }
+                    throw UsageError.timeout
+                }
+            } onCancel: {
+                transport.close()
+            }
+        } catch where deadline.hasPassed {
+            AppLog.probes.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s")
+            throw UsageError.timeout
+        }
+    }
+
+    private func exchange(over transport: any RPCTransport) async throws -> Response {
         let session = RPCSession(transport: transport)
         for step in call.handshake {
             if let method = step.request {
@@ -165,6 +199,15 @@ struct JSONRPCFetcher: Fetching {
         environment.merge(change.set) { _, new in new }
         return environment
     }
+}
+
+/// Whether a JSON-RPC exchange ran out of time — set by its timer, read by
+/// the fetch.
+private final class Deadline: Sendable {
+    private let passed = Mutex(false)
+
+    func pass() { passed.withLock { $0 = true } }
+    var hasPassed: Bool { passed.withLock { $0 } }
 }
 
 /// Newline-delimited JSON-RPC over a transport: numbered requests, answers

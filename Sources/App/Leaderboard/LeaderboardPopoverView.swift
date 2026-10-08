@@ -251,14 +251,32 @@ struct LeaderboardStandingsView: View {
     @Environment(\.appTheme) private var theme
     @State private var period: BoardPeriod = .sevenDays
     @State private var provider: String?
-    @State private var mine: MemberSummary?
-    @State private var top: [Standing] = []
+    @State private var answer: Answer?
     @State private var error: String?
     @State private var globe: GlobeSummary?
     @State private var settings = AppSettings.shared
 
     private var view: BoardView { BoardView(period: period, provider: provider) }
     private var membership: LeaderboardMembership { leaderboard.membership }
+
+    /// The board and your standing as the server last answered, for one view.
+    private struct Answer {
+        let view: BoardView
+        let top: [Standing]
+        let mine: MemberSummary
+    }
+
+    /// What to load: the view, again after each upload.
+    private struct Load: Equatable {
+        let view: BoardView
+        let lastUpload: Date?
+    }
+
+    /// Only an answer for the view on screen is shown; until it comes, the tab says it is loading.
+    private var shown: Answer? { answer?.view == view ? answer : nil }
+    private var top: [Standing] { shown?.top ?? [] }
+    private var mine: MemberSummary? { shown?.mine }
+    private var isLoading: Bool { shown == nil && error == nil }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -268,9 +286,8 @@ struct LeaderboardStandingsView: View {
             globeLine
             footer
         }
-        .task(id: view) { await load() }
+        .task(id: Load(view: view, lastUpload: membership.lastUpload)) { await load() }
         .task { globe = try? await leaderboard.globe() }
-        .task(id: membership.lastUpload) { await load() }
         .onDisappear { leaderboard.closeTurnOffMenu() }
     }
 
@@ -398,7 +415,7 @@ struct LeaderboardStandingsView: View {
                         // Like every eye in the popover: masks the text beside it on screen.
                         PrivacyEyeBadge(isHidden: $settings.hideLeaderboardName, what: "your username")
                     }
-                    Text("\(Self.tokens(mine?.standing?.total ?? 0)) tokens")
+                    Text(tokensLine)
                         .font(theme.font(size: 12, weight: .semibold))
                         .foregroundStyle(theme.textSecondary)
                     if let gap = gapLine {
@@ -414,6 +431,12 @@ struct LeaderboardStandingsView: View {
                 }
             }
         }
+    }
+
+    /// Your tokens in the view; nothing claimed before the server has answered for it.
+    private var tokensLine: String {
+        guard shown != nil else { return isLoading ? "Loading…" : "–" }
+        return "\(Self.tokens(mine?.standing?.total ?? 0)) tokens"
     }
 
     /// How far to the place above, or how far ahead of the one below.
@@ -433,7 +456,7 @@ struct LeaderboardStandingsView: View {
     private var boardCard: some View {
         LeaderboardBoardCard(
             top: top, mine: mine?.standing, myUsername: membership.username?.value,
-            hidesMyName: settings.hideLeaderboardName, error: error,
+            hidesMyName: settings.hideLeaderboardName, error: error, isLoading: isLoading,
             period: $period, provider: $provider,
             sharedProviders: membership.sharing.sorted().map { ($0, leaderboardProviderName($0, in: monitor)) })
     }
@@ -471,12 +494,16 @@ struct LeaderboardStandingsView: View {
     }
 
     private func load() async {
+        let view = view
+        error = nil
         do {
             async let board = leaderboard.board(in: view)
             async let me = membership.myStanding(in: view)
-            (top, mine) = try await (board, me)
-            error = nil
+            let (top, mine) = try await (board, me)
+            answer = Answer(view: view, top: top, mine: mine)
         } catch {
+            // Left for another view or a newer upload: that load says how it went.
+            guard !Task.isCancelled else { return }
             self.error = (error as? LeaderboardError)?.errorDescription ?? error.localizedDescription
         }
     }

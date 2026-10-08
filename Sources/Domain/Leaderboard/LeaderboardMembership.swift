@@ -22,7 +22,13 @@ public final class LeaderboardMembership {
     /// Whether ClaudeBar takes part at all: the tab, and uploads. Off is a
     /// pause, kept on this Mac only: the membership stays as it was.
     public private(set) var isOn = true
+    /// Days the server refused, each alone, with why: sent again with each
+    /// upload until the server takes them or they are 30 days old.
+    public private(set) var refused: [RefusedDay] = []
     private var key: SigningKey?
+    /// Changes made here, counted, so a `/me` answer that crossed one is
+    /// not taken over it.
+    private var changesMadeHere = 0
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let keys: any SigningKeyStore
@@ -70,6 +76,7 @@ public final class LeaderboardMembership {
         sharing = providers
         isVisible = true
         lastUpload = nil
+        refused = []
         self.sharesCountry = false
         globeHintDismissed = false
         self.link = nil
@@ -101,6 +108,7 @@ public final class LeaderboardMembership {
         sharing = []
         isVisible = true
         lastUpload = nil
+        refused = []
         sharesCountry = false
         globeHintDismissed = false
         link = nil
@@ -140,8 +148,9 @@ public final class LeaderboardMembership {
         return DailyTokens.summed(logins, providers: sharing, calendar: calendar)
     }
 
-    func recordUpload(at date: Date) {
+    func recordUpload(at date: Date, refused: [RefusedDay] = []) {
         lastUpload = date
+        self.refused = refused
         save()
     }
 
@@ -151,6 +160,7 @@ public final class LeaderboardMembership {
         guard let credentials else { throw LeaderboardError.notJoined }
         try await api.update(MemberChange(visible: visible), as: credentials)
         isVisible = visible
+        changesMadeHere += 1
         save()
     }
 
@@ -158,6 +168,7 @@ public final class LeaderboardMembership {
         guard let credentials else { throw LeaderboardError.notJoined }
         try await api.update(MemberChange(username: newName.value), as: credentials)
         username = newName
+        changesMadeHere += 1
         save()
     }
 
@@ -168,6 +179,7 @@ public final class LeaderboardMembership {
         guard let credentials else { throw LeaderboardError.notJoined }
         try await api.update(MemberChange(link: newLink.map { .set($0) } ?? .remove), as: credentials)
         link = newLink
+        changesMadeHere += 1
         save()
     }
 
@@ -179,6 +191,7 @@ public final class LeaderboardMembership {
         guard let credentials else { throw LeaderboardError.notJoined }
         try await api.update(MemberChange(sharesCountry: shares), as: credentials)
         sharesCountry = shares
+        changesMadeHere += 1
         save()
     }
 
@@ -194,7 +207,22 @@ public final class LeaderboardMembership {
 
     public func myStanding(in view: BoardView) async throws -> MemberSummary {
         guard let credentials else { throw LeaderboardError.notJoined }
-        return try await api.me(in: view, as: credentials)
+        let changesBefore = changesMadeHere
+        let summary = try await api.me(in: view, as: credentials)
+        if changesMadeHere == changesBefore { follow(summary) }
+        return summary
+    }
+
+    /// The member's name and settings live on the server, and another device
+    /// may change them: this Mac's copy follows what `/me` says, and keeps
+    /// what an answer doesn't say (a server from before devices sends no name).
+    private func follow(_ summary: MemberSummary) {
+        guard isJoined else { return }
+        if let name = summary.username.flatMap(Username.init) { username = name }
+        isVisible = summary.visible
+        if summary.reportsSharesCountry { sharesCountry = summary.sharesCountry }
+        if summary.reportsLink { link = summary.link }
+        save()
     }
 
     // MARK: - Private
@@ -217,6 +245,7 @@ public final class LeaderboardMembership {
         sharesCountry = record.sharesCountry
         globeHintDismissed = record.globeHintDismissed
         link = record.link
+        refused = record.refused
     }
 
     private func save() {
@@ -224,6 +253,6 @@ public final class LeaderboardMembership {
         settings.saveLeaderboardRecord(LeaderboardRecord(username: username.value, sharing: Array(sharing),
                                                          visible: isVisible, lastUpload: lastUpload,
                                                          sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed,
-                                                         link: link))
+                                                         link: link, refused: refused))
     }
 }

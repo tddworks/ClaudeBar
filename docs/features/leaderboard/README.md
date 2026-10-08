@@ -93,3 +93,4 @@ The web board's globe shows where ClaudeBar is used, by country, from members wh
 - **Reinstalled, or your Keychain was reset?** The key is gone, and with it the way to prove the name is yours. Join again with a new name; ask on GitHub to have the old one removed.
 - **A locally built ClaudeBar** can't use the Keychain, so the key is kept in the app's preferences instead, as Notify!'s token is.
 - **The board ranks by total tokens**, cache reads included, so cache-heavy Claude use counts a lot. Totals are self-reported; nothing rides on them.
+- **A day missing from your total?** The board leaves out a day that is over its daily cap, too old or in the future, and keeps your other days. ClaudeBar sends that day again with each upload until the board takes it or it's 30 days old.

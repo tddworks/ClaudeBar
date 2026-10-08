@@ -2,6 +2,7 @@ import Diagnostics
 import Darwin
 import Quotas
 import Foundation
+import Synchronization
 
 /// RPC transport that communicates via Process stdin/stdout pipes.
 /// This is excluded from code coverage as it's a pure adapter for system interaction.
@@ -15,6 +16,7 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
     private let process: Process
     private let stdinPipe: Pipe
     private let stdoutPipe: Pipe
+    private let closed = Mutex(false)
 
     public init(
         executable: String,
@@ -80,6 +82,15 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
     }
 
     public func close() {
+        // The deadline, a cancelled refresh and the fetch's own cleanup may
+        // all close it, even at once; only the first does the work, so a
+        // file descriptor is never closed twice.
+        let first = closed.withLock { wasClosed in
+            defer { wasClosed = true }
+            return !wasClosed
+        }
+        guard first else { return }
+
         // Closing stdin is the graceful exit for `codex app-server`: it sees EOF
         // and shuts down on its own, without needing a signal.
         try? stdinPipe.fileHandleForWriting.close()

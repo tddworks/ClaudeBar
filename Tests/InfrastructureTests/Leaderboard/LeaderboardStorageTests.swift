@@ -46,6 +46,18 @@ struct LeaderboardStorageTests {
         #expect(settings.leaderboardRecord() == record)
     }
 
+    @Test func `should remember the days the server refused after a relaunch`() {
+        let (settings, url) = repository()
+        let refused = [RefusedDay(provider: "claude", day: "2026-10-04", reason: "cap")]
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true,
+                                                         lastUpload: nil, refused: refused))
+
+        let relaunched = JSONSettingsRepository(store: JSONSettingsStore(fileURL: url), credentials: UserDefaults(suiteName: UUID().uuidString)!,
+                                                secureCredentials: KeepingCredentials())
+
+        #expect(relaunched.leaderboardRecord()?.refused == refused)
+    }
+
     @Test func `should leave nothing of the membership in settings when it is forgotten`() throws {
         let (settings, url) = repository()
         settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))

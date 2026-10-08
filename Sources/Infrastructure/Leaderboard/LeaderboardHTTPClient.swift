@@ -6,16 +6,22 @@ import Domain
 /// point the app's key at someone else's server.
 public struct LeaderboardHTTPClient: LeaderboardAPI {
     public static let defaultHost = URL(string: "https://claudebar-api.tddworks.com")!
+    /// How this app names itself on every request (`X-Client`), so the server
+    /// can tell clients apart and refuse one broken version alone.
+    public static let macClient = "claudebar-macos/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")"
 
     private let networkClient: any NetworkClient
     private let host: URL
+    private let client: String
     private let timeout: TimeInterval
     private let now: @Sendable () -> Date
 
     public init(networkClient: any NetworkClient = URLSession.shared, host: URL = LeaderboardHTTPClient.defaultHost,
-                timeout: TimeInterval = 15, now: @escaping @Sendable () -> Date = Date.init) {
+                client: String = LeaderboardHTTPClient.macClient, timeout: TimeInterval = 15,
+                now: @escaping @Sendable () -> Date = Date.init) {
         self.networkClient = networkClient
         self.host = host
+        self.client = client
         self.timeout = timeout
         self.now = now
     }
@@ -26,9 +32,20 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         _ = try await send("POST", "/join", body: try JSONEncoder().encode(["username": username, "publicKey": publicKey]))
     }
 
-    public func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws {
+    public func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] {
         let body = try JSONEncoder().encode(Upload(today: DailyTokens.day(of: now()), days: days))
-        _ = try await send("PUT", "/usage", body: body, signedBy: credentials)
+        let answer = try await send("PUT", "/usage", body: body, signedBy: credentials)
+        // A server from before devices answers with no body, or with an object that has
+        // no `refused`: it refused nothing alone. Any other answer that can't be read -
+        // cut short, not an object, a `refused` of the wrong shape - fails the upload, so
+        // the days waiting to be sent again aren't dropped as if taken.
+        if answer.isEmpty { return [] }
+        return (try decode(UploadAnswer.self, answer).refused ?? []).compactMap { row in
+            // A row the server couldn't read as an object names no provider or day; ours
+            // are always objects, and such a row can't be sent again anyway.
+            guard let provider = row.provider, let day = row.day else { return nil }
+            return RefusedDay(provider: provider, day: day, reason: row.reason)
+        }
     }
 
     public func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary {
@@ -59,6 +76,30 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         let days: [DailyTokens]
     }
 
+    private struct UploadAnswer: Decodable {
+        struct Refused: Decodable {
+            let provider: String?
+            let day: String?
+            let reason: String
+        }
+
+        /// `nil` only when the key is missing: a server from before devices. A `refused`
+        /// that is there must be a list - `null` included fails - or the days waiting to be
+        /// sent again would be dropped as if taken.
+        let refused: [Refused]?
+
+        private enum CodingKeys: String, CodingKey { case refused }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if container.contains(.refused) {
+                refused = try container.decode([Refused].self, forKey: .refused)
+            } else {
+                refused = nil
+            }
+        }
+    }
+
     private struct Board: Decodable {
         let standings: [Standing]
     }
@@ -82,6 +123,7 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         request.httpMethod = method
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(client, forHTTPHeaderField: "X-Client")
         if let credentials {
             let headers = try RequestSigner.headers(
                 member: credentials.username, key: credentials.key, method: method, pathAndQuery: pathAndQuery,

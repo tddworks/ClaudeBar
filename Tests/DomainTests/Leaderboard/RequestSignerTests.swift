@@ -40,6 +40,17 @@ struct RequestSignerTests {
         }
     }
 
+    @Test func `should name the device's key on each signed request, so the server finds the device by it`() throws {
+        let vectors = try LeaderboardVectors.load()
+        for item in vectors.signing.cases {
+            let headers = try RequestSigner.headers(
+                member: #require(Username("tokenwhale")), key: key(), method: item.method, pathAndQuery: item.pathAndQuery,
+                body: Data(item.body.utf8), timestamp: item.timestamp, nonce: item.nonce)
+
+            #expect(headers["X-Key"] == vectors.signing.publicKey)
+        }
+    }
+
     @Test func `should accept a signature the server's own vectors made`() throws {
         let vectors = try LeaderboardVectors.load()
         let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: #require(Data(base64URL: vectors.signing.publicKey)))

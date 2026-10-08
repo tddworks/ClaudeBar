@@ -221,6 +221,59 @@ struct DataSourceTests {
         #expect(started.directory == CLIWorkingDirectory.resolve())
     }
 
+    @Test
+    func `should give up on a JSON-RPC CLI that stops answering, so the refresh ends (#517)`() async throws {
+        // `codex app-server` can stall without answering or exiting; the
+        // refresh must end with a timeout instead of syncing forever.
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":0.2}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(
+            definition,
+            providerId: "test",
+            cliExecutor: MockCLIExecutor(),
+            network: MockNetworkClient(),
+            makeTransport: { _, _, _, _ in SilentRPCTransport() },
+            environment: { _ in nil },
+            homeDirectory: FileManager.default.temporaryDirectory,
+            now: { Date() }
+        )
+
+        await #expect(throws: DataSourceError(.fetch, .timeout)) { try await source.fetchUsage() }
+    }
+
+    @Test
+    func `should stop waiting on a silent JSON-RPC CLI when its refresh is cancelled, as removing the account does`() async throws {
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":60}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(
+            definition,
+            providerId: "test",
+            cliExecutor: MockCLIExecutor(),
+            network: MockNetworkClient(),
+            makeTransport: { _, _, _, _ in SilentRPCTransport() },
+            environment: { _ in nil },
+            homeDirectory: FileManager.default.temporaryDirectory,
+            now: { Date() }
+        )
+        let refresh = Task { try await source.fetchUsage() }
+        try await Task.sleep(for: .milliseconds(100))
+
+        refresh.cancel()
+
+        await #expect(throws: (any Error).self) { try await refresh.value }
+    }
+
+    @Test
+    func `should wait fifteen seconds for a JSON-RPC CLI unless the definition says otherwise`() throws {
+        let call = try JSONDecoder().decode(JSONRPCCall.self, from: Data(#"{"cli":"codex","call":"read"}"#.utf8))
+
+        #expect(call.timeout == 15)
+    }
+
     // MARK: - The path dialect
 
     @Test
@@ -255,5 +308,34 @@ private final class StartedProcess: @unchecked Sendable {
         self.executable = executable
         self.arguments = arguments
         self.directory = directory
+    }
+}
+
+/// A CLI that started but never answers: like a real pipe, a read waits until
+/// the transport is closed, and ignores cancellation.
+private final class SilentRPCTransport: RPCTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private var closed = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func send(_ data: Data) throws {}
+
+    func receive() async throws -> Data {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if closed { lock.unlock(); continuation.resume(); return }
+            waiting.append(continuation)
+            lock.unlock()
+        }
+        throw UsageError.executionFailed("Process closed unexpectedly")
+    }
+
+    func close() {
+        lock.lock()
+        closed = true
+        let resumed = waiting
+        waiting = []
+        lock.unlock()
+        resumed.forEach { $0.resume() }
     }
 }

@@ -12,11 +12,16 @@ public enum RequestSigner {
         return [method, pathAndQuery, String(timestamp), nonce, hash].joined(separator: "\n")
     }
 
+    /// The headers of a signed request. `X-Key` names the device's key, which is
+    /// how the server finds the device and, through it, the member; `X-Member`
+    /// stays for a server from before devices, which finds the member by name.
+    /// Neither is part of the signed string, so the shared vectors don't change.
     public static func headers(member: Username, key: SigningKey, method: String, pathAndQuery: String, body: Data,
                                timestamp: Int, nonce: String) throws -> [String: String] {
         let message = canonical(method: method, pathAndQuery: pathAndQuery, timestamp: timestamp, nonce: nonce, body: body)
         let signature = try key.signature(for: Data(message.utf8))
         return [
+            "X-Key": key.publicKey,
             "X-Member": member.value,
             "X-Timestamp": String(timestamp),
             "X-Nonce": nonce,

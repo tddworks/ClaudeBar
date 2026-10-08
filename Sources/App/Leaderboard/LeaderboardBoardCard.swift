@@ -13,6 +13,8 @@ struct LeaderboardBoardCard: View {
     /// Your own row shows `@i•••` when your name is hidden in the popover.
     var hidesMyName = false
     let error: String?
+    /// The board for this view hasn't come back yet: it says so, never that no one is on it.
+    var isLoading = false
     @Binding var period: BoardPeriod
     @Binding var provider: String?
     /// The providers you share, with the names ClaudeBar shows for them.
@@ -37,7 +39,7 @@ struct LeaderboardBoardCard: View {
             header
             providerFilter
             if top.isEmpty {
-                Text(error ?? "No one is on the board for \(period.label.lowercased()) yet.")
+                Text(error ?? (isLoading ? "Loading the board…" : "No one is on the board for \(period.label.lowercased()) yet."))
                     .font(theme.font(size: 12))
                     .foregroundStyle(error == nil ? theme.textTertiary : theme.statusCritical)
             } else {

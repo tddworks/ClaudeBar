@@ -266,6 +266,66 @@ struct LeaderboardMembershipTests {
         #expect(membership().link?.handle == "octocat")
     }
 
+    // MARK: - Following the server
+
+    /// `/me` as the server answers it, in its own JSON.
+    private func answer(_ json: String) throws -> MemberSummary {
+        try JSONDecoder().decode(MemberSummary.self, from: Data(json.utf8))
+    }
+
+    @Test func `should follow the name, visibility, globe and link another device set, on the next read of /me`() async throws {
+        let membership = try await joined()
+        given(api).me(in: .any, as: .any).willReturn(try answer(
+            #"{"username":"whale2","visible":false,"shareCountry":true,"country":"NL","link":{"platform":"github","handle":"octocat"},"standing":null,"days":[]}"#))
+
+        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+
+        #expect(membership.isJoined)
+        #expect(membership.username?.value == "whale2")
+        #expect(!membership.isVisible)
+        #expect(membership.sharesCountry)
+        #expect(membership.link == ProfileLink(platform: .github, handle: "octocat"))
+        #expect(self.membership().username?.value == "whale2")
+    }
+
+    @Test func `should keep what a /me answer doesn't say, as a server from before devices answers`() async throws {
+        let membership = try await joined()
+        try await membership.setSharesCountry(true)
+        try await membership.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
+        given(api).me(in: .any, as: .any).willReturn(try answer(#"{"visible":true,"standing":null,"days":[]}"#))
+
+        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+
+        #expect(membership.username?.value == "tokenwhale")
+        #expect(membership.sharesCountry)
+        #expect(membership.link?.handle == "octocat")
+    }
+
+    @Test func `should forget the link when /me says there is none`() async throws {
+        let membership = try await joined()
+        try await membership.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
+        given(api).me(in: .any, as: .any).willReturn(try answer(#"{"visible":true,"link":null,"standing":null,"days":[]}"#))
+
+        _ = try await membership.myStanding(in: BoardView(period: .sevenDays))
+
+        #expect(membership.link == nil)
+    }
+
+    @Test func `should keep a change made here over a /me answer that crossed it`() async throws {
+        let api = CrossingLeaderboardAPI()
+        let membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs,
+                                               calendar: LeaderboardFixtures.calendar)
+        try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
+
+        async let read = membership.myStanding(in: BoardView(period: .sevenDays))
+        while await !api.isAsked { await Task.yield() }
+        try await membership.setVisible(false)
+        await api.answer(MemberSummary(standing: nil, days: [], visible: true))
+        _ = try await read
+
+        #expect(!membership.isVisible)
+    }
+
     // MARK: - Leaving
 
     @Test func `should forget this Mac's key and the membership once the server deletes the person`() async throws {

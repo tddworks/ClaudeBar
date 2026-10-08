@@ -72,9 +72,13 @@ public struct Standing: Sendable, Equatable, Codable, Identifiable {
     }
 }
 
-/// What the server holds about you: your standing in a view, whether you're
-/// shown, whether your country is on the globe, and every day you uploaded.
+/// What the server holds about you: your name, your standing in a view,
+/// whether you're shown, whether your country is on the globe, and every day
+/// you uploaded.
 public struct MemberSummary: Sendable, Equatable, Codable {
+    /// The member's name on the server, which another device may have changed.
+    /// `nil` from a server that doesn't say it.
+    public let username: String?
     public let standing: Standing?
     public let days: [DailyTokens]
     public let visible: Bool
@@ -82,30 +86,68 @@ public struct MemberSummary: Sendable, Equatable, Codable {
     /// The country the server keeps for the globe, when you opted in.
     public let country: String?
     public let link: ProfileLink?
+    /// Whether the answer said where the member stands on the globe, and
+    /// whether it said what their link is (a `null` link says there is none).
+    /// A device follows only what the server said.
+    let reportsSharesCountry: Bool
+    let reportsLink: Bool
 
-    public init(standing: Standing?, days: [DailyTokens], visible: Bool, sharesCountry: Bool = false, country: String? = nil,
-                link: ProfileLink? = nil) {
+    public init(username: String? = nil, standing: Standing?, days: [DailyTokens], visible: Bool, sharesCountry: Bool = false,
+                country: String? = nil, link: ProfileLink? = nil) {
+        self.username = username
         self.standing = standing
         self.days = days
         self.visible = visible
         self.sharesCountry = sharesCountry
         self.country = country
         self.link = link
+        reportsSharesCountry = true
+        reportsLink = true
     }
 
     private enum CodingKeys: String, CodingKey {
-        case standing, days, visible, country, link
+        case username, standing, days, visible, country, link
         case sharesCountry = "shareCountry"
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        username = try container.decodeIfPresent(String.self, forKey: .username)
         standing = try container.decodeIfPresent(Standing.self, forKey: .standing)
         days = try container.decode([DailyTokens].self, forKey: .days)
         visible = try container.decode(Bool.self, forKey: .visible)
         sharesCountry = try container.decodeIfPresent(Bool.self, forKey: .sharesCountry) ?? false
         country = try container.decodeIfPresent(String.self, forKey: .country)
         link = try? container.decodeIfPresent(ProfileLink.self, forKey: .link)
+        reportsSharesCountry = container.contains(.sharesCountry)
+        // A link that doesn't fit its platform's rules is dropped, and not taken as "no link".
+        reportsLink = container.contains(.link) && (link != nil || (try? container.decodeNil(forKey: .link)) == true)
+    }
+}
+
+/// A day the server refused, alone: the rest of the upload was kept.
+/// `PUT /usage` lists these under `refused` in a `2xx`.
+public struct RefusedDay: Sendable, Equatable, Codable, Hashable {
+    public let provider: String
+    /// The device's date, `yyyy-MM-dd`, as `DailyTokens.day`.
+    public let day: String
+    /// `future`, `tooOld` or `cap`; another reason is kept as the server said it.
+    public let reason: String
+
+    public init(provider: String, day: String, reason: String) {
+        self.provider = provider
+        self.day = day
+        self.reason = reason
+    }
+
+    /// Why, in the person's words.
+    public var why: String {
+        switch reason {
+        case "future": "it is in the future by the server's clock"
+        case "tooOld": "it is more than 30 days old"
+        case "cap": "it would put your total for the day over the daily cap"
+        default: "the leaderboard refused it (\(reason))"
+        }
     }
 }
 
@@ -223,7 +265,9 @@ public enum LeaderboardError: Error, Sendable, Equatable, LocalizedError {
 @Mockable
 public protocol LeaderboardAPI: Sendable {
     func join(username: String, publicKey: String) async throws
-    func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws
+    /// Sends days; answers the ones the server refused, each alone. A server
+    /// from before devices refuses none this way: it fails the whole upload.
+    func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay]
     func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws
     func leave(as credentials: MemberCredentials) async throws

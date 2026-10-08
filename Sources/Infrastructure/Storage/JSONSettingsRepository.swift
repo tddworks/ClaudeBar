@@ -810,7 +810,11 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
             globeHintDismissed: store.read(key: "leaderboard.globeHintDismissed") ?? false,
             link: (store.read(key: "leaderboard.linkPlatform") as String?)
                 .flatMap(ProfileLink.Platform.init(rawValue:))
-                .flatMap { platform in (store.read(key: "leaderboard.linkHandle") as String?).flatMap { ProfileLink(platform: platform, handle: $0) } }
+                .flatMap { platform in (store.read(key: "leaderboard.linkHandle") as String?).flatMap { ProfileLink(platform: platform, handle: $0) } },
+            refused: (store.read(key: "leaderboard.refused") as [[String: String]]? ?? []).compactMap { day in
+                guard let provider = day["provider"], let date = day["day"], let reason = day["reason"] else { return nil }
+                return RefusedDay(provider: provider, day: date, reason: reason)
+            }
         )
     }
 
@@ -831,5 +835,7 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: record?.globeHintDismissed, key: "leaderboard.globeHintDismissed")
         store.write(value: record?.link?.platform.rawValue, key: "leaderboard.linkPlatform")
         store.write(value: record?.link?.handle, key: "leaderboard.linkHandle")
+        let refused = record?.refused.map { ["provider": $0.provider, "day": $0.day, "reason": $0.reason] }
+        store.write(value: refused?.isEmpty == false ? refused : nil, key: "leaderboard.refused")
     }
 }

@@ -48,8 +48,8 @@ enum LeaderboardFixtures {
         calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: hour))!
     }
 
-    static func stat(day: Int, input: Int = 0, output: Int = 0, cacheRead: Int = 0) -> DailyUsageStat {
-        DailyUsageStat(date: date(day), totalCost: 0, totalTokens: input + output, workingTime: 0, sessionCount: 1,
+    static func stat(day: Int, month: Int = 10, input: Int = 0, output: Int = 0, cacheRead: Int = 0) -> DailyUsageStat {
+        DailyUsageStat(date: date(day, month: month), totalCost: 0, totalTokens: input + output, workingTime: 0, sessionCount: 1,
                        inputTokens: input, outputTokens: output, cacheReadTokens: cacheRead)
     }
 }
@@ -59,9 +59,33 @@ extension MockLeaderboardAPI {
     static func accepting() -> MockLeaderboardAPI {
         let api = MockLeaderboardAPI()
         given(api).join(username: .any, publicKey: .any).willReturn(())
-        given(api).upload(.any, as: .any).willReturn(())
+        given(api).upload(.any, as: .any).willReturn([])
         given(api).update(.any, as: .any).willReturn(())
         given(api).leave(as: .any).willReturn(())
         return api
     }
+}
+
+/// A server whose `/me` answer waits until the test gives it, so a change
+/// made on this Mac can cross it.
+actor CrossingLeaderboardAPI: LeaderboardAPI {
+    private var pending: CheckedContinuation<MemberSummary, Never>?
+
+    var isAsked: Bool { pending != nil }
+
+    func answer(_ summary: MemberSummary) {
+        pending?.resume(returning: summary)
+        pending = nil
+    }
+
+    func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary {
+        await withCheckedContinuation { pending = $0 }
+    }
+
+    func join(username: String, publicKey: String) async throws {}
+    func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] { [] }
+    func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {}
+    func leave(as credentials: MemberCredentials) async throws {}
+    func board(in view: BoardView) async throws -> [Standing] { [] }
+    func globe(in view: BoardView) async throws -> GlobeSummary { GlobeSummary(countries: [], present: []) }
 }

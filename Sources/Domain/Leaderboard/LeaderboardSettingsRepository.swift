@@ -10,9 +10,12 @@ public struct LeaderboardRecord: Sendable, Equatable {
     public let sharesCountry: Bool
     public let globeHintDismissed: Bool
     public let link: ProfileLink?
+    /// Days the server refused, to send again.
+    public let refused: [RefusedDay]
 
     public init(username: String, sharing: [String], visible: Bool, lastUpload: Date?,
-                sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil) {
+                sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil,
+                refused: [RefusedDay] = []) {
         self.link = link
         self.username = username
         self.sharing = sharing.sorted()
@@ -20,6 +23,7 @@ public struct LeaderboardRecord: Sendable, Equatable {
         self.lastUpload = lastUpload
         self.sharesCountry = sharesCountry
         self.globeHintDismissed = globeHintDismissed
+        self.refused = refused
     }
 }
 
