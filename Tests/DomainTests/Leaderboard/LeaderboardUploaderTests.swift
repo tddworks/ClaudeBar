@@ -137,6 +137,82 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
+    // MARK: Nothing new to send
+
+    /// One uploader across several asks, its clock moved between them.
+    private final class Clock: @unchecked Sendable {
+        var now: Date
+        init(_ now: Date) { self.now = now }
+    }
+
+    private func uploader(_ membership: LeaderboardMembership, clock: Clock) -> LeaderboardUploader {
+        LeaderboardUploader(membership: membership, logs: logs, api: api, calendar: calendar, now: { clock.now })
+    }
+
+    /// Joined, one day of Claude tokens sent once, and the server unreachable from then on:
+    /// whatever upload follows succeeds only if it stays home.
+    private func sentOnce(at start: Date) async throws -> (LeaderboardMembership, LeaderboardUploader, Clock) {
+        let membership = try await joined()
+        logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
+        let clock = Clock(start)
+        let uploader = uploader(membership, clock: clock)
+        await uploader.uploadDue()
+        api.reset([.given])
+        given(api).upload(.any, as: .any).willThrow(LeaderboardError.unreachable)
+        return (membership, uploader, clock)
+    }
+
+    @Test func `should count as up to date without asking the server when an hour brought nothing new`() async throws {
+        let (membership, uploader, clock) = try await sentOnce(at: now)
+
+        clock.now = now.addingTimeInterval(60 * 60)
+        await uploader.uploadDue()
+
+        #expect(uploader.lastError == nil)
+        #expect(membership.lastUpload == clock.now)
+    }
+
+    @Test func `should send again when the day's tokens grew`() async throws {
+        let (_, uploader, clock) = try await sentOnce(at: now)
+        logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 25)])]
+
+        clock.now = now.addingTimeInterval(60 * 60)
+        await uploader.uploadDue()
+
+        #expect(uploader.lastError == .unreachable)
+    }
+
+    @Test func `should send the same days again on a new day, so the server's periods move with it`() async throws {
+        let (_, uploader, clock) = try await sentOnce(at: LeaderboardFixtures.date(4, hour: 23))
+
+        clock.now = LeaderboardFixtures.date(5, hour: 0).addingTimeInterval(5 * 60)
+        await uploader.uploadDue()
+
+        #expect(uploader.lastError == .unreachable)
+    }
+
+    @Test func `should always send when the person asks, even with nothing new`() async throws {
+        let (_, uploader, clock) = try await sentOnce(at: now)
+
+        clock.now = now.addingTimeInterval(5 * 60)
+        await uploader.uploadNow()
+
+        #expect(uploader.lastError == .unreachable)
+    }
+
+    @Test func `should send everything after joining again, though the days are the same`() async throws {
+        let (membership, uploader, clock) = try await sentOnce(at: now)
+        given(api).leave(as: .any).willReturn(())
+        given(api).join(username: .any, publicKey: .any).willReturn(())
+        try await membership.leave()
+        try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
+
+        clock.now = now.addingTimeInterval(60 * 60)
+        await uploader.uploadDue()
+
+        #expect(uploader.lastError == .unreachable)
+    }
+
     @Test func `should read and send nothing when the person hasn't joined`() async {
         await uploader(membership()).uploadDue()
 

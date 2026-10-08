@@ -326,6 +326,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Uploading a day again replaces that device's row; it never adds, and never touches another device's | Server |
 | A missed hour, or a device asleep for days, heals on the next upload | `LeaderboardUploader`: uploads from the day of `lastUpload` to today, at most 30 days, and on join, or once added, the last 30; a copy made its own device keeps the copied `lastUpload` |
 | Uploads stay hourly by the clock, even after the Mac sleeps | `LeaderboardUploader.uploadDue()`: uploads only when there is no `lastUpload` or it is at least an hour old by the wall clock. The App driver only asks often (every 5 minutes and on wake) and never decides |
+| An hourly upload that would send exactly what the last good one sent, from the same key on the same day, with no refused day waiting to be tried again, goes nowhere and still counts as up to date: the server already holds it. The first upload after launch, and an upload the person asked for, always go | `LeaderboardUploader.uploadDue()`, against the last upload it sent since launch |
 | An upload you asked for always goes, hour or not | `LeaderboardUploader.uploadNow()`: Refresh in the popover, whatever tab is open, joining, and switching a shared provider |
 | Every write and every private read is signed by one of the member's device keys | Server |
 | Who you are comes from the device whose key verified the signature, found by `X-Key`; never from a parameter or a name | Server |
@@ -360,6 +361,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
 | A new device's label is filled in with the Mac's model, never its computer name | `DeviceLabel` |
 | Every request names its client in `X-Client`, signed or not; the macOS app as `claudebar-macos/<version>` | `LeaderboardHTTPClient` |
+| Until the board and your standing for the view you're looking at have come back, the tab says it is loading; it never says *0 tokens* or *No one is on the board* for an answer it doesn't have yet | The popover tab, from whether it holds an answer for its view |
 | No rule lowers a member's number on a guess: two devices' rows always both count | Server |
 
 ## 5 · The API
@@ -480,7 +482,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
 | `LeaderboardMembership` | The laws of §4 on this device | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed; the member's settings follow `/me`; a key whose `machine` hash isn't this Mac's never uploads; refused days are tried again |
 | `RequestSigner` | The canonical string, signed with CryptoKit Ed25519 | Pinned by `Tests/DomainTests/Leaderboard/vectors.json`; the server checks an identical copy |
-| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days, and now when you ask | `lastUpload` moves only on success. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
+| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days, and now when you ask; an hourly upload identical to the last one sent is skipped | `lastUpload` moves only on success, or on a skipped upload the server already holds. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 
 | Piece | Home |
