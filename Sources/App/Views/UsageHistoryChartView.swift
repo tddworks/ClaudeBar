@@ -15,6 +15,8 @@ struct UsageHistoryChartView: View {
     @State private var selectedDate: Date?
     @State private var isVisible: Bool
 
+    @Environment(\.appTheme) private var theme
+
     /// - Parameter shown: starts visible instead of fading in — for a still image.
     init(days: Days, delay: Double, shown: Bool = false) {
         self.days = days
