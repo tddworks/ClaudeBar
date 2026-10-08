@@ -37,7 +37,7 @@ jobs:
           path: |
             ~/Library/Caches/tuist
             Tuist/.build
-          key: tuist-v1-${{ runner.os }}-${{ hashFiles('Tuist/Package.swift', 'Tuist.swift', 'Project.swift') }}
+          key: tuist-v1-${{ runner.os }}-${{ hashFiles('Tuist/Package.swift', 'Tuist.swift', 'App/Project.swift', 'Workspace.swift', 'Package.swift') }}
           restore-keys: |
             tuist-v1-${{ runner.os }}-
 

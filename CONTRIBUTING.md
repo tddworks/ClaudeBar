@@ -4,7 +4,7 @@ Thanks for helping. This page covers building, testing and getting a PR merged. 
 
 ## Build & test
 
-Needs macOS 15+, Xcode with Swift 6.2+, and [Tuist](https://tuist.io) (`brew install tuist`).
+Needs macOS 15+, Xcode with Swift 6.2+, and [Tuist](https://tuist.io) 4.203 or later (`brew install tuist`).
 
 ```bash
 git clone https://github.com/tddworks/ClaudeBar.git && cd ClaudeBar
@@ -19,6 +19,7 @@ tuist build ClaudeBar -C Release
 - Coverage: `tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES`.
 - SwiftUI previews work in Xcode (`⌘⌥↩`); the project sets `ENABLE_DEBUG_DYLIB` for them.
 - "No such module" errors from SourceKit in your editor are expected; modules resolve when Tuist builds.
+- The modules are also a Swift package, `ClaudeBarKit`, in the root `Package.swift`: `swift test` runs their tests without Tuist. It builds SwiftTerm's Metal shader, so it needs Xcode's Metal Toolchain once (`xcodebuild -downloadComponent MetalToolchain`).
 
 ## How code is organised
 

@@ -12,11 +12,14 @@ tuist test                               # every target: module tests, DomainTes
 tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
   -destination 'platform=macOS,arch=arm64' -only-testing:DomainTests   # bypasses Tuist's result cache
+swift test                               # the modules alone, from the root Package.swift
 ```
 
 - `tuist test` caches results; use `xcodebuild test` when you need a test to really run.
 - SourceKit "No such module" errors in the editor are expected; modules resolve at build time.
-- Sources use `**` globs in `Project.swift`, so new subfolders are picked up without edits.
+- The modules are `ClaudeBarKit`, the root `Package.swift`, which takes every file in a module's `Sources/`. The app and its layers are targets in `App/Project.swift`, with `**` globs; the schemes are in `Workspace.swift`. New subfolders are picked up without edits.
+- Tuist 4.203 or later: the modules' tests reach `tuist test` through `includeLocalPackageTestTargets` in `Tuist/Package.swift`.
+- `swift test` builds SwiftTerm's Metal shader, which needs Xcode's Metal Toolchain once (`xcodebuild -downloadComponent MetalToolchain`); the Tuist build leaves the shader out.
 
 ## Architecture
 

@@ -525,7 +525,7 @@ brew cat claudebar
 
 ## Versioning
 
-`Sources/App/Info.plist` is the source of truth for `CFBundleShortVersionString` and `CFBundleVersion`; `Project.swift` points Tuist at it. The release workflow sets both with PlistBuddy **before** `tuist generate`, so the built app and the Sparkle appcast carry the tagged version:
+`Sources/App/Info.plist` is the source of truth for `CFBundleShortVersionString` and `CFBundleVersion`; `App/Project.swift` points Tuist at it. The release workflow sets both with PlistBuddy **before** `tuist generate`, so the built app and the Sparkle appcast carry the tagged version:
 
 ```
 tag vX.Y.Z (or workflow_dispatch) → PlistBuddy updates Info.plist → tuist generate → xcodebuild → sign & notarize → GitHub Release → appcast

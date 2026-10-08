@@ -17,16 +17,18 @@ let packageSettings = PackageSettings(
         "IssueReporting": ["SWIFT_PACKAGE_NAME": "xctest-dynamic-overlay"],
         "IssueReportingPackageSupport": ["SWIFT_PACKAGE_NAME": "xctest-dynamic-overlay"],
         "SwiftTerm": ["EXCLUDED_SOURCE_FILE_NAMES": "Shaders.metal"],
-    ]
+    ],
+    // The modules' tests live in the root package (ClaudeBarKit); keep them in `tuist test`.
+    includeLocalPackageTestTargets: true
 )
 #endif
 
 let package = Package(
     name: "ClaudeBar",
     dependencies: [
-        // Add your own dependencies here:
-        // .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
-        // You can read more about dependencies here: https://docs.tuist.io/documentation/tuist/dependencies
+        // ClaudeBarKit, the modules (../Package.swift, MODULAR_DESIGN §10). The packages below
+        // are the app's and the layers' own; the modules declare theirs in ../Package.swift.
+        .package(path: ".."),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
         .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.12.0"),

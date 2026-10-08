@@ -70,7 +70,7 @@ jobs:
           path: |
             ~/Library/Caches/tuist
             .tuist-cache
-          key: ${{ runner.os }}-tuist-${{ hashFiles('Project.swift', 'Tuist.swift', 'Package.swift') }}
+          key: ${{ runner.os }}-tuist-${{ hashFiles('App/Project.swift', 'Workspace.swift', 'Tuist.swift', 'Tuist/Package.swift', 'Package.swift') }}
           restore-keys: |
             ${{ runner.os }}-tuist-
 
@@ -149,24 +149,24 @@ jobs:
       - name: Install Provisioning Profile
         # ASC credentials are set globally by "Setup ASC credentials" — no extra secret needed.
         # Signing settings (CODE_SIGN_STYLE, CODE_SIGN_IDENTITY, PROVISIONING_PROFILE_SPECIFIER)
-        # are in Project.swift Release config so they only apply to the ClaudeBar target.
+        # are in App/Project.swift Release config so they only apply to the ClaudeBar target.
         run: ./scripts/install-mas-profile.sh
 
       - name: Inject MAS Signing into Generated Project
-        # Project.swift is untouched — MAS settings are injected only here, only for App Store CI.
+        # App/Project.swift is untouched — MAS settings are injected only here, only for App Store CI.
         # Sparkle is removed from all build phases: MAS uses App Store updates, not Sparkle,
         # and Sparkle's XPC helpers/agents would fail sandbox validation.
         # xcodeproj gem is pre-installed on macOS GitHub runners.
         run: |
           ruby - <<'RUBY'
           require 'xcodeproj'
-          project = Xcodeproj::Project.open('ClaudeBar.xcodeproj')
+          project = Xcodeproj::Project.open('App/ClaudeBar.xcodeproj')
           target  = project.targets.find { |t| t.name == 'ClaudeBar' }
           config  = target.build_configurations.find { |c| c.name == 'Release' }
           config.build_settings['CODE_SIGN_STYLE']                      = 'Manual'
           config.build_settings['CODE_SIGN_IDENTITY']                   = '3rd Party Mac Developer Application'
           config.build_settings['PROVISIONING_PROFILE_SPECIFIER']       = 'ClaudeBar Mac App Store'
-          config.build_settings['CODE_SIGN_ENTITLEMENTS']               = 'Sources/App/entitlements.mas.plist'
+          config.build_settings['CODE_SIGN_ENTITLEMENTS']               = '../Sources/App/entitlements.mas.plist'
           config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS']  = ''
           # Remove Sparkle from all build phases so it isn't linked or bundled
           target.build_phases.each do |phase|

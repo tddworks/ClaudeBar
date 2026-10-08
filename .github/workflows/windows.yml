@@ -38,34 +38,8 @@ jobs:
       - name: Get Swift version
         run: swift --version
 
-      # Until phase 1 adds the root Package.swift, the job writes its own
-      # manifest: Quotas and its tests, and a probe that a @Mockable port and
-      # its mock work here (Quotas declares no ports). Mockable at the range
-      # the app's Tuist/Package.swift asks for.
-      - name: Write a manifest for Quotas
-        shell: bash
-        run: |
-          cat > Package.swift <<'EOF'
-          // swift-tools-version: 6.0
-          import PackageDescription
-
-          let package = Package(
-              name: "ClaudeBar",
-              dependencies: [
-                  .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
-              ],
-              targets: [
-                  .target(name: "Quotas", path: "Modules/Quotas/Sources"),
-                  .testTarget(name: "QuotasTests", dependencies: ["Quotas"], path: "Modules/Quotas/Tests"),
-                  .testTarget(
-                      name: "MockableProbe",
-                      dependencies: [.product(name: "Mockable", package: "Mockable")],
-                      path: ".github/windows/MockableProbe",
-                      swiftSettings: [.define("MOCKING")]
-                  ),
-              ]
-          )
-          EOF
-
+      # The root Package.swift declares, on Windows, what builds there today:
+      # Quotas and its tests, and a probe that a @Mockable port and its mock
+      # work here (Quotas declares no ports).
       - name: Build and test
         run: swift test

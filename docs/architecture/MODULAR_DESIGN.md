@@ -229,8 +229,9 @@ testability" alone.
 - What each piece's tests guard: [TARGET §7](TARGET_ARCHITECTURE.md#7--testing).
 - `AcceptanceTests` stays at the App level and composes real modules with
   stubbed ports.
-- `MOCKING` is a project-level compilation condition in `Project.swift`, so
-  every new target inherits it.
+- `MOCKING` turns on the generated mocks. The modules and their tests set it
+  for debug builds in `Package.swift`'s `swiftSettings`; the app's targets
+  inherit it from `App/Project.swift`'s project settings, so a new one gets it.
 
 ## 8 · Still to carve
 
@@ -320,9 +321,13 @@ Modules/<Context>/
   Windows implementation fails as a `DataSourceError` naming the case and the
   platform; a capability with none is `nil`, as when a definition doesn't
   declare it.
-- **`MOCKING`** moves from `Project.swift` to `Package.swift`'s `swiftSettings`,
-  for debug builds and tests.
-- **The App stays a Tuist target** and depends on the package's products.
+- **`MOCKING`** is in `Package.swift`'s `swiftSettings`, for debug builds and
+  tests.
+- **The App stays a Tuist target** and depends on the package's products. Its
+  project is `App/Project.swift`, because Tuist maps one project per folder
+  and the root is the package's
+  ([tuist#4624](https://github.com/tuist/tuist/issues/4624)); `Workspace.swift`
+  at the root holds the schemes, which run both projects' tests.
   Sparkle, the notch, the Touch Bar, status-item drivers and every view stay
   in the App: they are the Mac's.
 - **What isn't here:** the Windows client's UI, its composition root and,
@@ -343,8 +348,6 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
 
 ### Open
 
-- **A root `Package.swift` beside Tuist.** Phase 1 confirms Tuist and Xcode
-  open the workspace as before.
 - **The JavaScript engine on Windows.** QuickJS through a C target is the
   candidate; only `script` mappings need it, not the leaderboard.
 - **Foundation's differences on Windows** (paths, symlinks, `FileManager`,

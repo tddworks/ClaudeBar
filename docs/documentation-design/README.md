@@ -127,7 +127,7 @@ Keeps: logo/badges, one-paragraph pitch, screenshot, install (Homebrew, download
 | Architecture, Key Design Decisions | `docs/architecture/ARCHITECTURE.md` (already there) |
 | Adding a New AI Provider | `CONTRIBUTING.md` → `add-provider` skill |
 | Releasing | `docs/release/RELEASE_SETUP.md` |
-| Dependencies | Deleted; `Tuist/Package.swift` is the list |
+| Dependencies | Deleted; `Package.swift` (the modules') and `Tuist/Package.swift` (the app's) are the lists |
 
 ### AGENTS.md (≤100 lines, ≤12k chars)
 
