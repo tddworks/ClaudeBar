@@ -336,7 +336,8 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Standings rank by total tokens (the five counts summed); ties by username | Server |
 | Each device's rows count in periods that end on that device's own date, the one it sent with its last upload, while it is within a day of UTC's | Server |
 | A hidden member is absent from the public board and still sees their own standing | Server |
-| Your own upload shows on the board you read at once, the same place *Your rank* says; everyone else's within two minutes | Server (an upload drops the boards it changes from the edge cache) |
+| Your own upload shows on the board you read at once, the same place *Your rank* says; everyone else's within two minutes | Server (an upload counts that member's standings again and drops the boards it changes from the edge cache) |
+| A standing is counted when the days under it change, never when it is read: an upload, deleted days, or a new UTC day, which moves every period. Reading the board or *Your rank* costs the same however many members and days the board holds | Server (standings kept on write; [§5](#5--the-api) *Standings, counted when days change*) |
 | The globe shows only countries, only for members who opted in; tokens only where at least three are | Server |
 | A member who hasn't opted in sees the globe offered once, until they opt in or dismiss it | `LeaderboardMembership.showsGlobeHint` |
 | A shared rank image shows one standing in one board view (rank, where that is, tokens, the provider mix) and no other member's name; there is none to share before a rank | `RankCard` |
@@ -396,6 +397,15 @@ Every request, signed or not (`POST /join` and `POST /devices` too), also carrie
 **A removed device's key** is answered `401 {error: "unauthorized", message, removedBy: {publicKey, label}}` on every signed route, so an app from before devices forgets its membership as it does for a member the server forgot.
 
 **Periods per device, in one query.** A board view joins each row to its device and keeps the rows inside that device's own period, v1's window ending on the device's date rather than one date, then sums per member as v1 does. The device's date is its `today` while that is within a day of UTC's, and UTC's date once it isn't, so a device that stopped uploading (removed, turned off, a wiped Mac) ages out of *Today* and *7 days* as v1's rows do. For a 7-day window, say: `end = CASE WHEN julianday(date('now')) - julianday(device.today) <= 1 THEN device.today ELSE date('now') END`, then `WHERE row.day BETWEEN date(end, '-6 days') AND end … GROUP BY member`. One member's week can span time zones that way and still be one `GROUP BY`; the indexes and the exact SQL are `claudebar-server`'s.
+
+**Standings, counted when days change.** That `GROUP BY` runs when a standing can change, never on a read, and its sums are kept: a member's total per period and per provider, and over every provider. A standing can change only when:
+- **a device uploads** (its rows and its `today` move): that member's standings are counted again, in the same transaction as the upload, from their own last 31 days, the only ones a period can hold;
+- **a removed device's days are deleted**: that member's, the same way;
+- **the UTC date turns**: a device whose `today` falls more than a day behind ends its periods on UTC's date from then on, and every period's first day moves. Every member's standings are counted again once a UTC day, by the first read or the hourly cron after midnight, whichever comes first.
+
+Hiding, suspending, renaming and leaving change who is shown, not a total, so the board applies them when it reads. A board read then looks up one view's top 100 in an index on the total; *Your rank* reads the member's own row and counts the members above it. Ties are by username, ignoring case, in byte order.
+
+Counting on every read made a read cost every stored row, history included, so D1's rows read grew with members × members × days. With 64 members and under 2,000 rows it reached 75% of the free plan's 5M a day (2026-10-07).
 
 The Worker verifies with WebCrypto's Ed25519 against the public key `X-Key` names, over **the exact bytes received**, never re-serialised JSON. The canonical string is pinned by `Tests/DomainTests/Leaderboard/vectors.json`, of which the server keeps an identical copy.
 
@@ -483,7 +493,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–11 are built: 11 on the server (`tddworks/claudebar-server` #1). 12–15, §2a's devices in the app, are not built yet.
+Test-first slices, each green on its own. Slices 1–11 and 16 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 12–15, §2a's devices in the app, are not built yet.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.
@@ -500,6 +510,8 @@ Test-first slices, each green on its own. Slices 1–11 are built: 11 on the ser
 13. **Adding and removing devices.** Pins: the label is the Mac's model from `MachineIdentity`, "Mac" when it can't be read, never its computer name; the new device waits, names the member it joined and asks before its first upload, then uploads 30 days; approve shows the label before it adds; every other device past its first week shows the new one once, with **Remove**, a device turned off shows it when turned on, and one in its own first week once that week ends; removing another device in its first week offers *Remove and delete its days* beside *Remove*, which removes and then deletes its days, and removing an older one or itself doesn't; removing this device forgets the key only after the server's 2xx; a removed device forgets its membership on its next upload's `401` and says which device removed it.
 14. **A copied key.** Pins [§2a's copied-key rules](#a-key-copied-to-another-machine), with a faked `MachineIdentity`: a key whose `machine` hash isn't this Mac's uploads nothing and asks until answered; a key with no hash gets this Mac's; every key made on join, when added, or by *Make this Mac its own device* is recorded with this Mac's hash, so the next launch asks nothing, and leaving or being removed forgets the hash with the key; *Make this Mac its own device* gets a new key approved, forgets the copied key, its hash and the copied `refused` days, and uploads from the copied `lastUpload`'s day; *Keep the key here* records this Mac's hash and changes nothing else; the hash never leaves the device. Before it ships, an App Store-signed build on a real Mac reads `IOPlatformUUID` and the model in the sandbox (§9).
 15. **Surfaces**, from a mockup in `design-concept/leaderboard/` first (AGENTS.md: a UI change starts there): the Settings pane's *Devices* list (in a device's first week, only *This Mac* and the day the week ends; after it, label, *This Mac*, added, removed and by which device, *Remove*, *Remove and delete its days* when removing another device in its first week, and *Delete its days* for a removed device), *Add a device* with the code and **Approve**, the join form's *Already a member? Add this Mac* with its code, a wait and the member's name to confirm, the notice that a device was added, the copied-key dialog, and the notice for a refused day. The copied-key dialog's *Keep the key here* says plainly that, while the other Mac is still in use, the two Macs will overwrite each other's days.
+
+16. **Worker: standings counted when days change** (in `tddworks/claudebar-server`). Pins: the board, *Your rank* and the globe answer exactly what counting every row on each read answered, for members with several devices in different time zones, hidden, suspended and tied; an upload, and deleting a removed device's days, show at once; a device that stopped uploading ages out on the next UTC day without anyone uploading; a board read, *Your rank* and an upload each read a bounded number of rows however many days are stored.
 
 Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands with slice 8.
 
@@ -523,5 +535,5 @@ Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands
 - ~~**Codex tokens?**~~ In v1: Codex gets a `usageHistory` read from its session logs, needing the generic `inputIncludesCacheRead` rule.
 - ~~**What does "today" mean across time zones?**~~ Each device's own date: every upload carries the device's `today`, believable within a day of UTC's, and each device's rows count in periods ending on its own date. The board still answers in one query (§5).
 - ~~**Mistral keeps only totals?**~~ `DailyTokens.unsplit` carries tokens a log doesn't split, so they still count.
-- ~~**Where is the data stored?**~~ Cloudflare D1 behind a Worker. Settled because writes must pass server checks (a database the app writes to directly would need a secret in an open-source app), and D1's SQL answers a board view in one `GROUP BY` within the free tier.
+- ~~**Where is the data stored?**~~ Cloudflare D1 behind a Worker. Settled because writes must pass server checks (a database the app writes to directly would need a secret in an open-source app), and D1's SQL answers a board view in one `GROUP BY`. Within the free tier only when that `GROUP BY` runs as days change, not on every read: [§5](#5--the-api) *Standings, counted when days change*.
 - ~~**Can someone use a public key to act as another member?**~~ No. A public key only verifies; signing needs the private half, which never leaves its device.
