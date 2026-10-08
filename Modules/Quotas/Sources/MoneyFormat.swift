@@ -9,6 +9,8 @@ enum MoneyFormat {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSize = 3
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         let digits = formatter.string(from: amount as NSDecimalNumber) ?? "\(amount)"
