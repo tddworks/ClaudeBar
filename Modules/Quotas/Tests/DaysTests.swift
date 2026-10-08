@@ -7,10 +7,10 @@ import Testing
 /// never decides (CANONICAL §5, `Days`).
 @Suite
 struct DaysTests {
-    private let day = Date(timeIntervalSince1970: 1_760_000_000)
+    private let date = Date(timeIntervalSince1970: 1_760_000_000)
 
     private func day(_ cost: Decimal, lines: [ModelUsageLine], tokens: Int = 0) -> DailyUsageStat {
-        DailyUsageStat(date: day, totalCost: cost, totalTokens: tokens, workingTime: 0, sessionCount: 1, lines: lines)
+        DailyUsageStat(date: date, totalCost: cost, totalTokens: tokens, workingTime: 0, sessionCount: 1, lines: lines)
     }
 
     private let opus = ModelUsageLine(model: "claude-opus-4-6", inputTokens: 100, totalTokens: 120, cost: 12)
@@ -32,11 +32,13 @@ struct DaysTests {
     }
 
     @Test func `should read a day's lines largest first by the unit in force`() {
-        let priced = Days([day(15, lines: [sonnet, unnamed, opus])], knowsCost: true)
-        #expect(priced.lines(of: day).map(\.model) == ["claude-opus-4-6", "claude-sonnet-5", ""])
+        let mixed = day(15, lines: [sonnet, unnamed, opus])
+        let priced = Days([mixed], knowsCost: true)
+        #expect(priced.lines(of: mixed).map(\.model) == ["claude-opus-4-6", "claude-sonnet-5", ""])
 
-        let unpriced = Days([day(0, lines: [opus, sonnet], tokens: 0)], knowsCost: false)
-        #expect(unpriced.lines(of: day).map(\.model) == ["claude-sonnet-5", "claude-opus-4-6"])
+        let tokened = day(0, lines: [opus, sonnet], tokens: 0)
+        let unpriced = Days([tokened], knowsCost: false)
+        #expect(unpriced.lines(of: tokened).map(\.model) == ["claude-sonnet-5", "claude-opus-4-6"])
     }
 
     @Test func `should total the days in the unit in force`() {

@@ -15,7 +15,7 @@ public final class UsageHistory {
     public private(set) var report: DailyUsageReport?
     /// *DAILY USAGE — LAST 30 DAYS*: the thirty days ending today, oldest
     /// first, once read and when any of them holds usage.
-    public private(set) var lastThirtyDays: Days? = []
+    public private(set) var lastThirtyDays: Quotas.Days?
 
     /// Whether a day's cost means anything; without it only tokens do.
     public var knowsCost: Bool { log.knowsCost }
@@ -57,10 +57,10 @@ public final class UsageHistory {
     /// One range of dates, every date present. Closed days come from the
     /// ledger; the logs are read only from the first day the ledger doesn't
     /// hold.
-    public func days(in range: DateRange) async -> Days {
+    public func days(in range: DateRange) async -> Quotas.Days {
         let knowsCost = log.knowsCost
         guard let ledger else {
-            return Days(await log.days(in: range), knowsCost: knowsCost)
+            return Quotas.Days(await log.days(in: range), knowsCost: knowsCost)
         }
         let calendar = log.calendar
         let now = log.currentTime
@@ -69,7 +69,7 @@ public final class UsageHistory {
         guard let firstMissing = dates.first(where: { day in
             !DayLedger.isClosed(day, at: now, calendar: calendar) || kept[DayLedger.name(of: day, calendar: calendar)] == nil
         }) else {
-            return Days(dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }, knowsCost: knowsCost)
+            return Quotas.Days(dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }, knowsCost: knowsCost)
         }
 
         let read = await log.days(in: DateRange(first: firstMissing, last: range.last, calendar: calendar))
@@ -80,7 +80,7 @@ public final class UsageHistory {
         ledger.keep(closed, readAs: log.fingerprint)
 
         let before = dates.prefix { $0 < firstMissing }.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }
-        return Days(before + read, knowsCost: knowsCost)
+        return Quotas.Days(before + read, knowsCost: knowsCost)
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,
