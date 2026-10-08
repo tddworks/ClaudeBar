@@ -6,13 +6,15 @@ import Domain
 /// header. Takes plain values, so it renders the same in the popover and in
 /// a still image.
 struct LeaderboardBoardCard: View {
-    let top: [Standing]
-    /// Your own standing in the view, when ranked.
-    let mine: Standing?
+    /// The board's members in rank order.
+    let members: [Board.Member]
+    /// You on this board, when ranked.
+    let you: Board.Member?
     let myUsername: String?
     /// Your own row shows `@i•••` when your name is hidden in the popover.
     var hidesMyName = false
-    let error: String?
+    /// The last read failed: alone before the first answer, beside the last one after it.
+    let failure: String?
     /// The board for this view hasn't come back yet: it says so, never that no one is on it.
     var isLoading = false
     @Binding var period: BoardPeriod
@@ -32,18 +34,24 @@ struct LeaderboardBoardCard: View {
     /// Room round each row for its outline, inside the list's clip.
     private static let inset: CGFloat = 2
 
-    private var leader: Int { max(top.first?.total ?? 0, 1) }
+    private var leader: Int { max(members.first?.total ?? 0, 1) }
 
     var body: some View {
         LeaderboardCard {
             header
             providerFilter
-            if top.isEmpty {
-                Text(error ?? (isLoading ? "Loading the board…" : "No one is on the board for \(period.label.lowercased()) yet."))
+            if members.isEmpty {
+                Text(failure ?? (isLoading ? "Loading the board…" : "No one is on the board for \(period.label.lowercased()) yet."))
                     .font(theme.font(size: 12))
-                    .foregroundStyle(error == nil ? theme.textTertiary : theme.statusCritical)
+                    .foregroundStyle(failure == nil ? theme.textTertiary : theme.statusCritical)
             } else {
-                standingsList
+                if let failure {
+                    Text("Couldn't update: \(failure)")
+                        .font(theme.font(size: 11, weight: .medium))
+                        .foregroundStyle(theme.statusWarning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                membersList
             }
         }
     }
@@ -51,7 +59,7 @@ struct LeaderboardBoardCard: View {
     // MARK: Header and filters
 
     private var title: String {
-        top.count >= 100 ? "TOP 100" : top.count > 1 ? "THE BOARD · \(top.count) MEMBERS" : "THE BOARD"
+        members.count >= 100 ? "TOP 100" : members.count > 1 ? "THE BOARD · \(members.count) MEMBERS" : "THE BOARD"
     }
 
     /// The label and the period switch side by side when they fit; the
@@ -102,24 +110,24 @@ struct LeaderboardBoardCard: View {
 
     /// While the list doesn't show your row, a pinned row of yours sits under
     /// it and scrolls it to you.
-    private var standingsList: some View {
-        let scrolls = top.count > Self.visibleRows
-        let height = CGFloat(min(top.count, Self.visibleRows)) * (Self.rowHeight + Self.rowSpacing) - Self.rowSpacing
+    private var membersList: some View {
+        let scrolls = members.count > Self.visibleRows
+        let height = CGFloat(min(members.count, Self.visibleRows)) * (Self.rowHeight + Self.rowSpacing) - Self.rowSpacing
             + Self.inset * 2 + (scrolls ? Self.rowHeight / 2 : 0)
         return ScrollViewReader { proxy in
             VStack(spacing: Self.rowSpacing) {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: Self.rowSpacing) {
-                        ForEach(top) { standing in
-                            let isMe = standing.username == myUsername
-                            row(standing, isMe: isMe)
-                                .id(standing.rank)
+                        ForEach(members) { member in
+                            let isMe = member.username == myUsername
+                            row(member, isMe: isMe)
+                                .id(member.rank)
                                 .onScrollVisibilityChange(threshold: 0.6) { if isMe { isYourRowInView = $0 } }
                         }
                         // Ranked but outside the hundred shown.
-                        if let mine, !top.contains(where: { $0.rank == mine.rank }) {
+                        if let you, !members.contains(where: { $0.rank == you.rank }) {
                             Text("· · ·").font(.system(size: 11, weight: .bold)).foregroundStyle(theme.textTertiary)
-                            row(mine, isMe: true).id(mine.rank)
+                            row(you, isMe: true).id(you.rank)
                                 .onScrollVisibilityChange(threshold: 0.6) { isYourRowInView = $0 }
                         }
                     }
@@ -138,12 +146,12 @@ struct LeaderboardBoardCard: View {
                     }
                 }
 
-                if let mine, PinnedPlace.shows(isRanked: true, listScrolls: scrolls,
-                                               isYourRowInView: isYourRowInView ?? (mine.rank <= Self.visibleRows)) {
+                if let you, PinnedPlace.shows(isRanked: true, listScrolls: scrolls,
+                                               isYourRowInView: isYourRowInView ?? (you.rank <= Self.visibleRows)) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(mine.rank, anchor: .center) }
+                        withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(you.rank, anchor: .center) }
                     } label: {
-                        row(mine, isMe: true)
+                        row(you, isMe: true)
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, Self.inset)
@@ -156,19 +164,19 @@ struct LeaderboardBoardCard: View {
     /// One line per place; its bar is the row's own background, filled in
     /// proportion to the leader and split by provider in each provider's own
     /// colour, so a row says how much and what.
-    private func row(_ standing: Standing, isMe: Bool) -> some View {
-        let fraction = min(1, max(0, Double(standing.total) / Double(leader)))
+    private func row(_ member: Board.Member, isMe: Bool) -> some View {
+        let fraction = min(1, max(0, Double(member.total) / Double(leader)))
         let shape = RoundedRectangle(cornerRadius: 8)
         return HStack(spacing: 8) {
-            OutlinedNumber(text: "\(standing.rank)", size: 15, color: standing.rank <= 3 ? theme.statusWarning : nil)
+            OutlinedNumber(text: "\(member.rank)", size: 15, color: member.rank <= 3 ? theme.statusWarning : nil)
                 .frame(width: 22)
-            Text(isMe ? leaderboardName(standing.username, hidden: hidesMyName) : "@" + standing.username)
+            Text(isMe ? leaderboardName(member.username, hidden: hidesMyName) : "@" + member.username)
                 .font(theme.font(size: 12, weight: .bold))
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            if let link = standing.link {
-                ProfileLinkIcon(link: link, username: standing.username)
+            if let link = member.link {
+                ProfileLinkIcon(link: link, username: member.username)
             }
             if isMe {
                 Text("YOU")
@@ -180,7 +188,7 @@ struct LeaderboardBoardCard: View {
                     .fixedSize()
             }
             Spacer(minLength: 6)
-            Text(LeaderboardStandingsView.tokens(standing.total))
+            Text(LeaderboardStandingsView.tokens(member.total))
                 .font(theme.font(size: 12, weight: .heavy))
                 .foregroundStyle(theme.textPrimary)
                 .fixedSize()
@@ -193,7 +201,7 @@ struct LeaderboardBoardCard: View {
                 ZStack(alignment: .leading) {
                     shape.fill(theme.progressTrack.opacity(0.5))
                     HStack(spacing: 0) {
-                        ForEach(mix(of: standing), id: \.provider) { part in
+                        ForEach(mix(of: member), id: \.provider) { part in
                             Rectangle()
                                 .fill(ProviderVisualIdentityLookup.color(for: part.provider, scheme: colorScheme).opacity(0.38))
                                 .frame(width: geo.size.width * fraction * part.share)
@@ -208,10 +216,10 @@ struct LeaderboardBoardCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Each provider's share of a standing, largest first.
-    private func mix(of standing: Standing) -> [(provider: String, share: Double)] {
-        let total = max(1, standing.byProvider.values.reduce(0, +))
-        return standing.byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / Double(total)) }
+    /// Each provider's share of a member's tokens, largest first.
+    private func mix(of member: Board.Member) -> [(provider: String, share: Double)] {
+        let total = max(1, member.byProvider.values.reduce(0, +))
+        return member.byProvider.sorted { $0.value > $1.value }.map { ($0.key, Double($0.value) / Double(total)) }
     }
 }
 

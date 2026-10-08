@@ -141,7 +141,7 @@ struct RankShareOverlay: View {
         guard let png = image.png() else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = "claudebar-rank-\(card.view.period.rawValue).png"
+        panel.nameFieldStringValue = "claudebar-rank-\(card.period.rawValue).png"
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {

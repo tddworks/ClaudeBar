@@ -10,9 +10,9 @@ import Domain
 @MainActor
 struct RankCardImageTests {
     private let card = RankCard(
-        standing: Standing(rank: 8, username: "tokenwhale", total: 3_820_000_000, byProvider: ["claude": 3, "codex": 1]),
-        in: BoardView(period: .sevenDays),
-        board: (1...34).map { Standing(rank: $0, username: "m\($0)", total: 1) })!
+        you: Board.Member(rank: 8, username: "tokenwhale", total: 3_820_000_000, byProvider: ["claude": 3, "codex": 1]),
+        period: .sevenDays, provider: nil,
+        board: (1...34).map { Board.Member(rank: $0, username: "m\($0)", total: 1) })!
 
     /// The built-in themes, the ones registered at launch.
     nonisolated static let themes = ["light", "dark", "system", "cli", "christmas", "pop", "platformer"]

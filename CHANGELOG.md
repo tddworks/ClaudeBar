@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Leaderboard tab on refresh**: opening the popover, Refresh or a new upload keeps your rank and the board on screen until the new ones arrive, instead of going back to *Loading…*; if updating fails, the last board stays with a note.
+
 ---
 
 ## [0.5.10] - 2026-10-08

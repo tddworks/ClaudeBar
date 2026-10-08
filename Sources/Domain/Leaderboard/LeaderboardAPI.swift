@@ -16,70 +16,16 @@ public enum BoardPeriod: String, Sendable, CaseIterable, Codable {
     }
 }
 
-/// A period and, optionally, one provider: `7 days · Claude`. A rank only
-/// means something within one view.
-public struct BoardView: Sendable, Hashable {
-    public let period: BoardPeriod
-    /// `nil` is every provider.
-    public let provider: String?
 
-    public init(period: BoardPeriod, provider: String? = nil) {
-        self.period = period
-        self.provider = provider
-    }
-}
-
-/// One member's place in one board view.
-public struct Standing: Sendable, Equatable, Codable, Identifiable {
-    public let rank: Int
-    public let username: String
-    public let total: Int
-    public let input: Int
-    public let output: Int
-    public let cache: Int
-    /// Tokens per provider, for the mix bar.
-    public let byProvider: [String: Int]
-    /// The member's profile link, when they added one. Not verified.
-    public let link: ProfileLink?
-
-    public var id: String { username }
-
-    public init(rank: Int, username: String, total: Int, input: Int = 0, output: Int = 0, cache: Int = 0,
-                byProvider: [String: Int] = [:], link: ProfileLink? = nil) {
-        self.rank = rank
-        self.username = username
-        self.total = total
-        self.input = input
-        self.output = output
-        self.cache = cache
-        self.byProvider = byProvider
-        self.link = link
-    }
-
-    private enum CodingKeys: String, CodingKey { case rank, username, total, input, output, cache, byProvider, link }
-
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        rank = try c.decode(Int.self, forKey: .rank)
-        username = try c.decode(String.self, forKey: .username)
-        total = try c.decode(Int.self, forKey: .total)
-        input = try c.decodeIfPresent(Int.self, forKey: .input) ?? 0
-        output = try c.decodeIfPresent(Int.self, forKey: .output) ?? 0
-        cache = try c.decodeIfPresent(Int.self, forKey: .cache) ?? 0
-        byProvider = try c.decodeIfPresent([String: Int].self, forKey: .byProvider) ?? [:]
-        // A link that doesn't fit its platform's rules is dropped, never shown.
-        link = try? c.decodeIfPresent(ProfileLink.self, forKey: .link)
-    }
-}
-
-/// What the server holds about you: your name, your standing in a view,
+/// What the server holds about you: your name, you on the board asked for,
 /// whether you're shown, whether your country is on the globe, and every day
 /// you uploaded.
 public struct MemberSummary: Sendable, Equatable, Codable {
     /// The member's name on the server, which another device may have changed.
     /// `nil` from a server that doesn't say it.
     public let username: String?
-    public let standing: Standing?
+    /// You as that board shows you; `nil` when not ranked on it.
+    public let onBoard: Board.Member?
     public let days: [DailyTokens]
     public let visible: Bool
     public let sharesCountry: Bool
@@ -92,10 +38,10 @@ public struct MemberSummary: Sendable, Equatable, Codable {
     let reportsSharesCountry: Bool
     let reportsLink: Bool
 
-    public init(username: String? = nil, standing: Standing?, days: [DailyTokens], visible: Bool, sharesCountry: Bool = false,
+    public init(username: String? = nil, onBoard: Board.Member?, days: [DailyTokens], visible: Bool, sharesCountry: Bool = false,
                 country: String? = nil, link: ProfileLink? = nil) {
         self.username = username
-        self.standing = standing
+        self.onBoard = onBoard
         self.days = days
         self.visible = visible
         self.sharesCountry = sharesCountry
@@ -106,14 +52,15 @@ public struct MemberSummary: Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case username, standing, days, visible, country, link
+        case username, days, visible, country, link
+        case onBoard = "standing"
         case sharesCountry = "shareCountry"
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         username = try container.decodeIfPresent(String.self, forKey: .username)
-        standing = try container.decodeIfPresent(Standing.self, forKey: .standing)
+        onBoard = try container.decodeIfPresent(Board.Member.self, forKey: .onBoard)
         days = try container.decode([DailyTokens].self, forKey: .days)
         visible = try container.decode(Bool.self, forKey: .visible)
         sharesCountry = try container.decodeIfPresent(Bool.self, forKey: .sharesCountry) ?? false
@@ -268,9 +215,11 @@ public protocol LeaderboardAPI: Sendable {
     /// Sends days; answers the ones the server refused, each alone. A server
     /// from before devices refuses none this way: it fails the whole upload.
     func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay]
-    func me(in view: BoardView, as credentials: MemberCredentials) async throws -> MemberSummary
+    /// You on one board, with your name and settings. `provider` `nil` = everyone.
+    func me(period: BoardPeriod, provider: String?, as credentials: MemberCredentials) async throws -> MemberSummary
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws
     func leave(as credentials: MemberCredentials) async throws
-    func board(in view: BoardView) async throws -> [Standing]
-    func globe(in view: BoardView) async throws -> GlobeSummary
+    /// One board's members, in rank order. `provider` `nil` = everyone.
+    func board(period: BoardPeriod, provider: String?) async throws -> [Board.Member]
+    func globe(period: BoardPeriod) async throws -> GlobeSummary
 }

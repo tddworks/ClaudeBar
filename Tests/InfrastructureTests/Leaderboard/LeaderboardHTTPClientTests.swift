@@ -127,8 +127,8 @@ struct LeaderboardHTTPClientTests {
         let client = client(body: #"{"standings":[],"countries":[]}"#, sent: { sent.append($0) })
 
         try await client.join(username: "tokenwhale", publicKey: key.publicKey)
-        _ = try await client.board(in: BoardView(period: .sevenDays))
-        _ = try await client.globe(in: BoardView(period: .thirtyDays))
+        _ = try await client.board(period: .sevenDays, provider: nil)
+        _ = try await client.globe(period: .thirtyDays)
         _ = try await client.upload([], as: member)
         try await client.leave(as: member)
 
@@ -143,13 +143,13 @@ struct LeaderboardHTTPClientTests {
         let body = #"{"username":"tokenwhale","visible":false,"standing":{"rank":3,"username":"tokenwhale","total":90,"input":10,"output":20,"cache":60,"byProvider":{"claude":90}},"days":[{"provider":"claude","day":"2026-10-04","input":10,"output":20,"cacheWrite":0,"cacheRead":60,"unsplit":0}]}"#
 
         let summary = try await client(body: body, sent: { sent = $0 })
-            .me(in: BoardView(period: .sevenDays, provider: "claude"), as: member)
+            .me(period: .sevenDays, provider: "claude", as: member)
 
         let request = try #require(sent)
         #expect(request.url?.query == "period=7d&provider=claude")
         #expect(try isSigned(request, by: key))
         #expect(summary.visible == false)
-        #expect(summary.standing?.rank == 3)
+        #expect(summary.onBoard?.rank == 3)
         #expect(summary.days.count == 1)
     }
 
@@ -157,13 +157,13 @@ struct LeaderboardHTTPClientTests {
         var sent: URLRequest?
         let body = #"{"period":"today","provider":null,"standings":[{"rank":1,"username":"big","total":1000,"input":500,"output":0,"cache":500,"byProvider":{"claude":1000}}]}"#
 
-        let standings = try await client(body: body, sent: { sent = $0 }).board(in: BoardView(period: .today))
+        let standings = try await client(body: body, sent: { sent = $0 }).board(period: .today, provider: nil)
 
         #expect(sent?.url?.query == "period=today")
         #expect(sent?.value(forHTTPHeaderField: "X-Signature") == nil)
         // The board is cacheable for the web page; the app must see it fresh.
         #expect(sent?.cachePolicy == .reloadIgnoringLocalCacheData)
-        #expect(standings == [Standing(rank: 1, username: "big", total: 1000, input: 500, cache: 500, byProvider: ["claude": 1000])])
+        #expect(standings == [Board.Member(rank: 1, username: "big", total: 1000, input: 500, cache: 500, byProvider: ["claude": 1000])])
     }
 
     // MARK: - Changes
@@ -206,7 +206,7 @@ struct LeaderboardHTTPClientTests {
     @Test func `should show each member's link and drop one that breaks its platform's rules`() async throws {
         let body = #"{"standings":[{"rank":1,"username":"a","total":5,"link":{"platform":"x","handle":"jack"}},{"rank":2,"username":"b","total":3,"link":{"platform":"x","handle":"https://evil.example"}},{"rank":3,"username":"c","total":1}]}"#
 
-        let standings = try await client(body: body).board(in: BoardView(period: .sevenDays))
+        let standings = try await client(body: body).board(period: .sevenDays, provider: nil)
 
         #expect(standings.map(\.link?.handle) == ["jack", nil, nil])
     }
@@ -215,7 +215,7 @@ struct LeaderboardHTTPClientTests {
         var sent: URLRequest?
         let body = #"{"period":"30d","provider":null,"countries":[{"country":"NL","members":3,"tokens":300}],"present":["GR","VN"],"hiddenCountries":2}"#
 
-        let globe = try await client(body: body, sent: { sent = $0 }).globe(in: BoardView(period: .thirtyDays))
+        let globe = try await client(body: body, sent: { sent = $0 }).globe(period: .thirtyDays)
 
         #expect(sent?.url?.path == "/globe")
         #expect(sent?.url?.query == "period=30d")
@@ -226,14 +226,14 @@ struct LeaderboardHTTPClientTests {
     @Test func `should show only the countries with numbers when the server doesn't name the others`() async throws {
         let body = #"{"period":"30d","provider":null,"countries":[{"country":"NL","members":3,"tokens":300}],"hiddenCountries":2}"#
 
-        let globe = try await client(body: body).globe(in: BoardView(period: .thirtyDays))
+        let globe = try await client(body: body).globe(period: .thirtyDays)
 
         #expect(globe == GlobeSummary(countries: [.init(country: "NL", members: 3, tokens: 300)], present: []))
     }
 
     @Test func `should tell the member whether their country is on the globe`() async throws {
         let body = #"{"username":"tokenwhale","visible":true,"shareCountry":true,"country":"NL","standing":null,"days":[]}"#
-        let summary = try await client(body: body).me(in: BoardView(period: .sevenDays), as: member)
+        let summary = try await client(body: body).me(period: .sevenDays, provider: nil, as: member)
         #expect(summary.sharesCountry)
         #expect(summary.country == "NL")
     }
@@ -266,10 +266,10 @@ struct LeaderboardHTTPClientTests {
 
     @Test func `should say the leaderboard is unreachable when the server fails or there is no connection`() async {
         await #expect(throws: LeaderboardError.unreachable) {
-            try await client(status: 503, body: "oops").board(in: BoardView(period: .today))
+            try await client(status: 503, body: "oops").board(period: .today, provider: nil)
         }
         await #expect(throws: LeaderboardError.unreachable) {
-            try await failing(URLError(.notConnectedToInternet)).board(in: BoardView(period: .today))
+            try await failing(URLError(.notConnectedToInternet)).board(period: .today, provider: nil)
         }
     }
 }

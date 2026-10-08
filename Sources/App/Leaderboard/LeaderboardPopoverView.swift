@@ -249,34 +249,23 @@ struct LeaderboardStandingsView: View {
     let monitor: QuotaMonitor
 
     @Environment(\.appTheme) private var theme
-    @State private var period: BoardPeriod = .sevenDays
-    @State private var provider: String?
-    @State private var answer: Answer?
-    @State private var error: String?
     @State private var globe: GlobeSummary?
     @State private var settings = AppSettings.shared
 
-    private var view: BoardView { BoardView(period: period, provider: provider) }
+    /// The board you're looking at, kept by `Leaderboard` with its last
+    /// answer, so a rebuilt tab draws it at once.
+    private var board: Board { leaderboard.board }
     private var membership: LeaderboardMembership { leaderboard.membership }
+    private var members: [Board.Member] { board.members ?? [] }
+    private var you: Board.Member? { board.you }
+    /// Never read yet: the tab says so, never that no one is on it.
+    private var isLoading: Bool { board.members == nil && board.failure == nil }
 
-    /// The board and your standing as the server last answered, for one view.
-    private struct Answer {
-        let view: BoardView
-        let top: [Standing]
-        let mine: MemberSummary
-    }
-
-    /// What to load: the view, again after each upload.
-    private struct Load: Equatable {
-        let view: BoardView
+    /// Read again for another board, and after each upload.
+    private struct Read: Equatable {
+        let board: ObjectIdentifier
         let lastUpload: Date?
     }
-
-    /// Only an answer for the view on screen is shown; until it comes, the tab says it is loading.
-    private var shown: Answer? { answer?.view == view ? answer : nil }
-    private var top: [Standing] { shown?.top ?? [] }
-    private var mine: MemberSummary? { shown?.mine }
-    private var isLoading: Bool { shown == nil && error == nil }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -286,7 +275,7 @@ struct LeaderboardStandingsView: View {
             globeLine
             footer
         }
-        .task(id: Load(view: view, lastUpload: membership.lastUpload)) { await load() }
+        .task(id: Read(board: ObjectIdentifier(board), lastUpload: membership.lastUpload)) { await board.read() }
         .task { globe = try? await leaderboard.globe() }
         .onDisappear { leaderboard.closeTurnOffMenu() }
     }
@@ -350,7 +339,7 @@ struct LeaderboardStandingsView: View {
                 }
             }
             .buttonStyle(.plain)
-            if membership.sharesCountry, mine?.country != nil {
+            if membership.sharesCountry, membership.country != nil {
                 PrivacyEyeBadge(isHidden: $settings.hideLeaderboardCountry, what: "your globe country")
             }
             Spacer(minLength: 4)
@@ -377,7 +366,7 @@ struct LeaderboardStandingsView: View {
         let count = globe?.countryCount ?? 0
         let countries = count == 0 ? "See where ClaudeBar is used" : count == 1 ? "Members in 1 country" : "Members in \(count) countries"
         guard membership.sharesCountry else { return count == 0 ? countries : countries + " · see the globe" }
-        let me = mine?.country.map { "You're on the globe as \(leaderboardCountryLabel($0, hidden: settings.hideLeaderboardCountry))" }
+        let me = membership.country.map { "You're on the globe as \(leaderboardCountryLabel($0, hidden: settings.hideLeaderboardCountry))" }
             ?? "You're on the globe"
         return count == 0 ? me : "\(me) · \(countries)"
     }
@@ -387,10 +376,10 @@ struct LeaderboardStandingsView: View {
     private var rankCard: some View {
         LeaderboardCard {
             HStack(alignment: .firstTextBaseline) {
-                CardLabel(text: (["YOUR RANK", period.label] + [provider.map { leaderboardProviderName($0, in: monitor) }].compactMap { $0 })
+                CardLabel(text: (["YOUR RANK", board.period.label] + [board.provider.map { leaderboardProviderName($0, in: monitor) }].compactMap { $0 })
                     .joined(separator: " · ").uppercased())
                 Spacer()
-                if let card = RankCard(standing: mine?.standing, in: view, board: top) {
+                if let card = RankCard(you: you, period: board.period, provider: board.provider, board: members) {
                     Button { leaderboard.share(card) } label: {
                         Label("Share", systemImage: "arrow.up.right")
                             .font(theme.font(size: 11, weight: .bold))
@@ -404,8 +393,8 @@ struct LeaderboardStandingsView: View {
                 }
             }
             HStack(alignment: .center, spacing: 12) {
-                OutlinedNumber(text: mine?.standing.map { "#\($0.rank)" } ?? "–", size: 42, color: theme.accentPrimary)
-                    .accessibilityLabel(mine?.standing.map { "Rank \($0.rank)" } ?? "Not ranked yet")
+                OutlinedNumber(text: you.map { "#\($0.rank)" } ?? "–", size: 42, color: theme.accentPrimary)
+                    .accessibilityLabel(you.map { "Rank \($0.rank)" } ?? "Not ranked yet")
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(membership.username.map { leaderboardName($0.value, hidden: settings.hideLeaderboardName) } ?? "")
@@ -425,27 +414,27 @@ struct LeaderboardStandingsView: View {
                     }
                 }
                 Spacer(minLength: 8)
-                if let standing = mine?.standing, !standing.byProvider.isEmpty {
-                    YourMix(byProvider: standing.byProvider, monitor: monitor)
+                if let you, !you.byProvider.isEmpty {
+                    YourMix(byProvider: you.byProvider, monitor: monitor)
                         .frame(width: 112)
                 }
             }
         }
     }
 
-    /// Your tokens in the view; nothing claimed before the server has answered for it.
+    /// Your tokens on this board; nothing claimed before the server has answered for it.
     private var tokensLine: String {
-        guard shown != nil else { return isLoading ? "Loading…" : "–" }
-        return "\(Self.tokens(mine?.standing?.total ?? 0)) tokens"
+        guard board.members != nil else { return isLoading ? "Loading…" : "–" }
+        return "\(Self.tokens(you?.total ?? 0)) tokens"
     }
 
     /// How far to the place above, or how far ahead of the one below.
     private var gapLine: String? {
-        guard let me = mine?.standing else { return nil }
-        if me.rank > 1, let above = top.first(where: { $0.rank == me.rank - 1 }) {
+        guard let me = you else { return nil }
+        if me.rank > 1, let above = members.first(where: { $0.rank == me.rank - 1 }) {
             return "\(Self.tokens(above.total - me.total)) behind #\(above.rank)"
         }
-        if me.rank == 1, let next = top.first(where: { $0.rank == 2 }) {
+        if me.rank == 1, let next = members.first(where: { $0.rank == 2 }) {
             return "\(Self.tokens(me.total - next.total)) ahead of #2"
         }
         return me.rank == 1 ? "Top of the board" : nil
@@ -455,9 +444,10 @@ struct LeaderboardStandingsView: View {
 
     private var boardCard: some View {
         LeaderboardBoardCard(
-            top: top, mine: mine?.standing, myUsername: membership.username?.value,
-            hidesMyName: settings.hideLeaderboardName, error: error, isLoading: isLoading,
-            period: $period, provider: $provider,
+            members: members, you: you, myUsername: membership.username?.value,
+            hidesMyName: settings.hideLeaderboardName, failure: board.failure?.errorDescription, isLoading: isLoading,
+            period: Binding(get: { board.period }, set: { leaderboard.pick(period: $0, provider: board.provider) }),
+            provider: Binding(get: { board.provider }, set: { leaderboard.pick(period: board.period, provider: $0) }),
             sharedProviders: membership.sharing.sorted().map { ($0, leaderboardProviderName($0, in: monitor)) })
     }
 
@@ -491,21 +481,6 @@ struct LeaderboardStandingsView: View {
         if leaderboard.uploader.isUploading { return "Uploading…" }
         guard let last = membership.lastUpload else { return "Waiting for the first upload" }
         return "Uploaded \(last.formatted(.relative(presentation: .named))) · hourly"
-    }
-
-    private func load() async {
-        let view = view
-        error = nil
-        do {
-            async let board = leaderboard.board(in: view)
-            async let me = membership.myStanding(in: view)
-            let (top, mine) = try await (board, me)
-            answer = Answer(view: view, top: top, mine: mine)
-        } catch {
-            // Left for another view or a newer upload: that load says how it went.
-            guard !Task.isCancelled else { return }
-            self.error = (error as? LeaderboardError)?.errorDescription ?? error.localizedDescription
-        }
     }
 
     static func tokens(_ count: Int) -> String {

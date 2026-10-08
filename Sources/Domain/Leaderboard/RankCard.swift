@@ -1,6 +1,6 @@
 import Foundation
 
-/// *SHARE MY RANK* — one standing in one board view, as the shared image
+/// *SHARE MY RANK* — you on one board, as the shared image
 /// says it: the rank, where that is on the board, the tokens and the provider
 /// mix. Nothing the board doesn't already show, and no other member's name.
 public struct RankCard: Sendable, Equatable {
@@ -50,7 +50,9 @@ public struct RankCard: Sendable, Equatable {
     public let rank: Int
     public let username: String
     public let total: Int
-    public let view: BoardView
+    public let period: BoardPeriod
+    /// `nil` = every provider.
+    public let provider: String?
     /// Largest first; a provider whose share rounds to 0% is left out, as one with no tokens is.
     public let mix: [MixShare]
     /// Every member in the view, when the board lists them all and the rank is among them.
@@ -59,12 +61,13 @@ public struct RankCard: Sendable, Equatable {
 
     /// `nil` until there's a rank to share: before the first upload, or with
     /// no tokens in this view.
-    public init?(standing: Standing?, in view: BoardView, board: [Standing]) {
+    public init?(you standing: Board.Member?, period: BoardPeriod, provider: String?, board: [Board.Member]) {
         guard let standing, standing.total > 0 else { return nil }
         rank = standing.rank
         username = standing.username
         total = standing.total
-        self.view = view
+        self.period = period
+        self.provider = provider
 
         let sum = Double(standing.byProvider.values.reduce(0, +))
         mix = standing.byProvider
