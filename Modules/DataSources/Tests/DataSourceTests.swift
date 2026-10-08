@@ -244,6 +244,30 @@ struct DataSourceTests {
     }
 
     @Test
+    func `should stop waiting on a silent JSON-RPC CLI when its refresh is cancelled, as removing the account does`() async throws {
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":60}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(
+            definition,
+            providerId: "test",
+            cliExecutor: MockCLIExecutor(),
+            network: MockNetworkClient(),
+            makeTransport: { _, _, _, _ in SilentRPCTransport() },
+            environment: { _ in nil },
+            homeDirectory: FileManager.default.temporaryDirectory,
+            now: { Date() }
+        )
+        let refresh = Task { try await source.fetchUsage() }
+        try await Task.sleep(for: .milliseconds(100))
+
+        refresh.cancel()
+
+        await #expect(throws: (any Error).self) { try await refresh.value }
+    }
+
+    @Test
     func `should wait fifteen seconds for a JSON-RPC CLI unless the definition says otherwise`() throws {
         let call = try JSONDecoder().decode(JSONRPCCall.self, from: Data(#"{"cli":"codex","call":"read"}"#.utf8))
 
