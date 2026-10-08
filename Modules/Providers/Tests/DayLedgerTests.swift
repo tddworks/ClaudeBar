@@ -91,9 +91,9 @@ struct DayLedgerTests {
         try forgetLogs()
         let again = await history(now: now).days(in: .last(30, endingOn: now))
 
-        #expect(first.count == 30)
-        #expect(again.dropLast().map(\.totalCost) == first.dropLast().map(\.totalCost))
-        #expect(again.last?.totalCost == 0)
+        #expect(first.stats.count == 30)
+        #expect(again.stats.dropLast().map(\.totalCost) == first.stats.dropLast().map(\.totalCost))
+        #expect(again.stats.last?.totalCost == 0)
         #expect(shelf.pages["acme"]?.days.count == 29)
     }
 

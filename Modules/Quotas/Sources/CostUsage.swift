@@ -102,13 +102,7 @@ public struct CostUsage: Sendable, Equatable, Hashable {
 
     /// Formatted cost string (e.g., "$0.55")
     public var formattedCost: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: totalCost as NSDecimalNumber) ?? "$\(totalCost)"
+        MoneyFormat.string(totalCost)
     }
 
     /// Formatted API duration (e.g., "6m 19.7s")
