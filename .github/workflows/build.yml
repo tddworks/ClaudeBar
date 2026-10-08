@@ -52,8 +52,13 @@ jobs:
           restore-keys: |
             derived-data-v1-${{ runner.os }}-
 
+      # `brew update` first: the runner image's Homebrew metadata is as old as
+      # the image, and `Tuist/Package.swift` needs Tuist 4.209 or later (AGENTS.md).
       - name: Install Tuist
-        run: brew install --cask tuist
+        run: |
+          brew update --quiet
+          brew install --cask tuist
+          tuist version
 
       - name: Install Dependencies
         run: tuist install

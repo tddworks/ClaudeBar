@@ -4,7 +4,7 @@ Thanks for helping. This page covers building, testing and getting a PR merged. 
 
 ## Build & test
 
-Needs macOS 15+, Xcode with Swift 6.2+, and [Tuist](https://tuist.io) 4.203 or later (`brew install tuist`).
+Needs macOS 15+, Xcode with Swift 6.2+, and [Tuist](https://tuist.io) 4.209 or later (`brew install tuist`, or `brew upgrade tuist` for an older one).
 
 ```bash
 git clone https://github.com/tddworks/ClaudeBar.git && cd ClaudeBar

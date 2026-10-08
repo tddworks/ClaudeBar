@@ -18,7 +18,7 @@ swift test                               # the modules alone, from the root Pack
 - `tuist test` caches results; use `xcodebuild test` when you need a test to really run.
 - SourceKit "No such module" errors in the editor are expected; modules resolve at build time.
 - The modules are `ClaudeBarKit`, the root `Package.swift`, which takes every file in a module's `Sources/`. The app and its layers are targets in `App/Project.swift`, with `**` globs; the schemes are in `Workspace.swift`. New subfolders are picked up without edits.
-- Tuist 4.203 or later: the modules' tests reach `tuist test` through `includeLocalPackageTestTargets` in `Tuist/Package.swift`.
+- Tuist 4.209 or later: the modules' tests reach `tuist test` through `includeLocalPackageTestTargets` in `Tuist/Package.swift`, and 4.209 is the first release that lets them use products from other packages (Mockable).
 - `swift test` builds SwiftTerm's Metal shader, which needs Xcode's Metal Toolchain once (`xcodebuild -downloadComponent MetalToolchain`); the Tuist build leaves the shader out.
 
 ## Architecture
