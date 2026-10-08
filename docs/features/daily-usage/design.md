@@ -19,9 +19,14 @@ account.usageHistory?.days(in: .last(2))    // TODAY'S USAGE
 account.usageHistory?.days(in: .last(30))   // the chart; every date present, empty days included
 ```
 
-A `Day` holds what every view needs: tokens by kind, a `Cost` with a line per
-model (so a chart can stack by model too), sessions, working time and cache
-savings. Nothing about "today and yesterday" is a type.
+A `Day` is **the sum of its lines**: one line per model, a line holding
+what the day holds — tokens by kind and cost (ESTIMATED unless the log
+states it) — so a chart can stack by model and still add up to the day.
+Records with no model form one unnamed line. Sessions, working time and
+cache savings stay the day's own. Nothing about "today and yesterday" is a
+type; a range of days is one answer, `Days`, and every view is a question
+asked of it — which models, in order; a day's lines, largest first; its
+total in a unit.
 
 Today two vendor-named analyzers answer only the last two days, and each one
 hard-codes the same five jobs:
@@ -288,7 +293,8 @@ natural unit to keep:
 - **Dedupe stays exact**: a record's identity only has to be remembered
   while its day is open.
 - **A ledger is a cache, not a record**: deleting it re-reads the logs; a
-  change to the definition (`usageHistory` or the prices) invalidates it.
+  change to the definition (`usageHistory` or the prices), or to how days
+  are summed — both carried in the log's fingerprint — invalidates it.
 
 ## 4 · Where it lives: the login owns it, `DataSources` extracts it
 
@@ -331,7 +337,14 @@ own cadence (popover open, never the background poll).
 | `DayAggregator` (`DataSources/Internal`) | dedupe by `id` (last wins), split by local day, sessions by `sessionGap` (a record is a session without one), working time, cache savings, a cost line per model | both analyzers' `aggregate` |
 | `DayLedger` (`Providers/Internal`) | closed days kept per login; open days asked of the `UsageLog` | — (new) |
 | `UsageHistory` (`Providers`, @Observable, one per login) | `days(in:)`, every date present | `Domain/UsageHistory` (one object for all logins, two days only) |
-| `Day` (`Quotas`) | the answer; `DailyUsageStat` until the words land | `Quotas` |
+| `Day` (`Quotas`) | the answer — the sum of its lines, one per model; records with no model, one unnamed line; `DailyUsageStat` until the words land | `Quotas` |
+| `Days` (`Quotas`) | a range of days: which models in order, a day's lines largest first, its total in a unit | — (new; the chart's arithmetic moves here) |
+
+A model's display name is a mechanical rule, no vendor named: drop a
+leading segment when at least two remain (`claude-opus-4-6` reads
+*opus-4-6*), a trailing `-YYYYMMDD` date, and a trailing `:<size>`
+(`qwen3-coder:30b` reads *qwen3-coder*). It lives on the line, beside the
+other formatted strings.
 
 Ports: the ledger's store (a `@Mockable` `LedgerStore`) in `Providers`, and
 `PriceCatalog` for a cloud's prices. **The log files are not a port**: the
@@ -340,7 +353,9 @@ they are tested on files in a temporary folder, as credential files already
 are; a mock would test nothing they do. No module names
 a vendor; the readers are named for formats. The page owns the views:
 *TODAY'S USAGE* cards read `days(in: .last(2))`, a chart reads
-`days(in: .last(30))` and stacks `tokens` by kind (or `cost.lines` by model).
+`days(in: .last(30))` and makes two choices — what is counted (cost,
+tokens, cache) and how the bars split (by kind, or by model) — and
+renders what `Days` answers.
 
 ## 5 · Is it easy to change? The checks
 

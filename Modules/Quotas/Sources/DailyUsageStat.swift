@@ -36,6 +36,10 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
     /// Estimated USD saved by cache hits vs full input price
     public let cachedSavings: Decimal
 
+    /// One line per model, ordered by name — the lines a chart stacks. Empty
+    /// when the day came from a log that doesn't name models.
+    public let lines: [ModelUsageLine]
+
     public init(
         date: Date,
         totalCost: Decimal,
@@ -46,7 +50,8 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         outputTokens: Int = 0,
         cacheCreationTokens: Int = 0,
         cacheReadTokens: Int = 0,
-        cachedSavings: Decimal = 0
+        cachedSavings: Decimal = 0,
+        lines: [ModelUsageLine] = []
     ) {
         self.date = date
         self.totalCost = totalCost
@@ -58,19 +63,35 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         self.cacheCreationTokens = cacheCreationTokens
         self.cacheReadTokens = cacheReadTokens
         self.cachedSavings = cachedSavings
+        self.lines = lines
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case date, totalCost, totalTokens, workingTime, sessionCount
+        case inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, cachedSavings, lines
+    }
+
+    /// Days kept before lines existed decode without them.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        date = try container.decode(Date.self, forKey: .date)
+        totalCost = try container.decode(Decimal.self, forKey: .totalCost)
+        totalTokens = try container.decode(Int.self, forKey: .totalTokens)
+        workingTime = try container.decode(TimeInterval.self, forKey: .workingTime)
+        sessionCount = try container.decode(Int.self, forKey: .sessionCount)
+        inputTokens = try container.decodeIfPresent(Int.self, forKey: .inputTokens) ?? 0
+        outputTokens = try container.decodeIfPresent(Int.self, forKey: .outputTokens) ?? 0
+        cacheCreationTokens = try container.decodeIfPresent(Int.self, forKey: .cacheCreationTokens) ?? 0
+        cacheReadTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadTokens) ?? 0
+        cachedSavings = try container.decodeIfPresent(Decimal.self, forKey: .cachedSavings) ?? 0
+        lines = try container.decodeIfPresent([ModelUsageLine].self, forKey: .lines) ?? []
     }
 
     // MARK: - Formatting
 
     /// Formatted cost string (e.g., "$14.26")
     public var formattedCost: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: totalCost as NSDecimalNumber) ?? "$\(totalCost)"
+        MoneyFormat.string(totalCost)
     }
 
     /// Formatted token count (e.g., "19.5M", "1.2K", "500")

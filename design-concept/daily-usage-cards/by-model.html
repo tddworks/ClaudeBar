@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Usage — what is counted × how bars split</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+       padding:32px 16px;background:radial-gradient(1200px 600px at 50% -10%,#2b2440 0%,#171422 55%,#100e19 100%);
+       font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;color:#EDEBF5}
+  .hint{font-size:12px;color:#8f8aa6;max-width:600px;text-align:center;line-height:1.5}
+  .hint b{color:#c9c4de}
+  .card{width:540px;padding:12px;border-radius:16px;
+        background:linear-gradient(180deg,rgba(38,33,58,.92),rgba(26,22,40,.94));
+        border:1px solid rgba(255,255,255,.10);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+  .head{display:flex;align-items:baseline;gap:8px}
+  .label{font-size:8px;font-weight:600;letter-spacing:.4px;color:#948ea9;display:flex;gap:5px;align-items:center}
+  .label .ico{color:#FFD84D}
+  .head .right{margin-left:auto;text-align:right}
+  .headline{font-size:13px;color:#F2F0F8;font-weight:600;font-variant-numeric:tabular-nums}
+  .caption{font-size:8px;font-weight:600;color:#7d7793}
+  .row{display:flex;align-items:center;gap:4px;margin-top:8px;flex-wrap:wrap}
+  .grp{display:flex;gap:4px;align-items:center}
+  .grp .tag{font-size:8px;font-weight:600;color:#7d7793;margin-right:2px}
+  .chip{font-size:9px;font-weight:500;color:#8f8aa6;padding:3px 8px;border-radius:7px;border:1px solid transparent;cursor:pointer;user-select:none}
+  .chip.on{color:#F2F0F8;font-weight:700;background:rgba(255,255,255,.07)}
+  .chip.off{border-color:rgba(255,255,255,.10)}
+  .legend{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:280px}
+  .legend span{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:500;color:#8f8aa6;white-space:nowrap}
+  .legend i{width:5px;height:5px;border-radius:50%;display:inline-block}
+  svg{display:block;margin-top:6px}
+  .bar{transition:opacity .15s;cursor:pointer}
+  svg.dim .bar{opacity:.35}
+  svg.dim .bar.sel{opacity:1}
+  .axis{font-size:7px;fill:#7d7793;font-weight:500}
+  .detail{margin-top:6px;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);
+          display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:4px 12px;min-height:16px}
+  .detail span{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:500;color:#c9c4de;white-space:nowrap;overflow:hidden}
+  .detail i{width:6px;height:6px;border-radius:2px;display:inline-block;flex:none}
+  .detail b{color:#F2F0F8;font-weight:700;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<div class="hint">Two independent choices, as the design now says: <b>what is counted</b> (Cost · Tokens · Cache)
+and <b>how the bars split</b> (by kind · by model). A model-split day stacks its lines — and a day's records
+with <b>no model form one unnamed line</b> (the grey <b>—</b> segment), so the bars still add up to the day.
+Offered only when the log names models; unpriced logins count tokens.</div>
+
+<div class="card">
+  <div class="head">
+    <span class="label"><span class="ico">▙</span>DAILY USAGE — LAST 30 DAYS</span>
+    <span class="right"><div class="headline" id="headline"></div><div class="caption" id="caption"></div></span>
+  </div>
+  <div class="row">
+    <span class="grp"><span class="tag">COUNT</span><span id="measures"></span></span>
+    <span class="grp" id="splitGrp"><span class="tag">SPLIT</span><span id="splits"></span></span>
+    <span class="legend" id="legend"></span>
+  </div>
+  <svg id="chart" width="516" height="150" viewBox="0 0 516 150"></svg>
+  <div class="detail" id="detail"></div>
+</div>
+
+<script>
+const MODELS = [
+  { name:"claude-opus-4-6-20251101", color:"#7C5CFF" },
+  { name:"claude-sonnet-5",          color:"#34C77B" },
+  { name:"glm-4.6",                  color:"#4AA8FF" },
+];
+const UNNAMED = { name:"—", color:"#8f8aa6" };   // records with no model: one unnamed line
+const MEASURES = ["Cost","Tokens","Cache"];
+const SPLITS = ["by kind","by model"];
+let measure = "Cost", split = "by model", selected = 24;
+
+const shortName = n => n.replace(/^claude-/,"").replace(/-\d{8}$/,"").replace(/:\w+$/,"");
+let seed = 11;
+const rnd = () => (seed = (seed*1103515245+12345)%2147483648)/2147483648;
+// Each day: named model lines + possibly an unnamed line (records the log writes without a model).
+const days = Array.from({length:30},(_,i)=>{
+  const d = new Date(2026,8,8+i);
+  const weekend = [0,6].includes(d.getDay());
+  const s = weekend ? .15 : (.55 + rnd()*.9);
+  const lines = [
+    { model:MODELS[0], cost:8*s*(0.4+rnd()),  tokens:300e3*s*(0.4+rnd()), cache:900e3*s },
+    { model:MODELS[1], cost:4*s*(0.4+rnd()),  tokens:380e3*s*(0.4+rnd()), cache:600e3*s },
+    { model:MODELS[2], cost:2*s*(0.4+rnd()),  tokens:240e3*s*(0.4+rnd()), cache:300e3*s },
+  ];
+  if (i % 5 === 2) lines.push({ model:UNNAMED, cost:.9*s, tokens:120e3*s, cache:80e3*s }); // model-less records
+  return { date:d, lines };
+});
+
+const money = v => "$"+(v>=100?v.toFixed(0):v.toFixed(2));
+const count = v => v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?(v/1e3).toFixed(1)+"K":""+Math.round(v);
+const fmt = { Cost:money, Tokens:count, Cache:count };
+const pick = (l,m) => m==="Cost"?l.cost : m==="Tokens"?l.tokens : l.cache;
+const dayTotal = (d,m) => d.lines.reduce((s,l)=>s+pick(l,m),0);
+
+function buildChips(host,list,get,set,key){
+  host.innerHTML="";
+  list.forEach(m=>{
+    const c=document.createElement("span");
+    c.className="chip"; c.textContent=m; c.style.display="inline-block";
+    c.onclick=()=>{set(m);render();};
+    c.dataset.k=key+m; host.appendChild(c);
+  });
+}
+buildChips(document.getElementById("measures"),MEASURES,()=>measure,v=>measure=v,"m");
+buildChips(document.getElementById("splits"),SPLITS,()=>split,v=>split=v,"s");
+
+const W=516,H=150,padL=36,padB=14,padT=8;
+function render(){
+  document.querySelectorAll("#measures .chip").forEach(c=>c.className="chip "+(c.dataset.k==="m"+measure?"on":"off"));
+  document.querySelectorAll("#splits .chip").forEach(c=>c.className="chip "+(c.dataset.k==="s"+split?"on":"off"));
+  document.getElementById("splitGrp").style.visibility = "visible";
+
+  // legend: the parts of the current choice
+  const legend=document.getElementById("legend"); legend.innerHTML="";
+  let parts;
+  if (split==="by model") parts = days.flatMap(d=>d.lines.map(l=>l.model)).filter((v,i,a)=>a.indexOf(v)===i).sort()
+        .map(n=>[shortName(n), n==="—"?UNNAMED.color:MODELS.find(m=>m.name===n).color]);
+  else if (measure==="Cost") parts=[["Cost","#FFD84D"]];
+  else if (measure==="Tokens") parts=[["Input","#2DD4A8"],["Output","#FF8A5C"]];
+  else parts=[["Cache write","#4AA8FF"],["Cache read","#FFD84D"]];
+  parts.forEach(([n,col])=>{ const s=document.createElement("span"); s.innerHTML=`<i style="background:${col}"></i>${n}`; legend.appendChild(s); });
+
+  const max = Math.max(...days.map(d=>dayTotal(d,measure)),1)*1.15;
+  const bw=(W-padL-8)/30, svg=[];
+  svg.push(`<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="rgba(255,255,255,.07)"/>`);
+  svg.push(`<line x1="${padL}" y1="${H-padB}" x2="${W-4}" y2="${H-padB}" stroke="rgba(255,255,255,.07)"/>`);
+  for(let g=1;g<=3;g++){ const y=padT+(H-padB-padT)*(1-g/3);
+    svg.push(`<text class="axis" x="${padL-4}" y="${y+2}" text-anchor="end">${fmt[measure](max*g/3)}</text>`);
+    svg.push(`<line x1="${padL}" y1="${y}" x2="${W-4}" y2="${y}" stroke="rgba(255,255,255,.05)"/>`); }
+  days.forEach((day,i)=>{
+    const x=padL+i*bw+bw*.18, w=bw*.64;
+    let y=H-padB, stack;
+    if (split==="by model")
+      stack = day.lines.slice().sort((a,b)=>(a.model==="—")-(b.model==="—"))
+        .map(l=>({v:pick(l,measure), c:l.model==="—"?UNNAMED.color:MODELS.find(m=>m.name===l.model).color, n:shortName(l.model)}));
+    else if (measure==="Cost") stack=[{v:dayTotal(day,measure),c:"#FFD84D",n:"Cost"}];
+    else if (measure==="Tokens") stack=[{v:day.lines.reduce((s,l)=>s+l.tokens,0),c:"#2DD4A8",n:"Input"}];
+    else stack=[{v:dayTotal(day,measure),c:"#4AA8FF",n:"Cache"}];
+    stack.forEach(seg=>{
+      if(seg.v<=0) return;
+      const h=(seg.v/max)*(H-padB-padT); y-=h;
+      svg.push(`<rect class="bar${i===selected?" sel":""}" data-i="${i}" x="${x}" y="${y}" width="${w}" height="${Math.max(h,1)}" rx="1.5" fill="${seg.c}"><title>${day.date.toDateString().slice(4)} — ${seg.n}: ${fmt[measure](seg.v)}</title></rect>`);
+    });
+    if(i%7===0||i===29)
+      svg.push(`<text class="axis" x="${x+w/2}" y="${H-3}" text-anchor="middle">${day.date.toLocaleString("en",{month:"short",day:"numeric"})}</text>`);
+  });
+  const chart=document.getElementById("chart");
+  chart.innerHTML=svg.join("");
+  chart.classList.toggle("dim", selected!=null);
+  chart.querySelectorAll(".bar").forEach(b=>b.addEventListener("mouseenter",()=>{selected=+b.dataset.i;paintSelection();}));
+
+  paintSelection();
+  function paintSelection(){
+    chart.querySelectorAll(".bar").forEach(b=>b.classList.toggle("sel",+b.dataset.i===selected));
+    const day=days[selected];
+    document.getElementById("headline").textContent=fmt[measure](dayTotal(day,measure));
+    document.getElementById("caption").textContent=day.date.toLocaleString("en",{month:"short",day:"numeric"});
+    const rows = split==="by model"
+      ? day.lines.slice().sort((a,b)=>pick(b,measure)-pick(a,measure)).map(l=>{
+          const col=l.model==="—"?UNNAMED.color:MODELS.find(m=>m.name===l.model).color;
+          return `<span title="${l.model==="—"?"records with no model":l.model}"><i style="background:${col}"></i>${shortName(l.model)} <b>${fmt[measure](pick(l,measure))}</b></span>`;
+        })
+      : [`<span class="none" style="color:#7d7793">Split by model to name the day's models</span>`];
+    document.getElementById("detail").innerHTML=rows.join("");
+  }
+}
+render();
+</script>
+</body>
+</html>

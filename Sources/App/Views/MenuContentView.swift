@@ -1097,8 +1097,8 @@ struct MenuContentView: View {
         let history = account?.usageHistory
         let report = history?.report ?? fallback
         let apps = history?.usedOtherApps ?? []
-        let lastThirtyDays = history?.lastThirtyDays ?? []
-        if titled, settings.showDailyUsageCards, report != nil || !apps.isEmpty || !lastThirtyDays.isEmpty {
+        let lastThirtyDays = history?.lastThirtyDays
+        if titled, settings.showDailyUsageCards, report != nil || !apps.isEmpty || lastThirtyDays != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1135,9 +1135,8 @@ struct MenuContentView: View {
         }
 
         // The same login's last thirty days, as a chart.
-        if settings.showDailyUsageCards, let history, !lastThirtyDays.isEmpty {
-            UsageHistoryChartView(days: lastThirtyDays, delay: Double(cards + 4) * 0.08,
-                                  measure: history.knowsCost ? .cost : .tokens, showsCost: history.knowsCost)
+        if settings.showDailyUsageCards, let lastThirtyDays {
+            UsageHistoryChartView(days: lastThirtyDays, delay: Double(cards + 4) * 0.08)
         }
     }
 

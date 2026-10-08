@@ -21,13 +21,7 @@ public struct CostLine: Sendable, Equatable, Hashable {
 
     /// "$0.55"
     public var formattedAmount: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+        MoneyFormat.string(amount)
     }
 }
 

@@ -73,9 +73,9 @@ struct UsageHistoryTests {
 
         await history.read()
 
-        #expect(history.lastThirtyDays.count == 30)
-        #expect(history.lastThirtyDays.first?.totalCost == 7)
-        #expect(history.lastThirtyDays.suffix(2).map(\.totalCost) == [41, 14])
+        #expect(history.lastThirtyDays?.stats.count == 30)
+        #expect(history.lastThirtyDays?.stats.first?.totalCost == 7)
+        #expect(history.lastThirtyDays?.stats.suffix(2).map(\.totalCost) == [41, 14])
     }
 
     @Test
@@ -84,7 +84,7 @@ struct UsageHistoryTests {
 
         await history.read()
 
-        #expect(history.lastThirtyDays.isEmpty)
+        #expect(history.lastThirtyDays == nil)
     }
 
     @Test
@@ -93,8 +93,8 @@ struct UsageHistoryTests {
 
         let days = await history().days(in: .last(30))
 
-        #expect(days.count == 30)
-        #expect(days.map(\.totalCost).suffix(2) == [41, 14])
+        #expect(days.stats.count == 30)
+        #expect(days.stats.map(\.totalCost).suffix(2) == [41, 14])
     }
 
     // MARK: - The login owns it

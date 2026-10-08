@@ -15,7 +15,7 @@ public final class UsageHistory {
     public private(set) var report: DailyUsageReport?
     /// *DAILY USAGE — LAST 30 DAYS*: the thirty days ending today, oldest
     /// first, once read and when any of them holds usage.
-    public private(set) var lastThirtyDays: [DailyUsageStat] = []
+    public private(set) var lastThirtyDays: Days? = []
 
     /// Whether a day's cost means anything; without it only tokens do.
     public var knowsCost: Bool { log.knowsCost }
@@ -54,11 +54,14 @@ public final class UsageHistory {
         })
     }
 
-    /// One day per date of `range`, every date present. Closed days come
-    /// from the ledger; the logs are read only from the first day the
-    /// ledger doesn't hold.
-    public func days(in range: DateRange) async -> [DailyUsageStat] {
-        guard let ledger else { return await log.days(in: range) }
+    /// One range of dates, every date present. Closed days come from the
+    /// ledger; the logs are read only from the first day the ledger doesn't
+    /// hold.
+    public func days(in range: DateRange) async -> Days {
+        let knowsCost = log.knowsCost
+        guard let ledger else {
+            return Days(await log.days(in: range), knowsCost: knowsCost)
+        }
         let calendar = log.calendar
         let now = log.currentTime
         let kept = ledger.days(readAs: log.fingerprint)
@@ -66,7 +69,7 @@ public final class UsageHistory {
         guard let firstMissing = dates.first(where: { day in
             !DayLedger.isClosed(day, at: now, calendar: calendar) || kept[DayLedger.name(of: day, calendar: calendar)] == nil
         }) else {
-            return dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }
+            return Days(dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }, knowsCost: knowsCost)
         }
 
         let read = await log.days(in: DateRange(first: firstMissing, last: range.last, calendar: calendar))
@@ -77,7 +80,7 @@ public final class UsageHistory {
         ledger.keep(closed, readAs: log.fingerprint)
 
         let before = dates.prefix { $0 < firstMissing }.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }
-        return before + read
+        return Days(before + read, knowsCost: knowsCost)
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,
@@ -86,11 +89,11 @@ public final class UsageHistory {
     public func read() async {
         for app in otherApps { await app.read() }
         let days = await days(in: .last(2, endingOn: log.currentTime, calendar: log.calendar))
-        guard days.count == 2 else { return }
-        let report = DailyUsageReport(today: days[1], previous: days[0])
+        guard days.stats.count == 2 else { return }
+        let report = DailyUsageReport(today: days.stats[1], previous: days.stats[0])
         self.report = report.today.isEmpty && report.previous.isEmpty ? nil : report
 
         let month = await self.days(in: .last(30, endingOn: log.currentTime, calendar: log.calendar))
-        lastThirtyDays = month.allSatisfy(\.isEmpty) ? [] : month
+        lastThirtyDays = month.stats.allSatisfy(\.isEmpty) ? nil : month
     }
 }

@@ -388,6 +388,7 @@ extension DataSources {
         hash.update(data: (try? encoder.encode(own)) ?? Data())
         hash.update(data: Data(expand(definition.records.files).utf8))
         hash.update(data: Data((definition.prices.flatMap { scripts($0.file) } ?? "").utf8))
+        hash.update(data: Data("\(DayAggregator.summingVersion)\n".utf8))
         let fingerprint = hash.finalize().map { String(format: "%02x", $0) }.joined()
         return UsageLog(
             definition: definition,

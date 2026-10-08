@@ -177,7 +177,7 @@ final class MonitorTokenLogs: TokenLogs {
     func days(in range: DateRange) async -> [LoginDays] {
         var result: [LoginDays] = []
         for login in logins {
-            result.append(LoginDays(providerId: login.providerId, days: await login.history.days(in: range)))
+            result.append(LoginDays(providerId: login.providerId, days: await login.history.days(in: range).stats))
         }
         return result
     }

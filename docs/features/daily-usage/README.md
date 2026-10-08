@@ -14,7 +14,7 @@ Below a provider's quota cards, the popover can show what you've used **today**,
 
 Each card ends with a line like "Vs Sep 23 +$5.00 (12.5%)": green when today is lower, orange when it's higher.
 
-Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output) or **Cache** (writes and reads), with the thirty-day total in the corner. Hover a bar to see that day.
+Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output), **Cache** (writes and reads) or **Models** (the bar stacked by the models the tool's log names — hover a day to see each model's part, largest first; only when the log names models), with the thirty-day total in the corner. Hover a bar to see that day.
 
 ## Quick start
 

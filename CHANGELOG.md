@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Daily usage by model**: the 30-day chart splits by model — choose what is counted (cost, tokens, cache) and split the bars by the models the log names; hover a day to see each model's part, the unnamed line included. ([#511](https://github.com/tddworks/ClaudeBar/pull/511)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/daily-usage/README.md)
+
 ---
 
 ## [0.5.10] - 2026-10-08

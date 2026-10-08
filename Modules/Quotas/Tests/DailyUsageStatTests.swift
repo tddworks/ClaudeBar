@@ -202,4 +202,24 @@ struct DailyUsageStatTests {
         #expect(stat.cacheHitRate == 0)
         #expect(stat.cachedSavings == 0)
     }
+
+    /// A ledger page is a cache; days kept by an older ClaudeBar must keep
+    /// decoding when a field is added.
+    @Test func `should decode a day kept before per-model lines existed`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2,"inputTokens":1000,"outputTokens":200,"cacheCreationTokens":0,"cacheReadTokens":0,"cachedSavings":0}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.lines.isEmpty)
+        #expect(day.totalCost == 1.5)
+        #expect(day.totalTokens == 1200)
+    }
+
+    @Test func `should decode a day's per-model lines`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2,"lines":[{"model":"m-large","inputTokens":1000,"outputTokens":200,"cacheCreationTokens":0,"cacheReadTokens":0,"totalTokens":1200,"cost":1.5}]}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.lines == [
+            ModelUsageLine(model: "m-large", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
+        ])
+    }
 }

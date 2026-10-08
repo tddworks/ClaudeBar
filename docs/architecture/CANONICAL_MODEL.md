@@ -172,10 +172,12 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │                       history, label and ledger, never summed with this one's days.
 │       │       │   │                       The definition's `usageHistory.otherApps`; an added login's
 │       │       │   │                       patch sets it to `null` — the apps belong to the Mac
-│       │       │   └── Day  ◇              ONE DAY — date (local) · tokens: input · output · cache
-│       │       │                           write · cache read · cost: Cost (lines per model,
-│       │       │                           ESTIMATED unless the log states it) · sessions ·
-│       │       │                           working time · cache savings
+│       │       │   └── Day  ◇              ONE DAY — date (local) · THE SUM OF ITS LINES: one line
+│       │       │                           per model, a line holding what the day holds — tokens
+│       │       │                           input · output · cache write · cache read · cost
+│       │       │                           (ESTIMATED unless the log states it); records with no
+│       │       │                           model form one unnamed line · sessions · working
+│       │       │                           time · cache savings
 │       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
 │       │       │                           run by the engine; `nil` when not declared
 │       │       └── status                  DERIVED — QUOTA HEALTH: the worst quota in its usage.
@@ -442,7 +444,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a record written twice counts once — the last copy wins (a streamed message is logged as it grows) | `UsageLog.records` |
 | a record is read by the first shape whose `where` holds; one shape's paths never answer for another's record | `UsageLog.Records` |
 | a day closes a fixed while after it ends; a closed day is summed once, kept, and never read from the logs again. Today, and the day before until it closes, are read every time | `DayLedger` |
-| a day's spend is a `Cost` with a line per model — the log's own cost wins; otherwise it is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission | `Day.cost` · `PriceList` |
+| a day is THE SUM OF ITS LINES: one line per model, a line holding what the day holds — the model's tokens by kind and its cost. The log's own cost wins; otherwise cost is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission. Records with no model form one unnamed line, so the lines always add up to the day | `Day.lines` · `PriceList` |
+| a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit — so a view renders and tells | `Days` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
 | a capability is declared by the definition — even one only a single product has (guest passes), whose runner the engine supplies — never chosen by a provider's name, never a vendor name in a module. Either way it is reached through the login's handle (`account.usageHistory`, `account.guestPasses`), `nil` when not offered | `Account` |
 | usage history is read when the popover opens, never in the background, and never carried on `Usage` | `UsageHistory` |
@@ -505,7 +508,8 @@ is built is not listed — the code is its record. What isn't yet:
 | `Account.budget` | `app.claudeApiBudget` (Claude's card) and Bedrock's `dailyBudget` as a quota | a `Budget` beside the login's `Cost`, judged as `BudgetStatus`; the old keys read as the default login's budget |
 | `StatusPolicy` | `menuBarLabel(…)` takes the two burn-rate values; `StatusColorPolicy` is in `Domain` | the label takes the policy; colours move to the App |
 | page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/Provider`; `menuBarLabel(…)` on `QuotaMonitor` | the App |
-| `Day` | `DailyUsageReport` / `DailyUsageStat` | `Day`, with a cost line per model |
+| `Day` | `DailyUsageReport` / `DailyUsageStat` (with `lines`) | `Day` — the sum of its lines, one per model; records with no model, one unnamed line |
+| `Days` — a range of days | `days(in:)` returns a bare array; the chart decides what is offered, the totals, the models' order and each one's colour | a `Days` value answering the page's questions — its models in order, a day's lines largest first, its total in a unit — so the view renders and never decides |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
 | In use | folder logins only | an environment-variable record for API-key providers |
 
@@ -522,6 +526,9 @@ is built is not listed — the code is its record. What isn't yet:
 - ~~**Cost lines.**~~ — **answered**: one `Cost` with lines. Bedrock's
   per-model spend is a line each (`CostLine`), judged as a whole by the
   account's budget; never a quota, never a third kind of `Left`.
+  Daily usage's `Day` carries its lines itself, not on a `Cost` — a line
+  is one model's tokens and cost, because a day is the sum of its model
+  calls; `CostLine` stays Bedrock's money-only line.
 - ~~**A custom provider with accounts.**~~ — **answered**: the provider's.
   The form has two scopes; an account fills the ACCOUNT scope (one API key
   each, as a reference), and *Add Account* is that form. One definition

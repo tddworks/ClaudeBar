@@ -26,7 +26,9 @@ public struct DayLedger: Sendable {
         return now >= end.addingTimeInterval(closesAfter)
     }
 
-    /// The kept days, by date, when they were summed the way `fingerprint` reads.
+    /// The kept days, by date, when they were summed the way `fingerprint`
+    /// reads — the fingerprint carries how days are summed, so a change to
+    /// the summing starts it over.
     func days(readAs fingerprint: String) -> [String: DailyUsageStat] {
         guard let page = store.load(key), page.fingerprint == fingerprint else { return [:] }
         return page.days

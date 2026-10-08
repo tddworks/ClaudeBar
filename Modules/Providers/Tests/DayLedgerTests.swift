@@ -26,9 +26,9 @@ struct DayLedgerTests {
         calendar.startOfDay(for: Date()).addingTimeInterval(hour * 3600)
     }
 
-    private func history(now: Date, cost: String = "$.cost") -> UsageHistory {
+    private func history(now: Date, cost: String = "$.cost", model: String? = nil) -> UsageHistory {
         let definition = UsageLog.Definition(records: UsageLog.Records(
-            files: "~/.acme/*.jsonl", at: "$.at", tokens: UsageLog.Tokens(total: "$.tokens"), cost: cost))
+            files: "~/.acme/*.jsonl", at: "$.at", model: model, tokens: UsageLog.Tokens(total: "$.tokens"), cost: cost))
         let log = DataSources.makeUsageLog(definition, environment: { _ in nil }, homeDirectory: home,
                                            calendar: calendar, now: { now })
         return UsageHistory(log: log, ledger: DayLedger(store: shelf, key: "acme"))
@@ -57,7 +57,7 @@ struct DayLedgerTests {
         try forgetLogs()
         let days = await history(now: now).days(in: .last(2, endingOn: now))
 
-        #expect(days.map(\.totalCost) == [41, 0])
+        #expect(days.stats.map(\.totalCost) == [41, 0])
     }
 
     @Test func `should show today's latest usage every time it is read`() async throws {
@@ -69,7 +69,7 @@ struct DayLedgerTests {
         try log([(14, 0), (6, 0)], now: now)
         let days = await history.days(in: .last(2, endingOn: now))
 
-        #expect(days.last?.totalCost == 20)
+        #expect(days.stats.last?.totalCost == 20)
     }
 
     @Test func `should keep reading yesterday from the logs until an hour past midnight`() async throws {
@@ -80,7 +80,7 @@ struct DayLedgerTests {
         try forgetLogs()
         let days = await history(now: now).days(in: .last(2, endingOn: now))
 
-        #expect(days.first?.totalCost == 0)
+        #expect(days.stats.first?.totalCost == 0)
     }
 
     @Test func `should keep thirty closed days from one read and read only today again`() async throws {
@@ -112,7 +112,7 @@ struct DayLedgerTests {
         try forgetLogs()
         let days = await history(now: now, cost: "$.price").days(in: .last(2, endingOn: now))
 
-        #expect(days.first?.totalCost == 0)
+        #expect(days.stats.first?.totalCost == 0)
     }
 
     @Test func `should show yesterday's kept usage on the cards after the logs are gone`() async throws {
@@ -126,5 +126,41 @@ struct DayLedgerTests {
 
         #expect(history.report?.previous.totalCost == 41)
         #expect(history.report?.today.isEmpty == true)
+    }
+
+    /// One day, two models with their own costs, logged directly.
+    private func logTwoModels(_ now: Date) throws {
+        let dir = home.appendingPathComponent(".acme")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let day = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now))!
+        let lines = [
+            #"{"at":\#(day.addingTimeInterval(43_200).timeIntervalSince1970),"model":"m-large","input":1000,"output":200,"cost":1.5}"#,
+            #"{"at":\#(day.addingTimeInterval(43_600).timeIntervalSince1970),"model":"m-small","input":100,"output":200,"cost":0.25}"#,
+        ]
+        try lines.joined(separator: "\n").write(to: dir.appendingPathComponent("log.jsonl"), atomically: true, encoding: .utf8)
+    }
+
+    /// A log that names its models and their input and output.
+    private func modelHistory(now: Date) -> UsageHistory {
+        let definition = UsageLog.Definition(records: UsageLog.Records(
+            files: "~/.acme/*.jsonl", at: "$.at", model: "$.model",
+            tokens: UsageLog.Tokens(input: "$.input", output: "$.output"), cost: "$.cost"))
+        let log = DataSources.makeUsageLog(definition, environment: { _ in nil }, homeDirectory: home,
+                                           calendar: calendar, now: { now })
+        return UsageHistory(log: log, ledger: DayLedger(store: shelf, key: "acme"))
+    }
+
+    @Test func `should keep a closed day's per-model lines after the logs are gone`() async throws {
+        let now = today(at: 12)
+        try logTwoModels(now)
+        _ = await modelHistory(now: now).days(in: .last(2, endingOn: now))
+
+        try forgetLogs()
+        let days = await modelHistory(now: now).days(in: .last(2, endingOn: now))
+
+        #expect(days.stats.first?.lines == [
+            ModelUsageLine(model: "m-large", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
+            ModelUsageLine(model: "m-small", inputTokens: 100, outputTokens: 200, totalTokens: 300, cost: 0.25),
+        ])
     }
 }
