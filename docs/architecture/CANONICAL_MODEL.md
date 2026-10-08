@@ -487,6 +487,7 @@ enforces it. Across a fence the same word may mean something else, as long as
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch |
 | **Usage History** | supporting | *what did I use, day by day?* |
 | **In use** | supporting | *which login does my next terminal session start with?* |
+| **Leaderboard** | supporting | *how do my days compare with everyone else's?* — membership, devices, the signed upload; [its design](../features/leaderboard/design.md) |
 | **Vault & Settings** | generic | *where is it kept?* — `settings.json`, secrets |
 | SDK clients | — (anti-corruption layers) | *what does this SDK say?* — a client that needs a heavy SDK gets its own module, behind a port, so only it links the SDK |
 

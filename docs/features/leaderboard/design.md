@@ -431,6 +431,8 @@ The server's own threat model (rate limits, caching, moderation, logging) is in 
 
 A destination, not a provider, so it sits beside Notify! (AGENTS.md: destinations get standalone repositories, never under `ProviderSettingsRepository`).
 
+Its code moves to the `Leaderboard` module of the package that also builds on Windows, so ClaudeBar for Windows counts and signs a day with the same code as the Mac ([MODULAR_DESIGN §10](../../architecture/MODULAR_DESIGN.md#10--one-package-two-platforms), phase 2). The homes below are today's.
+
 ```
 ┌──────────────────────────────────────────── THIS MAC (Swift) ─────────────────────────────────────────────┐
 │                                                                                                           │
@@ -467,7 +469,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | Codex `usageHistory` (JSON) | Codex daily tokens from its session logs | Each `token_count` line's `last_token_usage`, deduplicated by the session's running total (Codex writes some lines twice). No cost: the lines name no model |
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
 | `LeaderboardMembership` | The laws of §4 on this device | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed; the member's settings follow `/me`; a key whose `machine` hash isn't this Mac's never uploads; refused days are tried again |
-| `RequestSigner` | The canonical string, signed with CryptoKit Ed25519 | Pinned by `Tests/DomainTests/Leaderboard/vectors.json`; the server checks an identical copy |
+| `RequestSigner` | The canonical string, signed with Ed25519 from `Crypto` (swift-crypto, which is CryptoKit on Apple platforms) | Pinned by `Tests/DomainTests/Leaderboard/vectors.json`; the server checks an identical copy |
 | `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days, and now when you ask | `lastUpload` moves only on success. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 

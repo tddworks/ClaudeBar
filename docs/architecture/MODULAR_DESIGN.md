@@ -1,5 +1,5 @@
 ---
-description: How ClaudeBar's code is cut into modules — one module per bounded context, the domain at each module's root and its implementations in Internal/, no Infrastructure layer and no vendor modules, one factory per module, the dependency rules, naming, testing, and what is left to carve; read before adding a file, a type or a module.
+description: How ClaudeBar's code is cut into modules — one module per bounded context, the domain at each module's root and its implementations in Internal/, no Infrastructure layer and no vendor modules, one factory per module, the dependency rules, naming, testing, the one package that also builds on Windows, and what is left to carve; read before adding a file, a type or a module.
 ---
 
 # ClaudeBar — the modular design
@@ -9,7 +9,7 @@ description: How ClaudeBar's code is cut into modules — one module per bounded
 > it may import · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: IN PROGRESS** — what is left is §8.
+> **Status: IN PROGRESS** — what is left is §8, and §10's phases (none built).
 
 ---
 
@@ -69,6 +69,7 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 | `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `RefreshKind`, `Clock`, `PowerStateProvider` | `SystemClock`, `SystemPowerStateProvider`, `SingleFlightCache` |
 | `Alerting` | Alerting | `QuotaAlerter`, Notify! values, `NotifySettingsRepository` | `NotificationAlerter`, `SystemAlertSender`, `NotifyGatewayClient` |
 | `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookSettingsRepository` | `HookHTTPServer`, `HookInstaller`, `PortDiscovery`, `SessionEventParser` |
+| `Leaderboard` | Leaderboard | `LeaderboardMembership`, `DailyTokens`, `Username`, `RequestSigner`, `LeaderboardUploader`, the devices' values, the ports `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` · `TokenLogs` ([its design §7](../features/leaderboard/design.md#7--architecture)) | `LeaderboardHTTPClient`, `CredentialSigningKeyStore`, `IOKitMachineIdentity` (macOS) and their Windows twins (§10) |
 | `Storage` | Vault & Settings · generic | `Storage.makeSettings()`, `Storage.makeVault()`, `AppSettingsRepository` | `JSONSettingsRepository`, `JSONSettingsStore`, `KeychainCredentialRepository`, `UserDefaults…`, `SecureCredentialMigration` |
 | `Diagnostics` | — cross-cutting | `AppLog` and its categories | `AppLogger`, `FileLogger` |
 | `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label, page state, the Add Provider sheet | — |
@@ -99,9 +100,14 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 5. **`internal` is the default.** A type is `public` only when another module
    must name it, and a public type is a word from the canonical model.
 6. **Diagnostics is the only cross-cutting module.** It holds no rule.
+7. **Only a platform folder names a platform.** A module's files import
+   Foundation, `Crypto` (swift-crypto) and their suppliers, and nothing else;
+   a file that imports an Apple framework (`Security`, `OSLog`,
+   `JavaScriptCore`, `IOKit`, `AppKit`, `Darwin`…) or `WinSDK` lives in
+   `Internal/macOS/` or `Internal/Windows/`, whole inside `#if os(…)` (§10).
 
 The build enforces it: a forbidden import fails to compile, because the target
-has no such dependency in `Project.swift`.
+has no such dependency in `Package.swift`; rule 7 fails the Windows CI build.
 
 ## 4 · Naming
 
@@ -206,6 +212,9 @@ for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
 | `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `Monitoring/Internal` |
 | `QuotaAlerter` | Alerting | the user's notifications | `Alerting/Internal` |
 | `HookEventReceiver` | Activity | Claude Code's hooks | `Activity/Internal` |
+| `ScriptEngine` | DataSources | a JavaScript engine, for a `script` mapping | `DataSources/Internal/macOS` (JavaScriptCore) · `Internal/Windows` (a bundled engine, §10) |
+| `LogSink` | Diagnostics | where a log line goes | `Diagnostics/Internal/macOS` (OSLog) · the file log, both platforms |
+| `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` | Leaderboard | the board's server, where the key is kept, this machine | `Leaderboard/Internal` · `Internal/macOS` (Keychain, IOKit) · `Internal/Windows` (Credential Manager, the machine GUID) |
 
 Not a port: a definition (it is parsed, not injected), a closed sum's worker
 (the factory picks it; tests build it with `@testable`), a module's own
@@ -232,6 +241,7 @@ it is empty.
 
 | Today | Goes to |
 |---|---|
+| `Domain/Leaderboard/`, `Infrastructure/Leaderboard/` | `Leaderboard` — carved first, because ClaudeBar for Windows needs it first (§10, phase 2) |
 | `Domain/Monitor/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
 | `Domain/Notify/`, `Infrastructure/Notifications/`, `Notify/` | `Alerting` |
 | `Domain/Session/`, `Domain/Notch/`, `Infrastructure/Hooks/` | `Activity` (`NSScreen+NotchMetrics` → App) |
@@ -256,3 +266,93 @@ under *where the code is still behind*.
   prices). It earns a module when it needs its own SDK (a binary or
   SQLite log) or a second consumer; keeping `Internal/Logs/` and
   `UsageHistory.swift` in their own files keeps that carve cheap.
+
+## 10 · One package, two platforms
+
+**Why.** A member of the Leaderboard who also codes on a Windows PC uses
+*ClaudeBar for Windows*, the community client in
+[tddworks/ClaudeBar-Windows](https://github.com/tddworks/ClaudeBar-Windows)
+([#507](https://github.com/tddworks/ClaudeBar/issues/507)). The board is only
+fair if a day counts the same on both: the same log reading, the same
+`DailyTokens`, the same signing. Two implementations drift, and `vectors.json`
+pins signing, not log reading. So the modules are **one Swift package that
+builds on macOS and Windows**, and the Windows client depends on it.
+
+**Why Swift, not a Kotlin core.** A Kotlin Multiplatform core was spiked
+(`spike/kmp-shared-domain`). Its shared code compiled for Windows with only 15
+platform functions missing, but Kotlin/Native's Windows target is Tier 3 and has no
+ARM64 build, and the Mac would gain a bridge (SKIE, a Swift face, Gradle and a
+JDK in its build). Swift ships official Windows toolchains, Swift 6's
+Foundation is the same code on every platform, and the Mac keeps calling its
+modules directly. Main's modules import Foundation and each other in all but
+29 files; those 29 are this section's work.
+
+### The shape
+
+```text
+Package.swift              ← at the repository root, so a client can depend on
+                             this repo by URL at a tag or commit
+Modules/<Context>/
+├── Sources/
+│   ├── *.swift            the domain, the ports, the factory — Foundation,
+│   │                      Crypto and suppliers only (§3 rule 7)
+│   └── Internal/
+│       ├── *.swift        implementations that need no platform
+│       ├── macOS/         #if os(macOS) — Keychain, OSLog, JavaScriptCore,
+│       │                  IOKit, Darwin processes, SwiftTerm, SweetCookieKit
+│       └── Windows/       #if os(Windows) — Credential Manager, WinSDK
+│                          processes, the console's pseudo-terminal, a
+│                          bundled JS engine
+├── Resources/
+└── Tests/                 Swift Testing — run on macOS and on windows-latest
+```
+
+- **Each module's factory picks the platform's implementation.** The Windows
+  client calls the same factories as the App (`Leaderboard.make…`,
+  `ProviderFactory.makeCatalog…`); no client names `Internal/`.
+- **An Apple-only package is a platform-conditional dependency**
+  (`.product(…, condition: .when(platforms: [.macOS]))`): SwiftTerm and
+  SweetCookieKit in `DataSources`. `AWSClients` builds on macOS only.
+- **`CryptoKit` becomes `Crypto`** (swift-crypto), which re-exports CryptoKit
+  on Apple platforms, so the Mac's signatures and hashes don't change.
+- **SQLite is a bundled package** on both platforms, not the system's `SQLite3`.
+- **What a platform lacks is not a stub.** A fetch or lookup case with no
+  Windows implementation fails as a `DataSourceError` naming the case and the
+  platform; a capability with none is `nil`, as when a definition doesn't
+  declare it.
+- **`MOCKING`** moves from `Project.swift` to `Package.swift`'s `swiftSettings`,
+  for debug builds and tests.
+- **The App stays a Tuist target** and depends on the package's products.
+  Sparkle, the notch, the Touch Bar, status-item drivers and every view stay
+  in the App: they are the Mac's.
+- **What isn't here:** the Windows client's UI, its composition root and,
+  if its UI is C#, a C interface over the factories. Those live in its repo.
+
+### Phases
+
+Each phase leaves main shippable and the Mac app unchanged in behaviour.
+
+| # | Phase | Done when |
+|---|---|---|
+| 0 | **Prove the toolchain.** A `windows-latest` job builds and tests `Quotas` with the Swift toolchain, Mockable included | the job is green |
+| 1 | **The package.** Root `Package.swift` declares today's modules; Tuist consumes it; no source changes | `tuist test` and the macOS `swift test` are green |
+| 2 | **The leaderboard slice.** Carve `Leaderboard` (§8); `CryptoKit` → `Crypto` in `UsageLog`, `CLISession`, `ProviderDefinition`, `RequestSigner`, `SigningKey`; Diagnostics behind `LogSink`; the Mac-only files of `DataSources` move to `Internal/macOS/` | `Quotas`, `Diagnostics`, `DataSources`, `Providers` and `Leaderboard` build and pass on Windows, including the log-reading tests and `vectors.json` — the Windows client can start |
+| 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` on the machine GUID, `LeaderboardAPI` on `URLSession` | the Windows client joins and uploads against the real server |
+| 4 | **Paths and shells.** The engine's Mac assumptions without an import (`/bin/zsh`, `/usr/bin/security`, `~/Library/Application Support`, `:` in `PATH`) become facts each worker receives; definitions name a platform's app-data folder through the path language ([ENGINE_DESIGN](ENGINE_DESIGN.md) changes first) | the definitions that read local files resolve on Windows |
+| 5 | **Quotas on Windows.** The rest of `Internal/Windows/`: processes, the pseudo-terminal, the JS engine, `Monitoring`, `Alerting`, `Storage` | the Windows client shows quotas |
+
+### Open
+
+- **Mockable and macros on Windows.** Phase 0 answers it; if they fail, the
+  ports' fakes become hand-written in `Tests/`.
+- **A root `Package.swift` beside Tuist.** Phase 1 confirms Tuist and Xcode
+  open the workspace as before.
+- **The JavaScript engine on Windows.** QuickJS through a C target is the
+  candidate; only `script` mappings need it, not the leaderboard.
+- **Foundation's differences on Windows** (paths, symlinks, `FileManager`,
+  date formats) are found by running the same tests there, which is why every
+  module's tests run on both.
+- **The machine GUID** is kept by a disk image cloned to another PC, unlike a
+  Mac's `IOPlatformUUID`; the leaderboard design decides whether that is
+  enough for its copied-key check.
+

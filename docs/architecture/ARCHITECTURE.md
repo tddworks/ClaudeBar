@@ -5,7 +5,10 @@ description: The map of ClaudeBar's design — five documents read in order, fro
 # ClaudeBar — architecture
 
 ClaudeBar is a macOS menu bar app that shows how much of each AI coding
-quota is left. Its design is five documents. **Each answers a question that
+quota is left. Its modules are one Swift package that also builds on Windows,
+for the community's *ClaudeBar for Windows*
+([MODULAR_DESIGN §10](MODULAR_DESIGN.md#10--one-package-two-platforms)).
+Its design is five documents. **Each answers a question that
 only exists once the one before it is answered**, so they are read in order,
 and a later one may cite an earlier one, never the reverse.
 
