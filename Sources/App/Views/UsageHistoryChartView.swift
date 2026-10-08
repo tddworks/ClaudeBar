@@ -146,7 +146,7 @@ struct UsageHistoryChartView: View {
         }
     }
 
-    private func chip<T: Identifiable & Equatable>(_ choice: T, selection: Binding<T>, shown: T) -> some View {
+    private func chip<T: Identifiable & Equatable>(_ choice: T, selection: Binding<T>, shown: T) -> some View where T.ID == String {
         let isOn = shown == choice
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { selection.wrappedValue = choice }
