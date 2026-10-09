@@ -67,7 +67,7 @@ Two terminals in one repo give two rows that read *claudebar*. Each session's ti
 | A session's title: its name if it was given one, else Claude Code's, else none | `ClaudeSession.title` (new), from `named` and `generated` |
 | The latest name and the latest Claude Code title in a transcript, reading only what was appended since the last read | `TranscriptTitleReader` (Infrastructure, new) behind the `SessionTitles` port (Domain, new, `@Mockable`) |
 | The transcript a session writes to | `SessionEvent.transcriptPath` (new), parsed from `transcript_path` by `SessionEventParser` |
-| The titles found in the transcript when the event arrived, when it names one | `SessionEvent.titles` (new): `SessionTitles.Found` (`named`, `generated`) |
+| The titles found in the transcript when the event arrived, when it names one | `SessionEvent.titles` (new): `TranscriptTitles` (`named`, `generated`) |
 | A session takes the titles its events carry; an event that found none leaves them as they were | `SessionMonitor.processEvent` |
 | A session's name in a notification: its repo, then its title when it has one | `ClaudeSession.repoAndTitle` (new) |
 | A Done row's title: the session's, when the row stands for one session | `DoneRepo.title` (new), set by `SessionMonitor.doneByRepo` |
