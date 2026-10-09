@@ -101,10 +101,14 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
    must name it, and a public type is a word from the canonical model.
 6. **Diagnostics is the only cross-cutting module.** It holds no rule.
 7. **Only a platform folder names a platform.** A module's files import
-   Foundation, `Crypto` (swift-crypto) and their suppliers, and nothing else;
+   Foundation (with `FoundationNetworking`, its networking half off Apple
+   platforms), `Crypto` (swift-crypto) and their suppliers, and nothing else;
    a file that imports an Apple framework (`Security`, `OSLog`,
    `JavaScriptCore`, `IOKit`, `AppKit`, `Darwin`…) or `WinSDK` lives in
    `Internal/macOS/` or `Internal/Windows/`, whole inside `#if os(…)` (§10).
+   No other file holds an `#if os(…)`, a platform's name, or a path only one
+   platform has (`/bin/sh`, `/usr/bin/security`): it asks the module's
+   `Platform` (§10, "One place picks the platform").
 
 The build enforces it: a forbidden import fails to compile, because the target
 has no such dependency in `Package.swift`; rule 7 fails the Windows CI build.
@@ -119,7 +123,7 @@ has no such dependency in `Package.swift`; rule 7 fails the Windows CI build.
 | no module shadows an Apple or package module | not `Settings` (SwiftUI's scene), not `Logging` (swift-log, pulled in by the AWS SDK), not `ActivityKit` | |
 | **a worker is named for its protocol, format or place — never a vendor** | `JSONRPCFetcher`, `OAuth2Refresher`, `JSONFileReader` | a vendor-named type is a vendor's five jobs coming back |
 | a port is the domain word; its implementation names the technology | `NetworkClient` → `URLSessionNetworkClient` | |
-| no grab-bag types | no `Machines`, `Context`, `Dependencies`, `Environment` bundle: each worker receives the one thing it uses | a bag is an ISP violation with a friendly name |
+| no grab-bag types | no `Machines`, `Context`, `Dependencies`, `Environment` bundle: each worker receives the one thing it uses. The one exception is a module's `Platform` (§10): only its factory reads it, and hands each worker the one thing from it | a bag is an ISP violation with a friendly name |
 | a factory is the module's name as an enum | `enum DataSources { static func make(…) }` | |
 
 ## 5 · Inside a module
@@ -333,6 +337,80 @@ Modules/<Context>/
 - **What isn't here:** the Windows client's UI, its composition root and,
   if its UI is C#, a C interface over the factories. Those live in its repo.
 
+### One place picks the platform
+
+**Why.** A module that has platform workers needs, on each platform, *what
+this machine offers*: a way to run a CLI, a JavaScript engine, a Keychain.
+Asked in many places (`#if os` in the factory, two types with one name, a
+`nil` argument meaning "use the default"), the answer drifts: a third
+platform falls into every `#else`, a Mac test can't reach what Windows does,
+and a new capability edits shared files. So it is asked once.
+
+```text
+Modules/DataSources/Sources/
+├── DataSources.swift          the factory: make(…, platform: .current) — never #if
+├── ScriptEngine.swift         port, @Mockable   ┐ a platform worker is reached
+├── BinaryLocating.swift       port, @Mockable   │ through a port declared here,
+├── …                                            ┘ never a twin type of one name
+└── Internal/
+    ├── Platform.swift         ◇ struct Platform — name · runCLI? · runCommand? ·
+    │                            rpcTransport? · scriptEngine? · keychain? ·
+    │                            browserCookies? · browserStorage? · localNetwork? ·
+    │                            processList? · screenRenderer? · binaryLocator? ·
+    │                            sqlite? — and Platform.bare: the name, nothing else
+    ├── Unavailable.swift      a case whose connection is nil: fails at its step
+    │                            as ErrorFact.unavailable, naming it and platform.name
+    ├── Fetch/ Lookup/ Mapping/ Logs/ Network/ Process/   neutral workers
+    ├── macOS/                 #if os(macOS), whole file
+    │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
+    │   ├── Process/                  DefaultCLIExecutor · PipeCLIExecutor ·
+    │   │                             ProcessRPCTransport · BinaryLocator ·
+    │   │                             RunningProcesses · TerminalRenderer · Shell …
+    │   ├── Mapping/JavaScriptCoreEngine.swift   : ScriptEngine
+    │   ├── Lookup/                   SystemKeychain · SystemBrowserCookies ·
+    │   │                             SystemBrowserStorage · SQLiteReader
+    │   ├── Network/                  InsecureLocalhostNetworkClient
+    │   └── Logs/                     FileStamp+macOS · ByteSearch+macOS
+    └── Windows/               #if os(Windows), whole file
+        ├── Platform+Windows.swift    static let current = Platform(name: "Windows",
+        │                             binaryLocator: PathBinaryLocator(), …rest nil)
+        ├── Process/PathBinaryLocator.swift      : BinaryLocating (PATH + PATHEXT)
+        └── Logs/                     FileStamp+Windows · ByteSearch+Windows
+Modules/DataSources/Tests/
+├── Support/Needs.swift        .needs(\.scriptEngine) — enabled when
+│                                Platform.current has it, else skipped, saying why
+├── UnavailableTests.swift     the factory with Platform.bare — runs on the Mac too
+├── …                          neutral tests: both platforms
+└── macOS/ · Windows/          a platform worker's own tests, under #if os(…)
+```
+
+- **`Platform` is a value, and `Platform.current` is its only `#if`.** Each
+  platform folder defines `current` once. Neutral code reads the value and
+  never asks which OS it is on; a third platform is a new folder and a new
+  `current`, not an edit to a shared file.
+- **`nil` means one thing: this platform has none.** The factory takes a
+  `Platform`; the public `make` passes `.current`. It never takes a `nil` to
+  mean "the default", so a test hands in `Platform.bare` (or `.current` with
+  one connection removed) and checks on the Mac what Windows does.
+- **A platform worker is reached through a port** declared in the neutral
+  part (`ScriptEngine`, `BinaryLocating`, `CLIExecutor` …, §6). Two types of
+  one name, one per folder, are not allowed: nothing makes their APIs agree.
+- **Only the factory reads `Platform`.** It hands each worker the one thing it
+  uses (§4); no worker receives the bag.
+- **What the platform lacks is a fact, not text.** `Unavailable` fails as
+  `ErrorFact.unavailable`, so a definition's `errors` may word it and a
+  screen can tell "not on Windows yet" from a failure.
+- **A test that needs a connection names it**, `.needs(\.processes)`, and
+  runs wherever `Platform.current` has it. When a phase brings one, its tests
+  start running there with no edit.
+- **A platform's facts are connections too:** the shell, the tools a worker
+  runs (`lsof`, `pgrep`, `security`), the folder a CLI trusts. Phase 4 moves
+  them from the neutral workers into `Platform`.
+
+A module with no platform workers has no `Platform`. `Diagnostics` and
+`Leaderboard` follow the same shape for their own ports (`LogSink`,
+`SigningKeyStore`, `MachineIdentity`).
+
 ### Phases
 
 Each phase leaves main shippable and the Mac app unchanged in behaviour.
@@ -343,7 +421,7 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
 | 1 | **The package.** Root `Package.swift` declares today's modules; Tuist consumes it; no source changes | `tuist test` and the macOS `swift test` are green — built ([#526](https://github.com/tddworks/ClaudeBar/pull/526)): `tuist test` runs the same 3,099 tests as before, and `swift test` runs the modules' tests without Tuist |
 | 2 | **The leaderboard slice.** Carve `Leaderboard` (§8); `CryptoKit` → `Crypto` in `UsageLog`, `CLISession`, `ProviderDefinition`, `RequestSigner`, `SigningKey`; Diagnostics behind `LogSink`; the Mac-only files of `DataSources` move to `Internal/macOS/` | `Quotas`, `Diagnostics`, `DataSources`, `Providers` and `Leaderboard` build and pass on Windows, including the log-reading tests and `vectors.json` — the Windows client can start |
 | 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` on the machine GUID, `LeaderboardAPI` on `URLSession` | the Windows client joins and uploads against the real server |
-| 4 | **Paths and shells.** The engine's Mac assumptions without an import (`/bin/zsh`, `/usr/bin/security`, `~/Library/Application Support`, `:` in `PATH`) become facts each worker receives; definitions name a platform's app-data folder through the path language ([ENGINE_DESIGN](ENGINE_DESIGN.md) changes first) | the definitions that read local files resolve on Windows |
+| 4 | **Paths and shells.** The engine's Mac assumptions without an import (`/bin/zsh` and `/bin/sh` in `LoginShellEnvironment`, `Connection` and the `file` fetch; `/usr/sbin/lsof` and `/usr/bin/pgrep` in `LocalServerFetcher`; `/usr/bin/security`; `~/Library/Application Support`; `:` in `PATH`) become facts of the module's `Platform` that the factory hands each worker; definitions name a platform's app-data folder through the path language ([ENGINE_DESIGN](ENGINE_DESIGN.md) changes first) | the definitions that read local files resolve on Windows |
 | 5 | **Quotas on Windows.** The rest of `Internal/Windows/`: processes, the pseudo-terminal, the JS engine, `Monitoring`, `Alerting`, `Storage` | the Windows client shows quotas |
 
 ### Open
