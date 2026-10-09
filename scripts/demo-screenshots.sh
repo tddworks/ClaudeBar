@@ -27,7 +27,11 @@
 #        DEMO_SCENE=sessions  hooks on in the demo home, and six made-up Claude
 #                           Code sessions posted to the hook server: one needs
 #                           you, one with agents, four done (three in one repo),
-#                           titled by made-up transcripts in the demo home
+#                           titled by made-up transcripts in the demo home.
+#                           Your own Claude Code sessions post to the same
+#                           port and show up too: point them elsewhere while
+#                           you shoot (printf 9 > ~/.claude/claudebar-hook-port)
+#                           and write 19847 back after.
 #        DEMO_TEXT_SIZE=extraLarge  the Popover Text Size (medium, large,
 #                           extraLarge), set in the demo home's settings
 #        DEMO_POPOVER_TITLE="Acme AI Desk"  the Popover Title, set the same way
@@ -214,5 +218,8 @@ SERVER=$!
 trap 'kill $SERVER 2>/dev/null' EXIT
 
 echo "Demo home: $DEMO_HOME (theme: $THEME)"
+if [[ "${DEMO_SCENE:-}" == "sessions" && "$(cat "$HOME/.claude/claudebar-hook-port" 2>/dev/null || echo 19847)" == 19847 ]]; then
+    echo "Your own Claude Code sessions will show up too; see DEMO_SCENE=sessions above."
+fi
 echo "Running $APP — quit ClaudeBar to end the demo."
 CFFIXED_USER_HOME="$DEMO_HOME" HOME="$DEMO_HOME" "$APP/Contents/MacOS/ClaudeBar"
