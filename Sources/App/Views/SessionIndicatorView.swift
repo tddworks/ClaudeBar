@@ -37,6 +37,14 @@ struct SessionIndicatorView: View {
                         )
                 }
 
+                if let title = session.title {
+                    Text(title)
+                        .popoverFont(10, weight: .medium, design: theme.fontDesign)
+                        .foregroundStyle(theme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
                 HStack(spacing: 8) {
                     if session.completedTaskCount > 0 {
                         Label("\(session.completedTaskCount) tasks", systemImage: "checkmark.circle.fill")

@@ -147,6 +147,15 @@ struct SessionsCardView: View {
     }
 
     private func sessionRow(_ session: ClaudeSession) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            sessionLine(session)
+            if let title = session.title {
+                titleLine(title)
+            }
+        }
+    }
+
+    private func sessionLine(_ session: ClaudeSession) -> some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(theme.color(for: session.phase))
@@ -180,8 +189,18 @@ struct SessionsCardView: View {
         }
     }
 
-    /// One repo's Done sessions: *claudebar ×3 · just now*.
+    /// One repo's Done sessions: *claudebar ×3 · just now*, with the
+    /// session's title when the row stands for one.
     private func doneRow(_ repo: DoneRepo, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            doneLine(repo, now: now)
+            if let title = repo.title {
+                titleLine(title)
+            }
+        }
+    }
+
+    private func doneLine(_ repo: DoneRepo, now: Date) -> some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(theme.color(for: .stopped))
@@ -204,6 +223,16 @@ struct SessionsCardView: View {
                 .popoverFont(9, weight: .medium, design: theme.fontDesign)
                 .foregroundStyle(theme.textTertiary)
         }
+    }
+
+    /// A session's title under its repo, lined up with the repo name past the dot.
+    private func titleLine(_ title: String) -> some View {
+        Text(title)
+            .popoverFont(9, weight: .medium, design: theme.fontDesign)
+            .foregroundStyle(theme.textTertiary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.leading, 15)
     }
 
     private func moreButton(_ title: String) -> some View {

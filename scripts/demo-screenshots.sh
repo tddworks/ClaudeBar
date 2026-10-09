@@ -26,7 +26,8 @@
 #                           same sample logs
 #        DEMO_SCENE=sessions  hooks on in the demo home, and six made-up Claude
 #                           Code sessions posted to the hook server: one needs
-#                           you, one with agents, four done (three in one repo)
+#                           you, one with agents, four done (three in one repo),
+#                           titled by made-up transcripts in the demo home
 #        DEMO_TEXT_SIZE=extraLarge  the Popover Text Size (medium, large,
 #                           extraLarge), set in the demo home's settings
 #        DEMO_POPOVER_TITLE="Acme AI Desk"  the Popover Title, set the same way
@@ -160,8 +161,13 @@ PY
 # Made-up Claude Code sessions, posted once the hook server listens.
 if [[ "${DEMO_SCENE:-}" == "sessions" ]]; then
     (
+        mkdir -p "$DEMO_HOME/transcripts"
+        title() { echo "{\"type\":\"$2\",\"$3\":\"$4\"}" >> "$DEMO_HOME/transcripts/$1.jsonl"; }
+        title blocked custom-title customTitle "Checkout tax rounding"
+        title busy ai-title aiTitle "Show session titles on the card"
+        title done-1 ai-title aiTitle "Paginate the product search"
         hook() { curl -s -o /dev/null -X POST "http://127.0.0.1:19847/hook" -H 'Content-Type: application/json' \
-            -d "{\"session_id\":\"$1\",\"hook_event_name\":\"$2\",\"cwd\":\"/Users/demo/code/$3\"}"; }
+            -d "{\"session_id\":\"$1\",\"hook_event_name\":\"$2\",\"cwd\":\"/Users/demo/code/$3\",\"transcript_path\":\"$DEMO_HOME/transcripts/$1.jsonl\"}"; }
         for _ in $(seq 60); do curl -s -o /dev/null -X POST http://127.0.0.1:19847/hook && break; sleep 1; done
         hook done-1 Stop catalog; hook done-2 Stop claudebar; sleep 2
         hook done-3 Stop claudebar; hook done-4 Stop claudebar

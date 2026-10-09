@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Claude Code card**: finished sessions no longer take a row each. The card shows a count (*1 needs you · 2 working · 5 done*) and rows only for sessions still going; ▾ shows the Done ones, one row per repo. *Needs you* is now red and *Done* grey, in the menu bar and notch too. ([#534](https://github.com/tddworks/ClaudeBar/pull/534)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/session-hooks/README.md)
 
 ### Added
+- **Session titles**: each Claude Code session shows its title under the repo, in the popover card, the notch and notifications: the name you gave it with `/rename`, else Claude Code's own. Two terminals in one repo are told apart at a glance. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/session-hooks/README.md)
 - **Your own popover title**: name the popover header your own way, such as your team's name, in place of *ClaudeBar* (Settings → Appearance → Popover Title). Leave it blank to go back. ([#532](https://github.com/tddworks/ClaudeBar/pull/532)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/popover-title/README.md)
 
 ---

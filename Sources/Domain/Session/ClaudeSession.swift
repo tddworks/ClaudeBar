@@ -27,6 +27,12 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// said. nil for a session whose hooks never sent one.
     public private(set) var processId: Int?
 
+    /// The name the person gave the session with `/rename`, once its transcript has one.
+    public private(set) var named: String?
+
+    /// The title Claude Code wrote for the session, once its transcript has one.
+    public private(set) var generated: String?
+
     /// - Parameter phase: `.active` for a session seen mid-turn; `.stopped` for
     ///   one that has just opened at its prompt — idle, with nothing finished
     ///   yet, so `finishedAt` stays nil and the notch has nothing to flash.
@@ -73,6 +79,13 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// Records which process runs this session, when a later event says.
     public mutating func runs(inProcess processId: Int) {
         self.processId = processId
+    }
+
+    /// Takes the titles read from the session's transcript. A title not found
+    /// this time keeps the one found before.
+    public mutating func titled(_ titles: TranscriptTitles) {
+        named = titles.named ?? named
+        generated = titles.generated ?? generated
     }
 
     /// Records a subagent starting work. Subagent activity also revives a
@@ -149,6 +162,17 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// belongs here rather than being re-derived by each view.
     public var repoName: String {
         ((cwd as NSString).standardizingPath as NSString).lastPathComponent
+    }
+
+    /// What tells this session apart from others in the same repo: its name if
+    /// the person gave it one, else Claude Code's title for it. nil until either is known.
+    public var title: String? {
+        named ?? generated
+    }
+
+    /// The repo, then the title when there is one: *claudebar · Session names*.
+    public var repoAndTitle: String {
+        title.map { "\(repoName) · \($0)" } ?? repoName
     }
 
     /// Whether this session is still active (not ended)

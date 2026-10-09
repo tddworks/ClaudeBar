@@ -27,13 +27,22 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     /// Lets ClaudeBar notice a session whose process died without a `SessionEnd`.
     public let processId: Int?
 
+    /// The transcript the session writes to (`transcript_path`), when the hook said.
+    public let transcriptPath: String?
+
+    /// The titles found in the session's transcript when the event arrived;
+    /// nil when nobody has read them.
+    public let titles: TranscriptTitles?
+
     public init(
         sessionId: String,
         eventName: EventName,
         cwd: String,
         receivedAt: Date = Date(),
         message: String? = nil,
-        processId: Int? = nil
+        processId: Int? = nil,
+        transcriptPath: String? = nil,
+        titles: TranscriptTitles? = nil
     ) {
         self.sessionId = sessionId
         self.eventName = eventName
@@ -41,6 +50,22 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         self.receivedAt = receivedAt
         self.message = message
         self.processId = processId
+        self.transcriptPath = transcriptPath
+        self.titles = titles
+    }
+
+    /// This event, carrying the titles read from its session's transcript.
+    public func titled(_ titles: TranscriptTitles) -> SessionEvent {
+        SessionEvent(
+            sessionId: sessionId,
+            eventName: eventName,
+            cwd: cwd,
+            receivedAt: receivedAt,
+            message: message,
+            processId: processId,
+            transcriptPath: transcriptPath,
+            titles: titles
+        )
     }
 
     /// Whether this event must be ignored as ClaudeBar's own background probe traffic.

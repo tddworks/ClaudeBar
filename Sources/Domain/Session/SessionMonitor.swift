@@ -36,11 +36,17 @@ public final class SessionMonitor {
     /// Processes a session event and updates state accordingly.
     public func processEvent(_ event: SessionEvent) {
         if event.eventName == .sessionEnd {
+            if let titles = event.titles, let index = sessions.firstIndex(where: { $0.id == event.sessionId }) {
+                sessions[index].titled(titles)
+            }
             endSession(event.sessionId, at: event.receivedAt)
             return
         }
 
         let index = indexOfSession(for: event)
+        if let titles = event.titles {
+            sessions[index].titled(titles)
+        }
         lastEventAt[event.sessionId] = event.receivedAt
         if let processId = event.processId, sessions[index].processId == nil {
             sessions[index].runs(inProcess: processId)
@@ -131,7 +137,8 @@ public final class SessionMonitor {
                 DoneRepo(
                     repoName: repoName,
                     count: sessions.count,
-                    lastFinishedAt: sessions.map { $0.finishedAt ?? $0.startedAt }.max() ?? .distantPast
+                    lastFinishedAt: sessions.map { $0.finishedAt ?? $0.startedAt }.max() ?? .distantPast,
+                    title: sessions.count == 1 ? sessions[0].title : nil
                 )
             }
             .sorted { lhs, rhs in

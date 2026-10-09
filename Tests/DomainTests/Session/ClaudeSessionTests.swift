@@ -384,4 +384,51 @@ struct ClaudeSessionTests {
         #expect(ClaudeSession.Phase.stopped.label == "Done")
         #expect(ClaudeSession.Phase.ended.label == "Ended")
     }
+
+    // MARK: - Title
+
+    @Test
+    func `should title a session by its name over Claude Code's`() {
+        var session = ClaudeSession(id: "test", cwd: "/code/claudebar")
+
+        session.titled(TranscriptTitles(named: "Session names", generated: "Pull latest main"))
+
+        #expect(session.title == "Session names")
+    }
+
+    @Test
+    func `should title a session by Claude Code's when it has no name`() {
+        var session = ClaudeSession(id: "test", cwd: "/code/claudebar")
+
+        session.titled(TranscriptTitles(named: nil, generated: "Pull latest main"))
+
+        #expect(session.title == "Pull latest main")
+    }
+
+    @Test
+    func `should have no title before either is known`() {
+        let session = ClaudeSession(id: "test", cwd: "/code/claudebar")
+
+        #expect(session.title == nil)
+        #expect(session.repoAndTitle == "claudebar")
+    }
+
+    @Test
+    func `should keep a name it was given when later titles found none`() {
+        var session = ClaudeSession(id: "test", cwd: "/code/claudebar")
+        session.titled(TranscriptTitles(named: "Session names", generated: nil))
+
+        session.titled(TranscriptTitles(named: nil, generated: nil))
+
+        #expect(session.title == "Session names")
+    }
+
+    @Test
+    func `should name a session by its repo and title`() {
+        var session = ClaudeSession(id: "test", cwd: "/code/claudebar")
+
+        session.titled(TranscriptTitles(named: "Session names", generated: nil))
+
+        #expect(session.repoAndTitle == "claudebar · Session names")
+    }
 }

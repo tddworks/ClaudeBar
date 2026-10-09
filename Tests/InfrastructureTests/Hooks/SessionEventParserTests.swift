@@ -183,4 +183,15 @@ struct SessionEventParserTests {
         #expect(event != nil)
         #expect(event?.sessionId == "abc")
     }
+
+    @Test
+    func `should read the transcript a session writes to`() {
+        let json = """
+        {"session_id": "abc-123", "hook_event_name": "Stop", "cwd": "/tmp/project", "transcript_path": "/tmp/abc-123.jsonl"}
+        """
+
+        let event = SessionEventParser.parse(json.data(using: .utf8)!)
+
+        #expect(event?.transcriptPath == "/tmp/abc-123.jsonl")
+    }
 }

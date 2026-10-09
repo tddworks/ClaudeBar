@@ -96,11 +96,21 @@ struct NotchPanelView: View {
                         .fill(session.phase.color)
                         .frame(width: 7, height: 7)
 
-                    Text(session.repoName)
-                        .font(.system(size: 11.5, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(1)
-                        .truncationMode(.head)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(session.repoName)
+                            .font(.system(size: 11.5, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1)
+                            .truncationMode(.head)
+
+                        if let title = session.title {
+                            Text(title)
+                                .font(theme.font(size: 10.5))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
 
                     Spacer(minLength: 12)
 

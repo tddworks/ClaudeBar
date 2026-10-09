@@ -8,8 +8,9 @@ ClaudeBar can follow your Claude Code sessions as they happen. It adds hooks to 
 
 What you get:
 
-- **Notifications**: "Claude Code Started: Session started in *project*" when a session starts, and "Claude Code Finished: *project* — Completed 3 tasks in 12m" (or "Session ended after 12m") when it ends.
+- **Notifications**: "Claude Code Started: Session started in *project*" when a session starts, and "Claude Code Finished: *project* — Completed 3 tasks in 12m" (or "Session ended after 12m") when it ends. Once the session has a title, it follows the project: *claudebar · Fix the login redirect*.
 - **Popover**: a session card at the top with the state (Working, Agents working, Needs you, Done, Ended — the [notch](../notch/README.md)'s words), subagent activity and completed tasks. With several sessions running, the one card keeps a line of coloured squares and a count (*1 needs you · 2 working · 5 done*), a row for each session that isn't Done, the one that most needs you first, and the Done ones behind ▾, one row per repo with when it finished.
+- **Session titles**: each session's row has its title on a second line, so two terminals in one repo are told apart: the name you gave it with `/rename`, else the title Claude Code wrote for it. A session that hasn't had a prompt yet has neither and keeps one line. A Done row folding several sessions (*claudebar ×3*) shows none.
 - **Menu bar**: a terminal glyph in front of the readout while Claude is working or subagents are running. With several sessions it follows the one that most needs you: Needs you first, then Agents working, then Working, then Done.
 - **Notch**: the session activity described in [notch](../notch/README.md).
 
@@ -36,6 +37,7 @@ Turning the switch off removes ClaudeBar's hooks and stops the server.
 - **Port 19847 in use**: the server fails to start and the log records "Hook HTTP server failed". The `hook.port` key in `settings.json` is read but not used yet, so the port can't be changed. Free the port and restart ClaudeBar.
 - **A session that was killed lingers for up to 30 seconds**: a crash or a force-quit terminal sends no `SessionEnd`. The hook tells ClaudeBar which Claude Code process it runs in, and every 30 seconds ClaudeBar ends sessions whose process is gone. Hooks installed by an older ClaudeBar don't send it; ClaudeBar reinstalls them at launch, and sessions started after that are covered.
 - **A session stuck on Working after the Mac slept**: a turn that ends in an error (the connection dropped during sleep) reports `StopFailure`, not `Stop`. ClaudeBar listens to it since this version; hooks installed by an older ClaudeBar are reinstalled at launch.
+- **A new name waits for your next prompt**: `/rename` sends no hook event, so the card picks up the name at the session's next event, usually your next prompt.
 - **Done after every reply is normal**: `Stop` fires at the end of each turn, and your next prompt makes the session Working again. A session that has just opened is Done too, until its first prompt.
 - **Working after you interrupted a turn**: Claude Code fires no `Stop` when you interrupt with Esc or Ctrl-C, so the session stays Working until your next prompt.
 - **Nothing arrives**: check that the pane says installed, that `~/.claude/claudebar-hook-port` exists, and look for `[hooks]` lines in the [log](../../troubleshooting.md).

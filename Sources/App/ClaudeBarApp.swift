@@ -60,6 +60,7 @@ struct ClaudeBarApp: App {
 
     /// The hook HTTP server that receives events from Claude Code
     private let hookServer = HookHTTPServer()
+    private let sessionTitles: any SessionTitles = TranscriptTitleReader()
 
     /// Task for the hook server event loop (allows cancellation on toggle off)
     @State private var hookServerTask: Task<Void, Never>?
@@ -252,6 +253,10 @@ struct ClaudeBarApp: App {
                     // polling doesn't spam "Claude Code Finished: Probe"
                     // notifications or pollute the recent-sessions list. (issue #172)
                     guard !event.isClaudeBarProbe else { continue }
+                    var event = event
+                    if let path = event.transcriptPath {
+                        event = event.titled(await sessionTitles.read(transcriptAt: path))
+                    }
                     await sessionMonitor.processEvent(event)
                     await sendSessionNotification(for: event)
                 }
@@ -270,7 +275,10 @@ struct ClaudeBarApp: App {
     }
 
     @MainActor private func sendSessionNotification(for event: SessionEvent) {
-        let projectName = (event.cwd as NSString).lastPathComponent
+        // The session by its repo and title; one ClaudeBar never saw, by its folder.
+        let known = sessionMonitor.sessions.first { $0.id == event.sessionId }
+            ?? sessionMonitor.recentSessions.first { $0.id == event.sessionId }
+        let projectName = known?.repoAndTitle ?? (event.cwd as NSString).lastPathComponent
 
         switch event.eventName {
         case .sessionStart:

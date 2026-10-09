@@ -28,7 +28,8 @@ public enum SessionEventParser {
             eventName: eventName,
             cwd: cwd,
             message: message,
-            processId: processId.flatMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            processId: processId.flatMap { Int($0.trimmingCharacters(in: .whitespaces)) },
+            transcriptPath: json["transcript_path"] as? String
         )
     }
 }
