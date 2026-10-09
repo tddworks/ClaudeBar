@@ -24,6 +24,9 @@
 #        DEMO_SCENE=sections  adds Oh My Pi, read by its own script: a Claude
 #                           and a Kimi section, then today's usage from the
 #                           same sample logs
+#        DEMO_SCENE=sessions  hooks on in the demo home, and six made-up Claude
+#                           Code sessions posted to the hook server: one needs
+#                           you, one with agents, four done (three in one repo)
 #        DEMO_TEXT_SIZE=extraLarge  the Popover Text Size (medium, large,
 #                           extraLarge), set in the demo home's settings
 #        DEMO_POPOVER_TITLE="Acme AI Desk"  the Popover Title, set the same way
@@ -148,9 +151,25 @@ settings = {"providers": providers, "app": {
     "menuBarPercentageEnabled": True,
     "menuBarPercentageProviderId": ids[0],
 }}
+if scene == "sessions":
+    settings["hook"] = {"enabled": True}
 with open(f"{home}/.claudebar/settings.json", "w") as f:
     json.dump(settings, f, indent=2)
 PY
+
+# Made-up Claude Code sessions, posted once the hook server listens.
+if [[ "${DEMO_SCENE:-}" == "sessions" ]]; then
+    (
+        hook() { curl -s -o /dev/null -X POST "http://127.0.0.1:19847/hook" -H 'Content-Type: application/json' \
+            -d "{\"session_id\":\"$1\",\"hook_event_name\":\"$2\",\"cwd\":\"/Users/demo/code/$3\"}"; }
+        for _ in $(seq 60); do curl -s -o /dev/null -X POST http://127.0.0.1:19847/hook && break; sleep 1; done
+        hook done-1 Stop catalog; hook done-2 Stop claudebar; sleep 2
+        hook done-3 Stop claudebar; hook done-4 Stop claudebar
+        hook busy UserPromptSubmit claudebar; hook busy SubagentStart claudebar; hook busy SubagentStart claudebar
+        hook busy TaskCompleted claudebar; hook busy TaskCompleted claudebar; hook busy TaskCompleted claudebar
+        hook blocked UserPromptSubmit tinyshop; hook blocked Notification tinyshop
+    ) &
+fi
 
 # The sample API: round numbers, resets a few hours and days out.
 python3 - "$PORT" "${DEMO_LOW:-}" <<'PY' &

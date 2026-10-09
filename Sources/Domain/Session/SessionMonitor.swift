@@ -108,6 +108,37 @@ public final class SessionMonitor {
         !sessions.isEmpty
     }
 
+    /// The sessions still in play, every one that isn't Done, most pressing
+    /// first: the rows of the Claude Code card.
+    public var sessionsInPlay: [ClaudeSession] {
+        sessionsByProminence.filter { $0.phase != .stopped }
+    }
+
+    /// How many sessions need the person, are working, or are done.
+    public var tally: SessionTally {
+        SessionTally(
+            needsYou: sessions.count { $0.phase == .awaitingInput },
+            working: sessions.count { $0.phase == .active || $0.phase == .subagentsWorking },
+            done: sessions.count { $0.phase == .stopped }
+        )
+    }
+
+    /// The Done sessions, one entry per repo, the repo that finished last first.
+    public var doneByRepo: [DoneRepo] {
+        let done = sessions.filter { $0.phase == .stopped }
+        return Dictionary(grouping: done, by: \.repoName)
+            .map { repoName, sessions in
+                DoneRepo(
+                    repoName: repoName,
+                    count: sessions.count,
+                    lastFinishedAt: sessions.map { $0.finishedAt ?? $0.startedAt }.max() ?? .distantPast
+                )
+            }
+            .sorted { lhs, rhs in
+                lhs.lastFinishedAt == rhs.lastFinishedAt ? lhs.repoName < rhs.repoName : lhs.lastFinishedAt > rhs.lastFinishedAt
+            }
+    }
+
     // MARK: - Private
 
     private func lastHeard(from session: ClaudeSession) -> Date {

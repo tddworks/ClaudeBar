@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Code card</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* The popover's Claude Code card, redesigned as a strip. Platformer theme, mock data. */
+:root{
+  --sky:#5C94FC;--ink:#141414;--paper:#FFF8E7;--text:#141414;--text-2:#4A3A2A;--text-3:#7C6A55;--coin:#FFD43B;
+  /* Phase colours (ClaudeSession.Phase.color) */
+  --needs:#E40058;--agents:#2F6FED;--working:#22A845;--done:#A39A8A;
+  --page:#E9E4D8;--page-text:#2A2620;--page-muted:#6E675C;--rule:#CFC7B6;--panel:#FFFDF7;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}}
+:root[data-theme="dark"]{--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--page-text);font:16px/1.45 "Pixelify Sans",system-ui,sans-serif;padding:36px 16px 80px;overflow-x:hidden}
+.wrap{max-width:1000px;margin:0 auto}
+.eyebrow{font:10px "Press Start 2P",monospace;color:var(--page-muted)}
+h1{font:clamp(18px,3.4vw,26px)/1.4 "Press Start 2P",monospace;margin:12px 0}
+.lede{max-width:720px;color:var(--page-muted);font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:28px 32px;margin-top:32px;align-items:start}
+.state h2{font:10px/1.5 "Press Start 2P",monospace;margin-bottom:6px}
+.state p{font-size:14px;color:var(--page-muted);margin-bottom:10px;max-width:420px}
+.sky{background:var(--sky);border:3px solid var(--ink);border-radius:6px;padding:12px;max-width:420px;box-shadow:5px 5px 0 var(--ink)}
+
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--ink);padding:9px 12px;color:var(--text);font-size:12px}
+.card.tint{border-color:var(--c);box-shadow:3px 3px 0 var(--ink),inset 0 0 0 1px var(--c)}
+.row{display:flex;align-items:center;gap:8px;min-width:0}
+.sp{flex:1}
+.dots{display:flex;gap:3px;flex:none}
+.dots i{width:9px;height:9px;border:2px solid var(--ink);border-radius:2px;background:var(--done)}
+.dots i.needs{background:var(--needs);animation:pulse 1s steps(2) infinite}
+.dots i.agents{background:var(--agents)}.dots i.working{background:var(--working)}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.dots i.needs{animation:none}}
+.t{font:700 12px "Pixelify Sans",system-ui,sans-serif;white-space:nowrap}
+.s{font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.s b{color:var(--needs)}
+.tog{flex:none;border:2px solid var(--ink);border-radius:999px;padding:0 8px;font:700 11px "Pixelify Sans",system-ui,sans-serif;cursor:pointer;user-select:none;background:var(--paper)}
+.body{margin-top:8px;padding-top:8px;border-top:2px dashed #E3D6B8;display:flex;flex-direction:column;gap:5px;font-size:11px}
+.r2{display:flex;align-items:center;gap:7px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
+.ph{font:700 10px "Pixelify Sans",system-ui,sans-serif;color:#fff;background:var(--c);border-radius:3px;padding:0 5px}
+.meta{color:var(--text-2);font-size:10px;white-space:nowrap}
+.d{color:var(--text-3);font-variant-numeric:tabular-nums;min-width:58px;text-align:right;white-space:nowrap}
+.grp{font:700 9px "Pixelify Sans",system-ui,sans-serif;letter-spacing:.12em;color:var(--text-3);margin-top:3px}
+.x{font:700 10px "Pixelify Sans",system-ui,sans-serif;background:var(--ink);color:var(--paper);border-radius:3px;padding:0 4px}
+.more{font-size:10px;color:var(--text-3);cursor:pointer;align-self:flex-start}
+.done-row{color:var(--text-2)}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:28px;font-size:13px;color:var(--page-muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border:2px solid var(--ink);border-radius:2px;background:var(--c)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">DESIGN CONCEPT · CLAUDE CODE CARD · MOCK DATA</div>
+  <h1>Claude Code: a strip, not a list</h1>
+  <p class="lede">Finished sessions need nothing from you, so they stop taking a row each. The card keeps one line for everything, a row for each session still in play, and folds Done sessions by repo behind ▾. Click ▾ or "5 done ›" on any card. Design: <code>docs/features/session-hooks/design.md</code>.</p>
+
+  <div class="legend">
+    <span><i style="--c:var(--needs)"></i>Needs you · red (was yellow)</span>
+    <span><i style="--c:var(--agents)"></i>Agents working · blue</span>
+    <span><i style="--c:var(--working)"></i>Working · green</span>
+    <span><i style="--c:var(--done)"></i>Done · grey (was orange)</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+const C = {needs:"var(--needs)",agents:"var(--agents)",working:"var(--working)",done:"var(--done)"};
+const LABEL = {needs:"Needs you",agents:"Agents working",working:"Working"};
+const COUNT = {needs:"needs you",working:"working",done:"done"};
+const STATES = [
+  {title:"Some in play", note:"A row for each session that isn't Done, most pressing first.",
+   live:[["tinyshop","needs",0,0,"1m 03s"],["claudebar","agents",3,2,"4m 12s"]],
+   done:[["claudebar",3,"just now"],["Subtitled",1,"21m ago"],["catalog",1,"2h 32m ago"]], open:false},
+  {title:"Opened", note:"Done sessions in one repo fold into one row with ×N, dated by the latest finish. Kept open while ClaudeBar runs.",
+   live:[["tinyshop","needs",0,0,"1m 03s"],["claudebar","agents",3,2,"4m 12s"]],
+   done:[["claudebar",3,"just now"],["Subtitled",1,"21m ago"],["catalog",1,"2h 32m ago"]], open:true},
+  {title:"All done", note:"The strip alone, with when the last one finished. ▾ still opens the Done group.",
+   live:[], done:[["claudebar",4,"2m ago"],["Subtitled",1,"21m ago"],["catalog",1,"2h 32m ago"],["tinyshop",1,"3h ago"]], open:false, last:"2m ago"},
+  {title:"Busy", note:"Past five rows, \"+N more\" opens the card. Past twelve squares the strip stops; the count line has the rest.",
+   live:[["api","needs",0,0,"40s"],["web","needs",0,0,"2m 10s"],["claudebar","agents",1,3,"8m"],["docs","working",2,0,"1m 12s"],["infra","working",0,0,"5m"],["mobile","working",0,0,"12m"],["cli","working",0,0,"30m"]],
+   done:[["claudebar",6,"just now"],["catalog",2,"1h ago"]], open:false}
+];
+function card(st){
+  const doneN = st.done.reduce((a,d)=>a+d[1],0);
+  const phases = [["needs",st.live.filter(l=>l[1]==="needs").length],["working",st.live.filter(l=>l[1]!=="needs").length]].filter(([,n])=>n);
+  if (doneN) phases.push(["done",doneN]);
+  const counts = st.live.length===0 ? `${doneN} done · finished ${st.last}`
+    : phases.map(([p,n],i)=>i===0&&p==="needs"?`<b>${n} ${COUNT[p]}</b>`:`${n} ${COUNT[p]}`).join(" · ");
+  const order = [...st.live.map(l=>l[1]), ...Array(doneN).fill("done")];
+  const squares = order.slice(0,12).map(p=>`<i class="${p==="done"?"":p}"></i>`).join("");
+  const top = st.live[0]?.[1] ?? "done";
+  const rows = st.live.slice(0,5).map(([n,p,t,a,time])=>`<div class="r2" style="--c:${C[p]}"><span class="dot"></span><b>${n}</b><span class="ph">${LABEL[p]}</span><span class="sp"></span>${t?`<span class="meta">✓ ${t}</span>`:""}${a?`<span class="meta">👥 ${a}</span>`:""}<span class="d">${time}</span></div>`).join("");
+  const extra = st.live.length>5 ? `<span class="more" data-t>+${st.live.length-5} more</span>` : "";
+  const doneRows = st.done.map(([n,k,ago])=>`<div class="r2 done-row" style="--c:var(--done)"><span class="dot"></span><b>${n}</b>${k>1?`<span class="x">×${k}</span>`:""}<span class="sp"></span><span class="d">${ago}</span></div>`).join("");
+  let body = "";
+  if (rows || st.open) body = `<div class="body">${rows}${extra}${rows && !st.open?`<span class="more" data-t>${doneN} done ›</span>`:""}${st.open?`${rows?'<div class="grp">DONE</div>':""}${doneRows}`:""}</div>`;
+  return `<div class="card"><div class="row"><div class="dots">${squares}</div><div class="t">Claude Code</div><div class="sp"></div><span class="tog" data-t role="button" aria-label="${st.open?"Hide":"Show"} done sessions">${st.open?"▴":"▾"}</span></div><div class="s" style="margin-top:3px">${counts}</div>${body}</div>`;
+}
+const grid = document.getElementById("grid");
+STATES.forEach(st=>{
+  const el = document.createElement("section"); el.className="state";
+  const draw=()=>{el.innerHTML=`<h2>${st.title}</h2><p>${st.note}</p><div class="sky">${card(st)}</div>`;
+    el.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{st.open=!st.open;draw();});};
+  draw(); grid.append(el);
+});
+</script>
+</body>
+</html>

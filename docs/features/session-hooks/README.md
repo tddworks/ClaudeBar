@@ -9,7 +9,7 @@ ClaudeBar can follow your Claude Code sessions as they happen. It adds hooks to 
 What you get:
 
 - **Notifications**: "Claude Code Started: Session started in *project*" when a session starts, and "Claude Code Finished: *project* — Completed 3 tasks in 12m" (or "Session ended after 12m") when it ends.
-- **Popover**: a session card at the top with the state (Working, Agents working, Needs you, Done, Ended — the [notch](../notch/README.md)'s words), subagent activity and completed tasks. With several sessions running, the one card lists each with its state, the one that most needs you first (up to five, then "+N more done").
+- **Popover**: a session card at the top with the state (Working, Agents working, Needs you, Done, Ended — the [notch](../notch/README.md)'s words), subagent activity and completed tasks. With several sessions running, the one card keeps a line of coloured squares and a count (*1 needs you · 2 working · 5 done*), a row for each session that isn't Done, the one that most needs you first, and the Done ones behind ▾, one row per repo with when it finished.
 - **Menu bar**: a terminal glyph in front of the readout while Claude is working or subagents are running. With several sessions it follows the one that most needs you: Needs you first, then Agents working, then Working, then Done.
 - **Notch**: the session activity described in [notch](../notch/README.md).
 
