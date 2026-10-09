@@ -5,9 +5,12 @@ import Mockable
 /// gave it with `/rename`, and the title Claude Code wrote for it. Either is
 /// nil until the transcript has one.
 public struct TranscriptTitles: Sendable, Equatable, Codable {
+    /// The name given with `/rename`, if any.
     public let named: String?
+    /// The title Claude Code wrote for the session, if any.
     public let generated: String?
 
+    /// Titles as found; pass nil for one the transcript doesn't hold.
     public init(named: String?, generated: String?) {
         self.named = named
         self.generated = generated

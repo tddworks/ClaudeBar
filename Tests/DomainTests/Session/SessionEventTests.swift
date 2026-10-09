@@ -39,6 +39,23 @@ struct SessionEventTests {
     }
 
     @Test
+    func `should carry the titles read for it and keep everything else`() {
+        let date = Date()
+        let event = SessionEvent(
+            sessionId: "abc", eventName: .stop, cwd: "/tmp/project", receivedAt: date,
+            message: "Done", processId: 42, transcriptPath: "/tmp/abc.jsonl"
+        )
+        let titles = TranscriptTitles(named: "Session names", generated: "Pull latest main")
+
+        let titled = event.titled(titles)
+
+        #expect(titled == SessionEvent(
+            sessionId: "abc", eventName: .stop, cwd: "/tmp/project", receivedAt: date,
+            message: "Done", processId: 42, transcriptPath: "/tmp/abc.jsonl", titles: titles
+        ))
+    }
+
+    @Test
     func `should keep the session, what happened and the folder when saved and read back`() throws {
         let date = Date()
         let original = SessionEvent(

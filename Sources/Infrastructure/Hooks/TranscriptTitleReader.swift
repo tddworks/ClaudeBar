@@ -23,8 +23,12 @@ public actor TranscriptTitleReader: SessionTitles {
 
     private var progress: [String: Progress] = [:]
 
+    /// A reader that has read no transcript yet.
     public init() {}
 
+    /// The latest name and Claude Code title in the transcript at `path`,
+    /// reading only the complete lines appended since the last read of it.
+    /// Both nil when the transcript has neither or can't be opened.
     public func read(transcriptAt path: String) -> TranscriptTitles {
         guard let handle = FileHandle(forReadingAtPath: path) else {
             progress[path] = nil
