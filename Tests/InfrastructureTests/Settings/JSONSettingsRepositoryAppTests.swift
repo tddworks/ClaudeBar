@@ -306,6 +306,18 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `should keep no popover title until the person names it, and remember it as typed`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+
+        #expect(repo.popoverTitle() == "")
+        repo.setPopoverTitle("  Acme AI Desk ")
+        let reopened = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(reopened.popoverTitle() == "  Acme AI Desk ")
+    }
+
+    @Test
     func `should show the person's globe country until hidden, and keep it hidden`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

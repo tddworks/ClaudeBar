@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popover Title</title>
+<style>
+  :root { --bg:#f4f1f8; --ink:#1d1630; --muted:#6b6380; }
+  body { margin:0; padding:32px 16px; background:var(--bg); color:var(--ink);
+         font:14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; } p.lede { color:var(--muted); margin:0 0 28px; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+  .label { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+
+  /* popover header */
+  .pop { width:340px; border-radius:22px; padding:16px; box-sizing:border-box; }
+  .pop.dark { background:linear-gradient(160deg,#3a1d4f,#24123a); color:#fff; }
+  .pop.light { background:linear-gradient(160deg,#fbf8ff,#f1e9fb); color:#1d1630; border:1px solid #e6dcf3; }
+  .hdr { display:flex; align-items:center; gap:10px; }
+  .logo { width:38px; height:38px; border-radius:50%; background:#c9a27e; display:grid; place-items:center;
+          font-weight:800; color:#2a1a10; box-shadow:0 0 0 2px rgba(232,110,140,.3); }
+  .title { font-weight:700; font-size:18px; letter-spacing:-.01em; }
+  .tag { font-size:11px; font-weight:500; opacity:.65; }
+  .pill { margin-left:auto; font-size:11px; font-weight:700; padding:6px 12px; border-radius:99px;
+          display:flex; gap:6px; align-items:center; }
+  .dark .pill { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); }
+  .light .pill { background:#fff; border:1px solid #cfe9d7; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#3ccf7a; box-shadow:0 0 0 3px rgba(60,207,122,.25); }
+  .tabs { display:flex; gap:6px; margin-top:12px; }
+  .tab { font-size:11px; padding:5px 10px; border-radius:99px; opacity:.8; }
+  .dark .tab { background:rgba(255,255,255,.08); } .light .tab { background:#fff; border:1px solid #eadff6; }
+  .tab.on { background:#e86e8c !important; color:#fff; opacity:1; border:none; }
+  mark { background:none; color:inherit; outline:2px dashed #e86e8c; outline-offset:3px; border-radius:4px; }
+
+  /* settings */
+  .settings { width:460px; max-width:100%; background:#fff; border:1px solid #e6dcf3; border-radius:14px; padding:16px; box-sizing:border-box; }
+  .srow { display:flex; gap:16px; align-items:center; }
+  .stitle { font-weight:600; font-size:13px; } .ssub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .field { display:flex; gap:8px; align-items:center; margin-left:auto; }
+  input { width:150px; font:500 12px -apple-system, sans-serif; padding:7px 10px; border-radius:8px;
+          border:1px solid #e0d6ee; background:#faf7fe; color:var(--ink); }
+  button { font:600 11px -apple-system, sans-serif; padding:6px 10px; border-radius:8px; border:1px solid #e0d6ee; background:#fff; cursor:pointer; }
+  button[hidden] { display:none; }
+  .notes { max-width:820px; margin-top:28px; color:var(--muted); font-size:12px; }
+  .notes li { margin:4px 0; }
+  @media (max-width:420px){ .pop{width:100%} .srow{flex-direction:column;align-items:stretch} .field{margin-left:0} }
+</style>
+</head>
+<body>
+  <h1>Popover Title</h1>
+  <p class="lede">The person names the popover header. Type below; both headers follow. Mock data only.</p>
+
+  <p class="label">Settings → Appearance</p>
+  <div class="settings">
+    <div class="srow">
+      <div>
+        <div class="stitle">Popover Title</div>
+        <div class="ssub">The name at the top of the popover. Leave blank for ClaudeBar.</div>
+      </div>
+      <div class="field">
+        <input id="t" placeholder="ClaudeBar" value="Acme AI Desk" maxlength="60">
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="label" style="margin-top:28px">Popover header</p>
+  <div class="row">
+    <div class="pop dark"><div class="hdr"><div class="logo">A\</div>
+      <div><div class="title"><mark class="name">Acme AI Desk</mark></div><div class="tag">AI Usage Monitor</div></div>
+      <div class="pill"><span class="dot"></span>HEALTHY</div></div>
+      <div class="tabs"><span class="tab on">Claude</span><span class="tab">Codex</span><span class="tab">Gemini</span></div></div>
+    <div class="pop light"><div class="hdr"><div class="logo">A\</div>
+      <div><div class="title"><mark class="name">Acme AI Desk</mark></div><div class="tag">AI Usage Monitor</div></div>
+      <div class="pill"><span class="dot"></span>HEALTHY</div></div>
+      <div class="tabs"><span class="tab on">Claude</span><span class="tab">Codex</span><span class="tab">Gemini</span></div></div>
+  </div>
+
+  <ul class="notes">
+    <li>Blank or spaces only → <b>ClaudeBar</b>. Surrounding spaces dropped, line breaks become spaces, at most 24 characters.</li>
+    <li>Only the title changes: the tagline, logo, pill and theme stay the same. <b>Reset</b> appears only when a name is set.</li>
+    <li>About, the Settings sidebar, the accessibility label and the Touch Bar keep <b>ClaudeBar</b>.</li>
+  </ul>
+<script>
+  const t = document.getElementById('t'), r = document.getElementById('reset');
+  const shown = s => { s = s.replace(/[\r\n]+/g,' ').trim(); return s ? [...s].slice(0,24).join('') : 'ClaudeBar'; };
+  const draw = () => { document.querySelectorAll('.name').forEach(n => n.textContent = shown(t.value)); r.hidden = !t.value.trim(); };
+  t.addEventListener('input', draw); r.addEventListener('click', () => { t.value=''; draw(); }); draw();
+</script>
+</body>
+</html>

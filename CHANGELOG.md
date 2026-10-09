@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Your own popover title**: name the popover header your own way, such as your team's name, in place of *ClaudeBar* (Settings → Appearance → Popover Title). Leave it blank to go back. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/popover-title/README.md)
+
 ---
 
 ## [0.5.11] - 2026-10-09

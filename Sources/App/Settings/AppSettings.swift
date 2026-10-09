@@ -194,6 +194,14 @@ public final class AppSettings {
         }
     }
 
+    /// The name at the top of the popover, *ClaudeBar* until the person
+    /// names it (Settings → Appearance → Popover Title).
+    public var popoverTitle: PopoverTitle {
+        didSet {
+            repository.setPopoverTitle(popoverTitle.typed)
+        }
+    }
+
     /// Your country on the Leaderboard globe shows as `🌍 ••` in the popover,
     /// for screen shares, the way *Hide account email* masks emails.
     public var hideLeaderboardCountry: Bool {
@@ -468,6 +476,7 @@ public final class AppSettings {
         self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.hideAccountEmail = repository.hideAccountEmail()
+        self.popoverTitle = PopoverTitle(repository.popoverTitle())
         self.hideLeaderboardCountry = repository.hideLeaderboardCountry()
         self.hideLeaderboardName = repository.hideLeaderboardName()
         // The stored size decodes through the Domain fallback so an unknown raw

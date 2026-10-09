@@ -70,6 +70,34 @@ struct AppearancePane: View {
 
             SettingsCard {
                 SettingsRow(
+                    title: "Popover Title",
+                    subtitle: "The name at the top of the popover. Leave blank for \(PopoverTitle.productName)."
+                ) {
+                    HStack(spacing: 8) {
+                        SettingsTextField(
+                            placeholder: PopoverTitle.productName,
+                            text: Binding(
+                                get: { settings.popoverTitle.typed },
+                                set: { settings.popoverTitle = PopoverTitle($0) }
+                            )
+                        )
+                        .frame(width: 160)
+                        .accessibilityLabel("Popover Title")
+
+                        if !settings.popoverTitle.isDefault {
+                            Button("Reset") {
+                                settings.popoverTitle = PopoverTitle("")
+                            }
+                            .buttonStyle(.plain)
+                            .font(theme.font(size: 11, weight: .semibold))
+                            .foregroundStyle(theme.accentPrimary)
+                        }
+                    }
+                }
+            }
+
+            SettingsCard {
+                SettingsRow(
                     title: "Popover Text Size",
                     subtitle: "Scale every label in the menu bar popover. The popover widens to fit."
                 ) {

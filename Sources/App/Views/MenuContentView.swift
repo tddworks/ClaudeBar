@@ -447,8 +447,9 @@ struct MenuContentView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text("ClaudeBar")
+                    Text(settings.popoverTitle.shown)
                         .popoverDisplayFont(18)
+                        .lineLimit(1)
                         .foregroundStyle(theme.textPrimary)
 
                     // Christmas gift icon

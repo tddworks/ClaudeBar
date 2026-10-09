@@ -76,6 +76,11 @@ public protocol AppSettingsRepository: Sendable {
     func hideAccountEmail() -> Bool
     func setHideAccountEmail(_ hide: Bool)
 
+    /// The popover header's title as the person typed it, `""` when never set.
+    /// `PopoverTitle` decides what it shows.
+    func popoverTitle() -> String
+    func setPopoverTitle(_ title: String)
+
     /// Your country on the Leaderboard globe shows as `🌍 ••` in the popover.
     func hideLeaderboardCountry() -> Bool
     func setHideLeaderboardCountry(_ hide: Bool)

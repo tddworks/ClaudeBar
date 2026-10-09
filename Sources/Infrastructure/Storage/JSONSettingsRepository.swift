@@ -197,6 +197,14 @@ public final class JSONSettingsRepository:
         store.write(value: hide, key: "app.hideAccountEmail")
     }
 
+    public func popoverTitle() -> String {
+        store.read(key: "app.popoverTitle") ?? ""
+    }
+
+    public func setPopoverTitle(_ title: String) {
+        store.write(value: title, key: "app.popoverTitle")
+    }
+
     public func hideLeaderboardCountry() -> Bool {
         store.read(key: "app.hideLeaderboardCountry") ?? false
     }
