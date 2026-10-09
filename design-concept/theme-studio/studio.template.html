@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theme Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Lilita+One&family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ClaudeBar Theme Studio: open, edit and download a theme.json, with the popover drawn from it.
+   Generated from studio.template.html and themes/*.json by build.py; edit those, not index.html. */
+:root{--page:#EEEAE2;--panel:#FFFDF8;--text:#24212E;--muted:#6B6578;--rule:#D9D2C4;--hi:#7C4DEB;--bad:#C0362C;--good:#1F8A4C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#15141B;--panel:#1E1C26;--text:#EEEAF6;--muted:#A49EB5;--rule:#34303F;--bad:#FF7A6B;--good:#5BD08A}}
+:root[data-theme="dark"]{--page:#15141B;--panel:#1E1C26;--text:#EEEAF6;--muted:#A49EB5;--rule:#34303F;--bad:#FF7A6B;--good:#5BD08A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--text);font:14px/1.45 "Bricolage Grotesque",system-ui,sans-serif;overflow-x:hidden}
+code,textarea,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--rule);background:var(--panel);position:sticky;top:0;z-index:5}
+header.top h1{font-size:16px;font-weight:800;margin-right:8px}
+.btn{all:unset;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--rule);font-weight:700;font-size:12.5px;white-space:nowrap}
+.btn:hover{border-color:var(--hi)}
+.btn.primary{background:var(--hi);color:#fff;border-color:var(--hi)}
+select,input[type=text],input[type=number]{font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--text);min-width:0}
+input[type=number]{width:64px}
+.status{margin-left:auto;font-size:12.5px}
+.status.ok{color:var(--good)}.status.bad{color:var(--bad)}
+main{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr) minmax(0,380px);min-height:calc(100vh - 56px)}
+@media (max-width:1180px){main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.json{grid-column:1/-1}}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+.form{border-right:1px solid var(--rule);padding:12px 14px;overflow:auto;max-height:calc(100vh - 56px)}
+.json{border-left:1px solid var(--rule);display:flex;flex-direction:column;max-height:calc(100vh - 56px)}
+details{border-bottom:1px solid var(--rule);padding:8px 0}
+summary{cursor:pointer;font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:2px 0}
+.f{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px;align-items:center;margin-top:7px;font-size:12.5px}
+.f>label{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cref{display:flex;gap:5px;align-items:center;min-width:0}
+.cref select{flex:1}
+.chip{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.25);flex:none;background-image:linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%),linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%);background-size:8px 8px;background-position:0 0,4px 4px;position:relative;overflow:hidden}
+.chip i{position:absolute;inset:0}
+.pal{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.pal .p{display:grid;grid-template-columns:28px minmax(0,1fr) 78px 22px;gap:5px;align-items:center}
+.pal input[type=color]{width:28px;height:22px;border:1px solid var(--rule);border-radius:5px;padding:0;background:none;cursor:pointer}
+.x{all:unset;cursor:pointer;color:var(--muted);text-align:center}
+.x:hover{color:var(--bad)}
+.add{margin-top:6px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.stage{padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:auto;max-height:calc(100vh - 56px);background:repeating-conic-gradient(rgba(127,127,127,.07) 0 25%,transparent 0 50%) 0 0/18px 18px}
+.knobs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;justify-content:center}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{all:unset;cursor:pointer;padding:3px 9px;font-size:12px}
+.seg button.on{background:var(--hi);color:#fff}
+.errors{width:100%;max-width:400px;font-size:12px;color:var(--bad)}
+.errors li{margin-left:16px}
+.json .bar{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--rule);font-size:12px;color:var(--muted)}
+textarea{flex:1;width:100%;border:0;resize:none;padding:10px 12px;font-size:11.5px;line-height:1.5;background:var(--panel);color:var(--text);outline:none;min-height:420px;tab-size:2}
+textarea.bad{box-shadow:inset 3px 0 0 var(--bad)}
+.drop{position:fixed;inset:0;background:rgba(124,77,235,.18);border:4px dashed var(--hi);display:none;place-items:center;font-size:22px;font-weight:800;color:var(--hi);z-index:20}
+body.dragging .drop{display:grid}
+
+/* ---------- the popover, drawn from the theme ---------- */
+.pop{position:relative;width:360px;max-width:100%;border-radius:12px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.25);color:var(--t1)}
+.pop canvas.bd{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pop .in{position:relative;padding:14px 14px 0}
+.score{display:flex;justify-content:space-between;margin-bottom:8px;line-height:1.5}
+.hd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.logo{width:38px;height:38px;border-radius:50%;flex:none}
+.ttl{line-height:1.05}
+.qb{margin-left:auto;width:32px;height:32px;display:grid;place-items:center}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:nowrap;overflow:hidden}
+.tab{padding:4px 11px;white-space:nowrap}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qc{position:relative;padding:10px}
+.qc .l{display:flex;justify-content:space-between;align-items:center;gap:4px}
+.badge{padding:2px 6px;white-space:nowrap}
+.big{margin:8px 0 6px;line-height:1;white-space:nowrap}
+.trk{display:flex;gap:2px;height:10px;overflow:hidden}
+.rivet{position:absolute;width:4px;height:4px}
+.actions{display:flex;gap:8px;margin-top:12px}
+.act{flex:1;text-align:center;padding:6px 4px;white-space:nowrap}
+.lane{position:relative}
+canvas.runner{display:block;width:100%}
+.menubars{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.mb{display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:6px;font:600 12px system-ui;border:1px solid var(--rule)}
+.mb.light{background:#ECECEC;color:#222}.mb.dark{background:#2B2B2B;color:#EEE}
+</style>
+</head>
+<body>
+<div class="drop">Drop a theme.json to open it</div>
+<header class="top">
+  <h1>Theme Studio</h1>
+  <select id="preset" aria-label="Start from"><option value="">Start from…</option></select>
+  <button class="btn" id="open">Open theme.json…</button>
+  <input type="file" id="file" accept=".json,application/json" hidden>
+  <button class="btn" id="font">Add a font…</button>
+  <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" hidden>
+  <button class="btn primary" id="download">Download theme.json</button>
+  <span class="status" id="status"></span>
+</header>
+<main>
+  <section class="form" id="form"></section>
+  <section class="stage">
+    <div class="knobs">
+      <span>Status</span><div class="seg" id="pvStatus"></div>
+      <span id="styleKnob"><span>Text</span> <div class="seg" id="pvStyle"></div></span>
+    </div>
+    <div class="pop" id="pop"></div>
+    <div class="menubars" id="menubars"></div>
+    <ul class="errors" id="errors"></ul>
+  </section>
+  <section class="json">
+    <div class="bar"><span>theme.json</span><span style="margin-left:auto">edit here or on the left</span></div>
+    <textarea id="json" spellcheck="false" aria-label="theme.json"></textarea>
+  </section>
+</main>
+<script>
+const PRESETS = __PRESETS__;
+
+// ---------- the model: a theme.json and how to read it ----------
+const STATUSES = ["healthy", "warning", "critical", "depleted"];
+const DEFAULT_WORDS = {healthy: "HEALTHY", warning: "WARNING", critical: "LOW", depleted: "EMPTY"};
+// Fonts a theme names that the web can load by another name.
+const WEB_FONTS = {LilitaOne: "Lilita One", "PressStart2P-Regular": "Press Start 2P", PixelifySans: "Pixelify Sans"};
+const uploadedFonts = new Set();
+
+let theme = structuredClone(PRESETS.pop);
+let pv = {status: "critical", style: "themed"};
+
+const get = (o, path) => path.split(".").reduce((v, k) => v == null ? undefined : v[k], o);
+function set(o, path, value) {
+  const keys = path.split("."); let cur = o;
+  keys.slice(0, -1).forEach(k => { if (cur[k] == null || typeof cur[k] !== "object") cur[k] = {}; cur = cur[k]; });
+  if (value === undefined || value === "") delete cur[keys.at(-1)]; else cur[keys.at(-1)] = value;
+}
+
+/** A colour reference: a palette name, "#RRGGBB(AA)", "clear", with an optional "@opacity". */
+function color(ref, errors, where) {
+  if (ref == null) return null;
+  let [name, alpha] = String(ref).split("@");
+  let hex = name === "clear" ? "#00000000" : name.startsWith("#") ? name : theme.colors?.[name];
+  if (!hex || !/^#([0-9a-f]{6}|[0-9a-f]{8})$/i.test(hex)) { errors?.push(`${where}: no colour named “${name}”`); return "#FF00FF"; }
+  if (alpha != null) {
+    const a = Math.round(Math.max(0, Math.min(1, +alpha)) * 255).toString(16).padStart(2, "0");
+    hex = hex.slice(0, 7) + a;
+  }
+  return hex;
+}
+const fill = (stops, errors, where) => {
+  const cs = (Array.isArray(stops) ? stops : [stops]).map((s, i) => color(s, errors, `${where}[${i}]`));
+  return cs.length === 1 ? cs[0] : `linear-gradient(135deg, ${cs.join(", ")})`;
+};
+
+/** What the app would read from the theme: the same rules as the generic Swift theme. */
+function resolve(t, style) {
+  const e = [];
+  const req = ["id", "name", "colors", "background", "card", "text", "status", "accent"];
+  req.forEach(k => { if (t[k] == null) e.push(`missing “${k}”`); });
+  const c = (path) => color(get(t, path), e, path);
+  const outlined = (t.card?.borderWidth ?? 1) > 1;
+  const themed = style === "themed" || !t.fonts?.styleName;
+  const fontName = (f) => f && themed ? (uploadedFonts.has(f.name) ? f.name : WEB_FONTS[f.name] ?? f.name) : null;
+  const design = {rounded: "ui-rounded, 'SF Pro Rounded', system-ui", monospaced: "ui-monospace, 'JetBrains Mono', monospace", serif: "ui-serif, Georgia, serif"}[t.text?.design] ?? "system-ui";
+  const body = fontName(t.fonts?.body);
+  const display = fontName(t.fonts?.display);
+  const status = Object.fromEntries(STATUSES.map(s => [s, c(`status.${s}`)]));
+  const r = {
+    errors: e, outlined,
+    bg: fill(t.background ?? ["#FFFFFF"], e, "background"),
+    card: fill(t.card?.fill ?? ["#FFFFFF"], e, "card.fill"),
+    border: c("card.border") ?? "#00000033",
+    bw: t.card?.borderWidth ?? 1,
+    radius: t.card?.cornerRadius ?? 12,
+    shadow: t.card?.shadow ? `${t.card.shadow.x}px ${t.card.shadow.y}px ${t.card.shadow.radius ?? 0}px ${c("card.shadow.color")}` : "none",
+    rivets: t.card?.rivets ?? null,
+    pillRadius: t.pill?.cornerRadius ?? 999,
+    pillFill: fill(t.pill?.fill ?? [t.accent?.primary ?? "#888888"], e, "pill.fill"),
+    controlRadius: t.controls?.cornerRadius ?? 999,
+    badgeRadius: t.badge?.cornerRadius ?? (outlined ? (t.pill?.cornerRadius ?? 999) : 4),
+    t1: c("text.primary"), t2: c("text.secondary"), t3: c("text.tertiary"),
+    onStatus: c("text.onStatus") ?? "#FFFFFF",
+    onAccent: c("text.onAccent") ?? "#FFFFFF",
+    bodyFont: body ? `'${body}', ${design}` : design,
+    displayFont: display ? `'${display}', ${design}` : design,
+    displayScale: display ? (t.fonts?.display?.scale ?? 1) : 1,
+    badgeFont: t.badge?.font === "display" && display ? `'${display}', ${design}`
+      : (!themed && t.badge?.classic === "monospaced") ? "ui-monospace, monospace" : (body ? `'${body}', ${design}` : design),
+    badgeScale: t.badge?.font === "display" && display ? (t.badge?.scale ?? 1) : 1,
+    status,
+    menuLight: Object.fromEntries(STATUSES.map(s => [s, t.status?.onLightMenuBar?.[s] ? c(`status.onLightMenuBar.${s}`) : status[s]])),
+    words: Object.fromEntries(STATUSES.map(s => [s, t.status?.words?.[s] ?? DEFAULT_WORDS[s]])),
+    blinks: new Set(t.status?.blinks ?? []),
+    accent: c("accent.primary"),
+    accentFill: fill(t.accent?.fill ?? [t.accent?.primary], e, "accent.fill"),
+    track: c("progress.track") ?? "#00000022",
+    blocks: t.progress?.style === "blocks" ? (t.progress.blocks ?? 10) : 0,
+    flat: t.progress?.fill === "flat",
+    header: t.header ?? "standard",
+    backdrop: t.backdrop ?? null,
+    floor: t.backdrop?.kind === "pixelLevel" ? (t.backdrop.floorHeight ?? 36) : 0,
+    runner: t.runner ?? null
+  };
+  if (t.backdrop?.kind === "dots") r.dot = c("backdrop.color");
+  if (t.backdrop?.kind === "pixelLevel") ["outline", "cloud", "cloudShade", "hill", "brick", "brickLight"].forEach(k => r["lvl_" + k] = c(`backdrop.${k}`));
+  if (t.runner) r.runnerPalette = Object.fromEntries(Object.entries(t.runner.palette ?? {}).map(([k, v]) => [k, color(v, e, `runner.palette.${k}`)]));
+  if (t.runner?.sweat) r.sweat = c("runner.sweat");
+  return r;
+}
+
+// ---------- the popover ----------
+const pop = document.getElementById("pop");
+let runnerAnim = null;
+
+function render() {
+  const r = resolve(theme, pv.style);
+  const s = pv.status;
+  const st = r.status[s];
+  const box = (extra = "") => `background:${r.card};border:${r.bw}px solid ${r.border};border-radius:${r.radius}px;box-shadow:${r.shadow};${extra}`;
+  const pill = (bg, fg) => `background:${bg};color:${fg};border:${Math.max(1, r.bw * .8)}px solid ${r.outlined ? r.border : "transparent"};border-radius:${Math.min(r.pillRadius, 999)}px;${r.outlined ? `box-shadow:2px 2px 0 ${r.border}` : ""}`;
+  const blink = r.blinks.has(s) ? "animation:blink 1s steps(2) infinite" : "";
+  const badge = (status) => `<span class="badge" style="background:${r.status[status]};color:${r.onStatus};border-radius:${r.badgeRadius}px;font:700 ${9 * r.badgeScale}px ${r.badgeFont};${r.outlined ? `border:1.5px solid ${r.border};` : ""}${r.blinks.has(status) ? "animation:blink 1s steps(2) infinite" : ""}">${esc(r.words[status])}</span>`;
+  const bar = (pct, status) => {
+    const col = r.flat ? r.status[status] : `linear-gradient(90deg, ${r.status[status]}, ${r.accent})`;
+    if (r.blocks) {
+      const n = pct <= 0 ? 0 : Math.max(1, Math.min(r.blocks, Math.round(pct / 100 * r.blocks)));
+      return `<div class="trk">${Array.from({length: r.blocks}, (_, i) => `<span style="flex:1;background:${i < n ? col : r.track};border:1.5px solid ${r.border}"></span>`).join("")}</div>`;
+    }
+    return `<div class="trk" style="background:${r.track};border-radius:${Math.min(r.radius, 6)}px;${r.outlined ? `border:1.5px solid ${r.border}` : ""}"><span style="width:${pct}%;background:${col}"></span></div>`;
+  };
+  const big = (txt, color) => `<div class="big" style="font:${r.outlined && !theme.fonts?.display ? 800 : 400} ${30 * r.displayScale}px ${r.displayFont};color:${color};${r.outlined ? `-webkit-text-stroke:${Math.max(1, r.bw * .6)}px ${r.border};paint-order:stroke fill;` : ""}">${txt}<small style="font:600 9px ${r.bodyFont};color:${r.t3};-webkit-text-stroke:0"> left</small></div>`;
+  const rivets = r.rivets ? ["top:3px;left:3px", "top:3px;right:3px", "bottom:3px;left:3px", "bottom:3px;right:3px"].map(p => `<span class="rivet" style="${p};background:${r.border}"></span>`).join("") : "";
+  const pct = {healthy: 82, warning: 38, critical: 14, depleted: 0}[s];
+  const header = r.header === "scoreLine"
+    ? `<div class="score" style="font:${8 * (r.displayScale < 1 ? 1 : .8)}px ${r.displayFont};color:${r.t1}">${["CLAUDE<br>" + esc(r.words[s]), "COINS<br>×" + pct, "WORLD<br>1-1", "TIME<br>119"].map(x => `<span>${x}</span>`).join("")}</div>`
+    : "";
+  const statusSlot = r.header === "scoreLine"
+    ? `<span class="qb" style="background:${r.accent};border:${r.bw}px solid ${r.border};border-radius:${r.controlRadius === 999 ? 6 : r.controlRadius}px;box-shadow:${r.shadow};font:12px ${r.displayFont};color:${r.border}">?</span>`
+    : `<span style="margin-left:auto;padding:4px 10px;font:700 11px ${r.bodyFont};${pill(st, r.onStatus)};${blink}">${esc(r.words[s])}</span>`;
+
+  pop.style.background = r.bg;
+  pop.style.fontFamily = r.bodyFont;
+  pop.innerHTML = `
+    <canvas class="bd" id="bd"></canvas>
+    <div class="in">
+      ${header}
+      <div class="hd">
+        <span class="logo" style="background:conic-gradient(${r.accent}, ${r.status.critical}, ${r.status.warning}, ${r.accent});border:${r.bw}px solid ${r.border}"></span>
+        <div><div class="ttl" style="font:${r.outlined || theme.fonts?.display ? 400 : 800} ${19 * r.displayScale}px ${r.displayFont};color:${r.t1}">ClaudeBar</div>
+             <div style="font:500 11px ${r.bodyFont};color:${r.t2}">${esc(theme.tagline ?? "AI Usage Monitor")}</div></div>
+        ${statusSlot}
+      </div>
+      <div class="tabs">
+        ${["Leaderboard", "Claude", "Codex", "Gemini"].map((n, i) => `<span class="tab" style="font:700 11px ${r.bodyFont};${i === 1 ? pill(r.accentFill, r.onAccent) : pill(r.card, r.t1)}">${n}</span>`).join("")}
+      </div>
+      <div class="cards">
+        <div class="qc" style="${box()}">${rivets}<div class="l"><span style="font:700 8.5px ${r.bodyFont};letter-spacing:.06em;color:${r.t2}">SESSION</span>${badge(s)}</div>${big(pct + "%", r.t1)}${bar(pct, s)}
+          <div style="font:600 9px ${r.bodyFont};color:${r.t3};margin-top:6px">Resets in <b style="color:${r.t1}">1h 59m</b></div></div>
+        <div class="qc" style="${box()}">${rivets}<div class="l"><span style="font:700 8.5px ${r.bodyFont};letter-spacing:.06em;color:${r.t2}">WEEKLY</span>${badge("healthy")}</div>${big("65%", r.t1)}${bar(65, "healthy")}
+          <div style="font:600 9px ${r.bodyFont};color:${r.t3};margin-top:6px">Resets in <b style="color:${r.t1}">4d 2h</b></div></div>
+      </div>
+      <div class="actions" style="padding-bottom:${r.floor ? 6 : 14}px">
+        ${["Dashboard", "Refresh"].map(n => `<span class="act" style="font:700 12px ${r.bodyFont};color:${r.t1};background:${r.card};border:${r.bw}px solid ${r.border};border-radius:${r.controlRadius === 999 ? 999 : r.controlRadius}px;box-shadow:${r.outlined ? `2px 2px 0 ${r.border}` : "none"}">${n}</span>`).join("")}
+      </div>
+      ${r.runner ? `<div class="lane" style="height:${r.runner.laneHeight ?? 48}px"><canvas class="runner" id="runner" height="${r.runner.laneHeight ?? 48}"></canvas></div>` : ""}
+      <div style="height:${r.floor}px"></div>
+    </div>`;
+  drawBackdrop(r);
+  startRunner(r);
+
+  document.getElementById("menubars").innerHTML = [["light", r.menuLight[s]], ["dark", st]]
+    .map(([k, col]) => `<span class="mb ${k}">${k === "light" ? "Light" : "Dark"} menu bar <b style="color:${col}">5h ${pct}%</b></span>`).join("");
+  document.getElementById("styleKnob").style.display = theme.fonts?.styleName ? "" : "none";
+  document.getElementById("pvStyle").innerHTML = theme.fonts?.styleName
+    ? [["themed", theme.fonts.styleName], ["classic", "Classic"]].map(([v, l]) => `<button class="${pv.style === v ? "on" : ""}" data-v="${v}">${esc(l)}</button>`).join("") : "";
+  const errs = [...new Set(r.errors)];
+  document.getElementById("errors").innerHTML = errs.map(x => `<li>${esc(x)}</li>`).join("");
+  const stt = document.getElementById("status");
+  stt.className = "status " + (errs.length ? "bad" : "ok");
+  stt.textContent = errs.length ? `${errs.length} problem${errs.length > 1 ? "s" : ""}` : `✓ ${theme.name ?? "theme"} reads cleanly`;
+}
+
+function drawBackdrop(r) {
+  const cv = document.getElementById("bd"), rect = pop.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1; cv.width = rect.width * dpr; cv.height = rect.height * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr); g.imageSmoothingEnabled = false;
+  const W = rect.width, H = rect.height, b = r.backdrop;
+  if (!b) return;
+  if (b.kind === "dots") {
+    const sp = b.spacing ?? 18; g.fillStyle = r.dot;
+    for (let y = sp / 2; y < H; y += sp) for (let x = sp / 2; x < W; x += sp) { g.beginPath(); g.arc(x, y, 1, 0, 7); g.fill(); }
+  }
+  if (b.kind === "pixelLevel") {
+    // The same drawing as PlatformerScenery: 3-point art pixels.
+    const px = 3, floor = r.floor;
+    const rects = (list, col, ox, oy, u) => { g.fillStyle = col; list.forEach(([x, y, w, h]) => g.fillRect(ox + x * u, oy + y * u, w * u, h * u)); };
+    const cloud = (ox, oy, sc) => { const u = Math.round(px * sc);
+      rects([[8, 0, 8, 3], [4, 3, 16, 3], [1, 5, 22, 4]], r.lvl_outline, ox, oy, u);
+      rects([[9, 1, 6, 3], [5, 4, 14, 3], [2, 6, 20, 2]], r.lvl_cloud, ox, oy, u);
+      rects([[2, 7, 20, 1]], r.lvl_cloudShade, ox, oy, u); };
+    const hill = (left, cols, rows) => { const oy = H - floor - rows * px, steps = 4, sh = rows / steps, o = [], f = [];
+      for (let i = 0; i < steps; i++) { const inset = (steps - 1 - i) * cols / 8, y = i * sh; o.push([inset, y, cols - 2 * inset, rows - y]); f.push([inset + 1, y + 1, cols - 2 * inset - 2, rows - y - 1]); }
+      rects(o, r.lvl_outline, left, oy, px); rects(f, r.lvl_hill, left, oy, px); };
+    cloud(W - 118, 64, .67); cloud(W - 104, Math.min(380, H - floor - 60), 1);
+    hill(W * .34, 30, 15); hill(W * .34 + 84, 14, 6);
+    const top = H - floor; g.fillStyle = r.lvl_outline; g.fillRect(0, top, W, floor);
+    const bw = 36, bh = floor / 2;
+    for (let row = 0; row < 2; row++) { const y = top + row * bh + px;
+      for (let x = row === 0 ? 0 : -bw / 2; x < W; x += bw) {
+        g.fillStyle = r.lvl_brick; g.fillRect(x + px, y, bw - px, bh - px);
+        g.fillStyle = r.lvl_brickLight; g.fillRect(x + px, y, bw - px, px); } }
+  }
+}
+
+function startRunner(r) {
+  cancelAnimationFrame(runnerAnim);
+  const cv = document.getElementById("runner"); if (!cv || !r.runner) return;
+  const run = r.runner, u = run.pixel ?? 3, dpr = devicePixelRatio || 1;
+  const W = cv.getBoundingClientRect().width, H = run.laneHeight ?? 48;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const pace = run.paces?.[pv.status] ?? "walk";
+  const speed = {stroll: 16, walk: 30, run: 66, fall: 0}[pace];
+  const width = (run.body?.[0]?.length ?? 8) * u;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let x = 20, dir = 1, last = performance.now(), frame = 0, acc = 0;
+  const paint = (rows, ox, oy, flip) => rows.forEach((row, j) => [...row].forEach((ch, i) => {
+    const col = r.runnerPalette?.[ch]; if (!col) return;
+    g.fillStyle = col; g.fillRect(ox + (flip ? row.length - 1 - i : i) * u, oy + j * u, u, u); }));
+  const tick = (now) => {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!reduce && speed) { x += dir * speed * dt; if (x < 4) { x = 4; dir = 1; } if (x > W - width - 4) { x = W - width - 4; dir = -1; }
+      acc += dt * (speed / 10); frame = Math.floor(acc) % (run.strides?.length || 1); }
+    g.clearRect(0, 0, W, H);
+    const legs = pace === "fall" ? run.leap : run.strides?.[frame] ?? [];
+    const bodyH = (run.body?.length ?? 0) * u, total = bodyH + legs.length * u;
+    const top = pace === "fall" ? H - total + 10 : H - total;
+    paint(run.body ?? [], x, top, dir < 0); paint(legs, x, top + bodyH, dir < 0);
+    if (pace === "run" && r.sweat) { g.fillStyle = r.sweat; g.fillRect(x - dir * 4 + (dir < 0 ? width : 0), top + 4, u, u); }
+    runnerAnim = requestAnimationFrame(tick);
+  };
+  runnerAnim = requestAnimationFrame(tick);
+}
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[ch]));
+const style = document.createElement("style"); style.textContent = "@keyframes blink{50%{opacity:.25}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}"; document.head.append(style);
+
+// ---------- the form: every control writes one field of theme.json ----------
+const FORM = [
+  ["Identity", [["id", "text"], ["name", "text"], ["subtitle", "text"], ["tagline", "text"], ["icon", "text", "an SF Symbol"]]],
+  ["Palette", "palette"],
+  ["Background", [["background", "stops"], ["backdrop.kind", ["none", "dots", "pixelLevel"]], ["backdrop.color", "color", "dots"], ["backdrop.spacing", "number", "dots"],
+    ["backdrop.outline", "color", "pixelLevel"], ["backdrop.cloud", "color", "pixelLevel"], ["backdrop.cloudShade", "color", "pixelLevel"], ["backdrop.hill", "color", "pixelLevel"],
+    ["backdrop.brick", "color", "pixelLevel"], ["backdrop.brickLight", "color", "pixelLevel"], ["backdrop.floorHeight", "number", "pixelLevel"]]],
+  ["Cards", [["card.fill", "stops"], ["card.border", "color"], ["card.borderWidth", "number"], ["card.cornerRadius", "number"], ["card.shadow.color", "color"],
+    ["card.shadow.x", "number"], ["card.shadow.y", "number"], ["card.rivets", "number"], ["pill.cornerRadius", "number"], ["pill.fill", "stops"],
+    ["controls.cornerRadius", "number"], ["badge.cornerRadius", "number"]]],
+  ["Text", [["text.primary", "color"], ["text.secondary", "color"], ["text.tertiary", "color"], ["text.design", ["default", "rounded", "monospaced", "serif"]],
+    ["text.onStatus", "color"], ["text.onAccent", "color"], ["fonts.styleName", "text", "e.g. Pixel"], ["fonts.body.name", "text"], ["fonts.display.name", "text"],
+    ["fonts.display.scale", "number"], ["badge.font", ["", "display"]], ["badge.scale", "number"]]],
+  ["Status", [["status.healthy", "color"], ["status.warning", "color"], ["status.critical", "color"], ["status.depleted", "color"],
+    ["status.words.healthy", "text", "HEALTHY"], ["status.words.warning", "text", "WARNING"], ["status.words.critical", "text", "LOW"], ["status.words.depleted", "text", "EMPTY"],
+    ["status.onLightMenuBar.healthy", "color"], ["status.onLightMenuBar.warning", "color"], ["status.onLightMenuBar.critical", "color"], ["status.onLightMenuBar.depleted", "color"]]],
+  ["Accent and bars", [["accent.primary", "color"], ["accent.secondary", "color"], ["accent.fill", "stops"], ["accent.share", "stops"],
+    ["progress.style", ["bar", "blocks"]], ["progress.blocks", "number", "blocks"], ["progress.fill", ["blend", "flat"]], ["progress.track", "color"],
+    ["interaction.hover", "color"], ["interaction.pressed", "color"], ["header", ["standard", "scoreLine"]]]]
+];
+
+const formEl = document.getElementById("form");
+let open = new Set(["Identity", "Palette"]);
+
+function renderForm() {
+  const names = Object.keys(theme.colors ?? {});
+  const opts = (cur) => {
+    const [base] = String(cur ?? "").split("@");
+    const list = ["", ...names, ...(base && !names.includes(base) ? [base] : [])];
+    return list.map(n => `<option value="${esc(n)}" ${n === base ? "selected" : ""}>${n ? esc(n) : "—"}</option>`).join("");
+  };
+  const chip = (ref) => `<span class="chip"><i style="background:${ref ? color(ref) : "transparent"}"></i></span>`;
+  formEl.innerHTML = FORM.map(([title, fields]) => {
+    let inner;
+    if (fields === "palette") {
+      inner = `<div class="pal">${names.map(n => `<div class="p"><input type="color" data-pal="${esc(n)}" value="${(theme.colors[n] ?? "#000000").slice(0, 7)}">
+        <input type="text" data-rename="${esc(n)}" value="${esc(n)}"><input type="text" data-hex="${esc(n)}" value="${esc(theme.colors[n])}" class="mono">
+        <button class="x" data-del="${esc(n)}" title="Remove">×</button></div>`).join("")}</div>
+        <button class="btn add" id="addColor">+ Colour</button><p class="hint">Name a colour once; every field below picks it by name.</p>`;
+    } else {
+      inner = fields.filter(([path, , when]) => !when || ["dots", "pixelLevel", "blocks"].indexOf(when) < 0 || get(theme, "backdrop.kind") === when || get(theme, "progress.style") === when)
+        .map(([path, type, hint]) => {
+        const v = get(theme, path); const label = path.split(".").slice(-2).join(" ");
+        let ctl;
+        if (type === "color") {
+          const alpha = String(v ?? "").split("@")[1];
+          ctl = `<span class="cref">${chip(v)}<select data-color="${path}">${opts(v)}</select>${alpha ? `<span class="mono" style="font-size:11px">@${alpha}</span>` : ""}</span>`;
+        } else if (type === "stops") {
+          const arr = Array.isArray(v) ? v : v ? [v] : [];
+          ctl = `<span class="cref">${arr.map((s, i) => `${chip(s)}<select data-stop="${path}" data-i="${i}">${opts(s)}</select>`).join("")}${arr.length < 3 ? `<button class="x" data-addstop="${path}" title="Add a stop">＋</button>` : ""}${arr.length > 1 ? `<button class="x" data-dropstop="${path}" title="Remove a stop">−</button>` : ""}</span>`;
+        } else if (Array.isArray(type)) {
+          ctl = `<select data-path="${path}">${type.map(o => `<option ${String(v ?? "") === o ? "selected" : ""} value="${o}">${o || "—"}</option>`).join("")}</select>`;
+        } else if (type === "number") {
+          ctl = `<input type="number" step="0.1" data-path="${path}" data-num value="${v ?? ""}">`;
+        } else {
+          ctl = `<input type="text" data-path="${path}" value="${esc(v ?? "")}" placeholder="${esc(hint ?? "")}">`;
+        }
+        return `<div class="f"><label title="${path}">${esc(label)}</label>${ctl}</div>`;
+      }).join("");
+    }
+    return `<details ${open.has(title) ? "open" : ""} data-sec="${esc(title)}"><summary>${esc(title)}</summary>${inner}</details>`;
+  }).join("") + `<p class="hint" style="margin-top:12px">Runner sprites and font files live in the JSON pane and the theme's folder.</p>`;
+}
+
+formEl.addEventListener("toggle", e => { const s = e.target.dataset?.sec; if (s) e.target.open ? open.add(s) : open.delete(s); }, true);
+formEl.addEventListener("input", e => {
+  const t = e.target, d = t.dataset;
+  if (d.pal) { const a = (theme.colors[d.pal] ?? "").slice(7); theme.colors[d.pal] = t.value.toUpperCase() + a; }
+  else if (d.hex) { theme.colors[d.hex] = t.value; }
+  else if (d.path && t.type === "text") set(theme, d.path, t.value);
+  else if (d.path && d.num !== undefined) set(theme, d.path, t.value === "" ? undefined : +t.value);
+  else return;
+  changed({form: d.hex !== undefined || d.pal !== undefined ? "palette" : false});
+});
+formEl.addEventListener("change", e => {
+  const t = e.target, d = t.dataset;
+  if (d.rename && t.value && t.value !== d.rename) renameColor(d.rename, t.value.trim());
+  else if (d.color) { const alpha = String(get(theme, d.color) ?? "").split("@")[1]; set(theme, d.color, t.value ? t.value + (alpha ? "@" + alpha : "") : undefined); }
+  else if (d.stop) { const arr = [...(get(theme, d.stop) ?? [])]; arr[+d.i] = t.value; set(theme, d.stop, arr.filter(Boolean)); }
+  else if (d.path && t.tagName === "SELECT") set(theme, d.path, t.value || undefined);
+  else return;
+  changed({form: true});
+});
+formEl.addEventListener("click", e => {
+  const d = e.target.dataset;
+  if (e.target.id === "addColor") { let n = "color", i = 1; while (theme.colors[n + i]) i++; theme.colors[n + i] = "#888888"; }
+  else if (d.del) { delete theme.colors[d.del]; }
+  else if (d.addstop) { const arr = get(theme, d.addstop) ?? []; set(theme, d.addstop, [...(Array.isArray(arr) ? arr : [arr]), Object.keys(theme.colors)[0]]); }
+  else if (d.dropstop) { set(theme, d.dropstop, get(theme, d.dropstop).slice(0, -1)); }
+  else return;
+  changed({form: true});
+});
+
+/** Renaming a colour renames every reference to it, so nothing breaks. */
+function renameColor(from, to) {
+  if (theme.colors[to]) return;
+  theme.colors = Object.fromEntries(Object.entries(theme.colors).map(([k, v]) => [k === from ? to : k, v]));
+  const walk = (o) => { for (const k in o) {
+    if (k === "colors") continue;
+    if (typeof o[k] === "string") { const [b, a] = o[k].split("@"); if (b === from) o[k] = to + (a ? "@" + a : ""); }
+    else if (o[k] && typeof o[k] === "object") walk(o[k]); } };
+  walk(theme);
+}
+
+// ---------- the JSON pane: the same theme, as text ----------
+const ta = document.getElementById("json");
+let typing = false;
+function changed({form = false, fromText = false} = {}) {
+  if (!fromText) ta.value = JSON.stringify(theme, null, 2);
+  if (form) renderForm();
+  render();
+  try { localStorage.setItem("theme-studio", JSON.stringify(theme)); } catch {}
+}
+ta.addEventListener("input", () => {
+  try { const t = JSON.parse(ta.value); if (typeof t !== "object" || !t) throw new Error("not an object");
+    theme = t; ta.classList.remove("bad"); changed({form: true, fromText: true}); }
+  catch (err) { ta.classList.add("bad"); const s = document.getElementById("status"); s.className = "status bad"; s.textContent = "JSON: " + err.message; }
+});
+
+// ---------- open, presets, fonts, download ----------
+const presetEl = document.getElementById("preset");
+presetEl.innerHTML += Object.keys(PRESETS).map(k => `<option value="${k}">${esc(PRESETS[k].name)}</option>`).join("");
+presetEl.onchange = () => { if (!presetEl.value) return; load(structuredClone(PRESETS[presetEl.value])); presetEl.value = ""; };
+function load(t) { theme = t; pv.style = "themed"; changed({form: true}); }
+async function openFile(f) {
+  try { const t = JSON.parse(await f.text()); load(t); }
+  catch (err) { const s = document.getElementById("status"); s.className = "status bad"; s.textContent = `Couldn't open ${f.name}: ${err.message}`; }
+}
+document.getElementById("open").onclick = () => document.getElementById("file").click();
+document.getElementById("file").onchange = e => e.target.files[0] && openFile(e.target.files[0]);
+document.getElementById("font").onclick = () => document.getElementById("fontFile").click();
+document.getElementById("fontFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const name = f.name.replace(/\.(ttf|otf|woff2?)$/i, "");
+  try { const face = new FontFace(name, await f.arrayBuffer()); await face.load(); document.fonts.add(face); uploadedFonts.add(name);
+    const slot = prompt(`Use ${name} for the body or the display font? (body/display)`, "display");
+    if (slot === "body" || slot === "display") set(theme, `fonts.${slot}`, {file: `fonts/${f.name}`, name, ...(get(theme, `fonts.${slot}.scale`) ? {scale: get(theme, `fonts.${slot}.scale`)} : {})});
+    changed({form: true}); } catch (err) { alert("Couldn't load the font: " + err.message); }
+};
+document.getElementById("download").onclick = () => {
+  const blob = new Blob([JSON.stringify(theme, null, 2) + "\n"], {type: "application/json"});
+  const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(blob), download: "theme.json"});
+  a.click(); URL.revokeObjectURL(a.href);
+};
+addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("dragging"); });
+addEventListener("dragleave", e => { if (e.target === document.querySelector(".drop")) document.body.classList.remove("dragging"); });
+addEventListener("drop", e => { e.preventDefault(); document.body.classList.remove("dragging"); const f = e.dataTransfer.files[0]; if (f) openFile(f); });
+
+document.getElementById("pvStatus").innerHTML = STATUSES.map(s => `<button data-v="${s}" class="${s === pv.status ? "on" : ""}">${s}</button>`).join("");
+document.getElementById("pvStatus").onclick = e => { const v = e.target.dataset.v; if (!v) return; pv.status = v;
+  document.querySelectorAll("#pvStatus button").forEach(b => b.classList.toggle("on", b.dataset.v === v)); render(); };
+document.getElementById("pvStyle").onclick = e => { const v = e.target.dataset.v; if (v) { pv.style = v; render(); } };
+addEventListener("resize", () => render());
+
+try { const saved = JSON.parse(localStorage.getItem("theme-studio")); if (saved && typeof saved === "object") theme = saved; } catch {}
+const q = new URLSearchParams(location.search).get("preset"); if (PRESETS[q]) theme = structuredClone(PRESETS[q]);
+document.fonts.ready.then(() => render());
+changed({form: true});
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "pop",
+  "name": "Pop",
+  "subtitle": "Cute",
+  "icon": "paintpalette.fill",
+  "tagline": "Your quotas, the cute way",
+  "colors": {
+    "cream": "#FDF5EA",
+    "paper": "#FFFFFF",
+    "ink": "#1B1613",
+    "inkSoft": "#3A322D",
+    "muted": "#6B625B",
+    "dot": "#E9DCCB",
+    "track": "#EFE4D4",
+    "mint": "#8EE3B0",
+    "butter": "#FFD966",
+    "coral": "#FF7A66",
+    "coralDeep": "#D93A2B",
+    "mintDeep": "#2FA866",
+    "amber": "#B7791F",
+    "grape": "#8B5CF6",
+    "sky": "#8FD3FF"
+  },
+  "background": ["cream"],
+  "backdrop": { "kind": "dots", "color": "dot", "spacing": 18 },
+  "card": {
+    "fill": ["paper"],
+    "border": "ink",
+    "borderWidth": 2.5,
+    "cornerRadius": 16,
+    "shadow": { "color": "ink", "x": 4, "y": 4 }
+  },
+  "pill": { "cornerRadius": 999, "fill": ["ink"] },
+  "text": {
+    "primary": "ink",
+    "secondary": "inkSoft",
+    "tertiary": "muted",
+    "design": "rounded",
+    "onStatus": "ink"
+  },
+  "fonts": {
+    "display": { "file": "fonts/LilitaOne-Regular.ttf", "name": "LilitaOne" }
+  },
+  "status": {
+    "healthy": "mint",
+    "warning": "butter",
+    "critical": "coral",
+    "depleted": "coralDeep",
+    "onLightMenuBar": { "healthy": "mintDeep", "warning": "amber", "critical": "coralDeep", "depleted": "coralDeep" }
+  },
+  "accent": { "primary": "grape", "secondary": "sky", "fill": ["grape"], "share": ["mint"] },
+  "progress": { "style": "bar", "fill": "flat", "track": "track" },
+  "interaction": { "hover": "ink@0.06", "pressed": "ink@0.12" }
+}

@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "id": "platformer",
+  "name": "Platformer",
+  "subtitle": "8-bit",
+  "icon": "gamecontroller.fill",
+  "tagline": "Your quotas, one level at a time",
+  "colors": {
+    "sky": "#5C94FC",
+    "ink": "#141414",
+    "inkSoft": "#2A2A2A",
+    "navy": "#253A5E",
+    "paper": "#FFF8E7",
+    "paperDeep": "#FCE9C0",
+    "cloud": "#FFFFFF",
+    "cloudShade": "#A8D8FF",
+    "pipe": "#80D010",
+    "pipeDeep": "#00A800",
+    "hill": "#3FA832",
+    "coin": "#FFD43B",
+    "block": "#FAB005",
+    "blockDeep": "#A86400",
+    "fire": "#FC7460",
+    "fireDeep": "#E40058",
+    "stone": "#6B6B6B",
+    "brick": "#C84C0C",
+    "brickLight": "#F0A070",
+    "clay": "#E8743A",
+    "clayLight": "#F6A26E"
+  },
+  "background": ["sky"],
+  "backdrop": {
+    "kind": "pixelLevel",
+    "outline": "ink",
+    "cloud": "cloud",
+    "cloudShade": "cloudShade",
+    "hill": "hill",
+    "brick": "brick",
+    "brickLight": "brickLight",
+    "floorHeight": 36
+  },
+  "card": {
+    "fill": ["paper"],
+    "border": "ink",
+    "borderWidth": 3,
+    "cornerRadius": 4,
+    "shadow": { "color": "ink", "x": 4, "y": 4 },
+    "rivets": 4
+  },
+  "pill": { "cornerRadius": 3, "fill": ["ink"] },
+  "controls": { "cornerRadius": 3 },
+  "badge": { "cornerRadius": 0, "font": "display", "scale": 0.8, "classic": "monospaced" },
+  "text": {
+    "primary": "ink",
+    "secondary": "inkSoft",
+    "tertiary": "navy",
+    "design": "rounded",
+    "onStatus": "ink",
+    "onAccent": "ink"
+  },
+  "fonts": {
+    "styleName": "Pixel",
+    "body": { "file": "fonts/PixelifySans.ttf", "name": "PixelifySans" },
+    "display": { "file": "fonts/PressStart2P-Regular.ttf", "name": "PressStart2P-Regular", "scale": 0.6 }
+  },
+  "status": {
+    "healthy": "pipe",
+    "warning": "coin",
+    "critical": "fire",
+    "depleted": "stone",
+    "onLightMenuBar": { "healthy": "pipeDeep", "warning": "blockDeep", "critical": "fireDeep", "depleted": "fireDeep" },
+    "words": { "critical": "HURRY UP!", "depleted": "GAME OVER" },
+    "blinks": ["critical"]
+  },
+  "accent": { "primary": "block", "secondary": "pipe", "fill": ["pipe"], "share": ["pipe"] },
+  "progress": { "style": "blocks", "blocks": 10, "fill": "flat", "track": "paperDeep" },
+  "interaction": { "hover": "ink@0.06", "pressed": "ink@0.12" },
+  "header": "scoreLine",
+  "runner": {
+    "laneHeight": 48,
+    "pixel": 3,
+    "body": ["....K...", "....I...", ".IIIIII.", "IHHOOOOI", "IOOIOOIO", "IOOOOOOI", ".IIIIII."],
+    "strides": [[".II..II.", ".I....I."], ["..IIII..", "..I..I.."]],
+    "leap": ["II....II", "I......I"],
+    "coin": [".III.", "IKKKI", "IKDKI", "IKDKI", "IKDKI", "IKKKI", ".III."],
+    "palette": { "I": "ink", "O": "clay", "H": "clayLight", "K": "coin", "D": "blockDeep" },
+    "sweat": "cloudShade",
+    "paces": { "healthy": "stroll", "warning": "walk", "critical": "run", "depleted": "fall" }
+  }
+}
