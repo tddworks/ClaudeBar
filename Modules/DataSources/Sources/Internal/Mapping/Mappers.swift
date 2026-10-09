@@ -299,15 +299,10 @@ struct TextMapper: Reading {
 
     func read(_ response: Response, facts: MappingFacts, providerId: String) throws -> UsageSnapshot {
         let screen = Self.stripANSI(response.text)
-        let lower = screen.lowercased()
 
-        for rule in mapping.errors {
-            let any = rule.contains.contains { lower.contains($0.lowercased()) }
-            let all = rule.alsoContains.allSatisfy { lower.contains($0.lowercased()) }
-            if any && all {
-                AppLog.probes.error("\(providerId) screen reports: \(rule.contains.first ?? "an error")")
-                throw rule.error.usageError
-            }
+        if let rule = mapping.errors.first(where: { $0.matches(screen) }) {
+            AppLog.probes.error("\(providerId) screen reports: \(rule.contains.first ?? "an error")")
+            throw rule.error.usageError
         }
 
         let lines = screen.components(separatedBy: .newlines)

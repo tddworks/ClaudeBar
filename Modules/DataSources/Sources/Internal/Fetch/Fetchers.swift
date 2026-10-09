@@ -174,7 +174,7 @@ struct JSONRPCFetcher: Fetching {
     }
 
     private func exchange(over transport: any RPCTransport) async throws -> Response {
-        let session = RPCSession(transport: transport)
+        let session = RPCSession(transport: transport, errors: call.errors)
         for step in call.handshake {
             if let method = step.request {
                 _ = try await session.request(method, params: step.params)
@@ -214,10 +214,12 @@ private final class Deadline: Sendable {
 /// matched by id, notifications skipped.
 final class RPCSession: @unchecked Sendable {
     private let transport: any RPCTransport
+    private let errors: [TextMapping.ErrorRule]
     private var nextID = 1
 
-    init(transport: any RPCTransport) {
+    init(transport: any RPCTransport, errors: [TextMapping.ErrorRule] = []) {
         self.transport = transport
+        self.errors = errors
     }
 
     func request(_ method: String, params: JSONValue?) async throws -> [String: Any] {
@@ -231,6 +233,7 @@ final class RPCSession: @unchecked Sendable {
                 continue
             }
             if let error = message["error"] as? [String: Any], let text = error["message"] as? String {
+                if let rule = errors.first(where: { $0.matches(text) }) { throw rule.error.usageError }
                 throw UsageError.executionFailed("RPC error: \(text)")
             }
             return message

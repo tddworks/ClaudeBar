@@ -103,7 +103,7 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │                       browserCookie(domain) — and how it stays fresh:
 │       │       │   │                       refresh: oauth2(tokenURL, clientId, every, on 401)
 │       │       │   ├── fetch: Fetch        HOW TO GET THE BYTES — "Data fetching method". A closed sum:
-│       │       │   │                       http(request | steps) · jsonRpc(cli, handshake, call, timeout) ·
+│       │       │   │                       http(request | steps) · jsonRpc(cli, handshake, call, timeout, errors) ·
 │       │       │   │                       cli(a TUI, keys) · command(args) · file(path) · script(path)
 │       │       │   ├── mapping: Mapping    WHAT THE BYTES SAY — a closed sum:
 │       │       │   │                       json(paths, each, used|left, resets) · text(patterns) ·
@@ -431,7 +431,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | two logins of a provider never share a path setting — the default login's included | `Provider.accounts` |
 | a worker reports a fact (a status, an exit code, a missing CLI) and the definition's `errors` says what it means, in a reason the screen prints — never from the response body or a secret; a 429 stays a rate limit | `DataSource` · `DataSourceError` |
 | a credential is looked up in the order the definition gives; the first that answers wins, and a refreshed token is written back where it was found | `CredentialLookup` |
-| when the active data source fails, its `fallback` is tried once; what the popover shows says which one answered | `Provider` |
+| when the active data source fails, its `fallback` is tried once; what the popover shows says which one answered. A signed-out login (*Authentication required*, *Session expired*) is not tried again on a fallback that reads the same login (`fallback.sameLogin`, #525) | `Provider` |
+| a data source held until checked (`verifyBeforeBackground`, #216) starts nothing in the background until a click succeeds; a signed-out answer holds it back again (#525) | `Provider` |
 | a definition is valid before it is saved: a fetch, a mapping that produced at least one quota or a cost on Test, and every required setting filled | `ProviderDefinition` |
 | a built-in provider can be disabled but not deleted; a custom one can be both; an extension is removed by removing its folder | `ProviderCatalog` |
 | **an exported definition carries no secret** — the lookup order and each setting's name, never its value | `ProviderDefinition` |

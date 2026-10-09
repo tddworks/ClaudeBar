@@ -456,6 +456,9 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
     /// Seconds the whole exchange may take before the CLI is stopped and the
     /// fetch fails with a timeout — a CLI that stalls never answers (#517).
     public let timeout: TimeInterval
+    /// What an error answer's message means — e.g. "authentication required"
+    /// is a signed-out CLI (#525). Any other error answer is an execution failure.
+    public let errors: [TextMapping.ErrorRule]
 
     public init(
         cli: String,
@@ -466,7 +469,8 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
         params: JSONValue? = nil,
         then: [FollowUp] = [],
         environment: ProcessEnvironment = ProcessEnvironment(),
-        timeout: TimeInterval = 15
+        timeout: TimeInterval = 15,
+        errors: [TextMapping.ErrorRule] = []
     ) {
         self.cli = cli
         self.args = args
@@ -477,6 +481,7 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
         self.then = then
         self.environment = environment
         self.timeout = timeout
+        self.errors = errors
     }
 
     public init(from decoder: Decoder) throws {
@@ -490,6 +495,7 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
         then = try container.decodeIfPresent([FollowUp].self, forKey: .then) ?? []
         environment = try container.decodeIfPresent(ProcessEnvironment.self, forKey: .environment) ?? ProcessEnvironment()
         timeout = try container.decodeIfPresent(TimeInterval.self, forKey: .timeout) ?? 15
+        errors = try container.decodeIfPresent([TextMapping.ErrorRule].self, forKey: .errors) ?? []
     }
 }
 

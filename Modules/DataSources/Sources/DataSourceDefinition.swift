@@ -209,14 +209,20 @@ public enum ErrorFact: Sendable, Hashable {
 
 /// `"fallback": "tty"`, or `{ "to": "cli", "enabledBySetting": "cliFallbackEnabled" }`
 /// — the setting is read as `<provider>.<name>`, and the fallback is on unless it says no.
+/// `"sameLogin": true` when the fallback reads the same login, so a signed-out
+/// login is not tried there again (#525).
 public struct Fallback: Sendable, Equatable, Codable {
     public let to: String
     public let enabledBySetting: String?
+    public let sameLogin: Bool
 
-    public init(to: String, enabledBySetting: String? = nil) {
+    public init(to: String, enabledBySetting: String? = nil, sameLogin: Bool = false) {
         self.to = to
         self.enabledBySetting = enabledBySetting
+        self.sameLogin = sameLogin
     }
+
+    private enum CodingKeys: String, CodingKey { case to, enabledBySetting, sameLogin }
 
     public init(from decoder: Decoder) throws {
         if let to = try? decoder.singleValueContainer().decode(String.self) {
@@ -226,8 +232,16 @@ public struct Fallback: Sendable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             to: try container.decode(String.self, forKey: .to),
-            enabledBySetting: try container.decodeIfPresent(String.self, forKey: .enabledBySetting)
+            enabledBySetting: try container.decodeIfPresent(String.self, forKey: .enabledBySetting),
+            sameLogin: try container.decodeIfPresent(Bool.self, forKey: .sameLogin) ?? false
         )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(to, forKey: .to)
+        try container.encodeIfPresent(enabledBySetting, forKey: .enabledBySetting)
+        if sameLogin { try container.encode(sameLogin, forKey: .sameLogin) }
     }
 }
 

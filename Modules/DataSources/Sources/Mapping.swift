@@ -671,6 +671,13 @@ public struct TextMapping: Sendable, Equatable, Codable {
             alsoContains = try container.decodeIfPresent([String].self, forKey: .alsoContains) ?? []
             error = try container.decode(ErrorRef.self, forKey: .error)
         }
+
+        /// Whether `text` says this error.
+        public func matches(_ text: String) -> Bool {
+            let lower = text.lowercased()
+            return contains.contains { lower.contains($0.lowercased()) }
+                && alsoContains.allSatisfy { lower.contains($0.lowercased()) }
+        }
     }
 
     public struct QuotaPattern: Sendable, Equatable, Codable {

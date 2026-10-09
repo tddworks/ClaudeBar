@@ -35,6 +35,7 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 
 ## Gotchas
 
+- **Codex login kept in the Keychain** (`cli_auth_credentials_store = "keyring"`): RPC mode works; click Refresh once after starting ClaudeBar. API mode needs `~/.codex/auth.json`, so it can't read a Keychain login ([#525](https://github.com/tddworks/ClaudeBar/issues/525)).
 - **Sign in with ChatGPT, not an API key.** API mode reads only the OAuth tokens in `~/.codex/auth.json`. `OPENAI_API_KEY` isn't used. If the pane says "No OAuth credentials found", run `codex` and sign in.
 - **"No rate limits available yet - make some API calls first"** means Codex hasn't reported a window for this account yet. Use Codex once, then refresh. Free plans without limits show 100% with "Free plan".
 - **No countdown after a fallback.** When `app-server` fails and ClaudeBar reads the `/status` screen instead, it gets percentages but no reset times. Check the log for "Codex RPC failed".

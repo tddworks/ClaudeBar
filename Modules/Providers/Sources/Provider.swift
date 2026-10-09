@@ -272,7 +272,16 @@ public final class Provider {
         let task = Task { definition.together ? try await runTogether(account) : try await run(account, from: active, kind) }
         refreshTasks[account.id] = task
         defer { refreshTasks[account.id] = nil }
-        let usage = try await task.value
+        let usage: UsageSnapshot
+        do {
+            usage = try await task.value
+        } catch {
+            // Signed out since it was checked: held back again until a click (#525).
+            if active.definition.verifyBeforeBackground, Self.isSignedOut(error) {
+                forgetVerified()
+            }
+            throw error
+        }
         if kind == .interactive, active.definition.verifyBeforeBackground {
             markVerified()
         }
@@ -323,6 +332,10 @@ public final class Provider {
                     continue
                 }
                 reported = reported ?? error
+                if current.definition.fallback?.sameLogin == true, Self.isSignedOut(error) {
+                    // The fallback reads the same login: it is signed out there too (#525).
+                    break
+                }
                 if let fallback = enabledFallback(of: current, for: account), !tried.contains(fallback.kind) {
                     AppLog.probes.warning("\(account.id) \(current.kind) failed (\(error.localizedDescription)), trying \(fallback.kind)")
                     tried.insert(fallback.kind)
@@ -395,6 +408,11 @@ public final class Provider {
         settings.setOn(true, "verifiedAtLeastOnce", forProvider: definition.id)
     }
 
+    private func forgetVerified() {
+        guard settings.isOn("verifiedAtLeastOnce", forProvider: definition.id) == true else { return }
+        settings.setOn(false, "verifiedAtLeastOnce", forProvider: definition.id)
+    }
+
     /// The usage as this login's: its id on every quota, its saved email when
     /// the source named none.
     private func identified(_ usage: UsageSnapshot, for account: Account) -> UsageSnapshot {
@@ -430,5 +448,13 @@ public final class Provider {
 
     static func reason(of error: Error) -> UsageError? {
         (error as? DataSourceError)?.reason ?? (error as? UsageError)
+    }
+
+    /// The login needs signing in again — no other data source of it can answer.
+    static func isSignedOut(_ error: Error) -> Bool {
+        switch reason(of: error) {
+        case .authenticationRequired?, .sessionExpired?: true
+        default: false
+        }
     }
 }

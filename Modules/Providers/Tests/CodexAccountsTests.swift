@@ -11,6 +11,8 @@ import Testing
 @Suite
 struct CodexAccountsTests {
     private static let usage = #"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":20}}}}"#
+    /// What `codex app-server` 0.157 answers with no login (#525).
+    private static let signedOut = #"{"id":2,"error":{"code":-32600,"message":"codex account authentication required to read rate limits"}}"#
 
     // MARK: - The default login stays passive until checked (#216)
 
@@ -67,16 +69,39 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `should ask to sign in, without starting Codex, when there is no Codex login`() async throws {
+    func `should ask to sign in, without trying the terminal, when Codex answers that it is signed out (#525)`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
-        try FileManager.default.removeItem(at: stub.home.appendingPathComponent(".codex/auth.json"))
-        stub.answerRPC(Self.usage)
+        stub.answerRPC(Self.signedOut)
         stub.answerTerminal("5h limit: 99% left")
+        let codex = try stub.make("codex")
 
-        await #expect(throws: UsageError.authenticationRequired) { try await stub.make("codex").refreshPlain() }
+        await #expect(throws: UsageError.authenticationRequired) { try await codex.refreshPlain() }
 
-        #expect(stub.launches.count == 0)
+        #expect(codex.defaultAccount.snapshot == nil)
+    }
+
+    @Test
+    func `should stop starting Codex in the background once it answers that it is signed out, until the person refreshes (#525)`() async throws {
+        let stub = try StubbedProvider(providerId: "codex")
+        defer { stub.cleanUp() }
+        // A click: initialize, usage, the account. Then a poll: initialize, signed out.
+        let answers = [
+            #"{"id":1,"result":{}}"#, Self.usage, #"{"id":3,"result":{"account":null}}"#,
+            #"{"id":1,"result":{}}"#, Self.signedOut,
+        ]
+        let received = Counter()
+        given(stub.transport).send(.any).willReturn(())
+        given(stub.transport).close().willReturn(())
+        given(stub.transport).receive().willProduce { @Sendable in Data(answers[received.next() - 1].utf8) }
+        let codex = try stub.make("codex")
+        try await codex.refreshPlain()
+
+        await #expect(throws: UsageError.authenticationRequired) { try await codex.refreshPlain(.background) }
+        _ = try? await codex.refreshPlain(.background)
+
+        #expect(stub.launches.count == 2)
+        #expect(stub.settings.isOn("verifiedAtLeastOnce", forProvider: "codex") == false)
     }
 
     @Test

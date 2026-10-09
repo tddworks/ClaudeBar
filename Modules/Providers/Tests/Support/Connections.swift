@@ -28,12 +28,6 @@ struct StubbedProvider {
             .appendingPathComponent("providers-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         settings = InMemoryProviderSettings(dataSourceKinds: dataSourceKind.map { [providerId: $0] } ?? [:])
-        if providerId == "codex" {
-            // A signed-in CLI: Codex refuses to start without a login (#216).
-            let directory = home.appendingPathComponent(".codex", isDirectory: true)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try Data("{}".utf8).write(to: directory.appendingPathComponent("auth.json"))
-        }
     }
 
     /// The provider with its default login and every login in `accounts`,

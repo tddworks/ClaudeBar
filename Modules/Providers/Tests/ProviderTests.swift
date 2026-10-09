@@ -23,7 +23,7 @@ struct ProviderTests {
       "backup": { "fetch": { "http": { "url": "https://backup.acme.test/usage?login={{account.login}}" } } } }
     """.utf8))
 
-    private static func acme(verifyBeforeBackground: Bool = false, patch: [String: JSONValue] = loginPatch) -> ProviderDefinition {
+    private static func acme(verifyBeforeBackground: Bool = false, sameLogin: Bool = false, patch: [String: JSONValue] = loginPatch) -> ProviderDefinition {
         ProviderDefinition(
             profile: ProviderProfile(id: "acme", name: "Acme"),
             dataSources: [
@@ -33,7 +33,7 @@ struct ProviderTests {
                   "mapping": { "json": { "quotas": [ { "kind": "session", "at": "$", "usedPercent": "used" } ] } },
                   "cache": { "ttl": 600 },
                   "verifyBeforeBackground": \(verifyBeforeBackground),
-                  "fallback": { "to": "backup", "enabledBySetting": "backupEnabled" } }
+                  "fallback": { "to": "backup", "enabledBySetting": "backupEnabled", "sameLogin": \(sameLogin) } }
                 """),
                 source("""
                 { "kind": "backup", "label": "Backup",
@@ -227,6 +227,21 @@ struct ProviderTests {
     }
 
     @Test
+    func `should not ask the fallback when the login is signed out and the fallback reads the same login (#525)`() async throws {
+        let network = AcmeNetwork()
+        network.fail(Self.api, status: 401)
+        network.answer(Self.backup, used: 40)
+        let acme = acme(network, definition: Self.acme(sameLogin: true))
+
+        await #expect(throws: (any Error).self) { try await acme.refreshPlain() }
+        #expect(network.requests(to: Self.backup) == 0)
+
+        network.fail(Self.api, status: 500)
+        try await acme.refreshPlain()
+        #expect(acme.defaultAccount.answeredBy == "backup")
+    }
+
+    @Test
     func `should use the next data source on the fallback chain when a login cannot use the chosen one`() async throws {
         let network = AcmeNetwork()
         network.answer(Self.backup, used: 25)
@@ -278,6 +293,26 @@ struct ProviderTests {
         try await acme.refreshPlain(.interactive)
         try await acme.refreshPlain(.background)
         #expect(network.requests(to: Self.api) == 1)
+    }
+
+    @Test
+    func `should hold background refreshes again once the login is signed out, until the person refreshes (#525)`() async throws {
+        let network = AcmeNetwork()
+        network.fail(Self.api)
+        network.answer(Self.backup, used: 40)
+        let acme = acme(network, definition: Self.acme(verifyBeforeBackground: true))
+        try await acme.refreshPlain(.interactive)
+        network.fail(Self.api, status: 401)
+        network.fail(Self.backup)
+
+        await #expect(throws: (any Error).self) { try await acme.refreshPlain(.background) }
+        network.answer(Self.api, used: 30)
+        _ = try? await acme.refreshPlain(.background)
+        #expect(network.requests(to: Self.api) == 2)
+
+        try await acme.refreshPlain(.interactive)
+        #expect(network.requests(to: Self.api) == 3)
+        await #expect(throws: Never.self) { try await acme.refreshPlain(.background) }
     }
 
     // MARK: - Status across logins

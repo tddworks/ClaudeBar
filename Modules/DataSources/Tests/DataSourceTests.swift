@@ -267,6 +267,36 @@ struct DataSourceTests {
         await #expect(throws: (any Error).self) { try await refresh.value }
     }
 
+    @Test(arguments: [
+        ("codex account authentication required to read rate limits", UsageError.authenticationRequired),
+        ("rate limits are unavailable", UsageError.executionFailed("RPC error: rate limits are unavailable")),
+    ])
+    func `should ask to sign in when a JSON-RPC CLI answers that it is signed out, and report any other error answer as it is (#525)`(
+        message: String, expected: UsageError
+    ) async throws {
+        let transport = MockRPCTransport()
+        given(transport).send(.any).willReturn(())
+        given(transport).close().willReturn(())
+        given(transport).receive().willReturn(Data(#"{"id":1,"error":{"code":-32600,"message":"\#(message)"}}"#.utf8))
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","call":"read",
+           "errors":[{"contains":["authentication required"],"error":"authenticationRequired"}]}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(
+            definition,
+            providerId: "test",
+            cliExecutor: MockCLIExecutor(),
+            network: MockNetworkClient(),
+            makeTransport: { _, _, _, _ in transport },
+            environment: { _ in nil },
+            homeDirectory: FileManager.default.temporaryDirectory,
+            now: { Date() }
+        )
+
+        await #expect(throws: DataSourceError(.fetch, expected)) { try await source.fetchUsage() }
+    }
+
     @Test
     func `should wait fifteen seconds for a JSON-RPC CLI unless the definition says otherwise`() throws {
         let call = try JSONDecoder().decode(JSONRPCCall.self, from: Data(#"{"cli":"codex","call":"read"}"#.utf8))

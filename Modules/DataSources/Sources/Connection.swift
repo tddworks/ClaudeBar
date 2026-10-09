@@ -93,7 +93,7 @@ extension JSONRPCCall: Connection {
 
     func running(_ binary: String) -> JSONRPCCall {
         JSONRPCCall(cli: binary, args: args, workingDirectory: workingDirectory, handshake: handshake,
-                    call: call, params: params, then: then, environment: environment, timeout: timeout)
+                    call: call, params: params, then: then, environment: environment, timeout: timeout, errors: errors)
     }
 }
 

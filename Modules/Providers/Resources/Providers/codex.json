@@ -52,6 +52,12 @@
             }
           ],
           "call": "account/rateLimits/read",
+          "errors": [
+            {
+              "contains": ["authentication required"],
+              "error": "authenticationRequired"
+            }
+          ],
           "then": [
             {
               "request": "account/read",
@@ -154,8 +160,10 @@
           "email": ["$.account.result.account.email"]
         }
       },
-      "fallback": "tty",
-      "requiresFiles": ["${CODEX_HOME:-~/.codex}/auth.json"],
+      "fallback": {
+        "to": "tty",
+        "sameLogin": true
+      },
       "verifyBeforeBackground": true,
       "unverifiedMessage": "Codex CLI session not checked. Click Refresh or Connect to check Codex status."
     },
@@ -349,8 +357,7 @@
           ],
           "whenEmpty": "Could not find usage limits in Codex output"
         }
-      },
-      "requiresFiles": ["${CODEX_HOME:-~/.codex}/auth.json"]
+      }
     }
   ],
   "usageHistory": {

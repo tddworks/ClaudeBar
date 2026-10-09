@@ -60,6 +60,21 @@ struct CodexDefinitionTests {
     }
 
     @Test
+    func `should show Codex's usage over RPC when its login is kept in the Keychain, with no auth.json (#525)`() async throws {
+        let stub = try StubbedProvider(providerId: "codex")
+        defer { stub.cleanUp() }
+        stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30,"resetsAt":1735000000}}}}"#)
+        given(stub.cli).locate(.any).willReturn("/usr/local/bin/codex")
+        let codex = try stub.make("codex")
+
+        #expect(await codex.isPlainAvailable())
+        let usage = try await codex.refreshPlain()
+
+        #expect(usage.quota(for: .session)?.percentRemaining == 70)
+        #expect(codex.defaultAccount.answeredBy == "rpc")
+    }
+
+    @Test
     func `should show a free plan's session full, labelled Free plan`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
@@ -105,7 +120,7 @@ struct CodexDefinitionTests {
     func `should show the terminal's windows, answered by Terminal, when RPC fails`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
-        stub.answerRPC(#"{"id":2,"error":{"message":"Authentication required"}}"#)
+        stub.answerRPC(#"{"id":2,"error":{"message":"rate limits are unavailable"}}"#)
         stub.answerTerminal("""
         Account: someone@example.com
         5h limit:  [██████░░░░] 80% left (resets 14:00)
@@ -131,7 +146,7 @@ struct CodexDefinitionTests {
             #"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30}}}}"#,
             #"{"id":3,"result":{"account":null}}"#,
             #"{"id":1,"result":{}}"#,
-            #"{"id":2,"error":{"message":"Authentication required"}}"#,
+            #"{"id":2,"error":{"message":"rate limits are unavailable"}}"#,
         ]
         let received = Counter()
         given(stub.transport).send(.any).willReturn(())
@@ -144,7 +159,7 @@ struct CodexDefinitionTests {
 
         await #expect(throws: UsageError.self) { try await codex.refreshPlain() }
 
-        #expect(codex.defaultAccount.lastError as? UsageError == .executionFailed("RPC error: Authentication required"))
+        #expect(codex.defaultAccount.lastError as? UsageError == .executionFailed("RPC error: rate limits are unavailable"))
         #expect(codex.defaultAccount.lastFailedStep == .fetch)
         #expect(codex.defaultAccount.snapshot == first)
     }
