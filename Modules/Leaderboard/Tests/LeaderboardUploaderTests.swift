@@ -15,7 +15,8 @@ struct LeaderboardUploaderTests {
     private var now = LeaderboardFixtures.date(4, hour: 15)
 
     private func membership() -> LeaderboardMembership {
-        LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs, calendar: calendar)
+        LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs, machine: MockMachineIdentity.named("MacBook Pro"),
+                              calendar: calendar)
     }
 
     private func uploader(_ membership: LeaderboardMembership) -> LeaderboardUploader {
@@ -98,6 +99,37 @@ struct LeaderboardUploaderTests {
         #expect(!membership.isJoined)
         #expect(keys.stored == nil)
         #expect(settings.record == nil)
+    }
+
+    @Test func `should forget the membership and say which device removed this one when the server refuses its key for that`() async throws {
+        let membership = try await joined()
+        logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
+        api.reset([.given])
+        given(api).upload(.any, as: .any).willThrow(LeaderboardError.removed(by: "Mac mini"))
+
+        await uploader(membership).uploadDue()
+
+        #expect(!membership.isJoined)
+        #expect(membership.removedBy == "Mac mini")
+        #expect(keys.stored == nil)
+        #expect(settings.record == nil)
+    }
+
+    @Test func `should send the last thirty days once a device added to the member joins`() async throws {
+        let server = DeviceServer()
+        server.approvals = [.success(.approved(server.summary))]
+        let membership = LeaderboardMembership(api: server, keys: keys, settings: settings, logs: logs,
+                                               machine: MockMachineIdentity.named("Mac mini"), calendar: calendar)
+        _ = try await membership.requestToJoin()
+        _ = try await membership.waitForApproval()
+        try membership.confirmJoining(sharing: ["claude"])
+        logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
+
+        let now = now
+        await LeaderboardUploader(membership: membership, logs: logs, api: server, calendar: calendar, now: { now }).uploadNow()
+
+        #expect(logs.askedFor == DateRange.last(30, endingOn: now, calendar: calendar))
+        #expect(membership.lastUpload == now)
     }
 
     @Test func `should count as up to date when there is nothing to send`() async throws {
@@ -204,7 +236,7 @@ struct LeaderboardUploaderTests {
     @Test func `should send everything after joining again, though the days are the same`() async throws {
         let (membership, uploader, clock) = try await sentOnce(at: now)
         given(api).leave(as: .any).willReturn(())
-        given(api).join(username: .any, publicKey: .any).willReturn(())
+        given(api).join(username: .any, publicKey: .any, label: .any).willReturn(())
         try await membership.leave()
         try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
 

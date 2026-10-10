@@ -59,7 +59,7 @@ extension MockLeaderboardAPI {
     /// A server that accepts every call.
     static func accepting() -> MockLeaderboardAPI {
         let api = MockLeaderboardAPI()
-        given(api).join(username: .any, publicKey: .any).willReturn(())
+        given(api).join(username: .any, publicKey: .any, label: .any).willReturn(())
         given(api).upload(.any, as: .any).willReturn([])
         given(api).update(.any, as: .any).willReturn(())
         given(api).leave(as: .any).willReturn(())
@@ -83,10 +83,16 @@ actor CrossingLeaderboardAPI: LeaderboardAPI {
         await withCheckedContinuation { pending = $0 }
     }
 
-    func join(username: String, publicKey: String) async throws {}
+    func join(username: String, publicKey: String, label: String) async throws {}
     func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] { [] }
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {}
     func leave(as credentials: MemberCredentials) async throws {}
     func board(period: BoardPeriod, provider: String?) async throws -> [Board.Member] { [] }
     func globe(period: BoardPeriod) async throws -> GlobeSummary { GlobeSummary(countries: [], present: []) }
+    func requestDevice(publicKey: String, label: String) async throws -> DeviceAuthorization { throw LeaderboardError.unreachable }
+    func approval(of key: SigningKey) async throws -> DeviceApproval { .waiting }
+    func pendingDevice(code: DeviceCode, as credentials: MemberCredentials) async throws -> PendingDevice { throw LeaderboardError.unknownCode }
+    func approveDevice(code: DeviceCode, as credentials: MemberCredentials) async throws -> Device { throw LeaderboardError.unknownCode }
+    func removeDevice(_ publicKey: String, as credentials: MemberCredentials) async throws {}
+    func deleteDays(of publicKey: String, provider: String?, day: String?, as credentials: MemberCredentials) async throws {}
 }

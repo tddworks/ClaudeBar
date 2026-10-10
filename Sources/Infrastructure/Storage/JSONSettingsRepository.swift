@@ -827,7 +827,8 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
             refused: (store.read(key: "leaderboard.refused") as [[String: String]]? ?? []).compactMap { day in
                 guard let provider = day["provider"], let date = day["day"], let reason = day["reason"] else { return nil }
                 return RefusedDay(provider: provider, day: date, reason: reason)
-            }
+            },
+            shownDevices: store.read(key: "leaderboard.shownDevices") ?? []
         )
     }
 
@@ -850,5 +851,6 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: record?.link?.handle, key: "leaderboard.linkHandle")
         let refused = record?.refused.map { ["provider": $0.provider, "day": $0.day, "reason": $0.reason] }
         store.write(value: refused?.isEmpty == false ? refused : nil, key: "leaderboard.refused")
+        store.write(value: record?.shownDevices.isEmpty == false ? record?.shownDevices : nil, key: "leaderboard.shownDevices")
     }
 }

@@ -52,21 +52,21 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Join
 
-    @Test func `should ask to join with the name and public key, unsigned`() async throws {
+    @Test func `should ask to join with the name, public key and this device's label, unsigned`() async throws {
         var sent: URLRequest?
-        try await client(status: 201, sent: { sent = $0 }).join(username: "tokenwhale", publicKey: key.publicKey)
+        try await client(status: 201, sent: { sent = $0 }).join(username: "tokenwhale", publicKey: key.publicKey, label: "MacBook Pro")
 
         let body = try JSONSerialization.jsonObject(with: #require(sent?.httpBody)) as? [String: String]
         #expect(sent?.url?.absoluteString == "https://leaderboard.test/join")
         #expect(sent?.httpMethod == "POST")
-        #expect(body == ["username": "tokenwhale", "publicKey": key.publicKey])
+        #expect(body == ["username": "tokenwhale", "publicKey": key.publicKey, "label": "MacBook Pro"])
         #expect(sent?.value(forHTTPHeaderField: "X-Signature") == nil)
     }
 
     @Test func `should say the name is taken when someone already has it`() async {
         await #expect(throws: LeaderboardError.usernameTaken) {
             try await client(status: 409, body: #"{"error":"usernameTaken","message":"That username is taken."}"#)
-                .join(username: "tokenwhale", publicKey: key.publicKey)
+                .join(username: "tokenwhale", publicKey: key.publicKey, label: "Mac")
         }
     }
 
@@ -129,7 +129,7 @@ struct LeaderboardHTTPClientTests {
         var sent: [URLRequest] = []
         let client = client(body: #"{"standings":[],"countries":[]}"#, sent: { sent.append($0) })
 
-        try await client.join(username: "tokenwhale", publicKey: key.publicKey)
+        try await client.join(username: "tokenwhale", publicKey: key.publicKey, label: "Mac")
         _ = try await client.board(period: .sevenDays, provider: nil)
         _ = try await client.globe(period: .thirtyDays)
         _ = try await client.upload([], as: member)
@@ -247,6 +247,144 @@ struct LeaderboardHTTPClientTests {
 
         #expect(sent?.httpMethod == "DELETE")
         #expect(try isSigned(#require(sent), by: key))
+    }
+
+    // MARK: - Devices (§2a)
+
+    @Test func `should ask to add this device with its key and label, unsigned, and read the code it shows`() async throws {
+        var sent: URLRequest?
+        let body = #"{"code":"WDJBMJHT","expiresIn":600,"interval":5}"#
+
+        let authorization = try await client(status: 201, body: body, sent: { sent = $0 })
+            .requestDevice(publicKey: key.publicKey, label: "Mac mini")
+
+        let request = try #require(sent)
+        let sentBody = try JSONSerialization.jsonObject(with: #require(request.httpBody)) as? [String: String]
+        #expect(request.url?.path == "/devices")
+        #expect(request.httpMethod == "POST")
+        #expect(sentBody == ["publicKey": key.publicKey, "label": "Mac mini"])
+        #expect(request.value(forHTTPHeaderField: "X-Signature") == nil)
+        #expect(authorization == DeviceAuthorization(code: try #require(DeviceCode("WDJB-MJHT")), expiresIn: 600, interval: 5))
+    }
+
+    @Test func `should ask whether this device was approved signed with its own key, naming no member`() async throws {
+        var sent: URLRequest?
+
+        let approval = try await client(status: 202, body: #"{"waiting":true,"expiresIn":540}"#, sent: { sent = $0 })
+            .approval(of: key)
+
+        let request = try #require(sent)
+        #expect(approval == .waiting)
+        #expect(request.url?.path == "/me")
+        #expect(request.value(forHTTPHeaderField: "X-Key") == key.publicKey)
+        #expect(request.value(forHTTPHeaderField: "X-Member") == nil)
+        #expect(try isSigned(request, by: key))
+    }
+
+    @Test func `should read the member this device joined once its code is approved`() async throws {
+        let body = #"{"username":"tokenwhale","visible":true,"standing":null,"days":[],"devices":[]}"#
+
+        let approval = try await client(body: body).approval(of: key)
+
+        guard case .approved(let summary) = approval else { Issue.record("not approved: \(approval)"); return }
+        #expect(summary.username == "tokenwhale")
+    }
+
+    @Test func `should say the code expired when the server no longer knows the waiting key`() async {
+        await #expect(throws: LeaderboardError.codeExpired) {
+            _ = try await client(status: 401, body: #"{"error":"unauthorized","message":"expired"}"#).approval(of: key)
+        }
+    }
+
+    @Test func `should read what approving a code would add, signed, before approving it`() async throws {
+        var sent: URLRequest?
+        let code = try #require(DeviceCode("WDJB-MJHT"))
+
+        let pending = try await client(body: #"{"label":"Mac mini","requestedAt":"2026-10-04T09:30:00Z"}"#, sent: { sent = $0 })
+            .pendingDevice(code: code, as: member)
+
+        let request = try #require(sent)
+        #expect(request.url?.path == "/me/devices/pending/WDJBMJHT")
+        #expect(request.httpMethod == "GET")
+        #expect(try isSigned(request, by: key))
+        #expect(pending == PendingDevice(label: "Mac mini", requestedAt: Date(timeIntervalSince1970: 1_791_106_200)))
+    }
+
+    @Test func `should approve a code, signed, and read the device it added`() async throws {
+        var sent: URLRequest?
+        let code = try #require(DeviceCode("WDJB-MJHT"))
+        let body = #"{"publicKey":"newkey","label":"Mac mini","addedAt":"2026-10-04T09:31:00Z"}"#
+
+        let device = try await client(status: 201, body: body, sent: { sent = $0 }).approveDevice(code: code, as: member)
+
+        let request = try #require(sent)
+        let sentBody = try JSONSerialization.jsonObject(with: #require(request.httpBody)) as? [String: String]
+        #expect(request.url?.path == "/me/devices")
+        #expect(request.httpMethod == "POST")
+        #expect(sentBody == ["code": "WDJBMJHT"])
+        #expect(try isSigned(request, by: key))
+        #expect(device == Device(publicKey: "newkey", label: "Mac mini", addedAt: Date(timeIntervalSince1970: 1_791_106_260)))
+    }
+
+    @Test func `should remove a device by its key, signed`() async throws {
+        var sent: URLRequest?
+        try await client(sent: { sent = $0 }).removeDevice("k-2_x", as: member)
+
+        #expect(sent?.url?.path == "/me/devices/k-2_x")
+        #expect(sent?.httpMethod == "DELETE")
+        #expect(try isSigned(#require(sent), by: key))
+    }
+
+    @Test func `should delete a removed device's days, all of them or one provider's on one day`() async throws {
+        var sent: [URLRequest] = []
+        let client = client(sent: { sent.append($0) })
+
+        try await client.deleteDays(of: "k2", provider: nil, day: nil, as: member)
+        try await client.deleteDays(of: "k2", provider: "claude", day: "2026-10-06", as: member)
+
+        #expect(sent.map(\.httpMethod) == ["DELETE", "DELETE"])
+        #expect(sent[0].url?.path == "/me/devices/k2/days" && sent[0].url?.query == nil)
+        #expect(sent[1].url?.query == "provider=claude&day=2026-10-06")
+        #expect(try sent.allSatisfy { try isSigned($0, by: key) })
+    }
+
+    @Test func `should encode a provider that holds query characters, and sign the query as sent`() async throws {
+        var sent: [URLRequest] = []
+        let client = client(body: #"{"standings":[]}"#, sent: { sent.append($0) })
+
+        try await client.deleteDays(of: "k2", provider: "a&day=x#y", day: nil, as: member)
+        _ = try await client.board(period: .today, provider: "a&b")
+
+        #expect(sent[0].url?.query == "provider=a%26day%3Dx%23y")
+        #expect(try isSigned(sent[0], by: key))
+        #expect(sent[1].url?.query == "period=today&provider=a%26b")
+    }
+
+    @Test func `should read the member's devices on /me`() async throws {
+        let body = #"{"username":"tokenwhale","visible":true,"standing":null,"days":[],"devices":[{"publicKey":"k1","label":"MacBook Pro","addedAt":"2026-10-01T08:00:00Z","removedAt":null,"removedBy":null}]}"#
+
+        let summary = try await client(body: body).me(period: .sevenDays, provider: nil, as: member)
+
+        #expect(summary.devices == [Device(publicKey: "k1", label: "MacBook Pro", addedAt: Date(timeIntervalSince1970: 1_790_841_600))])
+    }
+
+    @Test(arguments: [
+        (404, #"{"error":"unknownCode","message":"No such code."}"#, LeaderboardError.unknownCode),
+        (409, #"{"error":"deviceLimit","message":"Five devices."}"#, LeaderboardError.deviceLimit),
+        (403, #"{"error":"deviceTooNew","message":"Too new."}"#, LeaderboardError.deviceTooNew),
+        (409, #"{"error":"lastDevice","message":"Last one."}"#, LeaderboardError.lastDevice),
+    ])
+    func `should tell each device refusal apart`(status: Int, body: String, error: LeaderboardError) async throws {
+        let code = try #require(DeviceCode("WDJB-MJHT"))
+        await #expect(throws: error) { _ = try await client(status: status, body: body).approveDevice(code: code, as: member) }
+    }
+
+    @Test func `should say which device removed this one when the server refuses its key`() async {
+        let body = #"{"error":"unauthorized","message":"This device was removed.","removedBy":{"publicKey":"k1","label":"MacBook Pro"}}"#
+
+        await #expect(throws: LeaderboardError.removed(by: "MacBook Pro")) {
+            _ = try await client(status: 401, body: body).upload([], as: member)
+        }
     }
 
     // MARK: - Failures

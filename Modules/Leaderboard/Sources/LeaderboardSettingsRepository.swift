@@ -12,10 +12,13 @@ public struct LeaderboardRecord: Sendable, Equatable {
     public let link: ProfileLink?
     /// Days the server refused, to send again.
     public let refused: [RefusedDay]
+    /// The keys of the devices already shown as added, each shown once.
+    /// This device's own, never sent.
+    public let shownDevices: [String]
 
     public init(username: String, sharing: [String], visible: Bool, lastUpload: Date?,
                 sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil,
-                refused: [RefusedDay] = []) {
+                refused: [RefusedDay] = [], shownDevices: [String] = []) {
         self.link = link
         self.username = username
         self.sharing = sharing.sorted()
@@ -24,6 +27,7 @@ public struct LeaderboardRecord: Sendable, Equatable {
         self.sharesCountry = sharesCountry
         self.globeHintDismissed = globeHintDismissed
         self.refused = refused
+        self.shownDevices = shownDevices.sorted()
     }
 }
 

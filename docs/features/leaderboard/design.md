@@ -188,7 +188,7 @@ The person thinks of the board as something their app has: what they saw a minut
 
 ## 2a · Devices: one member, several machines
 
-**Status:** confirmed ([#512](https://github.com/tddworks/ClaudeBar/pull/512)). The server side, slice 11, is built (`tddworks/claudebar-server` #1); in the app, slice 12 is built ([#522](https://github.com/tddworks/ClaudeBar/pull/522)) and slices 13–15 are not.
+**Status:** confirmed ([#512](https://github.com/tddworks/ClaudeBar/pull/512)). The server side, slice 11, is built (`tddworks/claudebar-server` #1); in the app, slices 12 ([#522](https://github.com/tddworks/ClaudeBar/pull/522)) and 13 ([#540](https://github.com/tddworks/ClaudeBar/pull/540)) are built, and 14–15 are not.
 
 People code on more than one machine: a MacBook, a Mac mini, a Windows PC. A tool's logs hold only what ran on that machine, so a member's day is the sum of their machines' days. v1 can't express that: the key is per install, a second Mac can't join under a name already taken, and a copy of one Mac's key on another makes their uploads replace each other's days (§9).
 
@@ -343,9 +343,13 @@ leaderboard.turnOff()                            // tab gone, uploads stop; says
 leaderboard.turnOn()                             // tab back; uploads now, from where they stopped
 
 // Devices (§2a). The new device shows a code; one the member already has approves it.
-let code = try await membership.requestToJoin(label: "Mac mini")   // on the new machine; then it waits for approval
+let code = try await membership.requestToJoin(label: DeviceLabel("Mac mini"))  // on the new machine; the label defaults to its model
+let member = try await membership.waitForApproval()                  // asks /me every 5 seconds until approved; the member it joined
+try membership.confirmJoining(sharing: ["claude"])                   // the person knows that member: join, then upload 30 days
+try await membership.declineJoining()                                // or not: remove this device, keep nothing
 let pending = try await membership.pendingDevice(code: code)         // on a joined device: the label and when it asked
 try await membership.approve(code: code)                             // from a device past its first week
+membership.addedDevices                                              // each device added since this one last looked, once
 try await membership.remove(device: oldMac, deletingDays: false)     // revokes its key; its days stay
 try await membership.remove(device: stranger, deletingDays: true)    // another device in its first week: removes, then deletes its days
 try await membership.deleteDays(of: oldMac, provider: "claude", day: nil) // a removed device's; never a side effect
@@ -404,16 +408,16 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Turning it back on catches up the days missed, up to 30 | `LeaderboardUploader`'s range from `lastUpload`, unchanged; `Leaderboard.turnOn()` asks for it at once |
 | While off there is no Leaderboard tab, and the popover falls back to its provider | The popover reads `membership.isOn` |
 | A member has at most 5 devices that aren't removed | Server |
-| A device is added only when another device of the member, past its first week, approves the code it shows, within 10 minutes, once; the new device names the member and asks before it uploads | Server, and the new device |
+| A device is added only when another device of the member, past its first week, approves the code it shows, within 10 minutes, once; the new device names the member and asks before it uploads | Server, and the new device (`LeaderboardMembership.waitForApproval` and `confirmJoining`) |
 | For its first 7 days an added device changes and reads only its own days and settings, with the member's settings and place: `/me` leaves out the other devices and their rows, and `/me/export` is refused; it can't rename or hide the member, change its globe or link, approve a device, remove another, delete a removed device's days, or leave. After that, and from the start for the device that joined, it may do what the member may | Server |
-| Removing a device revokes its key at once and says which device removed it; its days stay and count until deleted; removing another device in its first week, the app offers *Remove and delete its days* beside *Remove*; the last device can't be removed | Server, and the app's dialog |
+| Removing a device revokes its key at once and says which device removed it; its days stay and count until deleted; removing another device in its first week, the app offers *Remove and delete its days* beside *Remove*; the last device can't be removed | Server, and `LeaderboardMembership.offersDeletingDays(whenRemoving:)` for the dialog |
 | Only a removed device's days can be deleted, by another device of the member past its first week, for one provider, one day or all | Server |
-| Every device in use past its first week shows, once, each device added since it last read `/me`, with **Remove**; a device in its first week sees only itself | `LeaderboardMembership.devices` |
-| A device whose key the server no longer knows forgets its membership | `LeaderboardUploader`, as for a member the server forgot |
+| Every device in use past its first week shows, once, each device added since it last read `/me`, with **Remove**; a device in its first week sees only itself | `LeaderboardMembership.addedDevices`, with the devices already shown kept as `shownDevices` |
+| A device whose key the server no longer knows forgets its membership; one another device removed also says which | `LeaderboardUploader`, as for a member the server forgot; `LeaderboardMembership.removedBy` |
 | The member's name, visibility, globe, country and link come from the server; a device's copy follows every `/me` | `LeaderboardMembership` |
 | A day the server refused is sent again with each upload until it is taken or 30 days old | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
-| A new device's label is filled in with the Mac's model, never its computer name | `DeviceLabel` |
+| A new device's label is filled in with the Mac's model, never its computer name | `MachineIdentity` (`IOKitMachineIdentity` on the Mac, "Mac" when the model can't be read); `DeviceLabel` keeps it, or what the person typed, to the server's 1–40 characters |
 | Every request names its client in `X-Client`, signed or not; the macOS app as `claudebar-macos/<version>` | `LeaderboardHTTPClient` |
 | Until a board and you on it have come back once, the tab says it is loading; it never says *0 tokens* or *No one is on the board* for an answer it doesn't have yet | `Board.members`, `nil` until then |
 | Reading a board again (opening the popover, Refresh, an upload, picking it back) keeps its last answer on screen until the new one replaces it; a failed read keeps it and says it couldn't update | `Board.read()` |
@@ -546,19 +550,19 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 | Piece | Home |
 |---|---|
 | `LeaderboardMembership`, `Board` and `Board.Member`, `DailyTokens`, `Username`, `RankCard`, `LeaderboardUploader` | `Modules/Leaderboard/Sources/` |
-| `@Mockable` ports `LeaderboardAPI` and `SigningKeyStore`, and, with slices 13–15, `MachineIdentity` (this Mac's hardware UUID and model, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the `machine` hash and the devices already shown) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
-| `Device`, `DeviceCode`, `DeviceLabel` (slices 13–15, not built yet) | `Modules/Leaderboard/Sources/` |
-| The factory, `Leaderboard.makeAPI(client:)` and `Leaderboard.makeKeyStore()`: the server, and the key store of the platform the module is built for | `Modules/Leaderboard/Sources/` |
+| `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's model, and with slice 14 its hardware UUID, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the devices already shown and, with slice 14, the `machine` hash) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
+| `Device`, `DeviceCode`, `DeviceLabel` | `Modules/Leaderboard/Sources/` |
+| The factory, `Leaderboard.makeAPI(client:)`, `makeKeyStore()` and `makeMachineIdentity()`: the server, and the key store and machine of the platform the module is built for | `Modules/Leaderboard/Sources/` |
 | `LeaderboardHTTPClient`; `FallbackSigningKeyStore`, the key in the Keychain first and in UserDefaults when the Keychain refuses it (`DefaultsSigningKeyStore`) | `Modules/Leaderboard/Sources/Internal/` |
 | `KeychainSigningKeyStore`, the same Keychain item as before the module | `Modules/Leaderboard/Sources/Internal/macOS/` |
-| `IOKitMachineIdentity` (slices 13–15, not built yet): `MachineIdentity` read through IOKit (`IOPlatformUUID`, the model) | `Modules/Leaderboard/Sources/Internal/macOS/` |
+| `IOKitMachineIdentity`: `MachineIdentity` read through IOKit (the model; with slice 14, `IOPlatformUUID`) | `Modules/Leaderboard/Sources/Internal/macOS/` |
 | Settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
 | `AppLeaderboard` (wiring through the factory with the app's `X-Client` name, `board` and `board(period:provider:)`, so a board outlives the popover, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–12 and 16 are built, 17 is next: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 13–15, §2a's devices in the app, are not built yet.
+Test-first slices, each green on its own. Slices 1–13, 16 and 17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 14 is next; 14 and 15, the rest of §2a's devices in the app, are not built yet.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.

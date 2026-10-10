@@ -49,6 +49,19 @@ struct LeaderboardStorageTests {
         #expect(relaunched.leaderboardRecord()?.refused == refused)
     }
 
+    @Test func `should remember which added devices were shown after a relaunch, and forget them with the membership`() throws {
+        let (settings, url) = repository()
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true,
+                                                         lastUpload: nil, shownDevices: ["k3", "k2"]))
+
+        let relaunched = JSONSettingsRepository(store: JSONSettingsStore(fileURL: url), credentials: UserDefaults(suiteName: UUID().uuidString)!,
+                                                secureCredentials: KeepingCredentials())
+        #expect(relaunched.leaderboardRecord()?.shownDevices == ["k2", "k3"])
+
+        relaunched.saveLeaderboardRecord(nil)
+        #expect(try !String(contentsOf: url, encoding: .utf8).contains("k2"))
+    }
+
     @Test func `should leave nothing of the membership in settings when it is forgotten`() throws {
         let (settings, url) = repository()
         settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))

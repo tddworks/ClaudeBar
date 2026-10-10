@@ -19,7 +19,7 @@ struct BoardTests {
 
     private func board(period: BoardPeriod = .sevenDays, provider: String? = nil) async throws -> Board {
         let membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs,
-                                               calendar: LeaderboardFixtures.calendar)
+                                               machine: MockMachineIdentity.named("MacBook Pro"), calendar: LeaderboardFixtures.calendar)
         try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
         return Board(period: period, provider: provider, api: api, membership: membership)
     }

@@ -12,7 +12,8 @@ struct LeaderboardMembershipTests {
     private let logs = FakeTokenLogs(providersWithLogs: ["claude", "codex", "mistral"])
 
     private func membership() -> LeaderboardMembership {
-        LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs, calendar: LeaderboardFixtures.calendar)
+        LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs, machine: MockMachineIdentity.named("MacBook Pro"),
+                              calendar: LeaderboardFixtures.calendar)
     }
 
     private func joined(sharing: Set<String> = ["claude"]) async throws -> LeaderboardMembership {
@@ -37,7 +38,7 @@ struct LeaderboardMembershipTests {
 
     @Test func `should leave the person outside, with no key kept, when their name is taken`() async throws {
         api.reset([.given])
-        given(api).join(username: .any, publicKey: .any).willThrow(LeaderboardError.usernameTaken)
+        given(api).join(username: .any, publicKey: .any, label: .any).willThrow(LeaderboardError.usernameTaken)
         let membership = membership()
 
         await #expect(throws: LeaderboardError.usernameTaken) {
@@ -315,7 +316,7 @@ struct LeaderboardMembershipTests {
     @Test func `should keep a change made here over a /me answer that crossed it`() async throws {
         let api = CrossingLeaderboardAPI()
         let membership = LeaderboardMembership(api: api, keys: keys, settings: settings, logs: logs,
-                                               calendar: LeaderboardFixtures.calendar)
+                                               machine: MockMachineIdentity.named("MacBook Pro"), calendar: LeaderboardFixtures.calendar)
         try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"])
 
         async let read = membership.summary(period: .sevenDays)
