@@ -51,6 +51,9 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 .t-pills b.on{background:var(--ink)}
 .t-pills b.all{flex:.7;background:var(--butter)}
 .t-pills b.all.on{background:var(--ink)}
+.t-pills b.lb{flex:.9;background:var(--mint)}
+.t-pills b.hl{outline:2.5px solid var(--purple);outline-offset:1px}
+.t-pills i.sep{width:2px;background:var(--ink);border-radius:2px;margin:0 2px}
 .t-card{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:20px}
 .t-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .t-grid i{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:28px;position:relative}
@@ -89,6 +92,8 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 .pill.all{background:var(--butter);padding:5px 11px 5px 6px}
 .pill.all.on{background:var(--ink)}
 .pill.all .pi{background:var(--paper);font-size:11px}
+.pill.lb .pi{background:var(--mint)}
+.pills .sep{flex:none;width:2.5px;border-radius:2px;background:var(--ink);margin:3px 2px}
 .pill.pulse{animation:pulse 1.4s ease-in-out 3}
 @keyframes pulse{50%{box-shadow:0 0 0 5px var(--purple)}}
 
@@ -151,6 +156,21 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 .coach::before{content:"";position:absolute;left:22px;top:-9px;width:13px;height:13px;background:var(--purple);border-left:2.5px solid var(--ink);border-top:2.5px solid var(--ink);transform:rotate(45deg)}
 .coach button{margin-left:auto;border:2px solid var(--ink);border-radius:999px;background:#fff;font:800 10px "Plus Jakarta Sans";padding:2px 9px;cursor:pointer;flex:none}
 
+/* where All goes: options */
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:20px}
+.opt{background:var(--paper);border:var(--b);border-radius:20px;box-shadow:var(--sh);padding:14px;display:flex;flex-direction:column;gap:9px;position:relative}
+.opt.pick{background:#F3FFF7;border-width:3px;transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+.opt .pick-tag{position:absolute;top:-13px;right:12px;font-size:10px;padding:3px 8px;background:var(--mint)}
+.opt h3{font-family:"Lilita One";font-weight:400;font-size:18px;line-height:1.15}
+.opt .row{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow:hidden;border:2px solid var(--ink);border-radius:12px;background:var(--cream);padding:7px}
+.opt .row span{flex:none;font-size:9.5px;font-weight:800;border:2px solid var(--ink);border-radius:999px;padding:2px 7px;background:var(--paper)}
+.opt .row span.a{background:var(--butter)}.opt .row span.l{background:var(--mint)}.opt .row span.on{background:var(--ink);color:#fff}
+.opt .row i{flex:none;width:2px;height:16px;background:var(--ink);border-radius:2px}
+.opt .row .hd{margin-left:auto;font-size:11px;border-radius:7px;padding:1px 5px}
+.opt ul{list-style:none;display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;line-height:1.4}
+.opt li::before{content:attr(data-m);font-weight:800;margin-right:5px}
+.opt li[data-m="✗"]{color:#7a3b30}
+
 /* notes beside the live popover */
 .notes{max-width:420px;display:flex;flex-direction:column;gap:12px}
 .note{background:var(--paper);border:var(--b);border-radius:16px;box-shadow:var(--sh);padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.5}
@@ -188,8 +208,8 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 .new{background:var(--butter);border:1.5px solid var(--ink);border-radius:999px;font-size:10px;font-weight:800;padding:1px 7px;margin-left:4px}
 
 .concept-badge{position:fixed;right:16px;bottom:16px;background:var(--ink);color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:12px;z-index:10;box-shadow:3px 3px 0 var(--purple)}
-@media (max-width:1100px){.journey{grid-template-columns:repeat(2,1fr)}.step::after{display:none}}
-@media (max-width:760px){.journey{grid-template-columns:1fr}.popover,.menubar,.window{width:100%}.win-body{grid-template-columns:1fr}.side{display:none}}
+@media (max-width:1100px){.journey,.opts{grid-template-columns:repeat(2,1fr)}.step::after{display:none}}
+@media (max-width:760px){.journey,.opts{grid-template-columns:1fr}.popover,.menubar,.window{width:100%}.win-body{grid-template-columns:1fr}.side{display:none}}
 </style>
 </head>
 <body>
@@ -198,11 +218,43 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
   <div class="hero">
     <div class="badge"><i></i>POP THEME · CONCEPT</div>
     <h1>Every quota,<br><span>one glance.</span></h1>
-    <p>Someone who pays for Claude, Codex, Gemini and Copilot today opens the popover and clicks through four pills to learn one thing: <b>which of them can I keep working with?</b> <b>All</b> is a new first pill that answers it in one view: a small card per provider with its tightest quota as a ring. Tap a card to open that provider as you know it today.</p>
+    <p>Someone who pays for Claude, Codex, Gemini and Copilot today opens the popover and clicks through four pills to learn one thing: <b>which of them can I keep working with?</b> <b>All</b> is a new pill that answers it in one view: a small card per provider with its tightest quota as a ring. Tap a card to open that provider as you know it today.</p>
+    <p style="margin-top:8px">The row already holds one tab that isn't a provider, <b>Leaderboard</b>. All joins it at the front, and a small divider splits the pages <i>about everything</i> from the pages <i>about one provider</i>.</p>
     <div style="display:flex;gap:16px;align-items:center;margin-top:18px;flex-wrap:wrap">
       <span class="tag">ONE NEW PILL ✨</span>
-      <span style="font-weight:700;font-size:14px;color:#12324a">No new window, no new mode to learn:<br>the pills you already use, plus one.</span>
+      <span style="font-weight:700;font-size:14px;color:#12324a">No new window, no new mode to learn:<br>Leaderboard showed a pill can be a page.</span>
     </div>
+  </div>
+
+  <!-- ================= WHERE ALL GOES ================= -->
+  <h2 class="section-title">Where All goes</h2>
+  <p class="section-sub">The pill row today is <b>Leaderboard</b>, then one pill per provider. Leaderboard leads the row but the popover still opens on the first provider. Four ways to fit All in:</p>
+  <div class="opts">
+    <div class="opt pick"><span class="tag pick-tag">RECOMMENDED</span>
+      <h3>A · All first, Leaderboard beside it, then a divider</h3>
+      <div class="row"><span class="a on">▦ All</span><span class="l">🏆 Leaderboard</span><i></i><span>Claude</span><span>Codex</span><span>Gemini</span></div>
+      <ul><li data-m="✓">The two pages about everything sit together; the divider says "providers start here".</li>
+        <li data-m="✓">All leads because quotas are the app's job; Leaderboard is opt-in.</li>
+        <li data-m="✓">Leaderboard turned off: the row reads All ┃ providers, nothing else moves.</li>
+        <li data-m="✗">Leaderboard moves one place right of where people know it.</li></ul></div>
+    <div class="opt">
+      <h3>B · Leaderboard stays first, All after it</h3>
+      <div class="row"><span class="l">🏆 Leaderboard</span><span class="a on">▦ All</span><i></i><span>Claude</span><span>Codex</span></div>
+      <ul><li data-m="✓">Nothing people know moves.</li>
+        <li data-m="✗">The overview, the pill most worth reaching, sits behind an optional game tab.</li>
+        <li data-m="✗">All's place changes when Leaderboard is turned on or off.</li></ul></div>
+    <div class="opt">
+      <h3>C · All as a button in the header</h3>
+      <div class="row"><span class="l">🏆 Leaderboard</span><span class="on">Claude</span><span>Codex</span><span class="hd">▦</span></div>
+      <ul><li data-m="✓">The pill row stays as it is today.</li>
+        <li data-m="✗">Two ways to change page: pills and a header button.</li>
+        <li data-m="✗">An icon in the header is easy to miss; a pill was already proven by Leaderboard.</li></ul></div>
+    <div class="opt">
+      <h3>D · All replaces Leaderboard's pill, rank shown on it</h3>
+      <div class="row"><span class="a on">▦ All · #12</span><span>Claude</span><span>Codex</span><span>Gemini</span></div>
+      <ul><li data-m="✓">One fewer pill.</li>
+        <li data-m="✗">Mixes "can I keep working?" with "how do I rank?".</li>
+        <li data-m="✗">Leaderboard's join, rank and Turn off flows need a page of their own.</li></ul></div>
   </div>
 
   <!-- ================= JOURNEY ================= -->
@@ -214,27 +266,27 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
       <div class="n">1</div>
       <h3>Today: one provider at a time</h3>
       <div class="thumb">
-        <div class="t-pills"><b class="on"></b><b></b><b></b><b></b></div>
+        <div class="t-pills"><b class="lb"></b><b class="on"></b><b></b><b></b></div>
         <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
       </div>
-      <p>The popover opens on Claude. To see Codex and Gemini, Riko clicks each pill and reads each page.</p>
+      <p>The popover opens on Claude, after the Leaderboard pill. To see Codex and Gemini, Riko clicks each pill and reads each page.</p>
       <div class="feel">😮‍💨 "Four clicks to answer one question."</div>
     </div>
     <div class="step">
       <div class="n">2</div>
       <h3>Spots the new All pill</h3>
       <div class="thumb">
-        <div class="t-pills"><b class="all" style="outline:2.5px solid var(--purple);outline-offset:1px"></b><b class="on"></b><b></b><b></b></div>
+        <div class="t-pills"><b class="all hl"></b><b class="lb"></b><i class="sep"></i><b class="on"></b><b></b><b></b></div>
         <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
       </div>
-      <p>After the update, a butter-yellow <b>All</b> pill sits first in the row, with a one-time tip pointing at it. It is just another pill: nothing to set up.</p>
+      <p>After the update, a butter-yellow <b>All</b> pill sits first, next to Leaderboard, with a one-time tip pointing at it. It works like Leaderboard: a pill that opens a page.</p>
       <div class="feel good">👀 "Oh, that's new."</div>
     </div>
     <div class="step">
       <div class="n">3</div>
       <h3>Sees every provider at once</h3>
       <div class="thumb">
-        <div class="t-pills"><b class="all on"></b><b></b><b></b><b></b></div>
+        <div class="t-pills"><b class="all on"></b><b class="lb"></b><i class="sep"></i><b></b><b></b><b></b></div>
         <div class="t-grid"><i style="--c:var(--coral)"></i><i style="--c:var(--butter)"></i><i></i><i></i><i></i><i style="--c:var(--dash)"></i></div>
       </div>
       <p>One card per provider: its tightest quota as a ring, the next reset, and a status chip. The header counts what needs attention.</p>
@@ -244,7 +296,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
       <div class="n">4</div>
       <h3>Taps a card to dig in</h3>
       <div class="thumb">
-        <div class="t-pills"><b class="all"></b><b class="on"></b><b></b><b></b></div>
+        <div class="t-pills"><b class="all"></b><b class="lb"></b><i class="sep"></i><b class="on"></b><b></b><b></b></div>
         <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
       </div>
       <p>Tapping Claude's card selects the Claude pill: the full page, chart and cost as today. <b>← All</b> or <span class="kbd">⌘0</span> goes back.</p>
@@ -254,7 +306,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
       <div class="n">5</div>
       <h3>It opens where they left it</h3>
       <div class="thumb">
-        <div class="t-pills"><b class="all on"></b><b></b><b></b><b></b></div>
+        <div class="t-pills"><b class="all on"></b><b class="lb"></b><i class="sep"></i><b></b><b></b><b></b></div>
         <div class="t-grid"><i style="--c:var(--coral)"></i><i style="--c:var(--butter)"></i><i></i><i></i><i></i><i style="--c:var(--dash)"></i></div>
       </div>
       <p>Next time the popover opens on the pill last used, All included. Anyone who wants it every time picks <b>Open on: All</b> in Settings.</p>
@@ -264,7 +316,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 
   <!-- ================= LIVE POPOVER ================= -->
   <h2 class="section-title">Try it</h2>
-  <p class="section-sub">Click the <b>All</b> pill, tap any card to open that provider, then use <b>← All</b> to come back. The menu bar keeps showing the selected provider; in All it shows the tightest one.</p>
+  <p class="section-sub">Click <b>All</b>, tap any card to open that provider, use <b>← All</b> to come back. <b>Leaderboard</b> is there too, so you can feel the three kinds of page side by side. The menu bar keeps showing the selected provider; in All it shows the tightest one.</p>
 
   <div class="stage">
     <div class="col">
@@ -332,7 +384,9 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
     <tr><td>The ring: tightest quota</td><td><code>UsageSnapshot</code>'s lowest quota<span class="new">CHECK</span></td><td>if the snapshot can't say it yet, it becomes one rule there, never a <code>min()</code> in a view</td></tr>
     <tr><td>Tightest account for multi-account providers</td><td>the provider's accounts (as the multi-account callout does)</td><td>reuses #366's "causing Warning" rule</td></tr>
     <tr><td>Card order, which providers appear</td><td>the enabled providers in their saved order</td><td>no new list</td></tr>
-    <tr><td>Selected pill incl. All, "Open on"</td><td>settings via <code>JSONSettingsRepository</code><span class="new">NEW KEY</span></td><td>popover state, not a provider setting</td></tr>
+    <tr><td>Which page is open: All, Leaderboard or a provider</td><td>one popover page value<span class="new">NEW</span></td><td>replaces today's <code>showsLeaderboard</code> flag beside <code>selectedProviderId</code>, so a third page doesn't mean a second flag</td></tr>
+    <tr><td>"Open on"</td><td>settings via <code>JSONSettingsRepository</code><span class="new">NEW KEY</span></td><td>popover state, not a provider setting</td></tr>
+    <tr><td>Whether Leaderboard's pill shows</td><td>the leaderboard membership, as today</td><td>unchanged; All has its own Show switch</td></tr>
   </table>
 </div>
 <div class="concept-badge">CONCEPT · not built yet</div>
@@ -359,7 +413,7 @@ const color={ok:'var(--mint)',warn:'var(--butter)',crit:'var(--coral)',off:'var(
 const tightest=p=>p.quotas?p.quotas.reduce((a,q)=>q.left<a.left?q:a):null;
 const status=p=>level(tightest(p)?.left);
 
-let sel='all';
+let sel='all', lastProvider='claude';
 const el=id=>document.getElementById(id);
 
 function ring(left,lvl){
@@ -373,12 +427,13 @@ function ring(left,lvl){
 
 function renderPills(){
   const all=`<div class="pill all ${sel==='all'?'on':''}" data-p="all"><div class="pi">▦</div>All</div>`;
-  el('pills').innerHTML=all+P.map(p=>`<div class="pill ${sel===p.id?'on':''}" data-p="${p.id}"><div class="pi" style="background:${p.bg}">${p.icon}</div>${p.name}<span class="dot" style="background:${color[status(p)]}"></span></div>`).join('');
+  const lb=`<div class="pill lb ${sel==='leaderboard'?'on':''}" data-p="leaderboard"><div class="pi">🏆</div>Leaderboard</div><span class="sep"></span>`;
+  el('pills').innerHTML=all+lb+P.map(p=>`<div class="pill ${sel===p.id?'on':''}" data-p="${p.id}"><div class="pi" style="background:${p.bg}">${p.icon}</div>${p.name}<span class="dot" style="background:${color[status(p)]}"></span></div>`).join('');
   el('pills').querySelectorAll('.pill').forEach(x=>x.onclick=()=>select(x.dataset.p));
 }
 
 function renderMenubar(){
-  const p=sel==='all'?P.filter(p=>p.quotas).reduce((a,b)=>tightest(b).left<tightest(a).left?b:a):P.find(x=>x.id===sel);
+  const p=sel==='leaderboard'?P.find(x=>x.id===lastProvider):sel==='all'?P.filter(p=>p.quotas).reduce((a,b)=>tightest(b).left<tightest(a).left?b:a):P.find(x=>x.id===sel);
   const t=tightest(p);
   el('menubar').innerHTML=`<div class="mb-item on"><div class="mb-dot">${p.icon}</div><span class="mb-pct">${t?t.left+'%':'--'}</span>${sel==='all'?'<span>· tightest</span>':''}</div><span>🔋 Sat 16:42</span>`;
 }
@@ -429,9 +484,17 @@ function renderOne(p){
   el('body').querySelector('[data-back]').onclick=()=>select('all');
 }
 
+function renderLeaderboard(){
+  header('🏆','var(--mint)','Leaderboard','riko · Japan','ok','RANKED');
+  el('body').innerHTML=`<div class="card" style="padding:14px;text-align:center"><div class="q-pct" style="font-size:44px">#12</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted)">in Japan this week · 31 days in a row</div></div>
+    <div class="card" style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--muted)">🏆 The Leaderboard page as it is today: unchanged by this concept.</div>`;
+}
+
 function select(id){
+  if(id!=='all'&&id!=='leaderboard') lastProvider=id;
   sel=id; if(id==='all') el('coach')?.remove(); renderPills(); renderMenubar();
-  id==='all'?renderAll():renderOne(P.find(p=>p.id===id));
+  id==='all'?renderAll():id==='leaderboard'?renderLeaderboard():renderOne(P.find(p=>p.id===id));
 }
 
 el('coachOk').onclick=()=>el('coach').remove();
