@@ -35,6 +35,7 @@
 #        DEMO_TEXT_SIZE=extraLarge  the Popover Text Size (medium, large,
 #                           extraLarge), set in the demo home's settings
 #        DEMO_POPOVER_TITLE="Acme AI Desk"  the Popover Title, set the same way
+#        DEMO_OPENS_ON=all  the popover opens on the All page (Open On)
 #        (the app defaults to the newest Debug build in DerivedData)
 
 set -euo pipefail
@@ -61,10 +62,10 @@ fi
 rm -rf "$DEMO_HOME"
 mkdir -p "$DEMO_HOME/.claudebar/providers" "$DEMO_HOME/sample-logs"
 
-python3 - "$DEMO_HOME" "$PORT" "$THEME" "${DEMO_SCENE:-}" "${DEMO_TEXT_SIZE:-medium}" "${DEMO_POPOVER_TITLE:-}" <<'PY'
+python3 - "$DEMO_HOME" "$PORT" "$THEME" "${DEMO_SCENE:-}" "${DEMO_TEXT_SIZE:-medium}" "${DEMO_POPOVER_TITLE:-}" "${DEMO_OPENS_ON:-whereILeftIt}" <<'PY'
 import json, os, random, sys, uuid
 from datetime import datetime, timedelta, timezone
-home, port, theme, scene, text_size, popover_title = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
+home, port, theme, scene, text_size, popover_title, opens_on = sys.argv[1:8]
 base = f"http://127.0.0.1:{port}"
 
 def quota(kind, key, name=None):
@@ -153,6 +154,7 @@ settings = {"providers": providers, "app": {
     "showDailyUsageCards": True,
     "popoverTextSize": text_size,
     "popoverTitle": popover_title,
+    "popoverOpensOn": opens_on,
     "menuBarPercentageEnabled": True,
     "menuBarPercentageProviderId": ids[0],
 }}

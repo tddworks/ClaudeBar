@@ -64,6 +64,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 
 | Area | What you can do |
 |---|---|
+| All providers | Every provider's tightest quota on one page, one tap from its own → [docs](docs/features/all-providers/README.md) |
 | Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/menu-bar/README.md) |
 | [Multiple Codex accounts](docs/features/multi-account/README.md) | Separate logins, identified by email, with independent quotas |
 | Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/status-colors/README.md) |

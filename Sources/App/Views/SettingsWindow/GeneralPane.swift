@@ -23,17 +23,14 @@ struct GeneralPane: View {
                 SettingsRowDivider()
 
                 SettingsRow(
-                    title: "Overview Mode",
-                    subtitle: "Show all providers at once in the menu bar popover."
+                    title: "Open On",
+                    subtitle: "Where the popover lands each time it opens."
                 ) {
-                    SettingsSwitch(isOn: Binding(
-                        get: { settings.overviewModeEnabled },
-                        set: { newValue in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                settings.overviewModeEnabled = newValue
-                            }
-                        }
-                    ))
+                    SettingsSegmentedControl(
+                        options: PopoverOpensOn.allCases,
+                        label: { $0 == .all ? "All" : "Where I Left It" },
+                        selection: $settings.popoverOpensOn
+                    )
                 }
 
                 SettingsRowDivider()

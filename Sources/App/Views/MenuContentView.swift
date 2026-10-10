@@ -47,8 +47,20 @@ struct MenuContentView: View {
     @State private var pillsViewportWidth: CGFloat = 0
     /// Logins hidden by the account chips — the page's filter, never a pause.
     @State private var hiddenAccountIds: Set<String> = []
-    /// The Leaderboard tab is open in place of a provider.
-    @State private var showsLeaderboard = false
+    /// The page under the pills: All, the Leaderboard, or the selected provider.
+    @State private var page: PopoverPage = .provider
+
+    /// Every provider in the lineup as a card, for the All page.
+    private var overview: Overview { Overview(monitor) }
+
+    /// The page that can be shown — All needs two providers, the Leaderboard
+    /// needs to be on; otherwise the provider.
+    private var shownPage: PopoverPage {
+        page.shown(allOffered: overview.isOffered, leaderboardOn: leaderboard.membership.isOn)
+    }
+
+    private var showsAll: Bool { shownPage == .all }
+    private var showsLeaderboard: Bool { shownPage == .leaderboard }
 
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
@@ -87,12 +99,9 @@ struct MenuContentView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 12)
 
-                // Provider Pills (hidden in overview mode)
-                if !settings.overviewModeEnabled {
-                    providerPills
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16 - scrollTopInset)
-                }
+                providerPills
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16 - scrollTopInset)
 
                 // The Claude Code card (shown while any session is running).
                 // Measured, so the scroll region below gives up its height.
@@ -125,7 +134,7 @@ struct MenuContentView: View {
                 // or the popover reopens, so a newly selected provider and
                 // every open start at the top instead of inheriting the
                 // previous scroll offset.
-                .id("\(settings.overviewModeEnabled ? "overview" : monitor.selectedProviderId)-\(openCount)")
+                .id("\(showsAll ? "all" : showsLeaderboard ? "leaderboard" : monitor.selectedProviderId)-\(openCount)")
 
                 // Bottom Action Bar
                 actionBar
@@ -182,11 +191,8 @@ struct MenuContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
             openCount += 1
+            page = settings.popoverOpensOn.page(onOpening: page)
             leaderboard.dismissOffNotice()
-        }
-        // Turned off with its tab open: back to the provider.
-        .onChange(of: leaderboard.membership.isOn) { _, isOn in
-            if !isOn { showsLeaderboard = false }
         }
         .background(TouchBarWindowAccessor())
         .background(keyboardShortcuts)
@@ -214,7 +220,7 @@ struct MenuContentView: View {
             // intent, so Codex in RPC mode must not spawn `codex app-server`
             // here before the session was explicitly verified (issue #216).
             // Other providers treat .passive like an interactive refresh.
-            if settings.overviewModeEnabled {
+            if showsAll {
                 await refreshAllEnabled(kind: .passive)
             } else {
                 await refresh(providerId: selectedProviderId, kind: .passive)
@@ -236,6 +242,10 @@ struct MenuContentView: View {
                 await refresh(providerId: newProviderId)
             }
         }
+        .onChange(of: page) { _, newPage in
+            // Opening All reads every provider, as opening the popover on it does.
+            if newPage == .all { Task { await refreshAllEnabled(kind: .passive) } }
+        }
     }
 
     /// Upper bound for the scrollable content region — see
@@ -243,7 +253,7 @@ struct MenuContentView: View {
     private var contentMaxHeight: CGFloat {
         PopoverContentHeight.maxHeight(
             visibleScreenHeight: NSScreen.main?.visibleFrame.height ?? 800,
-            overviewMode: settings.overviewModeEnabled,
+            overviewMode: showsAll,
             sessionCardHeight: sessionCardHeight
         )
     }
@@ -284,20 +294,22 @@ struct MenuContentView: View {
 
     // MARK: - Keyboard Shortcuts
 
-    /// Shortcuts with no button of their own: Escape, and ⌘1–⌘9 for the
-    /// provider pills. The action bar's buttons carry theirs directly.
+    /// Shortcuts with no button of their own: Escape, ⌘0 for All and ⌘1–⌘9
+    /// for the provider pills. The action bar's buttons carry theirs directly.
     private var keyboardShortcuts: some View {
         ZStack {
             Button("Close", action: handleEscape)
                 .keyboardShortcut(.cancelAction)
 
-            if !settings.overviewModeEnabled {
-                ForEach(1...9, id: \.self) { position in
-                    Button("Select provider \(position)") {
-                        monitor.selectProvider(atPosition: position)
-                    }
-                    .keyboardShortcut(KeyEquivalent(Character(String(position))))
+            Button("All providers") { page = .all }
+                .keyboardShortcut("0")
+
+            ForEach(1...9, id: \.self) { position in
+                Button("Select provider \(position)") {
+                    page = .provider
+                    monitor.selectProvider(atPosition: position)
                 }
+                .keyboardShortcut(KeyEquivalent(Character(String(position))))
             }
         }
         .buttonStyle(.plain)
@@ -382,6 +394,10 @@ struct MenuContentView: View {
     /// its first quota's coins, the tab's place, the minutes to its reset.
     private var scoreLine: ScoreLine {
         let tabs = monitor.tabs
+        if showsAll {
+            return ScoreLine(providerName: "All", status: statusText,
+                             quotas: overview.tightest.map { [$0] } ?? [], tab: 0)
+        }
         let index = tabs.firstIndex { $0.contains(selectedProviderId) } ?? 0
         return ScoreLine(
             providerName: tabs.indices.contains(index) ? settings.shown(tabs[index].name) : "ClaudeBar",
@@ -392,7 +408,7 @@ struct MenuContentView: View {
     }
 
     private var isCurrentlyRefreshing: Bool {
-        settings.overviewModeEnabled
+        showsAll
             ? monitor.lineup.contains { $0.isSyncing }
             : selectedLogin?.isSyncing == true
     }
@@ -405,7 +421,7 @@ struct MenuContentView: View {
         // instead of waiting for their TTL to lapse.
         BinaryLocator.invalidateCaches()
         Task { await leaderboard.refresh() }
-        if settings.overviewModeEnabled {
+        if showsAll {
             Task { await refreshAllEnabled() }
         } else {
             Task { await refresh(providerId: selectedProviderId) }
@@ -414,11 +430,11 @@ struct MenuContentView: View {
 
     private var brandRow: some View {
         HStack(spacing: 12) {
-            // Custom Provider Icon - shows AppLogo in overview mode and on the Leaderboard
-            // tab (it isn't any one provider's), the provider icon otherwise.
+            // Custom Provider Icon - shows AppLogo on All and on the Leaderboard
+            // tab (neither is any one provider's), the provider icon otherwise.
             // Avoid animation on provider icon to prevent constraint update loops in MenuBarExtra
             ZStack {
-                if settings.overviewModeEnabled || showsLeaderboard, let logo = NSImage(named: "AppLogo") {
+                if shownPage != .provider, let logo = NSImage(named: "AppLogo") {
                     Image(nsImage: logo)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -489,7 +505,7 @@ struct MenuContentView: View {
     /// What the header pill says — the monitor's word for the selected tab.
     /// A provider that failed to probe reads as "UNAVAILABLE" rather than
     /// borrowing a green "HEALTHY" it has no data for (#259).
-    private var selectedProviderBadge: ProviderBadgeState { monitor.selectedBadge }
+    private var selectedProviderBadge: ProviderBadgeState { showsAll ? overview.badge : monitor.selectedBadge }
 
     private var statusBadge: some View {
         let statusColor = selectedProviderBadge.badgeColor(theme)
@@ -580,19 +596,28 @@ struct MenuContentView: View {
                 // Leaderboard leads the row, but the popover still opens on
                 // the first provider: it shows only once it's picked.
                 // Gone while the Leaderboard is turned off.
+                // All leads, the Leaderboard follows, then a divider: the pages
+                // about every provider, then a pill per provider.
+                if overview.isOffered {
+                    AllProvidersPill(isSelected: showsAll) { page = .all }
+                        .help("All providers (⌘0)")
+                }
                 if leaderboard.membership.isOn {
-                    LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
+                    LeaderboardPill(isSelected: showsLeaderboard) { page = .leaderboard }
                         .help("Leaderboard")
+                }
+                if overview.isOffered || leaderboard.membership.isOn {
+                    PillDivider()
                 }
                 ForEach(Array(monitor.tabs.enumerated()), id: \.element.id) { index, tab in
                     ProviderPill(
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
-                        isSelected: !showsLeaderboard && tab.contains(selectedProviderId),
+                        isSelected: shownPage == .provider && tab.contains(selectedProviderId),
                         hasData: tab.accounts.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
-                        showsLeaderboard = false
+                        page = .provider
                         if !tab.contains(selectedProviderId), let first = tab.accounts.first {
                             selectedProviderId = first.id
                         }
@@ -660,15 +685,16 @@ struct MenuContentView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { leaderboard.turnOn() }
             }
         }
-        if showsLeaderboard && leaderboard.membership.isOn && !settings.overviewModeEnabled {
+        if showsLeaderboard {
             LeaderboardPopoverView(leaderboard: leaderboard, monitor: monitor)
-        } else if settings.overviewModeEnabled {
-            let providers = monitor.lineup
-            if providers.isEmpty {
-                emptyState
-            } else {
-                overviewContent(providers: providers)
+        } else if showsAll {
+            OverviewPageView(overview: overview) { card in
+                // A tap opens the provider on its first login.
+                if let first = card.firstLoginId { selectedProviderId = first }
+                page = .provider
             }
+            .opacity(animateIn ? 1 : 0)
+            .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
         } else if let tab = monitor.selectedTab, tab.accounts.count > 1 {
             accountsContent(tab)
         } else if let provider = selectedLogin, let snapshot = monitor.usage(of: provider) {
@@ -799,23 +825,6 @@ struct MenuContentView: View {
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(theme.statusColor(for: status).opacity(0.12)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(theme.statusColor(for: status).opacity(0.4), lineWidth: 1))
-    }
-
-    private func overviewContent(providers: [Account]) -> some View {
-        // Scrolling is owned by the shared middle-region ScrollView in
-        // `body`; nesting another vertical ScrollView here would break
-        // height negotiation and swallow gestures.
-        VStack(spacing: 12) {
-            ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
-                if index > 0 {
-                    Divider()
-                        .background(theme.glassBorder)
-                }
-                providerSection(provider: provider)
-            }
-        }
-        .opacity(animateIn ? 1 : 0)
-        .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
     }
 
     private func providerSection(provider: Account) -> some View {
@@ -1466,6 +1475,29 @@ struct ProviderPill: View {
 
     private var providerIcon: String {
         ProviderVisualIdentityLookup.symbolIcon(for: providerId)
+    }
+}
+
+/// The pill that opens the All page, styled as a provider's.
+struct AllProvidersPill: View {
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ProviderPill(providerId: "all", providerName: "All", isSelected: isSelected, hasData: true,
+                     symbol: "square.grid.2x2.fill", action: action)
+    }
+}
+
+/// The line between the pages about every provider and the providers' pills.
+struct PillDivider: View {
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(theme.isOutlined ? theme.glassBorder : theme.textTertiary.opacity(0.5))
+            .frame(width: theme.isOutlined ? 2.5 : 1.5, height: 16)
+            .padding(.horizontal, 2)
     }
 }
 

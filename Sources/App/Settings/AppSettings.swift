@@ -303,12 +303,12 @@ public final class AppSettings {
         }
     }
 
-    // MARK: - Overview Mode Settings
+    // MARK: - Popover
 
-    /// Whether to show all enabled providers at once instead of one at a time
-    public var overviewModeEnabled: Bool {
+    /// *Open on* — where the popover lands each time it opens (Settings → General).
+    public var popoverOpensOn: PopoverOpensOn {
         didSet {
-            repository.setOverviewModeEnabled(overviewModeEnabled)
+            repository.setPopoverOpensOn(popoverOpensOn)
         }
     }
 
@@ -491,7 +491,7 @@ public final class AppSettings {
         self.notifyScreenWidgetEnabled = repository.isNotifyScreenWidgetEnabled()
         self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
         self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
-        self.overviewModeEnabled = repository.overviewModeEnabled()
+        self.popoverOpensOn = repository.popoverOpensOn()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.menuBarPercentageEnabled = repository.menuBarPercentageEnabled()

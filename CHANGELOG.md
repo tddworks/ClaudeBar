@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Overview Mode**: the switch in Settings → General is gone; the new **All** pill does its job in one tap. If you had it on, the popover opens on All. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
+
+### Added
+- **All providers**: an **All** pill, first in the popover, shows every provider on one page, a card each with the quota that runs out first. Click a card to open that provider; ⌘0 comes back. Settings → General → Open On makes it the first page you see. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
+
 ---
 
 ## [0.5.12] - 2026-10-10

@@ -245,12 +245,17 @@ public final class JSONSettingsRepository:
         store.write(value: enabled, key: "app.touchBarEnabled")
     }
 
-    public func overviewModeEnabled() -> Bool {
-        store.read(key: "app.overviewModeEnabled") ?? false
+    public func popoverOpensOn() -> PopoverOpensOn {
+        if let saved: String = store.read(key: "app.popoverOpensOn") {
+            return PopoverOpensOn(rawValue: saved) ?? .whereILeftIt
+        }
+        // Overview Mode, which All replaced, read once: it opened on everything.
+        let hadOverviewMode: Bool = store.read(key: "app.overviewModeEnabled") ?? false
+        return hadOverviewMode ? .all : .whereILeftIt
     }
 
-    public func setOverviewModeEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "app.overviewModeEnabled")
+    public func setPopoverOpensOn(_ opensOn: PopoverOpensOn) {
+        store.write(value: opensOn.rawValue, key: "app.popoverOpensOn")
     }
 
     public func backgroundSyncEnabled() -> Bool {

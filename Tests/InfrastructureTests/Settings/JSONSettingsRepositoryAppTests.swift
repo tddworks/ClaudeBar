@@ -393,20 +393,46 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Overview
 
     @Test
-    func `should not start in the overview until asked`() {
+    func `should open where the person left it until they choose All`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        #expect(repo.overviewModeEnabled() == false)
+        #expect(repo.popoverOpensOn() == .whereILeftIt)
     }
 
     @Test
-    func `should remember turning the overview on`() {
+    func `should remember opening on All`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        repo.setOverviewModeEnabled(true)
-        #expect(repo.overviewModeEnabled() == true)
+        repo.setPopoverOpensOn(.all)
+        #expect(repo.popoverOpensOn() == .all)
+    }
+
+    @Test
+    func `should open on All for someone who had Overview Mode on`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"overviewModeEnabled":true}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        #expect(repo.popoverOpensOn() == .all)
+    }
+
+    @Test
+    func `should keep the person's choice over an old Overview Mode`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"overviewModeEnabled":true,"popoverOpensOn":"whereILeftIt"}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        #expect(repo.popoverOpensOn() == .whereILeftIt)
     }
 
     // MARK: - Background Sync
@@ -497,7 +523,7 @@ struct JSONSettingsRepositoryAppTests {
         repo1.setThemeMode("cli")
         repo1.setShowDailyUsageCards(false)
         repo1.setTouchBarEnabled(false)
-        repo1.setOverviewModeEnabled(true)
+        repo1.setPopoverOpensOn(.all)
         repo1.setMenuBarPercentageEnabled(true)
         repo1.setMenuBarPercentageProviderId("codex")
         repo1.setMenuBarPercentageQuotaKey("model:gpt-5")
@@ -507,7 +533,7 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo2.themeMode() == "cli")
         #expect(repo2.showDailyUsageCards() == false)
         #expect(repo2.touchBarEnabled() == false)
-        #expect(repo2.overviewModeEnabled() == true)
+        #expect(repo2.popoverOpensOn() == .all)
         #expect(repo2.menuBarPercentageEnabled() == true)
         #expect(repo2.menuBarPercentageProviderId() == "codex")
         #expect(repo2.menuBarPercentageQuotaKey() == "model:gpt-5")

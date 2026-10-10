@@ -31,7 +31,7 @@ A key that's missing means "use the default", so a fresh install starts with an 
 |---|---|---|
 | `app.*` | App-wide preferences: theme, menu bar readout, refresh, burn rate, status colors, notch, Touch Bar | `"app": { "burnRateWarningEnabled": true, "burnRateThreshold": 1.5 }` |
 | `providers.<id>.*` | Per-provider switches, keyed by the provider id | `"providers": { "gemini": { "isEnabled": false } }` |
-| `providers.order` | Your provider display order — the popover pills, the overview and ⌘1–⌘9 follow it; unset means registration order | `"providers": { "order": ["codex", "claude"] }` |
+| `providers.order` | Your provider display order — the popover pills, the All page and ⌘1–⌘9 follow it; unset means registration order | `"providers": { "order": ["codex", "claude"] }` |
 | `providers.<id>.cliPath` | The *CLI location* a person chose for a provider that runs a CLI; absent means "find it as usual" (#210) | `"providers": { "claude": { "cliPath": "/opt/tools/bin/claude" } }` |
 | `providers.<id>.hiddenQuotaKeys` | Quotas a person stopped watching for a product, by quota key (`model:gemini-2.0-flash`); shared by its accounts. A key no longer reported is ignored, and hiding every quota hides none (#140) | `"providers": { "gemini": { "hiddenQuotaKeys": ["model:gemini-2.0-flash"] } }` |
 | `<provider>.*` | A provider's own settings, each named in its definition's `settings` (`<id>.<setting>`), and its data source choice (`<id>.probeMode`) | `"kimi": { "probeMode": "api", "region": "international" }` |
@@ -55,6 +55,7 @@ A few `app.*` keys worth knowing:
 | `app.menuBarAccountLabelsEnabled` | `true` (default) shows names when the same provider has multiple enabled accounts; `false` hides those names. Single accounts never show an account name in either mode |
 | `app.hideAccountEmail` | `false` (default) shows account emails; `true` masks them as `s•••@g•••.com` in the menu bar, its tooltip and the popover. The eye beside the account toggles it ([#375](https://github.com/tddworks/ClaudeBar/issues/375)) |
 | `app.popoverTitle` | `""` (default) shows **ClaudeBar** at the top of the popover; any other text shows there instead, on one line, at most 24 characters ([popover title](features/popover-title/README.md)) |
+| `app.popoverOpensOn` | `whereILeftIt` (default) keeps the page the popover was on; `all` opens it on the All page every time. Unset with the old `app.overviewModeEnabled` on reads `all` ([all providers](features/all-providers/README.md)) |
 | `app.popoverTextSize` | `medium` (default), `large`, `extraLarge` — scales the popover's text up to 1.4× and widens the window to fit. No smaller step is offered: the popover's smallest labels are already 8pt |
 | `app.menuBarProviderSettings` | Per-provider menu bar choices: `{ "codex": { "primaryQuotaKey": "session", "secondaryQuotaKey": "weekly", "stacked": false, "stackedSize": "small" } }` |
 | `app.nativeMenuBarIconsEnabled` | `false` (default) keeps brand colors; `true` uses monochrome provider marks for every menu bar account, adapting to the bar’s appearance |

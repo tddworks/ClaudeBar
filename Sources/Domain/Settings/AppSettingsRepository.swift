@@ -105,10 +105,11 @@ public protocol AppSettingsRepository: Sendable {
     func touchBarEnabled() -> Bool
     func setTouchBarEnabled(_ enabled: Bool)
 
-    // MARK: - Overview
+    // MARK: - Popover
 
-    func overviewModeEnabled() -> Bool
-    func setOverviewModeEnabled(_ enabled: Bool)
+    /// Where the popover lands each time it opens (default: where it was left).
+    func popoverOpensOn() -> PopoverOpensOn
+    func setPopoverOpensOn(_ opensOn: PopoverOpensOn)
 
     // MARK: - Background Sync
 

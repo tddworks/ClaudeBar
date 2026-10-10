@@ -316,7 +316,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;
 
   <!-- ================= LIVE POPOVER ================= -->
   <h2 class="section-title">Try it</h2>
-  <p class="section-sub">Click <b>All</b>, tap any card to open that provider, use <b>← All</b> to come back. <b>Leaderboard</b> is there too, so you can feel the three kinds of page side by side. The menu bar keeps showing the selected provider; in All it shows the tightest one.</p>
+  <p class="section-sub">Click <b>All</b>, tap any card to open that provider, use <b>← All</b> to come back. <b>Leaderboard</b> is there too, so you can feel the three kinds of page side by side. The menu bar keeps showing the provider you last picked, on every page.</p>
 
   <div class="stage">
     <div class="col">
@@ -433,9 +433,9 @@ function renderPills(){
 }
 
 function renderMenubar(){
-  const p=sel==='leaderboard'?P.find(x=>x.id===lastProvider):sel==='all'?P.filter(p=>p.quotas).reduce((a,b)=>tightest(b).left<tightest(a).left?b:a):P.find(x=>x.id===sel);
+  const p=P.find(x=>x.id===lastProvider);
   const t=tightest(p);
-  el('menubar').innerHTML=`<div class="mb-item on"><div class="mb-dot">${p.icon}</div><span class="mb-pct">${t?t.left+'%':'--'}</span>${sel==='all'?'<span>· tightest</span>':''}</div><span>🔋 Sat 16:42</span>`;
+  el('menubar').innerHTML=`<div class="mb-item on"><div class="mb-dot">${p.icon}</div><span class="mb-pct">${t?t.left+'%':'--'}</span></div><span>🔋 Sat 16:42</span>`;
 }
 
 function header(logo,bg,title,sub,lvl,text){

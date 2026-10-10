@@ -40,6 +40,7 @@ Start with the [README](../README.md). Something broken? See [troubleshooting](t
 
 | Doc | What it's for |
 |---|---|
+| [all-providers](features/all-providers/README.md) | See every provider's quota at once in the popover's All tab, one card each with the quota that runs out first. Use when choosing which assistant to keep working with, or to make the popover open on All. |
 | [daily-usage](features/daily-usage/README.md) | Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe or Oh My Pi) session logs. Use when the cards are missing or the numbers look off. |
 | [extensions](features/extensions/README.md) | Add your own quota source to ClaudeBar with a manifest.json and a script that prints JSON, in ~/.claudebar/extensions/. Use when writing an extension or when one doesn't show up. |
 | [in-use](features/in-use/README.md) | Choose which Claude or Codex login new terminal sessions start with — switch by hand, get a nudge when it runs low, or let ClaudeBar switch. Use when you have personal and work logins and want the next `claude` on the one with room. |
