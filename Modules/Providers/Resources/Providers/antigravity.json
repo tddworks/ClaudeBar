@@ -100,6 +100,13 @@
           "account": "antigravity",
           "encoding": "goKeyringBase64",
           "token": "$.token.access_token"
+        },
+        "refresh": {
+          "cli": {
+            "cli": "agy",
+            "args": ["models"],
+            "timeout": 30
+          }
         }
       },
       "fetch": {

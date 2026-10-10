@@ -25,19 +25,39 @@ struct AntigravityDefinitionTests {
         var requests: [URLRequest] { lock.withLock { stored } }
     }
 
+    /// The Keychain item `agy` keeps its login in; running `agy` renews it.
+    final class Login: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: String?
+        init(_ value: String?) { stored = value }
+        var value: String? {
+            get { lock.withLock { stored } }
+            set { lock.withLock { stored = newValue } }
+        }
+    }
+
     /// `answers`: path suffix → (status, body); anything else is a 404.
+    /// `renewed`: the login `agy` saves when it runs — nil when `agy` isn't installed.
     private func make(running: Bool = true, answers: [String: (Int, String)] = [:], keychain: String? = nil,
-                      seen: Seen = Seen()) throws -> Provider {
+                      renewed: String? = nil, seen: Seen = Seen()) throws -> Provider {
+        let login = Login(keychain)
         let commands = MockCLIExecutor()
-        given(commands).locate(.any).willReturn(nil)
+        given(commands).locate(.any).willProduce { @Sendable binary in
+            binary == "agy" && renewed != nil ? "/Users/me/.local/bin/agy" : nil
+        }
         given(commands).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willProduce { @Sendable binary, _, _, _, _, _ in
-                CLIResult(output: binary.hasSuffix("pgrep") ? (running ? Self.processLine : "") : Self.lsof)
+                if binary == "agy" {
+                    login.value = renewed
+                    return CLIResult(output: "")
+                }
+                return CLIResult(output: binary.hasSuffix("pgrep") ? (running ? Self.processLine : "") : Self.lsof)
             }
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             seen.add(request)
             let path = request.url?.path ?? ""
+            if request.value(forHTTPHeaderField: "Authorization") == "Bearer ya29.stale" { return (Data(), StubbedProvider.response(401)) }
             guard let answer = answers.first(where: { path.hasSuffix($0.key) })?.value else { return (Data(), StubbedProvider.response(404)) }
             return (Data(answer.1.utf8), StubbedProvider.response(answer.0))
         }
@@ -46,7 +66,7 @@ struct AntigravityDefinitionTests {
             DataSources.make(source, providerId: definition.id, cliExecutor: commands, network: network,
                              makeTransport: { _, _, _, _ in MockRPCTransport() },
                              security: { @Sendable arguments in
-                                 guard let keychain, arguments.contains("gemini"), arguments.contains("antigravity") else { return (44, "") }
+                                 guard let keychain = login.value, arguments.contains("gemini"), arguments.contains("antigravity") else { return (44, "") }
                                  return (0, "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString())
                              },
                              scripts: ProviderFactory.builtInScripts, environment: { _ in nil },
@@ -104,9 +124,28 @@ struct AntigravityDefinitionTests {
         #expect(first.value(forHTTPHeaderField: "Authorization") == "Bearer ya29.valid")
     }
 
-    @Test func `should ask to sign in again when the saved login is refused`() async throws {
+    @Test func `should ask to sign in when the saved login is refused and agy isn't there to renew it`() async throws {
         let provider = try make(running: false, answers: ["retrieveUserQuotaSummary": (401, "")],
                                 keychain: #"{"token":{"access_token":"ya29.stale"}}"#)
+        await #expect(throws: UsageError.authenticationRequired) {
+            try await provider.refreshPlain()
+        }
+    }
+
+    @Test(.needsScriptEngine) func `should run agy to renew a saved login Google refuses, then show the quota`() async throws {
+        let seen = Seen()
+        let provider = try make(running: false, answers: ["retrieveUserQuotaSummary": (200, Self.summary)],
+                                keychain: #"{"token":{"access_token":"ya29.stale","refresh_token":"1//r"}}"#,
+                                renewed: #"{"token":{"access_token":"ya29.fresh","refresh_token":"1//r"}}"#, seen: seen)
+        let snapshot = try await provider.refreshPlain()
+        #expect(snapshot.quotas.count == 4)
+        #expect(seen.requests.last?.value(forHTTPHeaderField: "Authorization") == "Bearer ya29.fresh")
+    }
+
+    @Test func `should ask to sign in again when agy's renewed login is refused too`() async throws {
+        let provider = try make(running: false, answers: ["retrieveUserQuotaSummary": (401, "")],
+                                keychain: #"{"token":{"access_token":"ya29.stale"}}"#,
+                                renewed: #"{"token":{"access_token":"ya29.revoked"}}"#)
         await #expect(throws: UsageError.sessionExpired(hint: "Sign in to Antigravity or run `agy` again.")) {
             try await provider.refreshPlain()
         }

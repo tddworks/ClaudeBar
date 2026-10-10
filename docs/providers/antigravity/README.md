@@ -22,11 +22,12 @@ ClaudeBar picks a source automatically on each refresh:
 
 ## Permissions
 
-- **Keychain.** When Antigravity isn't running, ClaudeBar reads its saved Google sign-in (Keychain item `gemini`, account `antigravity`) through `/usr/bin/security`. It only reads this item and never changes it. If macOS asks whether to allow access, allow it, or the quota won't show while the app is closed.
+- **Keychain.** When Antigravity isn't running, ClaudeBar reads its saved Google sign-in (Keychain item `gemini`, account `antigravity`) through `/usr/bin/security`. It never writes this item itself; when the saved sign-in has expired, it runs `agy models` once so `agy` renews it. If macOS asks whether to allow access, allow it, or the quota won't show while the app is closed.
 
 ## Gotchas
 
-- **"Session expired. Sign in to Antigravity or run `agy` again."** ClaudeBar doesn't refresh Antigravity's sign-in itself. Every time the app or `agy` runs, the saved token is renewed. Once it expires with nothing running, open Antigravity or run `agy` once.
+- **"Session expired. Sign in to Antigravity or run `agy` again."** The saved sign-in lasts about an hour. When it has expired, ClaudeBar runs `agy models` once to renew it; this message means Google refused the renewed one too, so sign in again. Before this fix, it showed whenever nothing had run Antigravity for an hour, though you were signed in ([#541](https://github.com/tddworks/ClaudeBar/issues/541)).
+- **"Authentication required" with the app closed** means the saved sign-in expired and `agy` isn't on your login shell's `PATH` to renew it. Open Antigravity or run `agy` once, then refresh.
 - **"Command did not complete within the timeout" with the app closed** was a bug in 0.4.92 and earlier ([#301](https://github.com/tddworks/ClaudeBar/issues/301)): ClaudeBar treated "no Antigravity process" as a failure and never tried the Cloud Code fallback.
 - **The Claude pool shows as "Claude" and "Claude Weekly" cards, and the Gemini pool as Session and Weekly.** The cards are no longer grouped under "Gemini" / "Claude & others".
 - **"Authentication required" while Antigravity is running** means ClaudeBar found the language server process but its command line had no `--csrf_token`. Restart Antigravity.

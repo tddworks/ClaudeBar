@@ -8,6 +8,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 - **`local` is a `localServer` fetch**: the process found by name and command-line pattern (`pgrep -lf`), `csrfToken` and `extensionPort` read from its arguments, its listening ports from `lsof`, then the three language-server paths on each port over HTTPS (self-signed accepted on 127.0.0.1 only), the extension port over plain HTTP last. Readiness reads running executables' paths from the kernel, without starting a process.
 - **`cloud` is `http.steps`** over the daily and production Cloud Code hosts: the quota summary, then the per-model list unless a summary answered, then `loadCodeAssist` for the plan. Its key is the Keychain item `gemini` / `antigravity` (`encoding: goKeyringBase64`, `$.token.access_token`); a refused one is the `agy` hint.
+- **The login is renewed by its CLI** (`refresh: {"cli": …}`), as Gemini's is: on a 401, `agy models` runs, renews the Keychain item itself, and the item is read again. The refresher doesn't write back, so ClaudeBar never writes the item. Never proactive: the expiry isn't checked.
 - **Not running hands over to `cloud`** (`fallbackOn.cliNotFound`), so with the app closed, the cloud's own failure is the one shown.
 - **Window law.** The 5-hour buckets, `3p-5h` included, are 5 hours; the weekly ones a week; a per-model quota is the 5-hour window (the probe said 7 days).
 - **Not taken:** the card and menu-bar titles and groups (`compactTitle`, `menuBarTitle`, `group`) — page fields, not usage; added accounts, until one can carry a refreshable login.
@@ -34,7 +35,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 ## Cloud Code (app closed)
 
 - **Token**: `security find-generic-password -s gemini -a antigravity -w`. The value is `go-keyring-base64:`-wrapped JSON `{ "token": { "access_token", "refresh_token", "expiry" } }`; `accessToken`/`expires_at`/`expiresAt` are also accepted. ClaudeBar only reads this item and never writes back to it.
-- **No refresh.** The token is sent as it is, and a token within 60 s of expiry counts as expired. Refreshing it would mean embedding Antigravity's OAuth client credentials, so ClaudeBar doesn't. The token is refreshed whenever the app or `agy` runs. Expired or rejected → `sessionExpired("Sign in to Antigravity or run `agy` again.")`.
+- **Renewed by `agy`, not by ClaudeBar.** The token is sent as it is; it lives about an hour. Refreshing it with OAuth would mean embedding Antigravity's client credentials, so ClaudeBar doesn't: on a 401 it runs `agy models` once (30 s timeout), which renews the item, reads it again and retries. Still rejected → `sessionExpired("Sign in to Antigravity or run `agy` again.")`; `agy` not installed → `authenticationRequired`.
 - **Endpoints**: `POST` to `https://daily-cloudcode-pa.googleapis.com` first, then `https://cloudcode-pa.googleapis.com`, with `User-Agent: antigravity` and full TLS validation:
   - `/v1internal:retrieveUserQuotaSummary`: the pooled summary.
   - `/v1internal:fetchAvailableModels`: legacy per-model quotas. Models with `isInternal` are dropped.
@@ -61,4 +62,5 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 - The local server is reached on `localhost` / `127.0.0.1` only, and a redirect must keep its scheme, host and port; anything else is refused before the server's token could leave the Mac.
 
 - `pgrep` matches on `language_server`, so an `agy` process is only found if its command line contains that string. The `agy` name check only runs on lines `pgrep` has already matched.
+- If the saved token has expired and `agy` isn't installed (only the desktop app is), nothing can renew it until the app runs again. The user sees "Authentication required".
 - If the keychain item's service or account changes in a future Antigravity build, the app-closed fallback stops working without any error beyond "not running and no stored credentials".

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Claude Code card**: finished sessions no longer take a row each. The card shows a count (*1 needs you · 2 working · 5 done*) and rows only for sessions still going; ▾ shows the Done ones, one row per repo. *Needs you* is now red and *Done* grey, in the menu bar and notch too. ([#534](https://github.com/tddworks/ClaudeBar/pull/534)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/session-hooks/README.md)
 
 ### Fixed
+- **Antigravity with the app closed**: when the saved sign-in has expired, ClaudeBar runs `agy` once to renew it and shows your quota, instead of *Session expired* whenever Antigravity hadn't run for an hour. ([#541](https://github.com/tddworks/ClaudeBar/issues/541))
 - **The 30-day chart**: the *Daily usage — last 30 days* card draws as soon as the popover opens, the way the cards above it do — before, it stayed invisible for a second and never appeared at all in a screenshot. ([#536](https://github.com/tddworks/ClaudeBar/pull/536))
 
 ### Added
