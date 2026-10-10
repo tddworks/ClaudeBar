@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar · All providers in one view</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens and base pieces copied from ../claudebar-pop-theme.html so this page reads as the same theme. */
+:root{
+  --cream:#FDF5EA; --paper:#FFFFFF; --ink:#1B1613;
+  --mint:#8EE3B0; --mint-deep:#5CCB8C; --purple:#8B5CF6; --purple-soft:#E9DEFF;
+  --coral:#FF7A66; --coral-soft:#FFE1DA; --butter:#FFD966; --sky:#8FD3FF; --pink:#FFB5D8;
+  --muted:#6B625B; --dash:#e4d8ca;
+  --b:2.5px solid var(--ink); --sh:4px 4px 0 var(--ink);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,sans-serif;
+  background-image:radial-gradient(#e9dccb 1.2px,transparent 1.2px);background-size:22px 22px;min-height:100vh}
+.display{font-family:"Lilita One",sans-serif;letter-spacing:.3px;font-weight:400}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 16px 80px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;border:1.5px solid var(--ink);border-radius:6px;padding:0 5px}
+
+/* ---------- intro ---------- */
+.hero{background:var(--sky);border:var(--b);border-radius:28px;box-shadow:8px 8px 0 var(--ink);padding:30px 34px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:999px;padding:7px 16px;font-weight:800;font-size:13px}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+.hero h1{font-family:"Lilita One";font-weight:400;font-size:clamp(34px,5vw,56px);line-height:1.05;margin-top:16px;color:#fff;
+  -webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink)}
+.hero h1 span{display:inline-block;background:var(--ink);color:#fff;-webkit-text-stroke:0;text-shadow:none;border-radius:14px;padding:2px 16px 6px;margin-top:6px}
+.hero p{max-width:720px;margin-top:14px;font-weight:600;color:#12324a;line-height:1.55}
+.tag{display:inline-block;background:var(--coral);border:2px dashed var(--ink);border-radius:8px;padding:5px 10px;font-weight:800;transform:rotate(-5deg);box-shadow:3px 3px 0 var(--ink);font-size:13px}
+.section-title{font-family:"Lilita One";font-weight:400;font-size:30px;margin:40px 0 4px}
+.section-sub{color:var(--muted);font-weight:600;max-width:860px;line-height:1.5}
+.label{font-weight:800;background:var(--paper);border:var(--b);border-radius:999px;padding:5px 14px;box-shadow:3px 3px 0 var(--ink);font-size:13px;display:inline-block}
+
+/* ---------- journey storyboard ---------- */
+.journey{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:20px}
+.step{background:var(--paper);border:var(--b);border-radius:20px;box-shadow:var(--sh);padding:14px;display:flex;flex-direction:column;gap:10px;position:relative}
+.step .n{position:absolute;top:-14px;left:14px;width:30px;height:30px;border:var(--b);border-radius:10px;background:var(--butter);display:grid;place-items:center;font-family:"Lilita One";font-size:16px;box-shadow:2px 2px 0 var(--ink)}
+.step h3{font-family:"Lilita One";font-weight:400;font-size:18px;margin-top:8px;line-height:1.15}
+.step p{font-size:12px;font-weight:600;color:var(--muted);line-height:1.45}
+.step .feel{font-size:11px;font-weight:800;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;background:var(--coral-soft);margin-top:auto}
+.step .feel.good{background:#DDF6E7}
+.step:not(:last-child)::after{content:"→";position:absolute;right:-15px;top:46%;font-family:"Lilita One";font-size:22px;z-index:2}
+.thumb{border:2px solid var(--ink);border-radius:12px;background:var(--cream);padding:7px;display:flex;flex-direction:column;gap:5px;min-height:118px}
+.t-pills{display:flex;gap:3px}
+.t-pills b{height:10px;flex:1;border:1.5px solid var(--ink);border-radius:99px;background:var(--paper)}
+.t-pills b.on{background:var(--ink)}
+.t-pills b.all{flex:.7;background:var(--butter)}
+.t-pills b.all.on{background:var(--ink)}
+.t-card{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:20px}
+.t-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.t-grid i{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:28px;position:relative}
+.t-grid i::after{content:"";position:absolute;right:4px;top:5px;width:14px;height:14px;border-radius:50%;border:3px solid var(--c,var(--mint))}
+.t-grid i.hl{outline:2.5px solid var(--purple);outline-offset:1px}
+.cursor{font-size:16px;position:absolute}
+
+/* ---------- popover ---------- */
+.stage{margin-top:20px;display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.menubar{width:400px;height:30px;background:rgba(255,255,255,.75);border:var(--b);border-radius:10px;box-shadow:var(--sh);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px;font-size:12px;font-weight:700}
+.mb-item{display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:7px}
+.mb-item.on{background:var(--ink);color:#fff}
+.mb-dot{width:14px;height:14px;border-radius:5px;border:2px solid var(--ink);display:grid;place-items:center;font-size:8px}
+.mb-item.on .mb-dot{border-color:#fff}
+.mb-pct{font-family:"Lilita One";font-weight:400;font-size:13px}
+.popover{width:400px;background:var(--cream);border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding:14px;position:relative;
+  background-image:radial-gradient(#ecdfcd 1.1px,transparent 1.1px);background-size:18px 18px}
+.popover::before{content:"";position:absolute;top:-11px;right:70px;width:18px;height:18px;background:var(--cream);border-left:3px solid var(--ink);border-top:3px solid var(--ink);transform:rotate(45deg)}
+.p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.p-brand{display:flex;align-items:center;gap:9px}
+.logo{width:32px;height:32px;border:var(--b);border-radius:10px;background:var(--coral);display:grid;place-items:center;font-size:16px;box-shadow:2px 2px 0 var(--ink)}
+.p-brand .display{font-size:22px}
+.p-brand small{display:block;font-size:10px;font-weight:700;color:var(--muted);margin-top:-2px}
+.status-chip{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:800;background:var(--mint);box-shadow:2px 2px 0 var(--ink);display:flex;align-items:center;gap:5px}
+.status-chip i{width:7px;height:7px;border-radius:50%;background:var(--ink)}
+.status-chip.warn{background:var(--butter)}.status-chip.crit{background:var(--coral)}
+
+.pills{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.pill{flex:none;display:flex;align-items:center;gap:6px;border:var(--b);border-radius:999px;padding:5px 11px 5px 6px;font-weight:800;font-size:12px;background:var(--paper);box-shadow:2px 2px 0 var(--ink);cursor:pointer;transition:transform .1s,box-shadow .1s}
+.pill:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.pill.on{background:var(--ink);color:#fff}
+.pill .pi{width:20px;height:20px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--ink)}
+.pill.on .pi{border-color:#fff}
+.pill .dot{width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor}
+.pill.all{background:var(--butter);padding:5px 11px 5px 6px}
+.pill.all.on{background:var(--ink)}
+.pill.all .pi{background:var(--paper);font-size:11px}
+.pill.pulse{animation:pulse 1.4s ease-in-out 3}
+@keyframes pulse{50%{box-shadow:0 0 0 5px var(--purple)}}
+
+.card{background:var(--paper);border:var(--b);border-radius:var(--r);box-shadow:var(--sh)}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* focus view (one provider), trimmed from the Pop popover */
+.account{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.avatar{width:36px;height:36px;border:var(--b);border-radius:12px;background:var(--pink);display:grid;place-items:center;font-family:"Lilita One";font-size:18px;flex:none}
+.acc-name{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px}
+.acc-meta{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:1px}
+.tier{font-size:9px;font-weight:800;border:2px solid var(--ink);border-radius:999px;padding:1px 7px;background:var(--purple);color:#fff;flex:none}
+.back{margin-left:auto;border:2px solid var(--ink);border-radius:999px;background:var(--butter);font:800 10.5px "Plus Jakarta Sans";padding:4px 10px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.quotas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quota{padding:10px 12px 11px}
+.quota.wide{grid-column:span 2}
+.q-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.q-name{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.q-status{font-size:8.5px;font-weight:800;border:1.5px solid var(--ink);border-radius:999px;padding:1px 6px}
+.q-status.ok{background:var(--mint)}.q-status.warn{background:var(--butter)}.q-status.crit{background:var(--coral)}.q-status.off{background:var(--dash)}
+.q-pct{font-family:"Lilita One";font-size:34px;line-height:1.05;margin-top:4px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:2px 2px 0 var(--ink)}
+.q-pct small{font-family:"Plus Jakarta Sans";font-size:10px;font-weight:800;color:var(--muted);-webkit-text-stroke:0;text-shadow:none;margin-left:3px}
+.track{height:14px;border:2px solid var(--ink);border-radius:999px;background:repeating-linear-gradient(135deg,#F3EADD 0 4px,#E9DECF 4px 6px);overflow:hidden;margin-top:6px}
+.track i{display:block;height:100%;border-right:2px solid var(--ink);border-radius:999px 0 0 999px}
+.q-foot{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--muted);margin-top:6px}
+.q-foot b{color:var(--ink)}
+
+/* overview (all providers) */
+.ov-sum{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800}
+.ov-sum span{border:2px solid var(--ink);border-radius:999px;padding:2px 9px;background:var(--paper)}
+.ov-sum .w{background:var(--butter)}.ov-sum .c{background:var(--coral)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini{padding:10px 10px 8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:transform .1s,box-shadow .1s;position:relative}
+.mini:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+.mini:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.mini.attn{background:#FFF7F2}
+.m-top{display:flex;align-items:center;gap:6px}
+.m-top .pi{width:22px;height:22px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.m-top b{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-top .q-status{margin-left:auto}
+.m-body{display:flex;align-items:center;gap:8px}
+.m-rows{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.m-row{font-size:9.5px;font-weight:700;color:var(--muted);line-height:1.2}
+.m-row b{display:flex;justify-content:space-between;color:var(--ink);font-size:10.5px;font-weight:800}
+.m-row.tight b{color:var(--ink)}
+.m-row.tight b em{font-style:normal;background:var(--coral-soft);border-radius:4px;padding:0 3px}
+.ring{width:56px;height:56px;flex:none;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:"Lilita One";font-weight:400;font-size:15px}
+.m-foot{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-weight:800;color:var(--muted);border-top:2px dashed var(--dash);padding-top:5px}
+.m-foot span:last-child{color:var(--purple)}
+.mini.off .m-body{opacity:.7}
+
+.foot{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
+.fbtn{border:var(--b);border-radius:12px;background:var(--paper);box-shadow:3px 3px 0 var(--ink);padding:7px 0;font:800 10.5px "Plus Jakarta Sans";cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.fbtn span{font-size:14px}
+.fbtn.primary{background:var(--mint)}.fbtn.quit{background:var(--coral-soft)}
+.updated{font-size:10px;font-weight:700;color:var(--muted);text-align:center;margin-top:8px}
+.coach{position:relative;margin:2px 0 12px;background:var(--purple);color:#fff;border:var(--b);border-radius:14px;box-shadow:var(--sh);padding:8px 11px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.coach::before{content:"";position:absolute;left:22px;top:-9px;width:13px;height:13px;background:var(--purple);border-left:2.5px solid var(--ink);border-top:2.5px solid var(--ink);transform:rotate(45deg)}
+.coach button{margin-left:auto;border:2px solid var(--ink);border-radius:999px;background:#fff;font:800 10px "Plus Jakarta Sans";padding:2px 9px;cursor:pointer;flex:none}
+
+/* notes beside the live popover */
+.notes{max-width:420px;display:flex;flex-direction:column;gap:12px}
+.note{background:var(--paper);border:var(--b);border-radius:16px;box-shadow:var(--sh);padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.5}
+.note h4{font-family:"Lilita One";font-weight:400;font-size:17px;margin-bottom:3px}
+.note.alt{background:var(--purple-soft)}
+.kbd{display:inline-block;border:2px solid var(--ink);border-bottom-width:3.5px;border-radius:6px;padding:0 5px;font:800 11px ui-monospace,Menlo,monospace;background:#fff}
+
+/* settings window */
+.window{width:560px;background:var(--cream);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
+.titlebar{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:var(--b);background:var(--paper)}
+.titlebar i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink)}
+.titlebar b{margin-left:10px;font-family:"Lilita One";font-weight:400;font-size:16px}
+.win-body{display:grid;grid-template-columns:150px 1fr}
+.side{border-right:var(--b);padding:12px 10px;display:flex;flex-direction:column;gap:6px;background:#FBF3E7}
+.side span{font-size:12px;font-weight:800;padding:6px 10px;border-radius:10px}
+.side span.on{background:var(--ink);color:#fff}
+.pane{padding:14px 16px}
+.group-label{font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:2px 2px 8px}
+.rows{padding:2px 12px}
+.r{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:2px dashed var(--dash);font-weight:700;font-size:12.5px}
+.r:last-child{border:none}
+.r small{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;padding:2px;background:var(--paper);margin-left:auto;flex:none}
+.seg span{font-size:10.5px;font-weight:800;padding:3px 10px;border-radius:999px;cursor:pointer}
+.seg span.on{background:var(--ink);color:#fff}
+.toggle{margin-left:auto;width:42px;height:24px;border:2px solid var(--ink);border-radius:999px;background:var(--mint);position:relative;cursor:pointer;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:19px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--ink);transition:left .15s}
+.toggle.off{background:var(--dash)}.toggle.off::after{left:2px}
+
+/* ownership table */
+.map{margin-top:16px;width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:var(--b);border-radius:18px;box-shadow:var(--sh);overflow:hidden;font-size:13px}
+.map th,.map td{text-align:left;padding:9px 12px;border-bottom:2px dashed var(--dash);vertical-align:top}
+.map tr:last-child td{border:none}
+.map th{background:var(--ink);color:#fff;font-weight:800}
+.new{background:var(--butter);border:1.5px solid var(--ink);border-radius:999px;font-size:10px;font-weight:800;padding:1px 7px;margin-left:4px}
+
+.concept-badge{position:fixed;right:16px;bottom:16px;background:var(--ink);color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:12px;z-index:10;box-shadow:3px 3px 0 var(--purple)}
+@media (max-width:1100px){.journey{grid-template-columns:repeat(2,1fr)}.step::after{display:none}}
+@media (max-width:760px){.journey{grid-template-columns:1fr}.popover,.menubar,.window{width:100%}.win-body{grid-template-columns:1fr}.side{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="badge"><i></i>POP THEME · CONCEPT</div>
+    <h1>Every quota,<br><span>one glance.</span></h1>
+    <p>Someone who pays for Claude, Codex, Gemini and Copilot today opens the popover and clicks through four pills to learn one thing: <b>which of them can I keep working with?</b> <b>All</b> is a new first pill that answers it in one view: a small card per provider with its tightest quota as a ring. Tap a card to open that provider as you know it today.</p>
+    <div style="display:flex;gap:16px;align-items:center;margin-top:18px;flex-wrap:wrap">
+      <span class="tag">ONE NEW PILL ✨</span>
+      <span style="font-weight:700;font-size:14px;color:#12324a">No new window, no new mode to learn:<br>the pills you already use, plus one.</span>
+    </div>
+  </div>
+
+  <!-- ================= JOURNEY ================= -->
+  <h2 class="section-title">The journey</h2>
+  <p class="section-sub">Riko codes all day across three agents. Between tasks they want to know where they stand before picking which CLI to open next.</p>
+
+  <div class="journey">
+    <div class="step">
+      <div class="n">1</div>
+      <h3>Today: one provider at a time</h3>
+      <div class="thumb">
+        <div class="t-pills"><b class="on"></b><b></b><b></b><b></b></div>
+        <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
+      </div>
+      <p>The popover opens on Claude. To see Codex and Gemini, Riko clicks each pill and reads each page.</p>
+      <div class="feel">😮‍💨 "Four clicks to answer one question."</div>
+    </div>
+    <div class="step">
+      <div class="n">2</div>
+      <h3>Spots the new All pill</h3>
+      <div class="thumb">
+        <div class="t-pills"><b class="all" style="outline:2.5px solid var(--purple);outline-offset:1px"></b><b class="on"></b><b></b><b></b></div>
+        <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
+      </div>
+      <p>After the update, a butter-yellow <b>All</b> pill sits first in the row, with a one-time tip pointing at it. It is just another pill: nothing to set up.</p>
+      <div class="feel good">👀 "Oh, that's new."</div>
+    </div>
+    <div class="step">
+      <div class="n">3</div>
+      <h3>Sees every provider at once</h3>
+      <div class="thumb">
+        <div class="t-pills"><b class="all on"></b><b></b><b></b><b></b></div>
+        <div class="t-grid"><i style="--c:var(--coral)"></i><i style="--c:var(--butter)"></i><i></i><i></i><i></i><i style="--c:var(--dash)"></i></div>
+      </div>
+      <p>One card per provider: its tightest quota as a ring, the next reset, and a status chip. The header counts what needs attention.</p>
+      <div class="feel good">😌 "Claude Opus is nearly out, Codex is fine. Codex it is."</div>
+    </div>
+    <div class="step">
+      <div class="n">4</div>
+      <h3>Taps a card to dig in</h3>
+      <div class="thumb">
+        <div class="t-pills"><b class="all"></b><b class="on"></b><b></b><b></b></div>
+        <div class="t-card" style="height:34px"></div><div class="t-card"></div><div class="t-card"></div>
+      </div>
+      <p>Tapping Claude's card selects the Claude pill: the full page, chart and cost as today. <b>← All</b> or <span class="kbd">⌘0</span> goes back.</p>
+      <div class="feel good">👌 "Same page I know, one tap away."</div>
+    </div>
+    <div class="step">
+      <div class="n">5</div>
+      <h3>It opens where they left it</h3>
+      <div class="thumb">
+        <div class="t-pills"><b class="all on"></b><b></b><b></b><b></b></div>
+        <div class="t-grid"><i style="--c:var(--coral)"></i><i style="--c:var(--butter)"></i><i></i><i></i><i></i><i style="--c:var(--dash)"></i></div>
+      </div>
+      <p>Next time the popover opens on the pill last used, All included. Anyone who wants it every time picks <b>Open on: All</b> in Settings.</p>
+      <div class="feel good">🏠 "All is home now."</div>
+    </div>
+  </div>
+
+  <!-- ================= LIVE POPOVER ================= -->
+  <h2 class="section-title">Try it</h2>
+  <p class="section-sub">Click the <b>All</b> pill, tap any card to open that provider, then use <b>← All</b> to come back. The menu bar keeps showing the selected provider; in All it shows the tightest one.</p>
+
+  <div class="stage">
+    <div class="col">
+      <div class="label">The popover</div>
+      <div class="menubar" id="menubar"></div>
+      <div class="popover" style="margin-top:6px">
+        <div class="p-head">
+          <div class="p-brand"><div class="logo" id="hLogo">✻</div><div><div class="display" id="hTitle">ClaudeBar</div><small id="hSub">AI quotas, at a glance</small></div></div>
+          <div class="status-chip" id="hChip"><i></i>HEALTHY</div>
+        </div>
+        <div class="pills" id="pills"></div>
+        <div class="coach" id="coach">✨ New: <b>All</b> shows every provider at once.<button id="coachOk">Got it</button></div>
+        <div class="stack" id="body"></div>
+        <div class="stack" style="margin-top:12px">
+          <div class="foot">
+            <button class="fbtn primary"><span>↻</span>Refresh</button>
+            <button class="fbtn"><span>🌐</span>Dashboard</button>
+            <button class="fbtn"><span>⚙️</span>Settings</button>
+            <button class="fbtn quit"><span>⏻</span>Quit</button>
+          </div>
+          <div class="updated">⌘0 all providers · ⌘1–9 one provider · ⌘R refresh</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div class="note"><h4>What a card shows</h4>The provider, its status chip, a ring for its <b>tightest</b> quota (the one that runs out first) and up to two quota rows with their resets. A provider with several accounts shows its tightest account and a count ("3 accounts"). One that isn't signed in or failed shows <b>--</b> and the reason, so nothing silently disappears.</div>
+      <div class="note"><h4>Order stays put</h4>Cards follow the pill order you already set in Settings → Providers. They don't jump around as quotas change, so Riko's eyes learn where Claude lives.</div>
+      <div class="note alt"><h4>Not in the overview</h4>Cost, today's usage and the 30-day chart stay on each provider's page. The overview answers "can I keep working?", not "how much did I spend?".</div>
+      <div class="note"><h4>Keyboard</h4><span class="kbd">⌘0</span> All · <span class="kbd">⌘1</span>–<span class="kbd">⌘9</span> a provider, as today · <span class="kbd">←</span> <span class="kbd">→</span> move between cards, <span class="kbd">↩</span> opens one.</div>
+    </div>
+  </div>
+
+  <!-- ================= SETTINGS ================= -->
+  <h2 class="section-title">Making it home</h2>
+  <p class="section-sub">Nothing is required: the popover remembers the last pill. One setting is for people who want All every time, and one for people who never want it.</p>
+  <div class="stage">
+    <div class="col">
+      <div class="label">Settings → General</div>
+      <div class="window">
+        <div class="titlebar"><i style="background:var(--coral)"></i><i style="background:var(--butter)"></i><i style="background:var(--mint)"></i><b>Settings</b></div>
+        <div class="win-body">
+          <div class="side"><span class="on">General</span><span>Appearance</span><span>Menu Bar</span><span>Providers</span><span>Notify!</span><span>About</span></div>
+          <div class="pane">
+            <div class="group-label">Popover</div>
+            <div class="card rows">
+              <div class="r"><div>Open on<small>Which pill is selected when the popover opens</small></div>
+                <div class="seg" id="openOn"><span class="on">Last used</span><span>All</span><span>First provider</span></div></div>
+              <div class="r"><div>Show the All pill<small>Turn off if you only use one provider</small></div><div class="toggle" id="allToggle"></div></div>
+            </div>
+            <div class="group-label" style="margin-top:14px">With one provider</div>
+            <div class="card rows"><div class="r"><div>All is hidden automatically<small>An overview of one card says nothing the provider's page doesn't</small></div><span class="q-status off">AUTO</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= OWNERSHIP ================= -->
+  <h2 class="section-title">Who decides what</h2>
+  <p class="section-sub">The view draws; it never compares quotas. Every judgement on the card is something the domain already knows or is told once.</p>
+  <table class="map">
+    <tr><th>On the card</th><th>Decided by</th><th>Notes</th></tr>
+    <tr><td>Status chip, header count ("1 critical · 1 warning")</td><td>each provider's existing status · <code>QuotaMonitor</code></td><td>the same status the menu bar dot uses today</td></tr>
+    <tr><td>The ring: tightest quota</td><td><code>UsageSnapshot</code>'s lowest quota<span class="new">CHECK</span></td><td>if the snapshot can't say it yet, it becomes one rule there, never a <code>min()</code> in a view</td></tr>
+    <tr><td>Tightest account for multi-account providers</td><td>the provider's accounts (as the multi-account callout does)</td><td>reuses #366's "causing Warning" rule</td></tr>
+    <tr><td>Card order, which providers appear</td><td>the enabled providers in their saved order</td><td>no new list</td></tr>
+    <tr><td>Selected pill incl. All, "Open on"</td><td>settings via <code>JSONSettingsRepository</code><span class="new">NEW KEY</span></td><td>popover state, not a provider setting</td></tr>
+  </table>
+</div>
+<div class="concept-badge">CONCEPT · not built yet</div>
+
+<script>
+// Mock data only: no real names, emails or usage.
+const P=[
+  {id:'claude',name:'Claude',icon:'✻',bg:'var(--coral)',acct:'riko@example.com',tier:'MAX',via:'CLI',
+    quotas:[{n:'Session',left:62,reset:'in 2h 5m'},{n:'Weekly',left:35,reset:'Tue 9:00'},{n:'Opus · weekly',left:9,reset:'Tue 9:00'}]},
+  {id:'codex',name:'Codex',icon:'◎',bg:'var(--sky)',acct:'Personal',tier:'PLUS',via:'RPC',accounts:3,
+    quotas:[{n:'Session',left:18,reset:'in 3h 40m'},{n:'Weekly',left:41,reset:'Fri 18:00'}]},
+  {id:'gemini',name:'Gemini',icon:'✦',bg:'var(--purple-soft)',acct:'riko@example.com',tier:'PRO',via:'API',
+    quotas:[{n:'Pro · daily',left:71,reset:'in 9h'},{n:'Flash · daily',left:88,reset:'in 9h'}]},
+  {id:'copilot',name:'Copilot',icon:'◆',bg:'var(--butter)',acct:'riko-dev',tier:'PRO',via:'API',
+    quotas:[{n:'Premium requests',left:100,reset:'Nov 1'}]},
+  {id:'antigravity',name:'Antigravity',icon:'A',bg:'#DDF6E7',acct:'riko@example.com',tier:'FREE',via:'LOCAL',
+    quotas:[{n:'5-hour',left:100,reset:'in 4h 33m'},{n:'Weekly',left:100,reset:'Thu 21:33'}]},
+  {id:'kimi',name:'Kimi',icon:'K',bg:'var(--pink)',error:'Not signed in',hint:'Run kimi login'}
+];
+const level=l=>l==null?'off':l<15?'crit':l<40?'warn':'ok';
+const word={ok:'HEALTHY',warn:'WARNING',crit:'CRITICAL',off:'OFFLINE'};
+const color={ok:'var(--mint)',warn:'var(--butter)',crit:'var(--coral)',off:'var(--dash)'};
+// The mockup computes "tightest" here only to draw; in the app the domain owns it (see the table).
+const tightest=p=>p.quotas?p.quotas.reduce((a,q)=>q.left<a.left?q:a):null;
+const status=p=>level(tightest(p)?.left);
+
+let sel='all';
+const el=id=>document.getElementById(id);
+
+function ring(left,lvl){
+  const r=22,c=2*Math.PI*r,f=left==null?0:left/100;
+  return `<div class="ring"><svg viewBox="0 0 56 56">
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--ink)" stroke-width="11"/>
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="#F3EADD" stroke-width="6"/>
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="${color[lvl]}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c*f} ${c}"/>
+  </svg><b>${left==null?'--':left+'%'}</b></div>`;
+}
+
+function renderPills(){
+  const all=`<div class="pill all ${sel==='all'?'on':''}" data-p="all"><div class="pi">▦</div>All</div>`;
+  el('pills').innerHTML=all+P.map(p=>`<div class="pill ${sel===p.id?'on':''}" data-p="${p.id}"><div class="pi" style="background:${p.bg}">${p.icon}</div>${p.name}<span class="dot" style="background:${color[status(p)]}"></span></div>`).join('');
+  el('pills').querySelectorAll('.pill').forEach(x=>x.onclick=()=>select(x.dataset.p));
+}
+
+function renderMenubar(){
+  const p=sel==='all'?P.filter(p=>p.quotas).reduce((a,b)=>tightest(b).left<tightest(a).left?b:a):P.find(x=>x.id===sel);
+  const t=tightest(p);
+  el('menubar').innerHTML=`<div class="mb-item on"><div class="mb-dot">${p.icon}</div><span class="mb-pct">${t?t.left+'%':'--'}</span>${sel==='all'?'<span>· tightest</span>':''}</div><span>🔋 Sat 16:42</span>`;
+}
+
+function header(logo,bg,title,sub,lvl,text){
+  el('hLogo').textContent=logo; el('hLogo').style.background=bg;
+  el('hTitle').textContent=title; el('hSub').textContent=sub;
+  el('hChip').className='status-chip '+(lvl==='ok'?'':lvl); el('hChip').innerHTML='<i></i>'+text;
+}
+
+function renderAll(){
+  const crit=P.filter(p=>status(p)==='crit').length, warn=P.filter(p=>status(p)==='warn').length;
+  const worst=crit?'crit':warn?'warn':'ok';
+  header('▦','var(--butter)','All providers',P.length+' providers',worst,crit?'NEEDS A LOOK':warn?'WARNING':'HEALTHY');
+  el('body').innerHTML=`
+    <div class="ov-sum">${crit?`<span class="c">${crit} critical</span>`:''}${warn?`<span class="w">${warn} warning</span>`:''}<span>${P.filter(p=>status(p)==='ok').length} healthy</span><span style="margin-left:auto;border:none;background:none;color:var(--muted)">updated just now</span></div>
+    <div class="grid">${P.map(card).join('')}</div>`;
+  el('body').querySelectorAll('.mini').forEach(c=>c.onclick=()=>select(c.dataset.p));
+}
+
+function card(p){
+  const lvl=status(p), t=tightest(p);
+  if(p.error) return `<div class="card mini off" data-p="${p.id}">
+      <div class="m-top"><div class="pi" style="background:${p.bg}">${p.icon}</div><b>${p.name}</b><span class="q-status off">${p.error.toUpperCase()}</span></div>
+      <div class="m-body">${ring(null,'off')}<div class="m-rows"><div class="m-row"><b>${p.error}</b>${p.hint}</div></div></div>
+      <div class="m-foot"><span>—</span><span>Details →</span></div></div>`;
+  const rows=[t,...p.quotas.filter(q=>q!==t)].slice(0,2).map((q,i)=>`<div class="m-row ${i===0?'tight':''}"><b><span>${q.n}</span>${i===0?`<em>${q.left}%</em>`:q.left+'%'}</b>resets ${q.reset}</div>`).join('');
+  return `<div class="card mini ${lvl==='crit'?'attn':''}" data-p="${p.id}">
+      <div class="m-top"><div class="pi" style="background:${p.bg}">${p.icon}</div><b>${p.name}</b><span class="q-status ${lvl}">${word[lvl]}</span></div>
+      <div class="m-body">${ring(t.left,lvl)}<div class="m-rows">${rows}</div></div>
+      <div class="m-foot"><span>${p.accounts?p.accounts+' accounts':p.tier+' · '+p.via}</span><span>Details →</span></div></div>`;
+}
+
+function renderOne(p){
+  const lvl=status(p);
+  header(p.icon,p.bg,p.name,p.error?'not connected':(p.accounts?p.accounts+' accounts':'1 account'),lvl,word[lvl]);
+  if(p.error){
+    el('body').innerHTML=`<div class="card account"><div class="avatar" style="background:var(--dash)">?</div><div><div class="acc-name">${p.error}</div><div class="acc-meta">${p.hint} in Terminal, then Refresh</div></div><button class="back" data-back>← All</button></div>`;
+  }else{
+    const qs=p.quotas.map((q,i)=>{const l=level(q.left);const wide=p.quotas.length%2===1&&i===p.quotas.length-1;
+      return `<div class="card quota ${wide?'wide':''}"><div class="q-head"><div class="q-name">${q.n}</div><span class="q-status ${l}">${word[l]}</span></div>
+        <div class="q-pct">${q.left}%<small>left</small></div><div class="track"><i style="width:${q.left}%;background:${color[l]}"></i></div>
+        <div class="q-foot"><span>Resets <b>${q.reset}</b></span></div></div>`}).join('');
+    el('body').innerHTML=`<div class="card account"><div class="avatar">${p.acct[0].toUpperCase()}</div><div><div class="acc-name">${p.acct}<span class="tier">${p.tier}</span></div><div class="acc-meta">Updated just now · via ${p.via}</div></div><button class="back" data-back>← All</button></div>
+      <div class="quotas">${qs}</div>
+      <div class="card" style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--muted)">💸 Cost, today's usage and the 30-day chart continue here, as in the Pop popover.</div>`;
+  }
+  el('body').querySelector('[data-back]').onclick=()=>select('all');
+}
+
+function select(id){
+  sel=id; if(id==='all') el('coach')?.remove(); renderPills(); renderMenubar();
+  id==='all'?renderAll():renderOne(P.find(p=>p.id===id));
+}
+
+el('coachOk').onclick=()=>el('coach').remove();
+document.addEventListener('keydown',e=>{
+  if(!e.metaKey) return;
+  if(e.key==='0'){e.preventDefault();select('all')}
+  const n=+e.key; if(n>=1&&n<=P.length){e.preventDefault();select(P[n-1].id)}
+});
+el('openOn').querySelectorAll('span').forEach(s=>s.onclick=()=>{el('openOn').querySelectorAll('span').forEach(x=>x.classList.remove('on'));s.classList.add('on')});
+el('allToggle').onclick=()=>el('allToggle').classList.toggle('off');
+
+select(location.hash==='#all'?'all':'claude');
+el('pills').querySelector('.all').classList.add('pulse');
+</script>
+</body>
+</html>
