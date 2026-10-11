@@ -44,6 +44,8 @@ public final class DeviceRequest {
     /// The key this Mac asked with; saved only once it joins.
     let key: SigningKey
     private var state = State.waiting
+    /// The one wait running, shared by whoever waits.
+    @ObservationIgnored private var asking: Task<Username, any Error>?
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let interval: TimeInterval
@@ -71,9 +73,20 @@ public final class DeviceRequest {
     /// Asks, at the interval the server gave, until a device of the member
     /// approves the code; answers the member it joined. Nothing is kept or
     /// sent until the person agrees: a code that leaked could have been
-    /// approved by someone else.
+    /// approved by someone else. There is one wait at a time: a second caller
+    /// (a view's task run again) shares the one running, and once approved
+    /// the member is answered without asking again.
     public func waitForApproval() async throws -> Username {
+        if case .approved(let member, _) = state { return member }
+        if let asking { return try await asking.value }
         guard case .waiting = state else { throw LeaderboardError.notJoined }
+        let asking = Task { try await self.askUntilApproved() }
+        self.asking = asking
+        defer { self.asking = nil }
+        return try await asking.value
+    }
+
+    private func askUntilApproved() async throws -> Username {
         while true {
             let approval: DeviceApproval
             do {

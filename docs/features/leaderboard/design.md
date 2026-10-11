@@ -195,7 +195,7 @@ A Mac is either asking to be added or a member's device, never both: before appr
 |---|---|
 | **Owns: nothing is kept or sent until the person agrees** | its key lives only in the request; `stage` is `approved(member)` and nothing more until `decline()` removes it, or `LeaderboardMembership.join(through:sharing:)`, once its own checks pass, tells it `handOver()` |
 | **Owns: it leaves `approved` once** | `handOver()` answers the member, the key and the member's `/me` answer, and moves itself to `joined`; refused before approval and after |
-| **Owns: it asks at the server's pace, until the code expires** | `waitForApproval()` asks `/me` every `interval` the server gave, with its own wait (faked in its tests); `401` ends it as `expired` |
+| **Owns: it asks at the server's pace, until the code expires** | `waitForApproval()` asks `/me` every `interval` the server gave, with its own wait (faked in its tests); `401` ends it as `expired`. One wait at a time: a second caller (a view's task run again) shares the one running, and once approved it answers the member without asking again |
 | **Tell it** | `waitForApproval()` · `decline()` · `handOver()` (only `LeaderboardMembership.join(through:sharing:)` does) |
 | **It answers** | `code` · `stage` |
 | **Never** | saves its key · uploads · is made while this Mac is a member |

@@ -40,6 +40,32 @@ struct DeviceRequestTests {
         #expect(request.stage == .approved(member: member))
     }
 
+    /// A view's `.task` can ask again while the first wait still runs (#540):
+    /// one wait, at the server's pace, and both hear the same member.
+    @Test func `should ask at the server's pace once, however many wait at the same time`() async throws {
+        server.approvals = [.success(.waiting), .success(.waiting), .success(.approved(server.summary))]
+        let request = request(interval: 5)
+
+        async let first = request.waitForApproval()
+        async let second = request.waitForApproval()
+        let members = try await [first, second]
+
+        #expect(members.map(\.value) == ["tokenwhale", "tokenwhale"])
+        #expect(server.approvalsAsked == 3)
+        #expect(waits.taken == [5, 5])
+    }
+
+    @Test func `should answer the member again once approved, without asking the server again`() async throws {
+        server.approvals = [.success(.approved(server.summary))]
+        let request = request()
+        let member = try await request.waitForApproval()
+
+        let again = try await request.waitForApproval()
+
+        #expect(again == member)
+        #expect(server.approvalsAsked == 1)
+    }
+
     @Test func `should end as expired when the code expires before anyone approves it`() async throws {
         server.approvals = [.success(.waiting), .failure(.codeExpired)]
         let request = request()
