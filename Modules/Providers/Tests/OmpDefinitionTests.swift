@@ -548,9 +548,11 @@ struct OmpDefinitionTests {
 
     /// Qwen Cloud's Token Plan, signed into omp with its API key alone, as
     /// `omp usage --json` reports it (omp v18.10): omp reads that plan's quota
-    /// only through the Qwen Cloud console's cookie, given at `omp login`.
+    /// only through the Qwen Cloud console's cookie, given at `omp login`. An
+    /// expired cookie or a failed fetch reads the same, so the row names what
+    /// to check, not a certain cause.
     @Test(.needsScriptEngine)
-    func `should name Qwen Cloud's Token Plan and say how to get its quota when omp reports none`() throws {
+    func `should name Qwen Cloud's Token Plan and point at omp's console cookie when omp reports no usage`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [ { "provider": "alibaba-token-plan", "type": "api_key" } ] }
@@ -559,7 +561,7 @@ struct OmpDefinitionTests {
 
         let metrics = try #require(snapshot.extensionMetrics)
         #expect(metrics.map(\.label) == ["Qwen Cloud · API key"])
-        #expect(metrics[0].value == "Quota needs a console cookie in omp")
+        #expect(metrics[0].value == "No usage · check omp's console cookie")
     }
 
     /// The same plan with the console cookie: omp's two windows, as its

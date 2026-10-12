@@ -19,10 +19,12 @@ function read(response) {
     const names = {'anthropic': 'Claude', 'openai-codex': 'Codex', 'zai': 'Z.ai', 'google-gemini-cli': 'Gemini', 'google-antigravity': 'Antigravity',
                    'github-copilot': 'Copilot', 'kimi-code': 'Kimi', 'minimax-code': 'MiniMax', 'minimax-code-cn': 'MiniMax CN', 'opencode-go': 'OpenCode Go',
                    'alibaba-token-plan': 'Qwen Cloud', 'xai-oauth': 'Grok'};
-    // Why omp reports no usage for an account, where it's always the same
-    // reason: Qwen Cloud's Token Plan has a quota only through the console's
-    // cookie, an optional step of `omp login` that its key alone skips.
-    const noUsage = {'alibaba-token-plan': 'Quota needs a console cookie in omp'};
+    // What to check first when omp reports no usage for an account. Qwen
+    // Cloud's Token Plan has a quota only through the console's cookie, an
+    // optional step of `omp login` that its key alone skips, and the cookie
+    // ends with the console session; a fetch that failed for another reason
+    // lands here too, so this names the likely cause, not the certain one.
+    const noUsage = {'alibaba-token-plan': "No usage · check omp's console cookie"};
     const displayName = id => names[id] || id.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
     const unique = (base, seen) => {
         let label = base;

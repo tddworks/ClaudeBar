@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **Oh My Pi, Qwen Cloud**: a Qwen Cloud Token Plan signed into omp shows as Qwen Cloud, not Alibaba Token Plan, and says its quota needs the console cookie in omp instead of just "No usage reported"; Grok no longer shows as "Xai Oauth". ([#553](https://github.com/tddworks/ClaudeBar/pull/553)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/omp/README.md)
+- **Oh My Pi, Qwen Cloud**: a Qwen Cloud Token Plan signed into omp shows as Qwen Cloud, not Alibaba Token Plan, and points at omp's console cookie, the step its quota needs, instead of just "No usage reported"; Grok no longer shows as "Xai Oauth". ([#553](https://github.com/tddworks/ClaudeBar/pull/553)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/omp/README.md)
 - **Leaderboard joining**: when the leaderboard key can't be stored, joining now stops and says so, instead of joining anyway and dropping out at the next launch with the username taken. ([#548](https://github.com/tddworks/ClaudeBar/pull/548))
 
 ### Added
