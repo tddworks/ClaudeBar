@@ -249,11 +249,11 @@ public final class LeaderboardMembership {
             if ownDeviceRequest === request { ownDeviceRequest = nil }
             throw LeaderboardError.codeExpired
         }
-        try await requireSwitching(request)
+        try await requireSwitching(request, approvedBy: member)
         // The member as the copied key reads it now, so a rename on another
         // device doesn't refuse the right approval. Names are unique ignoring case.
         _ = try await summary(period: .sevenDays)
-        try await requireSwitching(request)
+        try await requireSwitching(request, approvedBy: member)
         guard let username, member.value.lowercased() == username.value.lowercased() else {
             ownDeviceRequest = nil
             try await withdraw(request, ours: false)
@@ -287,10 +287,13 @@ public final class LeaderboardMembership {
 
     /// Whether `request` is still the switch asked for, after an await: the
     /// key is still a copy and no answer replaced the request. When not, a
-    /// device the switch added is removed from the member again.
-    private func requireSwitching(_ request: DeviceRequest) async throws {
+    /// device the switch added is removed from the member again, whichever
+    /// member `approvedBy` says that is: a stranger's approval overtaken by
+    /// *Keep the key here* left the device on the stranger's, not this one.
+    private func requireSwitching(_ request: DeviceRequest, approvedBy member: Username? = nil) async throws {
         guard !holdsCopiedKey || ownDeviceRequest !== request else { return }
-        try await withdraw(request, ours: true)
+        let ours = member.map { $0.value.lowercased() == username?.value.lowercased() } ?? true
+        try await withdraw(request, ours: ours)
         throw LeaderboardError.notOffered
     }
 

@@ -353,6 +353,28 @@ struct LeaderboardCopiedKeyTests {
         #expect(server.removed == [newKey], "the device the switch had added is removed again")
     }
 
+    @Test func `should say the device is on the stranger's member when their approval was overtaken by keeping the key, and can't be removed`() async throws {
+        let copy = try await copied()
+        let copiedKey = try storedKey
+        server.approveFailure = .deviceTooNew
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        server.holdsApprovals = true
+        server.approvals = [.success(.approved(MemberSummary(username: "stranger", onBoard: nil, days: [], visible: true)))]
+        let finishing = Task { try await copy.becomeOwnDevice() }
+        await heldAtServer()
+        try copy.keepKeyHere()
+        server.removeFailure = .unreachable
+        server.holdsApprovals = false
+        server.release()
+
+        let newKey = try #require(server.requested?.publicKey)
+        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey), ours: false)) { try await finishing.value }
+
+        #expect(!copy.holdsCopiedKey)
+        #expect(copy.username?.value == "tokenwhale")
+        #expect(try storedKey == copiedKey)
+    }
+
     @Test func `should remove the device another Mac approved when the person had chosen to keep the key meanwhile`() async throws {
         let copy = try await copied()
         let copiedKey = try storedKey
