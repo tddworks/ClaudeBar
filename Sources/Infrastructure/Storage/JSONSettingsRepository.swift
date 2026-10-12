@@ -829,7 +829,8 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
                 return RefusedDay(provider: provider, day: date, reason: reason)
             },
             shownDevices: store.read(key: "leaderboard.shownDevices") ?? [],
-            machine: store.read(key: "leaderboard.machine")
+            machine: store.read(key: "leaderboard.machine"),
+            addedAsDevice: store.read(key: "leaderboard.addedAsDevice") ?? false
         )
     }
 
@@ -854,5 +855,6 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: refused?.isEmpty == false ? refused : nil, key: "leaderboard.refused")
         store.write(value: record?.shownDevices.isEmpty == false ? record?.shownDevices : nil, key: "leaderboard.shownDevices")
         store.write(value: record?.machine, key: "leaderboard.machine")
+        store.write(value: record?.addedAsDevice == true ? true : nil, key: "leaderboard.addedAsDevice")
     }
 }

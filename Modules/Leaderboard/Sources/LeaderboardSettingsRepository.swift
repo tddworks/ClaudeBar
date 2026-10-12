@@ -20,10 +20,15 @@ public struct LeaderboardRecord: Sendable, Equatable {
     /// for a key from before this was kept, or made where the UUID can't be
     /// read. A launch on another machine finds a copied key by it (design §2a).
     public let machine: String?
+    /// The key was added as a device of the member (through a code, or by
+    /// *Make this Mac its own device*), not the one that joined, so it is
+    /// held to a first week. `/me` can't say: an added device in its first
+    /// week sees only itself, as a member with one device does.
+    public let addedAsDevice: Bool
 
     public init(username: String, sharing: [String], visible: Bool, lastUpload: Date?,
                 sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil,
-                refused: [RefusedDay] = [], shownDevices: [String] = [], machine: String? = nil) {
+                refused: [RefusedDay] = [], shownDevices: [String] = [], machine: String? = nil, addedAsDevice: Bool = false) {
         self.link = link
         self.username = username
         self.sharing = sharing.sorted()
@@ -34,6 +39,7 @@ public struct LeaderboardRecord: Sendable, Equatable {
         self.refused = refused
         self.shownDevices = shownDevices.sorted()
         self.machine = machine
+        self.addedAsDevice = addedAsDevice
     }
 }
 

@@ -45,6 +45,10 @@ public final class LeaderboardMembership {
     /// at launch, when the hash isn't this machine's. Nothing uploads under
     /// it until the member answers: `becomeOwnDevice()` or `keepKeyHere()`.
     public private(set) var holdsCopiedKey = false
+    /// The key was added as a device of the member, not the one that joined:
+    /// it is held to a first week, which `/me` can't tell apart from a member
+    /// with one device, since a device in its first week sees only itself.
+    private var addedAsDevice = false
     /// This machine asking to be its own device while the copied key, in its
     /// first week, can't approve it: shows the code for another device of
     /// the member to approve, and `becomeOwnDevice()` finishes once it is.
@@ -120,6 +124,7 @@ public final class LeaderboardMembership {
         }
         self.key = key
         machineHash = machineHash(for: key)
+        addedAsDevice = false
         self.username = username
         sharing = providers
         isVisible = true
@@ -159,6 +164,7 @@ public final class LeaderboardMembership {
         let approval = try request.handOver()
         key = approval.key
         machineHash = machineHash(for: approval.key)
+        addedAsDevice = true
         username = approval.member
         sharing = providers
         isVisible = true
@@ -274,6 +280,7 @@ public final class LeaderboardMembership {
         let approval = try request.handOver()
         key = approval.key
         machineHash = machineHash(for: approval.key)
+        addedAsDevice = true
         holdsCopiedKey = false
         ownDeviceRequest = nil
         refused = []
@@ -357,6 +364,7 @@ public final class LeaderboardMembership {
         devices = MemberDevices()
         shownDevices = []
         machineHash = nil
+        addedAsDevice = false
         holdsCopiedKey = false
         ownDeviceRequest = nil
         settings.saveLeaderboardRecord(nil)
@@ -492,6 +500,17 @@ public final class LeaderboardMembership {
         key.flatMap { devices.device(withKey: $0.deviceKey) }
     }
 
+    /// When `device`'s first week ends, while it is in it: until then it can't
+    /// add, remove or rename, and sees only itself. `nil` for the device that
+    /// joined, one past its week, or one removed. This device knows it was
+    /// added; another's week is told by when it was added after the joiner.
+    public func firstWeekEnds(for device: Device) -> Date? {
+        let ends = device.addedAt.addingTimeInterval(MemberDevices.firstWeek)
+        guard !device.isRemoved, now() < ends else { return nil }
+        if device.publicKey == key?.deviceKey { return addedAsDevice ? ends : nil }
+        return devices.isInFirstWeek(device, at: now()) ? ends : nil
+    }
+
     /// What approving `code` would add, shown above *Approve* so a code read
     /// out to a stranger isn't approved blind.
     public func pendingDevice(code: DeviceCode) async throws -> PendingDevice {
@@ -586,6 +605,7 @@ public final class LeaderboardMembership {
         refused = record.refused
         shownDevices = Set(record.shownDevices.map(DeviceKey.init))
         machineHash = record.machine
+        addedAsDevice = record.addedAsDevice
         checkMachine()
     }
 
@@ -613,6 +633,6 @@ public final class LeaderboardMembership {
                                                          visible: isVisible, lastUpload: lastUpload,
                                                          sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed,
                                                          link: link, refused: refused, shownDevices: shownDevices.map(\.value),
-                                                         machine: machineHash))
+                                                         machine: machineHash, addedAsDevice: addedAsDevice))
     }
 }

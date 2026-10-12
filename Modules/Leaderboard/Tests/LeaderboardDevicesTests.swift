@@ -389,5 +389,58 @@ struct LeaderboardDevicesTests {
 
         #expect(server.deletedDays == [.init(publicKey: "k2", provider: "claude", day: "2026-10-06")])
     }
-}
 
+    // MARK: - A first week, as the Devices list says it
+
+    /// A device added through a code, as it reads itself in its first week:
+    /// `/me` lists only it.
+    private func added(addedOn day: Int) async throws -> LeaderboardMembership {
+        let membership = membership(machine: "Mac mini")
+        server.approvals = [.success(.approved(server.summary))]
+        let request = try await membership.requestToJoin()
+        _ = try await request.waitForApproval()
+        try membership.join(through: request, sharing: ["claude"])
+        let key = try SigningKey(rawRepresentation: #require(keys.stored)).publicKey
+        try await read([Device(publicKey: DeviceKey(key), label: DeviceLabel("Mac mini")!, addedAt: LeaderboardFixtures.date(day))], into: membership)
+        return membership
+    }
+
+    @Test func `should say when this device's first week ends when it was added, though it sees only itself`() async throws {
+        let membership = try await added(addedOn: 16)
+        let me = try #require(membership.thisDevice)
+
+        #expect(membership.firstWeekEnds(for: me) == LeaderboardFixtures.date(23))
+    }
+
+    @Test func `should never hold the device that joined to a first week, alone on the member or not`() async throws {
+        let membership = try await joined()
+        try await read([thisDevice(membership, addedOn: 18)], into: membership)
+
+        #expect(membership.firstWeekEnds(for: try #require(membership.thisDevice)) == nil)
+    }
+
+    @Test func `should say when another device's first week ends, and nothing once it is over or the device removed`() async throws {
+        let membership = try await joined()
+        let fresh = device("k2", addedOn: 16)
+        let old = device("k3", addedOn: 10)
+        let gone = device("k4", addedOn: 17, removedOn: 18)
+        try await read([thisDevice(membership, addedOn: 1), fresh, old, gone], into: membership)
+
+        #expect(membership.firstWeekEnds(for: fresh) == LeaderboardFixtures.date(23))
+        #expect(membership.firstWeekEnds(for: old) == nil)
+        #expect(membership.firstWeekEnds(for: gone) == nil)
+    }
+
+    @Test func `should remember across a relaunch that this device was added, and forget it with the membership`() async throws {
+        _ = try await added(addedOn: 16)
+        #expect(settings.record?.addedAsDevice == true)
+
+        let relaunched = membership(machine: "Mac mini")
+        let key = try SigningKey(rawRepresentation: #require(keys.stored)).publicKey
+        try await read([Device(publicKey: DeviceKey(key), label: DeviceLabel("Mac mini")!, addedAt: LeaderboardFixtures.date(16))], into: relaunched)
+        #expect(relaunched.firstWeekEnds(for: try #require(relaunched.thisDevice)) == LeaderboardFixtures.date(23))
+
+        try await relaunched.remove(try #require(relaunched.thisDevice))
+        #expect(settings.record == nil)
+    }
+}

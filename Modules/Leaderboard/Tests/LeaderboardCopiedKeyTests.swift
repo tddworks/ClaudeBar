@@ -179,6 +179,7 @@ struct LeaderboardCopiedKeyTests {
         #expect(copy.refused.isEmpty)
         #expect(copy.username?.value == "tokenwhale")
         #expect(settings.record?.machine != nil && settings.record?.machine != copiedHash)
+        #expect(settings.record?.addedAsDevice == true, "the new key is an added device, held to its first week")
         #expect(!launch(on: Self.otherMac).holdsCopiedKey)
     }
 
@@ -493,6 +494,6 @@ private extension LeaderboardRecord {
     func with(machine: String?) -> LeaderboardRecord {
         LeaderboardRecord(username: username, sharing: sharing, visible: visible, lastUpload: lastUpload,
                           sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed, link: link,
-                          refused: refused, shownDevices: shownDevices, machine: machine)
+                          refused: refused, shownDevices: shownDevices, machine: machine, addedAsDevice: addedAsDevice)
     }
 }
