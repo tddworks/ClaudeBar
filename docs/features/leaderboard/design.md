@@ -495,6 +495,9 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A day the server refused is sent again with each upload until it is taken or 30 days old | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
 | A code shown for another device to approve adds this Mac only to the member it was shown for: an approval by a stranger's device is refused, and the new key removes itself from there | `LeaderboardMembership.becomeOwnDevice()`: the member approved is the one the copied key's `/me` names, or the request is declined |
+| An added device knows it is held to a first week: `/me` can't say, since an added device in its first week sees only itself, as a member with one device does | `LeaderboardMembership.firstWeekEnds(for:)`, from `LeaderboardRecord.addedAsDevice`, set by `join(through:sharing:)` and `becomeOwnDevice()` |
+| A new device's request lives in memory only, outlives the popover, and *Cancel* stops asking the server | `AppLeaderboard.request`; `DeviceRequest.stopWaiting()` |
+| A copied key's question comes first: no device shows as newly added until it is answered | `LeaderboardMembership.addedDevices` is empty while `holdsCopiedKey` |
 | One answer to a copied key at a time: a second switch while one waits for the server is refused, and *Keep the key here* given while a switch waits stands, the switch adding nothing and removing a device it had added; a removal the server didn't take is said, never swallowed, since the device stays on the member under a key this Mac doesn't keep: on this member, the Devices list shows it with *Remove*, for a device past its first week; on a stranger's, after a leaked code, only their devices can remove it, and it sends nothing | `LeaderboardMembership.becomeOwnDevice()`: one in flight, and after each wait it checks the key is still a copy and its request still the one asked for; `deviceLeftBehind(key, ours:)` names the device and whose member it is on, told by the member the approval named, never assumed |
 | A new device's label is filled in with the machine's model, never its computer name | `MachineIdentity` (`IOKitMachineIdentity` on the Mac, "Mac" when the model can't be read; `WindowsMachineIdentity`, "Windows PC", §6); `DeviceLabel` keeps it, or what the person typed, to the server's 1–40 characters, counted in UTF-16 units as the server counts them |
 | Every request names its client in `X-Client`, signed or not; the macOS app as `claudebar-macos/<version>` | `LeaderboardHTTPClient` |
@@ -648,7 +651,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–14, 16 and 17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 15, the surfaces of §2a's devices, is next.
+Test-first slices, each green on its own. Slices 1–17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR), 15's surfaces from [the mockup](../../../design-concept/leaderboard/devices.html).
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.

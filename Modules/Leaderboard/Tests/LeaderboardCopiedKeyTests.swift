@@ -479,6 +479,22 @@ struct LeaderboardCopiedKeyTests {
         #expect(server.requests == 0)
     }
 
+    @Test func `should show no device as newly added while it holds a copied key, and show them once it keeps the key`() async throws {
+        let copy = try await copied()
+        let key = try storedKey
+        server.summary = MemberSummary(username: "tokenwhale", onBoard: nil, days: [], visible: true, devices: [
+            Device(publicKey: DeviceKey(key), label: DeviceLabel("MacBook Pro")!, addedAt: LeaderboardFixtures.date(1)),
+            Device(publicKey: DeviceKey("k2"), label: DeviceLabel("Mac mini")!, addedAt: LeaderboardFixtures.date(5)),
+        ])
+        _ = try await copy.summary(period: .sevenDays)
+
+        #expect(copy.addedDevices.isEmpty, "the question comes first")
+
+        try copy.keepKeyHere()
+
+        #expect(copy.addedDevices.map(\.publicKey) == [DeviceKey("k2")])
+    }
+
     @Test func `should forget the hash with the key when leaving`() async throws {
         let member = try await joined()
 

@@ -41,6 +41,15 @@ Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, 
 
 The tab then shows your rank (the eye next to your name shows it as `@i•••` for screen shares) and your provider mix, the board (up to the top 100, scrolling inside its card; while your own row is scrolled out of sight, a copy of it sits under the list and takes you there), and when the last upload went. Switch between **Today**, **7 days** and **30 days**, or one provider. **Full board** opens the public page at [claudebar.tddworks.com/leaderboard](https://claudebar.tddworks.com/leaderboard).
 
+## Several Macs
+
+Each Mac or PC on your name signs with its own key. Up to five can be in use.
+
+- **Add a Mac:** on the new Mac, open the Leaderboard tab and choose **Already a member? Add this Mac**. It shows a code like `WDJB-MJHT`. On a Mac already on the leaderboard, open Settings → Leaderboard → Devices → **Add a device**, type the code, check the name it asked with, and **Approve**. The new Mac then names your username and asks "Is that you?" before it keeps or uploads anything; **That's not me** removes it. The code works for 10 minutes.
+- **A new Mac's first week:** for 7 days it sees only itself, and can't add or remove Macs, rename or leave. Your other Macs show it once as **New device**, with **Remove…**.
+- **Remove a Mac:** Settings → Leaderboard → Devices → **Remove…**. Its key stops at once and its days stay; for a Mac still in its first week, **Remove and delete its days** deletes them too. A removed Mac's days can be deleted later with **Delete its days…**.
+- **A key copied from another Mac** (Migration Assistant, a Time Machine restore): this Mac stops uploading and asks. **Make this Mac its own device** gives it a new key, added to your name, and uploads from where the other Mac left off; **Keep the key here** is for when the other Mac is gone, or this is the same Mac after a repair. If the copied key is in its first week, another of your Macs approves the new one with the code shown.
+
 ## Share your rank
 
 **Share** on *Your rank* turns your place into an image to post: your rank, how near the top that is (**Top 24%**, or **#18 of 34** in the bottom half), your tokens and provider mix, the period and provider you're looking at, and the board's address. It never shows anyone else's name.
@@ -61,8 +70,9 @@ The image is drawn on your Mac in the theme you use, Platformer, Pop, Dark or an
 | **Profile link** | One handle on X, Instagram or GitHub, shown as an icon after your name on the board. Not verified. **Remove** takes it off |
 | **Show my country on the globe** | Puts your country on the web board's globe. Its tokens show once three members there opt in. Off forgets it at once |
 | **Shared providers** | Stops or starts uploads per provider. Days already uploaded stay until you leave |
+| **Devices** | Each Mac or PC on your name: **Add a device**, **Remove…**, **Delete its days…** for a removed one. See [Several Macs](#several-macs) |
 | **Export my data** | Saves everything the server holds about you as JSON |
-| **Leave and delete my data** | Deletes your username and every uploaded day from the server, then this Mac's key |
+| **Leave and delete my data** | Deletes your username, every device and every uploaded day from the server, then this Mac's key |
 
 ## Turning it off
 
@@ -90,7 +100,7 @@ The web board's globe shows where ClaudeBar is used, by country, from members wh
 
 - **"That username is taken."** Names are unique ignoring case, and names that would read as official (`admin`, `claudebar`, `anthropic`…) are reserved.
 - **"This Mac's clock is more than five minutes off."** Uploads are signed with the time. Fix the clock in System Settings → General → Date & Time.
-- **Reinstalled, or your Keychain was reset?** The key is gone, and with it the way to prove the name is yours. Join again with a new name; ask on GitHub to have the old one removed.
+- **Reinstalled, or your Keychain was reset?** The key is gone. With another Mac on your name, remove the old entry from it and add this Mac again. With none, join again with a new name; ask on GitHub to have the old one removed.
 - **A locally built ClaudeBar** can't use the Keychain, so the key is kept in the app's preferences instead, as Notify!'s token is.
 - **The board ranks by total tokens**, cache reads included, so cache-heavy Claude use counts a lot. Totals are self-reported; nothing rides on them.
 - **A day missing from your total?** The board leaves out a day that is over its daily cap, too old or in the future, and keeps your other days. ClaudeBar sends that day again with each upload until the board takes it or it's 30 days old.

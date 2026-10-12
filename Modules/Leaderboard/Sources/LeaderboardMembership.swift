@@ -534,7 +534,9 @@ public final class LeaderboardMembership {
     /// which is when that week ends. Devices the member had before this one
     /// aren't news.
     public var addedDevices: [Device] {
-        guard isOn, let me = thisDevice else { return [] }
+        // A copied key's question comes first: the devices it would show are
+        // the other Mac's news until the member says what this Mac is.
+        guard isOn, !holdsCopiedKey, let me = thisDevice else { return [] }
         return devices.added(since: me).filter { !shownDevices.contains($0.publicKey) }
     }
 

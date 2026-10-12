@@ -71,7 +71,7 @@ struct LeaderboardDevicesCard: View {
                     .disabled(isWorking)
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
 
             if listed.isEmpty {
                 Text("Reading your devices…")
@@ -612,6 +612,12 @@ struct LeaderboardAddThisMacView: View {
                 .font(theme.font(size: 10, weight: .bold))
                 .tracking(1)
                 .foregroundStyle(theme.textSecondary)
+            if shareable.isEmpty {
+                Text("No provider on this Mac keeps token logs yet. Claude, Codex and Mistral do.")
+                    .font(theme.font(size: 11))
+                    .foregroundStyle(theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(shareable, id: \.self) { id in

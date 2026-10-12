@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Leaderboard joining**: when the leaderboard key can't be stored, joining now stops and says so, instead of joining anyway and dropping out at the next launch with the username taken. ([#548](https://github.com/tddworks/ClaudeBar/pull/548))
 
 ### Added
+- **Leaderboard, several Macs**: Settings → Leaderboard → Devices lists each Mac on your name, adds one by the code it shows (**Already a member? Add this Mac**) and removes one; a Mac with a copied key asks what it is. ([#552](https://github.com/tddworks/ClaudeBar/pull/552)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md)
 - **Leaderboard, a copied key**: a Mac whose leaderboard key came from another Mac (Migration Assistant, a restore) now notices and uploads nothing under it, so the two stop overwriting each other's days; the popover says why. The answer comes with the next Settings. ([#549](https://github.com/tddworks/ClaudeBar/pull/549)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md)
 
 ---
