@@ -374,6 +374,46 @@ struct LeaderboardCopiedKeyTests {
         #expect(server.removed == [server.requested?.publicKey])
     }
 
+    /// A device the switch added stays on the member when the server won't
+    /// remove it: the person is told, and the Devices list shows it with
+    /// *Remove*, as every device of the member.
+    @Test func `should say which device stayed on the member when a late switch can't remove the one it added`() async throws {
+        let copy = try await copied()
+        let copiedKey = try storedKey
+        server.holdsApprovals = true
+        server.approvals = [.success(.approved(server.summary))]
+        let switching = Task { try await copy.becomeOwnDevice() }
+        await heldAtServer()
+        try copy.keepKeyHere()
+        server.removeFailure = .unreachable
+        server.holdsApprovals = false
+        server.release()
+
+        let newKey = try #require(server.requested?.publicKey)
+        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey))) { try await switching.value }
+
+        #expect(!copy.holdsCopiedKey, "the person's answer stands")
+        #expect(try storedKey == copiedKey)
+        #expect(server.removed.isEmpty)
+    }
+
+    @Test func `should say so when it can't remove itself from the stranger a leaked code was approved by`() async throws {
+        let copy = try await copied()
+        let copiedKey = try storedKey
+        server.approveFailure = .deviceTooNew
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        server.approvals = [.success(.approved(MemberSummary(username: "stranger", onBoard: nil, days: [], visible: true)))]
+        server.removeFailure = .unreachable
+
+        let newKey = try #require(server.requested?.publicKey)
+        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey))) { try await copy.becomeOwnDevice() }
+
+        #expect(copy.holdsCopiedKey)
+        #expect(copy.username?.value == "tokenwhale")
+        #expect(try storedKey == copiedKey)
+        #expect(copy.ownDeviceRequest == nil)
+    }
+
     @Test func `should stay a copy, with its key, when the server refuses the new device`() async throws {
         let copy = try await copied()
         let copiedKey = try storedKey

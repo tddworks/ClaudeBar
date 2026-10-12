@@ -207,6 +207,12 @@ public enum LeaderboardError: Error, Sendable, Equatable, LocalizedError {
     /// A code shown for another device of the member was approved by some
     /// other member's device: this machine refused it and removed itself there.
     case approvedByStranger
+    /// A device this machine added, and then had no use for (its switch was
+    /// overtaken by *Keep the key here*, or a stranger approved its code),
+    /// couldn't be removed: it is still on the member it was added to, under
+    /// this key, and this machine kept no key for it. On this member, the
+    /// Devices list shows it, with *Remove*; on a stranger's, theirs does.
+    case deviceLeftBehind(DeviceKey)
     /// A removal the dialog didn't offer for that device.
     case notOffered
     /// The server refused the signature: the key no longer matches the name.
@@ -238,6 +244,7 @@ public enum LeaderboardError: Error, Sendable, Equatable, LocalizedError {
         case .keyNotKept: "This \(machine) couldn't store its leaderboard key, so it didn't join. Try again."
         case .keyCopied: "This \(machine) has a copy of another \(machine)'s leaderboard key, so it isn't uploading."
         case .approvedByStranger: "Someone else's device approved this \(machine)'s code, so it wasn't added. Ask for a new code."
+        case .deviceLeftBehind: "A device this \(machine) added, and then didn't use, couldn't be removed. Remove it from the devices list."
         case .notOffered: "That isn't offered for this device."
         case .unauthorized: "The leaderboard didn't accept this \(machine)'s key for your username."
         case .removed(let device): "\(device.label) removed this \(machine) from your leaderboard devices."
