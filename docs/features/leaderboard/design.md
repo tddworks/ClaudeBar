@@ -494,6 +494,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | The member's name, visibility, globe, country and link come from the server; a device's copy follows every `/me` | `LeaderboardMembership` |
 | A day the server refused is sent again with each upload until it is taken or 30 days old | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
+| A code shown for another device to approve adds this Mac only to the member it was shown for: an approval by a stranger's device is refused, and the new key removes itself from there | `LeaderboardMembership.becomeOwnDevice()`: the member approved is the one the copied key's `/me` names, or the request is declined |
 | A new device's label is filled in with the machine's model, never its computer name | `MachineIdentity` (`IOKitMachineIdentity` on the Mac, "Mac" when the model can't be read; `WindowsMachineIdentity`, "Windows PC", §6); `DeviceLabel` keeps it, or what the person typed, to the server's 1–40 characters, counted in UTF-16 units as the server counts them |
 | Every request names its client in `X-Client`, signed or not; the macOS app as `claudebar-macos/<version>` | `LeaderboardHTTPClient` |
 | Until a board and you on it have come back once, the tab says it is loading; it never says *0 tokens* or *No one is on the board* for an answer it doesn't have yet | `Board.members`, `nil` until then |

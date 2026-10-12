@@ -213,8 +213,13 @@ public final class LeaderboardMembership {
     ///
     /// A copied key in its first week can't approve: the request then stays
     /// in `ownDeviceRequest`, showing the code for another device of the
-    /// member to approve, and calling this again finishes it. A new key this
-    /// machine can't keep leaves the request approved, to try again.
+    /// member to approve, and calling this again finishes it. That code is on
+    /// screen, and one that leaked could be approved by a stranger's device,
+    /// which would make this machine the stranger's and send its days there:
+    /// an approval is taken only for the member the copied key reads as its
+    /// own, and any other is declined, the new key removing itself from
+    /// there. A new key this machine can't keep leaves the request approved,
+    /// to try again; a code that expired is dropped, for a new one.
     public func becomeOwnDevice() async throws {
         guard holdsCopiedKey, let credentials else { throw LeaderboardError.notOffered }
         let request: DeviceRequest
@@ -227,7 +232,21 @@ public final class LeaderboardMembership {
             ownDeviceRequest = request
             _ = try await api.approveDevice(code: request.code, as: credentials)
         }
-        _ = try await request.waitForApproval()
+        let member: Username
+        do {
+            member = try await request.waitForApproval()
+        } catch LeaderboardError.codeExpired {
+            ownDeviceRequest = nil
+            throw LeaderboardError.codeExpired
+        }
+        // The member as the copied key reads it now, so a rename on another
+        // device doesn't refuse the right approval. Names are unique ignoring case.
+        _ = try await summary(period: .sevenDays)
+        guard let username, member.value.lowercased() == username.value.lowercased() else {
+            ownDeviceRequest = nil
+            try? await request.decline()
+            throw LeaderboardError.approvedByStranger
+        }
         keys.save(request.key.rawRepresentation)
         guard keys.load() == request.key.rawRepresentation else {
             // The copied key goes back, read back as `keep(_:)` does. Not

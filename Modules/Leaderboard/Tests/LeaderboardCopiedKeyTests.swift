@@ -215,6 +215,70 @@ struct LeaderboardCopiedKeyTests {
         #expect(server.requests == 1, "the request it made is the one that was approved")
     }
 
+    /// The code is on screen for another device of the member; a code that
+    /// leaked could be approved by someone else's device (design §2a), which
+    /// would make this Mac that stranger's device and send its days there.
+    @Test func `should refuse a code a stranger's device approved, remove itself from there, and keep the copy`() async throws {
+        let copy = try await copied()
+        let copiedKey = try storedKey
+        server.approveFailure = .deviceTooNew
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        let stranger = MemberSummary(username: "stranger", onBoard: nil, days: [], visible: true)
+        server.approvals = [.success(.approved(stranger))]
+
+        await #expect(throws: LeaderboardError.approvedByStranger) { try await copy.becomeOwnDevice() }
+
+        #expect(copy.holdsCopiedKey)
+        #expect(copy.username?.value == "tokenwhale")
+        #expect(try storedKey == copiedKey)
+        #expect(copy.ownDeviceRequest == nil, "the next try asks for a new code")
+        #expect(server.removed == [server.requested?.publicKey], "it removed itself from the stranger's devices")
+        #expect(settings.record?.username == "tokenwhale")
+
+        // A new code, which the copied key, still too new, can't approve; a device of the member does.
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        server.approvals = [.success(.approved(server.summary))]
+        try await copy.becomeOwnDevice()
+
+        #expect(!copy.holdsCopiedKey)
+        #expect(server.requests == 2)
+    }
+
+    @Test func `should take an approval under the member's new name when another device renamed them`() async throws {
+        let copy = try await copied()
+        server.approveFailure = .deviceTooNew
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        let renamed = MemberSummary(username: "tokenWhale2", onBoard: nil, days: [], visible: true)
+        server.summary = renamed
+        server.approvals = [.success(.approved(renamed))]
+
+        try await copy.becomeOwnDevice()
+
+        #expect(!copy.holdsCopiedKey)
+        #expect(copy.username?.value == "tokenWhale2")
+        #expect(server.removed.isEmpty)
+    }
+
+    @Test func `should ask for a new code once the old one expired before anyone approved it`() async throws {
+        let copy = try await copied()
+        server.approveFailure = .deviceTooNew
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        server.approvals = [.failure(.codeExpired)]
+
+        await #expect(throws: LeaderboardError.codeExpired) { try await copy.becomeOwnDevice() }
+
+        #expect(copy.holdsCopiedKey)
+        #expect(copy.ownDeviceRequest == nil)
+
+        await #expect(throws: LeaderboardError.deviceTooNew) { try await copy.becomeOwnDevice() }
+        #expect(copy.ownDeviceRequest?.code == server.authorization.code, "a new code")
+        server.approvals = [.success(.approved(server.summary))]
+        try await copy.becomeOwnDevice()
+
+        #expect(!copy.holdsCopiedKey)
+        #expect(server.requests == 2)
+    }
+
     @Test func `should stay a copy, with its key, when the server refuses the new device`() async throws {
         let copy = try await copied()
         let copiedKey = try storedKey
