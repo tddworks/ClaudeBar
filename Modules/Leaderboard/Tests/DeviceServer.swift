@@ -31,6 +31,10 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     /// server does; a join after it fails with `laterJoinFailure`, if set.
     var holdsFirstJoin = false
     var laterJoinFailure: LeaderboardError?
+    /// When set, `requestDevice`, or `approval(of:)`, waits until `release()`,
+    /// as a slow server does, so a test can act while a call is in flight.
+    var holdsRequests = false
+    var holdsApprovals = false
 
     private(set) var joinedLabel: String?
     private(set) var joinedKey: String?
@@ -46,6 +50,26 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     private(set) var deletedDays: [DeletedDays] = []
     private var joins = 0
     private var heldJoin: CheckedContinuation<Void, Never>?
+    private var held: [CheckedContinuation<Void, Never>] = []
+    private(set) var isHolding = false
+    /// How many calls the server is holding.
+    var heldCalls: Int { held.count }
+
+    /// Waits while `holds`, until `release()`.
+    private func hold(while holds: Bool) async {
+        guard holds else { return }
+        await withCheckedContinuation { continuation in
+            held.append(continuation)
+            isHolding = true
+        }
+    }
+
+    func release() {
+        isHolding = false
+        let waiting = held
+        held = []
+        waiting.forEach { $0.resume() }
+    }
 
     func join(username: String, publicKey: String, label: String) async throws {
         joins += 1
@@ -67,12 +91,14 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
 
     func requestDevice(publicKey: String, label: String) async throws -> DeviceAuthorization {
         if let requestFailure { throw requestFailure }
+        await hold(while: holdsRequests)
         requests += 1
         requested = (publicKey, label)
         return authorization
     }
 
     func approval(of key: SigningKey) async throws -> DeviceApproval {
+        await hold(while: holdsApprovals)
         let answer = approvals[min(approvalsAsked, approvals.count - 1)]
         approvalsAsked += 1
         return try answer.get()
