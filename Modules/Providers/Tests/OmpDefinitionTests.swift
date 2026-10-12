@@ -546,6 +546,61 @@ struct OmpDefinitionTests {
         #expect(metrics[0].value == "No usage reported")
     }
 
+    /// Qwen Cloud's Token Plan, signed into omp with its API key alone, as
+    /// `omp usage --json` reports it (omp v18.10): omp reads that plan's quota
+    /// only through the Qwen Cloud console's cookie, given at `omp login`.
+    @Test(.needsScriptEngine)
+    func `should name Qwen Cloud's Token Plan and say how to get its quota when omp reports none`() throws {
+        let json = """
+        { "reports": [],
+          "accountsWithoutUsage": [ { "provider": "alibaba-token-plan", "type": "api_key" } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        let metrics = try #require(snapshot.extensionMetrics)
+        #expect(metrics.map(\.label) == ["Qwen Cloud · API key"])
+        #expect(metrics[0].value == "Quota needs a console cookie in omp")
+    }
+
+    /// The same plan with the console cookie: omp's two windows, as its
+    /// `alibaba-token-plan` usage provider builds them.
+    @Test(.needsScriptEngine)
+    func `should show Qwen Cloud's Token Plan's 5-hour and weekly credits when omp reports them`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "alibaba-token-plan",
+            "fetchedAt": 1791820000000,
+            "limits": [
+              { "id": "credits:5h", "label": "5 Hour Credits",
+                "scope": { "provider": "alibaba-token-plan", "windowId": "5h" },
+                "window": { "id": "5h", "label": "5 Hour Credits", "durationMs": 18000000, "resetsAt": 1791830000000 },
+                "amount": { "used": 42, "usedFraction": 0.42, "unit": "percent" }, "status": "ok" },
+              { "id": "credits:7d", "label": "7 Day Credits",
+                "scope": { "provider": "alibaba-token-plan", "windowId": "7d" },
+                "window": { "id": "7d", "label": "7 Day Credits", "durationMs": 604800000, "resetsAt": 1792300000000 },
+                "amount": { "used": 81, "usedFraction": 0.81, "unit": "percent" }, "status": "warning" }
+            ],
+            "metadata": { "source": "qwencloud-console" } } ],
+          "accountsWithoutUsage": [] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.quotas.map(\.group) == ["Qwen Cloud", "Qwen Cloud"])
+        #expect(snapshot.quotas.map { Int($0.percentRemaining.rounded()) } == [58, 19])
+        #expect(snapshot.quotas.map(\.resetsAt) == [Date(timeIntervalSince1970: 1_791_830_000), Date(timeIntervalSince1970: 1_792_300_000)])
+        #expect(snapshot.extensionMetrics == nil)
+    }
+
+    @Test(.needsScriptEngine)
+    func `should still say only that no usage was reported for a key omp has no setup hint for`() throws {
+        let json = """
+        { "reports": [], "accountsWithoutUsage": [ { "provider": "zai", "type": "api_key" } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(try #require(snapshot.extensionMetrics).map(\.value) == ["No usage reported"])
+    }
+
     @Test(.needsScriptEngine)
     func `should show a no-usage row for each account, not no data, when none reported usage`() throws {
         let json = """
@@ -1289,7 +1344,8 @@ struct OmpDefinitionTests {
     // MARK: - Upstream Display Names
 
     @Test(.needsScriptEngine, arguments: [
-        // Every id omp v16.4.6's usage registry emits (@oh-my-pi/pi-ai/src/usage/*).
+        // Every id omp v18.10's usage registry emits (@oh-my-pi/pi-ai/src/usage/*).
+        ("alibaba-token-plan", "Qwen Cloud"),
         ("anthropic", "Claude"),
         ("openai-codex", "Codex"),
         ("zai", "Z.ai"),
@@ -1302,6 +1358,10 @@ struct OmpDefinitionTests {
         ("opencode-go", "OpenCode Go"),
         ("ollama", "Ollama"),
         ("ollama-cloud", "Ollama Cloud"),
+        ("cursor", "Cursor"),
+        ("synthetic", "Synthetic"),
+        ("umans", "Umans"),
+        ("xai-oauth", "Grok"),
     ])
     func `should show every provider omp reports by its display name`(id: String, expected: String) throws {
         #expect(try OmpFixtures.displayName(id) == expected)
