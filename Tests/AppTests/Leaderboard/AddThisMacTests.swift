@@ -20,19 +20,38 @@ struct AddThisMacTests {
         return AppLeaderboard(monitor: monitor, api: server, keys: NoKeys(), machine: Machine(), settings: NoRecord())
     }
 
-    private func untilHeld() async {
-        for _ in 0..<2000 where !server.isHolding { await Task.yield() }
+    /// Waits, at most two seconds, for the server to hold a call; fails the
+    /// test rather than release a hold that never began.
+    private func untilHeld(sourceLocation: SourceLocation = #_sourceLocation) async throws {
+        try await until(sourceLocation: sourceLocation) { server.isHolding }
+    }
+
+    private func until(sourceLocation: SourceLocation = #_sourceLocation, _ condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while !condition() {
+            guard ContinuousClock.now < deadline else {
+                Issue.record("timed out waiting", sourceLocation: sourceLocation)
+                throw CancellationError()
+            }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+    }
+
+    /// Lets the wait that was released settle, so a stale write would land
+    /// before the test reads the state.
+    private func settle() async throws {
+        try await Task.sleep(for: .milliseconds(50))
     }
 
     @Test func `should show nothing for a code the person cancelled, though its wait ends in an error`() async throws {
         let leaderboard = leaderboard()
         server.holdsApprovals = true
         await leaderboard.requestToJoin()
-        await untilHeld()
+        try await untilHeld()
 
         leaderboard.cancelRequest()
         server.release(with: .unreachable)
-        for _ in 0..<200 { await Task.yield() }
+        try await settle()
 
         #expect(leaderboard.request == nil)
         #expect(leaderboard.requestFailure == nil)
@@ -40,25 +59,28 @@ struct AddThisMacTests {
 
     @Test func `should show nothing for a replaced code's end, only the new code`() async throws {
         let leaderboard = leaderboard()
+        defer { leaderboard.cancelRequest() }
         server.holdsApprovals = true
         await leaderboard.requestToJoin()
-        await untilHeld()
+        try await untilHeld()
         let first = try #require(leaderboard.request)
 
-        server.holdsApprovals = false
+        // The new code's wait is held too, and ends with the test.
         await leaderboard.requestToJoin()
-        server.release(with: .codeExpired)
-        for _ in 0..<200 { await Task.yield() }
+        try await until { server.heldCalls == 2 }
+        server.releaseFirst(with: .codeExpired)
+        try await settle()
 
         #expect(leaderboard.request != nil && leaderboard.request !== first)
         #expect(leaderboard.requestFailure == nil)
+        server.release(with: .codeExpired)
     }
 
     @Test func `should keep no code that arrives after the person cancelled asking for it`() async throws {
         let leaderboard = leaderboard()
         server.holdsRequests = true
         let asking = Task { await leaderboard.requestToJoin() }
-        await untilHeld()
+        try await untilHeld()
 
         leaderboard.cancelRequest()
         server.release(with: nil)
@@ -72,10 +94,10 @@ struct AddThisMacTests {
         let leaderboard = leaderboard()
         server.holdsApprovals = true
         await leaderboard.requestToJoin()
-        await untilHeld()
+        try await untilHeld()
 
         server.release(with: .codeExpired)
-        for _ in 0..<2000 where leaderboard.requestFailure == nil { await Task.yield() }
+        try await until { leaderboard.requestFailure != nil }
 
         #expect(leaderboard.requestFailure == .codeExpired)
     }
@@ -88,11 +110,19 @@ private final class HeldServer: LeaderboardAPI, @unchecked Sendable {
     var holdsApprovals = false
     private var held: [CheckedContinuation<LeaderboardError?, Never>] = []
     var isHolding: Bool { !held.isEmpty }
+    var heldCalls: Int { held.count }
 
+    /// Ends every held call with `failure`, or with an answer when `nil`.
     func release(with failure: LeaderboardError?) {
         let waiting = held
         held = []
         waiting.forEach { $0.resume(returning: failure) }
+    }
+
+    /// Ends the call held first, leaving the others held.
+    func releaseFirst(with failure: LeaderboardError?) {
+        guard !held.isEmpty else { return }
+        held.removeFirst().resume(returning: failure)
     }
 
     private func hold() async -> LeaderboardError? {
