@@ -1,4 +1,5 @@
 import Crypto
+import Diagnostics
 import Foundation
 import Quotas
 import Observation
@@ -229,7 +230,14 @@ public final class LeaderboardMembership {
         _ = try await request.waitForApproval()
         keys.save(request.key.rawRepresentation)
         guard keys.load() == request.key.rawRepresentation else {
+            // The copied key goes back, read back as `keep(_:)` does. Not
+            // deleted first: a store that refuses writes still holds it, and
+            // deleting would leave nothing. A store that keeps neither is
+            // logged: this session signs with the copied key, the next may not.
             keys.save(credentials.key.rawRepresentation)
+            if keys.load() != credentials.key.rawRepresentation {
+                AppLog.credentials.error("Leaderboard key store kept neither the new key nor the copied one; the membership may not survive a relaunch")
+            }
             throw LeaderboardError.keyNotKept
         }
         let approval = try request.handOver()
