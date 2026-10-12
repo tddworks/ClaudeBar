@@ -41,7 +41,7 @@ struct LeaderboardCard<Content: View>: View {
     }
 }
 
-private struct CardLabel: View {
+struct CardLabel: View {
     let text: String
     @Environment(\.appTheme) private var theme
 
@@ -100,8 +100,29 @@ struct LeaderboardJoinView: View {
         return ("Shown publicly as @\(name)", theme.statusHealthy)
     }
 
+    /// Asking to be added to a member, from *Already a member? Add this Mac*.
+    private var isAddingThisMac: Bool {
+        leaderboard.request != nil || leaderboard.requestFailure != nil || leaderboard.isAskingForCode
+    }
+
     var body: some View {
+        if isAddingThisMac {
+            LeaderboardAddThisMacView(leaderboard: leaderboard, monitor: monitor)
+        } else {
+            form
+        }
+    }
+
+    private var form: some View {
         VStack(spacing: 12) {
+            if let by = leaderboard.membership.removedBy {
+                LeaderboardCard {
+                    Text("\(by.label) removed this Mac from your leaderboard devices. Join again, or add this Mac to a member.")
+                        .font(theme.font(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.statusWarning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             LeaderboardCard {
                 CardLabel(text: "JOIN THE BOARD")
                 Text("Rank your token usage against other ClaudeBar users")
@@ -205,6 +226,20 @@ struct LeaderboardJoinView: View {
                 .buttonStyle(.plain)
                 .disabled(username == nil || sharing.isEmpty || isJoining || linkIsInvalid)
                 .opacity(username == nil || sharing.isEmpty ? 0.5 : 1)
+
+                Button {
+                    Task { await leaderboard.requestToJoin() }
+                } label: {
+                    Text("Already a member? Add this Mac")
+                        .font(theme.font(size: 11, weight: .semibold))
+                        .underline()
+                        .foregroundStyle(theme.textPrimary)
+                        .padding(.vertical, 2)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .disabled(isJoining)
+                .help("Show a code to type on a Mac that's already on the leaderboard")
             }
             if let onHide {
                 Button(action: onHide) {
@@ -269,6 +304,28 @@ struct LeaderboardStandingsView: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            if membership.holdsCopiedKey {
+                LeaderboardCard { LeaderboardCopiedKeyView(leaderboard: leaderboard) }
+            }
+            if let answered = leaderboard.copyAnswered {
+                LeaderboardCard {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(answered)
+                            .font(theme.font(size: 11, weight: .semibold))
+                            .foregroundStyle(theme.statusHealthy)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Button { leaderboard.dismissCopyAnswered() } label: {
+                            Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(theme.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dismiss")
+                    }
+                }
+            }
+            if let added = membership.addedDevices.first {
+                LeaderboardDeviceAddedCard(leaderboard: leaderboard, device: added)
+            }
             rankCard
             if membership.showsGlobeHint { globeHint }
             boardCard
@@ -454,8 +511,24 @@ struct LeaderboardStandingsView: View {
     // MARK: Footer
 
     private var footer: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let refused = leaderboardRefusedLine(membership.refused, monitor: monitor) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10, weight: .semibold))
+                    Text(refused)
+                        .font(theme.font(size: 11, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(theme.statusWarning)
+                .padding(.horizontal, 4)
+            }
+            statusLine
+        }
+    }
+
+    private var statusLine: some View {
         HStack(spacing: 8) {
-            Image(systemName: leaderboard.uploader.lastError == nil ? "arrow.triangle.2.circlepath" : "exclamationmark.triangle.fill")
+            Image(systemName: isWarning ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath")
                 .font(.system(size: 10, weight: .semibold))
             Text(status)
                 .font(theme.font(size: 11, weight: .medium))
@@ -472,11 +545,15 @@ struct LeaderboardStandingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .foregroundStyle(leaderboard.uploader.lastError == nil ? theme.textTertiary : theme.statusWarning)
+        .foregroundStyle(isWarning ? theme.statusWarning : theme.textTertiary)
         .padding(.horizontal, 4)
     }
 
+    /// Uploads stopped, for a failure or for a copied key waiting for an answer.
+    private var isWarning: Bool { membership.holdsCopiedKey || leaderboard.uploader.lastError != nil }
+
     private var status: String {
+        if membership.holdsCopiedKey { return "Not uploading: this Mac has a copy of another Mac's key. Answer above." }
         if let error = leaderboard.uploader.lastError { return "Upload failed: \(error.errorDescription ?? "")" }
         if leaderboard.uploader.isUploading { return "Uploading…" }
         guard let last = membership.lastUpload else { return "Waiting for the first upload" }

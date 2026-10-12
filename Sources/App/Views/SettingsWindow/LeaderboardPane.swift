@@ -30,7 +30,17 @@ struct LeaderboardPane: View {
             onCard
             // Off: only the switch, until it's turned back on.
             if membership.isOn, membership.isJoined {
+                if membership.holdsCopiedKey {
+                    SettingsCard { LeaderboardCopiedKeyView(leaderboard: leaderboard) }
+                }
+                if let answered = leaderboard.copyAnswered {
+                    Text(answered)
+                        .font(theme.font(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.statusHealthy)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 accountCard
+                LeaderboardDevicesCard(leaderboard: leaderboard)
                 profileLinkCard
                 sharingCard
                 dataCard
@@ -178,7 +188,7 @@ struct LeaderboardPane: View {
             }
             SettingsRowDivider()
             SettingsRow(title: "Leave and delete my data",
-                        subtitle: "Removes your username and every uploaded day from the server, then this Mac's key.") {
+                        subtitle: "Removes your username, every device and every uploaded day from the server, then this Mac's key.") {
                 SettingsActionButton(title: "Leave…", iconName: "rectangle.portrait.and.arrow.right", style: .destructive) {
                     confirmLeave = true
                 }
@@ -189,7 +199,7 @@ struct LeaderboardPane: View {
                     run { try await membership.leave(); message = "You left the leaderboard. Your data was deleted." }
                 }
             } message: {
-                Text("Your username and every uploaded day are deleted from the server. This can't be undone.")
+                Text("Your username, every device and every uploaded day are deleted from the server. Your other devices drop out at their next upload. This can't be undone.")
             }
         }
     }

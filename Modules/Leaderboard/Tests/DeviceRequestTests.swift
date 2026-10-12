@@ -75,6 +75,23 @@ struct DeviceRequestTests {
         #expect(request.stage == .expired)
     }
 
+    @Test func `should stop asking the server once the person cancels, and stay waiting`() async throws {
+        server.approvals = [.success(.waiting)]
+        let request = DeviceRequest(code: server.authorization.code, key: SigningKey.generate(), interval: 0, api: server,
+                                    sleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        let waiting = Task { try await request.waitForApproval() }
+        for _ in 0..<1000 where server.approvalsAsked < 2 { await Task.yield() }
+
+        request.stopWaiting()
+        let result = await waiting.result
+        let asked = server.approvalsAsked
+        try await Task.sleep(for: .milliseconds(20))
+
+        #expect(throws: CancellationError.self) { try result.get() }
+        #expect(server.approvalsAsked == asked, "no more asking once cancelled")
+        #expect(request.stage == .waiting)
+    }
+
     // MARK: - The person's answer
 
     @Test func `should remove itself from the member when the person doesn't know them`() async throws {

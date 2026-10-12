@@ -108,6 +108,13 @@ public final class DeviceRequest {
         }
     }
 
+    /// *Cancel* while it waits: stops asking the server, and the wait ends
+    /// with `CancellationError`. The code stays with the server until it
+    /// expires, unused; the request stays `waiting` and keeps nothing.
+    public func stopWaiting() {
+        asking?.cancel()
+    }
+
     /// The person doesn't know the member this Mac was added to: it removes
     /// itself from that member, and keeps nothing.
     public func decline() async throws {

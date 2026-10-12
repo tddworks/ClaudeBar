@@ -521,11 +521,14 @@ struct MenuContentView: View {
             .opacity(selectedProviderBadge.showsBadge ? 1 : 0)
     }
 
-    /// *NOT JOINED · RANKED · UPLOAD FAILED* — the Leaderboard tab's own pill.
+    /// *NOT JOINED · RANKED · NOT UPLOADING · UPLOAD FAILED* — the Leaderboard tab's own pill.
     private var leaderboardBadge: some View {
         let membership = leaderboard.membership
         let (text, color): (String, Color) = if !membership.isJoined {
             ("NOT JOINED", theme.accentSecondary)
+        } else if membership.holdsCopiedKey {
+            // Nothing failed: it waits for the person to say what this Mac is.
+            ("NOT UPLOADING", theme.statusWarning)
         } else if leaderboard.uploader.lastError != nil {
             ("UPLOAD FAILED", theme.statusWarning)
         } else {

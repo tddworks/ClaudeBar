@@ -25,12 +25,28 @@ final class AppLeaderboard {
     private(set) var showsTurnOffMenu = false
     /// The board you're looking at; picking another changes it.
     private(set) var board: Board
+    /// This Mac asking to be added to a member (design §2a): in memory only,
+    /// never while a member. Kept here, not in the view, so closing the
+    /// popover doesn't lose the code or stop the wait.
+    private(set) var request: DeviceRequest?
+    /// Asking the server for a code, before `request` exists.
+    private(set) var isAskingForCode = false
+    /// Why asking to be added stopped: the code expired, or the server refused.
+    private(set) var requestFailure: LeaderboardError?
+    /// *Make this Mac its own device* is under way, maybe waiting for another
+    /// device to approve the code `membership.ownDeviceRequest` shows.
+    private(set) var isBecomingOwnDevice = false
+    /// Why the last answer to a copied key didn't take.
+    private(set) var copyFailure: LeaderboardError?
+    /// Said once after the copied key was answered, until dismissed.
+    private(set) var copyAnswered: String?
 
     @ObservationIgnored private let api: any LeaderboardAPI
     @ObservationIgnored private let logs: MonitorTokenLogs
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var boards: [Board] = []
+    @ObservationIgnored private var waiting: Task<Void, Never>?
 
     /// The key store and the machine are the Mac's, from the factory.
     init(monitor: QuotaMonitor,
@@ -142,6 +158,101 @@ final class AppLeaderboard {
 
     func globe() async throws -> GlobeSummary {
         try await api.globe(period: .thirtyDays)
+    }
+
+    // MARK: A new device of a member (design §2a)
+
+    /// *Already a member? Add this Mac*: asks for a code, then waits for a
+    /// device of the member to approve it, at the server's pace.
+    func requestToJoin() async {
+        cancelRequest()
+        isAskingForCode = true
+        defer { isAskingForCode = false }
+        do {
+            let request = try await membership.requestToJoin()
+            self.request = request
+            waiting = Task { [weak self] in
+                do {
+                    _ = try await request.waitForApproval()
+                } catch is CancellationError {
+                } catch {
+                    self?.requestFailure = error as? LeaderboardError ?? .unreachable
+                }
+            }
+        } catch {
+            requestFailure = error as? LeaderboardError ?? .unreachable
+        }
+    }
+
+    /// The person knows the member the code was approved for: this Mac joins
+    /// as their device and sends its last thirty days.
+    func joinThroughRequest(sharing: Set<String>) throws {
+        guard let request else { throw LeaderboardError.notJoined }
+        try membership.join(through: request, sharing: sharing)
+        self.request = nil
+        Task { await uploader.uploadNow() }
+    }
+
+    /// The person doesn't know that member: this Mac removes itself from it
+    /// and keeps nothing.
+    func declineRequest() async throws {
+        guard let request else { return }
+        try await request.decline()
+        cancelRequest()
+    }
+
+    /// *Cancel* or *Back to joining*: stops asking, and forgets the code.
+    func cancelRequest() {
+        request?.stopWaiting()
+        waiting?.cancel()
+        waiting = nil
+        request = nil
+        requestFailure = nil
+    }
+
+    // MARK: A key copied from another Mac (design §2a)
+
+    /// *Make this Mac its own device*. A copied key in its first week can't
+    /// approve the new one: the code then shows for another device of the
+    /// member, and this waits for that approval. Uploads once it's done.
+    func becomeOwnDevice() {
+        guard !isBecomingOwnDevice else { return }
+        isBecomingOwnDevice = true
+        copyFailure = nil
+        let resumesFrom = membership.lastUpload
+        Task { @MainActor in
+            defer { isBecomingOwnDevice = false }
+            do {
+                do {
+                    try await membership.becomeOwnDevice()
+                } catch LeaderboardError.deviceTooNew where membership.ownDeviceRequest != nil {
+                    try await membership.becomeOwnDevice()
+                }
+                copyAnswered = "This Mac is its own device now."
+                    + (resumesFrom.map { " It uploads from \($0.formatted(.dateTime.month(.abbreviated).day())), where the other Mac left off." } ?? "")
+                await uploader.uploadNow()
+            } catch LeaderboardError.notOffered where !membership.holdsCopiedKey {
+                // *Keep the key here* was chosen meanwhile: that answer stands.
+            } catch {
+                copyFailure = error as? LeaderboardError ?? .unreachable
+            }
+        }
+    }
+
+    /// *Keep the key here*: goes on with the key, and uploads at once.
+    func keepKeyHere() {
+        do {
+            try membership.keepKeyHere()
+            copyFailure = nil
+            copyAnswered = "This Mac keeps the key. If the other Mac is still in use, the two will overwrite each other's days."
+            Task { await uploader.uploadNow() }
+        } catch {
+            copyFailure = error as? LeaderboardError ?? .unreachable
+        }
+    }
+
+    func dismissCopyAnswered() {
+        copyAnswered = nil
     }
 }
 
