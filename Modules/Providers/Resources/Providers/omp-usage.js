@@ -17,7 +17,12 @@ function read(response) {
     const str = v => typeof v === 'string' && v ? v : null;
     const capitalized = s => s.split(/(\s+)/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
     const names = {'anthropic': 'Claude', 'openai-codex': 'Codex', 'zai': 'Z.ai', 'google-gemini-cli': 'Gemini', 'google-antigravity': 'Antigravity',
-                   'github-copilot': 'Copilot', 'kimi-code': 'Kimi', 'minimax-code': 'MiniMax', 'minimax-code-cn': 'MiniMax CN', 'opencode-go': 'OpenCode Go'};
+                   'github-copilot': 'Copilot', 'kimi-code': 'Kimi', 'minimax-code': 'MiniMax', 'minimax-code-cn': 'MiniMax CN', 'opencode-go': 'OpenCode Go',
+                   'alibaba-token-plan': 'Qwen Cloud', 'xai-oauth': 'Grok'};
+    // Why omp reports no usage for an account, where it's always the same
+    // reason: Qwen Cloud's Token Plan has a quota only through the console's
+    // cookie, an optional step of `omp login` that its key alone skips.
+    const noUsage = {'alibaba-token-plan': 'Quota needs a console cookie in omp'};
     const displayName = id => names[id] || id.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
     const unique = (base, seen) => {
         let label = base;
@@ -119,7 +124,7 @@ function read(response) {
         emitted.push(a);
         const label = a.type === 'api_key' ? 'API key' : ([a.email, a.accountId, a.projectId, a.enterpriseUrl].find(str) || 'OAuth account');
         notes.push({label: unique(displayName(a.provider) + ' · ' + label, seenRows), group: unique(displayName(a.provider) + ' · ' + shortIdentity(label), seenGroups),
-                    text: 'No usage reported'});
+                    text: noUsage[a.provider] || 'No usage reported'});
     }
     if (!quotas.length && !notes.length) return {error: 'noData'};
 
