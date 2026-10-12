@@ -35,7 +35,7 @@ struct WindowsPlatformTests {
     @Test func `should call this machine a PC, never a Mac, in everything the person reads`() {
         let label = DeviceLabel("Windows PC")!
         let errors: [LeaderboardError] = [
-            .usernameTaken, .notShareable("claude"), .nothingShared, .notJoined, .alreadyJoined, .keyNotKept, .keyCopied, .approvedByStranger, .deviceLeftBehind(DeviceKey("k2")), .notOffered,
+            .usernameTaken, .notShareable("claude"), .nothingShared, .notJoined, .alreadyJoined, .keyNotKept, .keyCopied, .approvedByStranger, .deviceLeftBehind(DeviceKey("k2"), ours: true), .deviceLeftBehind(DeviceKey("k2"), ours: false), .notOffered,
             .unauthorized, .removed(by: DeviceRef(publicKey: DeviceKey("k1"), label: label)), .codeExpired,
             .unknownCode, .deviceLimit, .deviceTooNew, .lastDevice, .unreachable,
         ]

@@ -375,8 +375,8 @@ struct LeaderboardCopiedKeyTests {
     }
 
     /// A device the switch added stays on the member when the server won't
-    /// remove it: the person is told, and the Devices list shows it with
-    /// *Remove*, as every device of the member.
+    /// remove it: the person is told whose member it is on, and who can
+    /// remove it, since this Mac kept no key for it.
     @Test func `should say which device stayed on the member when a late switch can't remove the one it added`() async throws {
         let copy = try await copied()
         let copiedKey = try storedKey
@@ -390,7 +390,7 @@ struct LeaderboardCopiedKeyTests {
         server.release()
 
         let newKey = try #require(server.requested?.publicKey)
-        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey))) { try await switching.value }
+        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey), ours: true)) { try await switching.value }
 
         #expect(!copy.holdsCopiedKey, "the person's answer stands")
         #expect(try storedKey == copiedKey)
@@ -406,7 +406,7 @@ struct LeaderboardCopiedKeyTests {
         server.removeFailure = .unreachable
 
         let newKey = try #require(server.requested?.publicKey)
-        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey))) { try await copy.becomeOwnDevice() }
+        await #expect(throws: LeaderboardError.deviceLeftBehind(DeviceKey(newKey), ours: false)) { try await copy.becomeOwnDevice() }
 
         #expect(copy.holdsCopiedKey)
         #expect(copy.username?.value == "tokenwhale")

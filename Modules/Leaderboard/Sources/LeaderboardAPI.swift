@@ -207,12 +207,15 @@ public enum LeaderboardError: Error, Sendable, Equatable, LocalizedError {
     /// A code shown for another device of the member was approved by some
     /// other member's device: this machine refused it and removed itself there.
     case approvedByStranger
-    /// A device this machine added, and then had no use for (its switch was
-    /// overtaken by *Keep the key here*, or a stranger approved its code),
-    /// couldn't be removed: it is still on the member it was added to, under
-    /// this key, and this machine kept no key for it. On this member, the
-    /// Devices list shows it, with *Remove*; on a stranger's, theirs does.
-    case deviceLeftBehind(DeviceKey)
+    /// A device this machine added, and then had no use for, couldn't be
+    /// removed: it is still on the member it was added to, under this key,
+    /// and this machine kept no key for it. `ours` when its switch was
+    /// overtaken by *Keep the key here*: the member removes it from their
+    /// Devices list, from a device past its first week. Not `ours` when a
+    /// stranger's device approved its code: it is on the stranger's member,
+    /// which only their devices can remove it from, and it can read nothing
+    /// of theirs without the key this machine didn't keep.
+    case deviceLeftBehind(DeviceKey, ours: Bool)
     /// A removal the dialog didn't offer for that device.
     case notOffered
     /// The server refused the signature: the key no longer matches the name.
@@ -244,7 +247,9 @@ public enum LeaderboardError: Error, Sendable, Equatable, LocalizedError {
         case .keyNotKept: "This \(machine) couldn't store its leaderboard key, so it didn't join. Try again."
         case .keyCopied: "This \(machine) has a copy of another \(machine)'s leaderboard key, so it isn't uploading."
         case .approvedByStranger: "Someone else's device approved this \(machine)'s code, so it wasn't added. Ask for a new code."
-        case .deviceLeftBehind: "A device this \(machine) added, and then didn't use, couldn't be removed. Remove it from the devices list."
+        case .deviceLeftBehind(_, let ours): ours
+            ? "A device this \(machine) added, and then didn't use, couldn't be removed. Remove it from your devices, from a device you've had for a week."
+            : "Someone else's device approved this \(machine)'s code, and this \(machine) couldn't remove itself from their devices. It kept no key for it, and sends nothing as it; they can remove it from theirs."
         case .notOffered: "That isn't offered for this device."
         case .unauthorized: "The leaderboard didn't accept this \(machine)'s key for your username."
         case .removed(let device): "\(device.label) removed this \(machine) from your leaderboard devices."

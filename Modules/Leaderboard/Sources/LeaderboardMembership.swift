@@ -256,7 +256,7 @@ public final class LeaderboardMembership {
         try await requireSwitching(request)
         guard let username, member.value.lowercased() == username.value.lowercased() else {
             ownDeviceRequest = nil
-            try await withdraw(request)
+            try await withdraw(request, ours: false)
             throw LeaderboardError.approvedByStranger
         }
         keys.save(request.key.rawRepresentation)
@@ -290,21 +290,21 @@ public final class LeaderboardMembership {
     /// device the switch added is removed from the member again.
     private func requireSwitching(_ request: DeviceRequest) async throws {
         guard !holdsCopiedKey || ownDeviceRequest !== request else { return }
-        try await withdraw(request)
+        try await withdraw(request, ours: true)
         throw LeaderboardError.notOffered
     }
 
     /// Removes from the member a device `request` added that this machine
     /// has no use for. A removal the server didn't take is said, not
     /// swallowed: the device stays on that member under a key this machine
-    /// doesn't keep, so the member removes it from their Devices list.
-    private func withdraw(_ request: DeviceRequest) async throws {
+    /// doesn't keep, and `ours` says whose member that is.
+    private func withdraw(_ request: DeviceRequest, ours: Bool) async throws {
         guard case .approved = request.stage else { return }
         do {
             try await request.decline()
         } catch {
             AppLog.network.error("Leaderboard couldn't remove the device a switch added: \(error.localizedDescription)")
-            throw LeaderboardError.deviceLeftBehind(request.key.deviceKey)
+            throw LeaderboardError.deviceLeftBehind(request.key.deviceKey, ours: ours)
         }
     }
 
