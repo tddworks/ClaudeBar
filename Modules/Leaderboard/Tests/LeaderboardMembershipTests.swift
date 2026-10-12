@@ -32,7 +32,9 @@ struct LeaderboardMembershipTests {
         #expect(membership.sharing == ["claude", "codex"])
         #expect(membership.isVisible)
         #expect(try SigningKey(rawRepresentation: #require(keys.stored)).publicKey.count == 43)
-        #expect(settings.record == LeaderboardRecord(username: "tokenwhale", sharing: ["claude", "codex"], visible: true, lastUpload: nil))
+        let record = try #require(settings.record)
+        #expect((record.username, record.sharing, record.visible, record.lastUpload) == ("tokenwhale", ["claude", "codex"], true, nil))
+        #expect(record.machine != nil, "which Mac made the key, for a copy to find")
         #expect(!membership.sharesCountry)
     }
 

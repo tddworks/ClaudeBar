@@ -15,10 +15,15 @@ public struct LeaderboardRecord: Sendable, Equatable {
     /// The keys of the devices already shown as added, each shown once.
     /// This device's own, never sent.
     public let shownDevices: [String]
+    /// Which machine made the key: a hash of its hardware UUID, salted with
+    /// the key's public half, never the UUID itself, and never sent. `nil`
+    /// for a key from before this was kept, or made where the UUID can't be
+    /// read. A launch on another machine finds a copied key by it (design §2a).
+    public let machine: String?
 
     public init(username: String, sharing: [String], visible: Bool, lastUpload: Date?,
                 sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil,
-                refused: [RefusedDay] = [], shownDevices: [String] = []) {
+                refused: [RefusedDay] = [], shownDevices: [String] = [], machine: String? = nil) {
         self.link = link
         self.username = username
         self.sharing = sharing.sorted()
@@ -28,6 +33,7 @@ public struct LeaderboardRecord: Sendable, Equatable {
         self.globeHintDismissed = globeHintDismissed
         self.refused = refused
         self.shownDevices = shownDevices.sorted()
+        self.machine = machine
     }
 }
 

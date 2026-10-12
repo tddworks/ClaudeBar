@@ -419,7 +419,7 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
 | 0 | **Prove the toolchain.** A `windows-latest` job builds and tests `Quotas` with the Swift toolchain, Mockable included | the job is green — built ([#523](https://github.com/tddworks/ClaudeBar/pull/523)): Swift 6.3.3 builds and tests `Quotas`, and a `@Mockable` port's mock works there |
 | 1 | **The package.** Root `Package.swift` declares today's modules; Tuist consumes it; no source changes | `tuist test` and the macOS `swift test` are green — built ([#526](https://github.com/tddworks/ClaudeBar/pull/526)): `tuist test` runs the same 3,099 tests as before, and `swift test` runs the modules' tests without Tuist |
 | 2 | **The leaderboard slice.** Carve `Leaderboard` (§8); `CryptoKit` → `Crypto` in `UsageLog`, `CLISession`, `ProviderDefinition`, `RequestSigner`, `SigningKey`; Diagnostics behind `LogSink`; the Mac-only files of `DataSources` move to `Internal/macOS/` | `Quotas`, `Diagnostics`, `DataSources`, `Providers` and `Leaderboard` build and pass on Windows, including the log-reading tests and `vectors.json` — the Windows client can start — built ([#527](https://github.com/tddworks/ClaudeBar/pull/527), [#528](https://github.com/tddworks/ClaudeBar/pull/528), [#529](https://github.com/tddworks/ClaudeBar/pull/529), [#537](https://github.com/tddworks/ClaudeBar/pull/537)): Windows runs 1,355 of the 1,746 tests and skips the rest, each saying why; the leaderboard's run in full |
-| 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` as "Windows PC" (the model Windows reports names a self-built PC's motherboard, so it isn't read; the machine GUID waits for a copied-key check), `LeaderboardAPI` on `URLSession` as on the Mac | a program on Windows joins, uploads and leaves against the real server through the factories — built ([#547](https://github.com/tddworks/ClaudeBar/pull/547)) |
+| 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` as "Windows PC" (the model Windows reports names a self-built PC's motherboard, so it isn't read; the hardware UUID came with the copied-key check, [#549](https://github.com/tddworks/ClaudeBar/pull/549)), `LeaderboardAPI` on `URLSession` as on the Mac | a program on Windows joins, uploads and leaves against the real server through the factories — built ([#547](https://github.com/tddworks/ClaudeBar/pull/547)) |
 | 4 | **Paths and shells.** The engine's Mac assumptions without an import (`/bin/zsh` and `/bin/sh` in `LoginShellEnvironment`, `Connection` and the `file` fetch; `/usr/sbin/lsof` and `/usr/bin/pgrep` in `LocalServerFetcher`; `/usr/bin/security`; `~/Library/Application Support`; `:` in `PATH`) become facts of the module's `Platform` that the factory hands each worker; definitions name a platform's app-data folder through the path language ([ENGINE_DESIGN](ENGINE_DESIGN.md) changes first) | the definitions that read local files resolve on Windows |
 | 5 | **Quotas on Windows.** The rest of `Internal/Windows/`: processes, the pseudo-terminal, the JS engine, SQLite as a bundled package, `Monitoring`, `Alerting`, `Storage` | the Windows client shows quotas, and Windows skips no test |
 
@@ -431,7 +431,10 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
   date formats, and APIs it lacks outright, such as `RelativeDateTimeFormatter`)
   are found by running the same tests there, which is why every module's tests
   run on both. A file that imports only Foundation can still fail to build.
-- **The machine GUID** is kept by a disk image cloned to another PC, unlike a
+- ~~**The machine GUID** is kept by a disk image cloned to another PC, unlike a
   Mac's `IOPlatformUUID`; the leaderboard design decides whether that is
-  enough for its copied-key check.
+  enough for its copied-key check.~~ It isn't: Windows reads the firmware's
+  SMBIOS system UUID instead (`GetSystemFirmwareTable`), which a disk image
+  doesn't carry, and keeps no hash on a board whose maker left a placeholder
+  ([#549](https://github.com/tddworks/ClaudeBar/pull/549)).
 

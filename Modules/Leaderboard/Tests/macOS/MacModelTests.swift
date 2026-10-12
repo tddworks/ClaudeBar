@@ -1,4 +1,5 @@
 #if os(macOS)
+import Foundation
 import Testing
 @testable import Leaderboard
 
@@ -23,6 +24,18 @@ struct MacModelTests {
     @Test func `should call the Mac "Mac" when neither its product name nor its family can be read`() {
         #expect(MacModel.name(productName: nil, identifier: nil) == "Mac")
         #expect(MacModel.name(productName: "  ", identifier: "VirtualMac2,1") == "Mac")
+    }
+}
+
+/// The Mac's hardware UUID (design §2a), read live through IOKit: what
+/// *About This Mac* shows, and what a copy of the app's data never carries.
+@Suite
+struct IOKitMachineIdentityTests {
+    @Test func `should read this Mac's hardware UUID as a UUID`() throws {
+        let uuid = try #require(IOKitMachineIdentity().hardwareUUID)
+
+        #expect(UUID(uuidString: uuid) != nil, "\(uuid)")
+        #expect(uuid == uuid.uppercased())
     }
 }
 #endif

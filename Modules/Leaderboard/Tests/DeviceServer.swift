@@ -11,6 +11,12 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
         let day: String?
     }
 
+    struct Upload: Equatable {
+        /// The public half of the key it was signed with.
+        let key: String
+        let days: [DailyTokens]
+    }
+
     var summary = MemberSummary(username: "tokenwhale", onBoard: nil, days: [], visible: true)
     var authorization = DeviceAuthorization(code: DeviceCode("WDJBMJHT")!, expiresIn: 600, interval: 0)
     /// `GET /me` from a waiting key, answered in turn; the last answer repeats.
@@ -19,6 +25,8 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     var approved = Device(publicKey: DeviceKey("newkey"), label: DeviceLabel("Mac mini")!, addedAt: Date(timeIntervalSince1970: 1_791_106_260))
     var removeFailure: LeaderboardError?
     var deleteDaysFailure: LeaderboardError?
+    var requestFailure: LeaderboardError?
+    var approveFailure: LeaderboardError?
     /// When set, the first `join` waits until `releaseJoin()`, as a slow
     /// server does; a join after it fails with `laterJoinFailure`, if set.
     var holdsFirstJoin = false
@@ -28,9 +36,13 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     private(set) var joinedKey: String?
     private(set) var isHoldingJoin = false
     private(set) var requested: (publicKey: String, label: String)?
+    private(set) var requests = 0
     private(set) var approvalsAsked = 0
     private(set) var approvedCode: DeviceCode?
+    /// The public half of the key that approved the last code.
+    private(set) var approvedBy: String?
     private(set) var removed: [String] = []
+    private(set) var uploads: [Upload] = []
     private(set) var deletedDays: [DeletedDays] = []
     private var joins = 0
     private var heldJoin: CheckedContinuation<Void, Never>?
@@ -54,6 +66,8 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     }
 
     func requestDevice(publicKey: String, label: String) async throws -> DeviceAuthorization {
+        if let requestFailure { throw requestFailure }
+        requests += 1
         requested = (publicKey, label)
         return authorization
     }
@@ -69,7 +83,9 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     }
 
     func approveDevice(code: DeviceCode, as credentials: MemberCredentials) async throws -> Device {
+        if let approveFailure { throw approveFailure }
         approvedCode = code
+        approvedBy = credentials.key.publicKey
         return approved
     }
 
@@ -88,7 +104,10 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     }
 
     func export(as credentials: MemberCredentials) async throws -> Data { Data() }
-    func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] { [] }
+    func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] {
+        uploads.append(Upload(key: credentials.key.publicKey, days: days))
+        return []
+    }
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {}
     func leave(as credentials: MemberCredentials) async throws {}
     func board(period: BoardPeriod, provider: String?) async throws -> [Board.Member] { [] }
@@ -96,10 +115,12 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
 }
 
 extension MockMachineIdentity {
-    /// A machine whose model reads as `model`.
-    static func named(_ model: String) -> MockMachineIdentity {
+    /// A machine whose model reads as `model`, and whose hardware UUID is
+    /// `uuid`; `nil` is a machine whose UUID can't be read.
+    static func named(_ model: String, uuid: String? = "8C3A1F2E-5B7D-4C9E-A1B2-0F3E4D5C6B7A") -> MockMachineIdentity {
         let machine = MockMachineIdentity()
         given(machine).model.willReturn(DeviceLabel(model)!)
+        given(machine).hardwareUUID.willReturn(uuid)
         return machine
     }
 }

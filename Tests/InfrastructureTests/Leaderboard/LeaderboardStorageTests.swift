@@ -62,6 +62,19 @@ struct LeaderboardStorageTests {
         #expect(try !String(contentsOf: url, encoding: .utf8).contains("k2"))
     }
 
+    @Test func `should remember which machine made the key after a relaunch, and forget it with the membership`() throws {
+        let (settings, url) = repository()
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true,
+                                                         lastUpload: nil, machine: "3f1a9c"))
+
+        let relaunched = JSONSettingsRepository(store: JSONSettingsStore(fileURL: url), credentials: UserDefaults(suiteName: UUID().uuidString)!,
+                                                secureCredentials: KeepingCredentials())
+        #expect(relaunched.leaderboardRecord()?.machine == "3f1a9c")
+
+        relaunched.saveLeaderboardRecord(nil)
+        #expect(try !String(contentsOf: url, encoding: .utf8).contains("3f1a9c"))
+    }
+
     @Test func `should leave nothing of the membership in settings when it is forgotten`() throws {
         let (settings, url) = repository()
         settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))

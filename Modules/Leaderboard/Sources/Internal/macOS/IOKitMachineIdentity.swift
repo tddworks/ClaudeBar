@@ -3,12 +3,21 @@ import Foundation
 import IOKit
 
 /// The Mac read through the I/O Registry: its model, live from the hardware's
-/// registry, never the computer name the person gave it.
+/// registry, never the computer name the person gave it, and its hardware
+/// UUID, which a Migration Assistant copy or a restore to another Mac doesn't
+/// bring along (design §2a).
 struct IOKitMachineIdentity: MachineIdentity {
     var model: DeviceLabel {
         let name = MacModel.name(productName: Self.string(at: "IODeviceTree:/product", "product-name"),
                                  identifier: Self.platformString("model"))
         return DeviceLabel(name) ?? DeviceLabel(String(name.prefix(40))) ?? DeviceLabel("Mac")!
+    }
+
+    /// `IOPlatformUUID` of `IOPlatformExpertDevice`: the Mac's hardware UUID,
+    /// as *About This Mac* shows it. `nil` when the registry won't say.
+    var hardwareUUID: String? {
+        guard let uuid = Self.platformString(kIOPlatformUUIDKey), UUID(uuidString: uuid) != nil else { return nil }
+        return uuid.uppercased()
     }
 
     private static func platformString(_ key: String) -> String? {

@@ -170,7 +170,7 @@ The person thinks of the board as something their app has: what they saw a minut
 | **Owns: a turned-off Leaderboard uploads nothing** | `uploadCredentials` is `nil` while off, so the uploader has nothing to sign with and `lastUpload` stays where uploads stopped |
 | **Owns: a copied key it detects never uploads unasked** | at launch, a key whose `machine` hash isn't this Mac's uploads nothing until the member answers: this Mac gets its own key, or keeps this one and records its hash ([§2a](#2a--devices-one-member-several-machines)); every key made here is recorded with this Mac's hash, and forgetting a key forgets its hash |
 | **Tell it** | `join(as:sharing:)` · `share(_:)` · `stopSharing(_:)` · `setVisible(_:)` · `rename(to:)` · `leave()` · `turnOff()` · `turnOn()` · `requestToJoin(label:)` (answers a `DeviceRequest`) · `join(through:sharing:)` · `pendingDevice(code:)` · `approve(code:)` · `markShown(_:)` · `remove(_:_:)` (one of its `removals(of:)`) · `deleteDays(of:provider:day:)` · `becomeOwnDevice()` · `keepKeyHere()` |
-| **It answers** | `isJoined` · `isOn` · `sharing` · `country` · `devices` · `addedDevices` · `removals(of:)` (the dialog's choices for a device) · `removedBy` · `summary(period:provider:)` (the signed `/me` read, which it follows; `Board.read()` uses it, and the tab never calls it) · `export()` (everything the server holds, `/me/export`, as the server sent it; Settings' *Export…* saves it, and nothing here follows it) · `refused` (days the server refused, tried again) · `holdsCopiedKey` (this Mac's key came from another Mac) |
+| **It answers** | `isJoined` · `isOn` · `sharing` · `country` · `devices` · `addedDevices` · `removals(of:)` (the dialog's choices for a device) · `removedBy` · `summary(period:provider:)` (the signed `/me` read, which it follows; `Board.read()` uses it, and the tab never calls it) · `export()` (everything the server holds, `/me/export`, as the server sent it; Settings' *Export…* saves it, and nothing here follows it) · `refused` (days the server refused, tried again) · `holdsCopiedKey` (this Mac's key came from another Mac) · `ownDeviceRequest` (while a copied key in its first week can't approve the new one: the code for another device of the member to approve) |
 | **Never** | holds a ranking · sends a provider it was not told to share · forgets its key before the server confirmed the leave or the removal · keeps a member setting the server has changed since |
 
 ### `MemberDevices`: the member's devices, as `/me` last listed them
@@ -609,7 +609,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 │                                               └───────────────┬────────────────┘                         │
 │  Modules/Leaderboard/Sources/Internal                         │                                          │
 │   LeaderboardHTTPClient (NetworkClient) · KeychainSigningKeyStore (+ UserDefaults fallback)             │
-│   macOS/IOKitMachineIdentity: the Mac's model from the I/O Registry                                      │
+│   macOS/IOKitMachineIdentity: the Mac's model and hardware UUID from the I/O Registry                    │
 │   Windows/CredentialManagerSigningKeyStore · WindowsMachineIdentity ("Windows PC")                       │
 │   JSONSettingsRepository: leaderboard.* keys in ~/.claudebar/settings.json                               │
 └───────────────────────────────────────────────────────────────┼──────────────────────────────────────────┘
@@ -632,12 +632,13 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 | Piece | Home |
 |---|---|
 | `LeaderboardMembership`, `Board` and `Board.Member`, `DailyTokens`, `Username`, `RankCard`, `LeaderboardUploader` | `Modules/Leaderboard/Sources/` |
-| `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's model, and with slice 14 its hardware UUID, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the devices already shown and, with slice 14, the `machine` hash) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
+| `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's model and its hardware UUID, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the devices already shown and the `machine` hash) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
 | `DeviceRequest`; `Device`, `DeviceKey` (the key a device signs with: text only on the wire and in `settings.json`), `MemberDevices`, `DeviceCode`, `DeviceLabel` | `Modules/Leaderboard/Sources/` |
 | The factory, `Leaderboard.makeAPI(client:)`, `makeKeyStore()` and `makeMachineIdentity()`: the server, and the key store and machine of the platform the module is built for | `Modules/Leaderboard/Sources/` |
 | `LeaderboardHTTPClient`; `FallbackSigningKeyStore`, the key in the Keychain first and in UserDefaults when the Keychain refuses it (`DefaultsSigningKeyStore`) | `Modules/Leaderboard/Sources/Internal/` |
 | `KeychainSigningKeyStore`, the same Keychain item as before the module | `Modules/Leaderboard/Sources/Internal/macOS/` |
-| `IOKitMachineIdentity`: `MachineIdentity` read through IOKit (the model; with slice 14, `IOPlatformUUID`) | `Modules/Leaderboard/Sources/Internal/macOS/` |
+| `IOKitMachineIdentity`: `MachineIdentity` read through IOKit: the model, and `IOPlatformUUID` | `Modules/Leaderboard/Sources/Internal/macOS/` |
+| `WindowsMachineIdentity`: "Windows PC", and the SMBIOS system UUID from the firmware table (`SMBIOS`, a parser of the bytes, which builds and is tested everywhere) | `Modules/Leaderboard/Sources/Internal/Windows/` |
 | `CredentialManagerSigningKeyStore`, the key as a Credential Manager generic credential kept on this PC; `WindowsMachineIdentity`, "Windows PC" | `Modules/Leaderboard/Sources/Internal/Windows/` |
 | Settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
 | `AppLeaderboard` (wiring through the factory with the app's `X-Client` name, `board` and `board(period:provider:)`, so a board outlives the popover, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
@@ -645,7 +646,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–13, 16 and 17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 14 is next; 14 and 15, the rest of §2a's devices in the app, are not built yet.
+Test-first slices, each green on its own. Slices 1–14, 16 and 17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR). 15, the surfaces of §2a's devices, is next.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.

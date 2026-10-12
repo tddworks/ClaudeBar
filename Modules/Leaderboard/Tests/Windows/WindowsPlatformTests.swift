@@ -35,7 +35,7 @@ struct WindowsPlatformTests {
     @Test func `should call this machine a PC, never a Mac, in everything the person reads`() {
         let label = DeviceLabel("Windows PC")!
         let errors: [LeaderboardError] = [
-            .usernameTaken, .notShareable("claude"), .nothingShared, .notJoined, .alreadyJoined, .notOffered,
+            .usernameTaken, .notShareable("claude"), .nothingShared, .notJoined, .alreadyJoined, .keyNotKept, .keyCopied, .notOffered,
             .unauthorized, .removed(by: DeviceRef(publicKey: DeviceKey("k1"), label: label)), .codeExpired,
             .unknownCode, .deviceLimit, .deviceTooNew, .lastDevice, .unreachable,
         ]
@@ -44,6 +44,15 @@ struct WindowsPlatformTests {
             #expect(!(error.errorDescription ?? "").contains("Mac"), "\(error)")
         }
         #expect(LeaderboardError.alreadyJoined.errorDescription == "This PC is already on the leaderboard.")
+    }
+
+    @Test func `should read this PC's hardware UUID from its firmware as a UUID, or nothing`() {
+        let uuid = WindowsMachineIdentity().hardwareUUID
+
+        if let uuid {
+            #expect(UUID(uuidString: uuid) != nil, "\(uuid)")
+            #expect(uuid == uuid.uppercased())
+        }
     }
 }
 #endif

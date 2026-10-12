@@ -58,7 +58,11 @@ public final class LeaderboardUploader {
     }
 
     private func upload(skippingRepeat: Bool) async {
-        guard let credentials = membership.uploadCredentials, !isUploading else { return }
+        guard let credentials = membership.uploadCredentials, !isUploading else {
+            // A copied key uploads nothing by design (§2a); the badge says why.
+            if membership.holdsCopiedKey { lastError = .keyCopied }
+            return
+        }
         isUploading = true
         defer { isUploading = false }
         let now = now()

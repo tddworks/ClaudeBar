@@ -828,7 +828,8 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
                 guard let provider = day["provider"], let date = day["day"], let reason = day["reason"] else { return nil }
                 return RefusedDay(provider: provider, day: date, reason: reason)
             },
-            shownDevices: store.read(key: "leaderboard.shownDevices") ?? []
+            shownDevices: store.read(key: "leaderboard.shownDevices") ?? [],
+            machine: store.read(key: "leaderboard.machine")
         )
     }
 
@@ -852,5 +853,6 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         let refused = record?.refused.map { ["provider": $0.provider, "day": $0.day, "reason": $0.reason] }
         store.write(value: refused?.isEmpty == false ? refused : nil, key: "leaderboard.refused")
         store.write(value: record?.shownDevices.isEmpty == false ? record?.shownDevices : nil, key: "leaderboard.shownDevices")
+        store.write(value: record?.machine, key: "leaderboard.machine")
     }
 }
