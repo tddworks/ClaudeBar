@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devices — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--peach:#FFC9A8;--warn:#9A5B00;--bad:#B4232C;--ok:#0E6B3A;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:32px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end}
+h1{margin:0;font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted);max-width:760px}
+.tag{border:var(--line);border-radius:999px;padding:3px 12px;font-weight:800;font-size:13px;background:var(--sun);box-shadow:2px 2px 0 var(--ink)}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px;flex:1 1 300px;min-width:0;max-width:420px}
+.col.wide{max-width:520px;flex-basis:420px}
+.pop{background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:var(--line);border-radius:22px;box-shadow:5px 5px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px}
+.settings{background:#F6F3EE;border:var(--line);border-radius:16px;box-shadow:5px 5px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px}
+.settings .card{border-radius:12px;box-shadow:none;border-width:2px}
+.label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.hint.warn{color:var(--warn);font-weight:700}
+.hint.bad{color:var(--bad);font-weight:700}
+.hint.ok{color:var(--ok);font-weight:700}
+h3{margin:0;font-size:15px;line-height:1.25}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:var(--line);border-radius:999px;background:var(--violet);color:#fff;font:800 12px "Bricolage Grotesque",sans-serif;padding:7px 14px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;min-height:34px;display:inline-flex;align-items:center;gap:6px}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.danger{background:var(--bad)}
+.btn.full{width:100%;justify-content:center}
+.btn.small{min-height:28px;padding:3px 10px;font-size:11px;border-width:2px;box-shadow:none;white-space:nowrap;flex:none}
+.link{background:none;border:0;padding:0;font:700 12px "Bricolage Grotesque",sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer;align-self:center}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:2px solid var(--ink);border-radius:999px;background:#fff;font:700 12px "Bricolage Grotesque",sans-serif;padding:4px 10px;display:inline-flex;gap:6px;align-items:center;min-height:30px}
+.pill[aria-pressed="true"]{background:var(--violet);color:#fff}
+.chip{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:1px 7px;border:2px solid var(--ink);white-space:nowrap}
+.chip.me{background:var(--violet);color:#fff;border-color:var(--violet)}
+.chip.new{background:var(--sun)}
+.chip.gone{background:#EEE7DA;color:var(--muted);border-color:#CFC6B5}
+.code{font:700 26px "JetBrains Mono",monospace;letter-spacing:.12em;text-align:center;padding:10px;border:2px dashed var(--ink);border-radius:12px;background:#fff}
+.field{display:flex;align-items:center;border:var(--line);border-radius:12px;background:#fff;overflow:hidden}
+.field input{flex:1;border:0;outline:0;padding:9px 10px;font:700 14px "JetBrains Mono",monospace;letter-spacing:.1em;background:transparent;min-width:0;text-transform:uppercase}
+.wait{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.spin{width:14px;height:14px;border:2.5px solid var(--lav);border-top-color:var(--violet);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
+/* Settings rows */
+.srow{display:flex;gap:10px;align-items:center;padding:8px 0}
+.srow+.srow{border-top:1.5px solid #EEE7DA}
+.srow .icon{width:30px;height:30px;border-radius:8px;border:2px solid var(--ink);display:grid;place-items:center;flex:none;background:var(--lav)}
+.srow .icon svg{width:16px;height:16px}
+.srow.removed .icon{background:#EEE7DA;border-color:#CFC6B5;color:var(--muted)}
+.srow .what{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.srow .what b{font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.srow .what span{font-size:11.5px;color:var(--muted)}
+.srow.removed .what b{color:var(--muted)}
+.srow .what span.chip{font-size:9px;color:var(--ink)}
+.srow .what span.chip.me{color:#fff}
+.srow .what span.chip.gone{color:var(--muted)}
+.title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+
+/* Sheet: a dialog over the Settings window */
+.sheet{background:#fff;border:var(--line);border-radius:14px;box-shadow:6px 6px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:10px}
+.sheet .btns{justify-content:flex-end}
+
+/* The choice on the copied-key card */
+.choice{border:2px solid var(--ink);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:#fff}
+.choice.primary{background:var(--lav)}
+.choice p{margin:0;font-size:12px;color:#3a3550}
+
+/* Popover footer */
+.footer{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);padding:0 4px}
+.footer.warn{color:var(--warn);font-weight:700}
+.footer svg{width:12px;height:12px;flex:none}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.rules .card h3{margin:0;font-size:15px}
+.rules .card p{margin:0;font-size:13.5px;color:#3a3550}
+code{font:600 12.5px "JetBrains Mono",monospace;background:#fff;border:1.5px solid #E3D8C4;border-radius:5px;padding:0 4px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div>
+      <h1>Devices</h1>
+      <p class="sub">One member, several machines: each Mac or PC signs with its own key. A new one shows a code that a device the member has approves; the Devices list shows them all and removes one; a Mac whose key was copied from another asks what it is before it uploads anything. Slice 15 of the leaderboard design, over the rules slices 13 and 14 built.</p>
+    </div>
+    <span class="tag">Sample data</span>
+  </header>
+
+  <!-- ===================== 1. Settings: the Devices card ===================== -->
+  <section>
+    <p class="section-title">1 · Settings → Leaderboard → Devices</p>
+    <div class="row">
+      <div class="col wide">
+        <p class="label">Past its first week · every device of the member</p>
+        <div class="settings">
+          <div class="card">
+            <div class="title-row">
+              <div><h3>Devices</h3><p class="hint">Each Mac or PC on @tokenwhale signs with its own key. Up to five in use.</p></div>
+              <button class="btn small ghost" type="button">＋ Add a device</button>
+            </div>
+            <div>
+              <div class="srow">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M1 13h14"/></svg></span>
+                <span class="what"><b>MacBook Pro <span class="chip me">This Mac</span></b><span>Joined Sep 3</span></span>
+                <button class="btn small ghost" type="button">Remove…</button>
+              </div>
+              <div class="srow">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="12" height="5" rx="1.5"/></svg></span>
+                <span class="what"><b>Mac mini <span class="chip new">First week</span></b><span>Added Oct 10 · can add or remove devices from Oct 17</span></span>
+                <button class="btn small ghost" type="button">Remove…</button>
+              </div>
+              <div class="srow">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="2.5" width="13" height="9" rx="1"/><path d="M5 14h6M8 11.5V14"/></svg></span>
+                <span class="what"><b>Windows PC</b><span>Added Sep 20</span></span>
+                <button class="btn small ghost" type="button">Remove…</button>
+              </div>
+              <div class="srow removed">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="2.5" width="13" height="9" rx="1"/><path d="M5 14h6M8 11.5V14"/></svg></span>
+                <span class="what"><b>iMac <span class="chip gone">Removed</span></b><span>Removed Oct 1 by MacBook Pro · its days still count</span></span>
+                <button class="btn small ghost" type="button">Delete its days…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="hint">Oldest first, removed ones last. Removing <b>This Mac</b> takes it off the member and forgets its key here; the other devices go on. The last device in use can't be removed: that is leaving, its own row below.</p>
+      </div>
+
+      <div class="col">
+        <p class="label">Remove… · another device in its first week</p>
+        <div class="sheet" role="dialog" aria-label="Remove Mac mini">
+          <h3>Remove Mac mini?</h3>
+          <p class="hint">Its key stops working at once. It was added 2 days ago: if it isn't yours, delete the days it sent too.</p>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn ghost" type="button">Remove</button><button class="btn danger" type="button">Remove and delete its days</button></div>
+        </div>
+        <p class="label" style="margin-top:12px">Remove… · an older device</p>
+        <div class="sheet" role="dialog" aria-label="Remove Windows PC">
+          <h3>Remove Windows PC?</h3>
+          <p class="hint">Its key stops working at once. The days it sent stay and count; you can delete them afterwards.</p>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn danger" type="button">Remove</button></div>
+        </div>
+        <p class="label" style="margin-top:12px">Remove… · This Mac</p>
+        <div class="sheet" role="dialog" aria-label="Remove this Mac">
+          <h3>Remove this Mac from @tokenwhale?</h3>
+          <p class="hint">Its key stops working and this Mac forgets the membership. The days it sent stay; your other devices go on.</p>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn danger" type="button">Remove this Mac</button></div>
+        </div>
+        <p class="label" style="margin-top:12px">Delete its days… · a removed device</p>
+        <div class="sheet" role="dialog" aria-label="Delete iMac's days">
+          <h3>Delete iMac's days?</h3>
+          <p class="hint">Every day it sent is deleted from the board. Use this when it counted days twice, after a reinstall or a copy.</p>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn danger" type="button">Delete its days</button></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <p class="label">In this Mac's own first week</p>
+        <div class="settings">
+          <div class="card">
+            <div><h3>Devices</h3><p class="hint">Each Mac or PC on @tokenwhale signs with its own key.</p></div>
+            <div class="srow">
+              <span class="icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="12" height="5" rx="1.5"/></svg></span>
+              <span class="what"><b>Mac mini <span class="chip me">This Mac</span></b><span>Added Oct 10</span></span>
+            </div>
+            <p class="hint">This Mac's first week ends <b>Oct 17</b>. Until then it sees only itself, and can't add or remove devices, rename or leave: a device added by mistake can't take over the member.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 2. Settings: Add a device ===================== -->
+  <section>
+    <p class="section-title">2 · Settings → Add a device · on a Mac the member has</p>
+    <div class="row">
+      <div class="col">
+        <p class="label">Type the new Mac's code</p>
+        <div class="settings"><div class="card">
+          <h3>Add a device</h3>
+          <p class="hint">On the new Mac, open the Leaderboard tab and choose <b>Already a member? Add this Mac</b>. Type the code it shows.</p>
+          <label class="field"><input value="WDJB-MJHT" aria-label="Code shown on the new Mac" spellcheck="false" autocomplete="off"></label>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn" type="button">Look up</button></div>
+        </div></div>
+      </div>
+      <div class="col">
+        <p class="label">What approving would add, before Approve</p>
+        <div class="settings"><div class="card">
+          <h3>Add “Mac mini”?</h3>
+          <p class="hint">It asked 2 minutes ago with code <code>WDJB-MJHT</code>.</p>
+          <p class="hint warn">Only approve a code you can see on your own Mac. Someone who reads you their code wants to send their days as you.</p>
+          <div class="btns"><button class="btn ghost" type="button">Cancel</button><button class="btn" type="button">Approve</button></div>
+        </div></div>
+      </div>
+      <div class="col">
+        <p class="label">Approved · or refused</p>
+        <div class="settings"><div class="card">
+          <p class="hint ok">Mac mini was added. It waits a week before it can add or remove devices.</p>
+          <p class="hint bad">No device is waiting with that code. Check it, or ask for a new one.</p>
+          <p class="hint bad">A device can do this once it has been added a week.</p>
+          <p class="hint bad">You already have five devices. Remove one to add another.</p>
+        </div></div>
+        <p class="hint">The errors are the domain's own words (<code>LeaderboardError</code>), shown under the field.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. Popover: a new Mac joins as a device ===================== -->
+  <section>
+    <p class="section-title">3 · Popover → Leaderboard tab · a new Mac joins as a device of the member</p>
+    <div class="row">
+      <div class="col">
+        <p class="label">The join form's foot</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">Username</p>
+            <label class="field"><input value="" placeholder="pick-a-name" aria-label="Username" style="text-transform:none;letter-spacing:0"></label>
+            <button class="btn full" type="button">Join leaderboard</button>
+            <button class="link" type="button">Already a member? Add this Mac</button>
+          </div>
+        </div>
+        <p class="hint">Removed from a member, the form says why above it:</p>
+        <div class="pop"><div class="card"><p class="hint warn">MacBook Pro removed this Mac from your leaderboard devices. Join again, or add this Mac to a member.</p></div></div>
+      </div>
+      <div class="col">
+        <p class="label">The code, and the wait</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">Add this Mac</p>
+            <h3>Type this on a Mac that's on the leaderboard</h3>
+            <div class="code" aria-label="Code W D J B M J H T">WDJB-MJHT</div>
+            <p class="hint">There: Settings → Leaderboard → Devices → <b>Add a device</b>. This Mac is called <b>Mac mini</b>.</p>
+            <div class="wait"><span class="spin" aria-hidden="true"></span>Waiting for approval · the code works for 10 minutes</div>
+            <button class="btn ghost full" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">Approved: is that you?</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">Add this Mac</p>
+            <h3>Approved for @tokenwhale</h3>
+            <p class="hint">Is that you? Nothing is kept or uploaded until you say so.</p>
+            <p class="label" style="margin-top:4px">Share tokens from</p>
+            <div class="pills"><span class="pill" aria-pressed="true">Claude</span><span class="pill" aria-pressed="true">Codex</span><span class="pill">Mistral</span></div>
+            <button class="btn full" type="button">Join as @tokenwhale</button>
+            <button class="link" type="button">That's not me · remove this Mac</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">The code expired</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">Add this Mac</p>
+            <p class="hint bad">The code expired before it was approved.</p>
+            <button class="btn full" type="button">Get a new code</button>
+            <button class="link" type="button">Back to joining</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 4. Popover: notices ===================== -->
+  <section>
+    <p class="section-title">4 · Popover → Leaderboard tab · notices</p>
+    <div class="row">
+      <div class="col">
+        <p class="label">A device was added since this one looked · once each</p>
+        <div class="pop">
+          <div class="card">
+            <div class="title-row">
+              <span class="chip new">New device</span>
+              <button class="link" type="button" aria-label="Dismiss" style="text-decoration:none">✕</button>
+            </div>
+            <h3>Mac mini was added to @tokenwhale</h3>
+            <p class="hint">Oct 10. If it isn't yours, remove it: its key stops at once.</p>
+            <div class="btns"><button class="btn small ghost" type="button">Remove…</button><button class="btn small ghost" type="button">It's mine</button></div>
+          </div>
+          <div class="card" style="opacity:.55"><p class="label">Your rank · 7 days</p><p class="hint">…the board as today</p></div>
+        </div>
+        <p class="hint">Above the rank card. <b>Remove…</b> opens the same choice as Settings, with <b>Remove and delete its days</b> while it is in its first week.</p>
+      </div>
+      <div class="col">
+        <p class="label">A day the server refused · the footer</p>
+        <div class="pop">
+          <div class="card" style="opacity:.55"><p class="label">The board</p><p class="hint">…</p></div>
+          <div class="footer warn"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 1l5.5 10H.5z"/></svg>Claude on Oct 11 wasn't counted: over the daily cap. Sent again each hour for 30 days.</div>
+          <div class="footer"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 1.5V3.5H8"/></svg>Uploaded 12 minutes ago · hourly</div>
+        </div>
+        <p class="hint">One line for the earliest refused day, "and 2 more" when there are more; the reason in words: over the daily cap, a day in the future, older than 30 days.</p>
+      </div>
+      <div class="col">
+        <p class="label">This Mac's key was copied · the footer</p>
+        <div class="pop">
+          <div class="card" style="opacity:.55"><p class="label">The board</p><p class="hint">…</p></div>
+          <div class="footer warn"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 1l5.5 10H.5z"/></svg>Not uploading: this Mac has a copy of another Mac's key. Answer above.</div>
+        </div>
+        <p class="hint">The status pill says <b>NOT UPLOADING</b> in the warning colour, not <b>UPLOAD FAILED</b>: nothing failed, it is waiting for you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 5. The copied-key card ===================== -->
+  <section>
+    <p class="section-title">5 · A key copied from another Mac · at the top of the tab, and of Settings → Leaderboard</p>
+    <div class="row">
+      <div class="col wide">
+        <p class="label">The question · nothing uploads until it is answered</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">This Mac has a copy of a key</p>
+            <h3>This Mac has a copy of MacBook Pro's leaderboard key</h3>
+            <p class="hint">Migration Assistant or a restore brought it here. Two Macs on one key overwrite each other's days, so this Mac isn't uploading until you choose.</p>
+            <div class="choice primary">
+              <b>Both Macs stay in use</b>
+              <p>This Mac gets its own key, added as a device of @tokenwhale. It uploads from where MacBook Pro left off, and waits a week before it can add or remove devices.</p>
+              <button class="btn" type="button" style="align-self:flex-start">Make this Mac its own device</button>
+            </div>
+            <div class="choice">
+              <b>The other Mac is gone, or this is it after a repair</b>
+              <p>This Mac keeps the key and goes on as MacBook Pro. If the other Mac is still in use, the two will overwrite each other's days.</p>
+              <button class="btn ghost" type="button" style="align-self:flex-start">Keep the key here</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">The copied key is in its first week</p>
+        <div class="pop">
+          <div class="card">
+            <p class="label">Make this Mac its own device</p>
+            <h3>Another of your devices approves this one</h3>
+            <p class="hint">MacBook Pro's key was added less than a week ago, so it can't approve. On another device of @tokenwhale: Settings → Leaderboard → Devices → <b>Add a device</b>.</p>
+            <div class="code" aria-label="Code W D J B M J H T">WDJB-MJHT</div>
+            <div class="wait"><span class="spin" aria-hidden="true"></span>Waiting for approval · the code works for 10 minutes</div>
+            <button class="btn ghost full" type="button">Keep the key here instead</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="label">What can go wrong, said where it happened</p>
+        <div class="pop">
+          <div class="card">
+            <p class="hint ok">This Mac is its own device now. It uploads from Oct 9, where MacBook Pro left off.</p>
+            <p class="hint bad">Someone else's device approved this Mac's code, so it wasn't added. Ask for a new code.</p>
+            <p class="hint bad">You already have five devices. Remove one to add another.</p>
+            <p class="hint bad">This Mac couldn't store its leaderboard key, so it didn't join. Try again.</p>
+          </div>
+        </div>
+        <p class="hint">Each card shows one action at a time while it works: a second press does nothing (slice 14's rule).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="rules">
+    <div class="card"><h3>A device is a key</h3><p>Every Mac or PC signs with its own key, kept on that machine only. Adding one is approving its code from a device you have; removing one revokes its key at once. Up to five in use.</p></div>
+    <div class="card"><h3>Never approved blind</h3><p>Before <b>Approve</b>, the Mac shows the label the new device asked with and when. The new device, once approved, names the member and asks “Is that you?” before it keeps or sends anything.</p></div>
+    <div class="card"><h3>A first week</h3><p>An added device can't add, remove, rename or leave for 7 days, and sees only itself. Removing another device still in its first week offers to delete the days it sent.</p></div>
+    <div class="card"><h3>A copy asks first</h3><p>A Mac whose key came from another Mac uploads nothing until the member answers: its own device, or keep the key here. The card says plainly what keeping it means while the other Mac is in use.</p></div>
+  </section>
+</main>
+</body>
+</html>
