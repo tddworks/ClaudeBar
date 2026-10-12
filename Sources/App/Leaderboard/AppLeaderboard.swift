@@ -47,6 +47,8 @@ final class AppLeaderboard {
     @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var boards: [Board] = []
     @ObservationIgnored private var waiting: Task<Void, Never>?
+    /// The ask for a code under way: one cancelled or replaced meanwhile installs nothing.
+    @ObservationIgnored private var askingFor: UUID?
 
     /// The key store and the machine are the Mac's, from the factory.
     init(monitor: QuotaMonitor,
@@ -166,20 +168,28 @@ final class AppLeaderboard {
     /// device of the member to approve it, at the server's pace.
     func requestToJoin() async {
         cancelRequest()
+        let asking = UUID()
+        askingFor = asking
         isAskingForCode = true
-        defer { isAskingForCode = false }
+        defer { if askingFor == asking { isAskingForCode = false } }
         do {
             let request = try await membership.requestToJoin()
+            // Cancelled, or asked again, while the server answered: this code isn't wanted.
+            guard askingFor == asking else { return }
             self.request = request
             waiting = Task { [weak self] in
                 do {
                     _ = try await request.waitForApproval()
                 } catch is CancellationError {
                 } catch {
-                    self?.requestFailure = error as? LeaderboardError ?? .unreachable
+                    // Only the request still shown says why it stopped: one
+                    // cancelled or replaced meanwhile says nothing.
+                    guard let self, self.request === request else { return }
+                    self.requestFailure = error as? LeaderboardError ?? .unreachable
                 }
             }
         } catch {
+            guard askingFor == asking else { return }
             requestFailure = error as? LeaderboardError ?? .unreachable
         }
     }
@@ -203,6 +213,8 @@ final class AppLeaderboard {
 
     /// *Cancel* or *Back to joining*: stops asking, and forgets the code.
     func cancelRequest() {
+        askingFor = nil
+        isAskingForCode = false
         request?.stopWaiting()
         waiting?.cancel()
         waiting = nil
