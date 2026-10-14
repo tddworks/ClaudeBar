@@ -148,8 +148,8 @@ Modules/DataSources/
 │   │   (Fetch.swift also declares the ports CloudWatchClient · PriceCatalog, @Mockable —
 │   │    implemented in AWSClients)
 │   ├── UsageLog.swift                ◆ days(from:to:) for one login · ◇ UsageLog.Definition —
-│   │                                   files · format · where · at · id · model · tokens · cost ·
-│   │                                   prices · freeWhen · sessionGap
+│   │                                   files or command · format · where · at · id · model ·
+│   │                                   tokens · cost · prices · freeWhen · sessionGap
 │   ├── DataSources.swift             the factory: make(_:providerId:…)
 │   └── Internal/
 │       ├── Lookup/    EnvironmentReader · SettingReader · JSONFileReader · KeychainReader ·
@@ -160,8 +160,9 @@ Modules/DataSources/
 │       │              CloudWatchFetcher
 │       ├── Mapping/   JSONMapper (+ the path dialect) · TextMapper · ScriptMapper ·
 │       │              DecimalScript · HumanDate
-│       ├── Logs/      LogRecord · JSONLinesReader · JSONLogReader (a reader per log
-│       │              format) · LogFileFinder · DayAggregator · PriceList · LocalEndpoint
+│       ├── Logs/      LogRecord · JSONLinesReader · JSONLogReader · CommandLogReader (a
+│       │              reader per log source) · LogFileFinder · DayAggregator · PriceList ·
+│       │              LocalEndpoint
 │       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·
 │       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
 │       │              TerminalRenderer

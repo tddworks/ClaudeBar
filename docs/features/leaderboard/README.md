@@ -1,5 +1,5 @@
 ---
-description: Join the ClaudeBar Leaderboard with a username, share daily token totals from Claude, Codex, Mistral or Oh My Pi, and see your rank. Use when joining, changing what you share, or leaving.
+description: Join the ClaudeBar Leaderboard with a username, share daily token totals from Claude, Codex, Mistral, Oh My Pi or OpenCode, and see your rank. Use when joining, changing what you share, or leaving.
 ---
 
 # Leaderboard
@@ -29,6 +29,7 @@ Providers whose logs ClaudeBar reads for daily usage can be shared:
 | Codex | `~/.codex/sessions` (or each added account's `CODEX_HOME`) |
 | Mistral | `~/.vibe/logs` |
 | Oh My Pi | `~/.omp/agent/sessions` (or `$PI_CODING_AGENT_DIR/sessions`): every account omp drives, as one total |
+| OpenCode | opencode's own database, through one read-only `opencode db` query: every assistant message of the last 30 days, whatever provider opencode drove, as one total |
 
 Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, not tokens, so they can't be ranked. If you have several accounts for one provider, their tokens are added together.
 

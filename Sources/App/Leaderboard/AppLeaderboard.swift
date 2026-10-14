@@ -302,7 +302,7 @@ func leaderboardCountryLabel(_ code: String) -> String {
 }
 
 /// This Mac's token logs, from every login whose provider reads usage
-/// history: Claude, Codex, Mistral and Oh My Pi today.
+/// history: Claude, Codex, Mistral, Oh My Pi and OpenCode today.
 @MainActor
 final class MonitorTokenLogs: TokenLogs {
     private let monitor: QuotaMonitor

@@ -1,10 +1,10 @@
 ---
-description: Track OpenCode Go rolling 5-hour, weekly and monthly usage from the opencode.ai usage API, or from the local opencode database when no API key is set. Use when setting up OpenCode Go or when its numbers differ from the dashboard.
+description: Track OpenCode Go rolling 5-hour, weekly and monthly usage from the opencode.ai usage API, or from the local opencode database when no API key is set. Also shows today's tokens from opencode's own database. Use when its numbers look off.
 ---
 
 # OpenCode Go
 
-Shows how much of your OpenCode Go plan is left in its three windows: the rolling 5-hour window, the weekly window and the monthly window, each with its reset time.
+Shows how much of your OpenCode Go plan is left in its three windows: the rolling 5-hour window, the weekly window and the monthly window, each with its reset time. Beside the quota cards, **Daily usage** shows today's tokens and spend read from opencode's own database, against yesterday.
 
 ## Setup
 
@@ -22,6 +22,12 @@ ClaudeBar chooses the mode itself; there is no switch.
 |---|---|---|
 | API (preferred) | An OpenCode Zen API key: `OPENCODE_API_KEY`, or the `opencode-go` / `opencode` entry in `~/.local/share/opencode/auth.json` (or `$XDG_DATA_HOME/opencode/auth.json`) | A key is found. Numbers match the opencode.ai dashboard |
 | Local database (fallback) | `opencode` on your PATH | No key is found. Estimates usage from this Mac's opencode history |
+
+## Daily usage
+
+With Daily Usage Cards on (Settings → General), OpenCode Go shows today's tokens and cost from opencode's own database (`opencode db`, one read-only query): every assistant message of the last 30 days, whatever provider opencode drove — Zen, OpenCode Go, a custom endpoint — added up as one total. The cost is what opencode itself recorded, so it reads $0 for a provider that logs no cost. `opencode` must be on the PATH; the query runs when you open the popover.
+
+The same totals are what the [Leaderboard](../../features/leaderboard/README.md) shares when you tick OpenCode there.
 
 ## Gotchas
 

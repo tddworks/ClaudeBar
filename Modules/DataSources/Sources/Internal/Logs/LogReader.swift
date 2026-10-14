@@ -1,22 +1,38 @@
 import Foundation
 
-/// The reader for a log's `format` — one per case of the closed list.
+/// The reader for a log's source — one per case of the closed list.
 enum LogReader: Sendable {
     case jsonLines(JSONLinesReader)
     case json(JSONLogReader)
+    case command(CommandLogReader)
 
-    init(_ records: UsageLog.Records) {
-        switch records.format {
-        case .jsonLines: self = .jsonLines(JSONLinesReader(records: records))
-        case .json: self = .json(JSONLogReader(records: records))
+    init(_ records: UsageLog.Records, run: DataSources.CommandRunner?, platform: Platform,
+         homeDirectory: URL, environment: @escaping @Sendable (String) -> String?) {
+        if let call = records.command {
+            self = .command(CommandLogReader(call: call, shapes: records.shapes.map(RecordShape.init), run: run,
+                                             platform: platform, homeDirectory: homeDirectory, environment: environment))
+        } else {
+            switch records.format {
+            case .jsonLines: self = .jsonLines(JSONLinesReader(records: records))
+            case .json: self = .json(JSONLogReader(records: records))
+            }
         }
     }
 
-    /// Records from `files`, in file order.
+    /// Records from `files`, in file order; a command log answers none this way.
     func records(in files: [URL]) async -> [LogRecord] {
         switch self {
         case .jsonLines(let reader): await reader.records(in: files)
         case .json(let reader): reader.records(in: files)
+        case .command: []
+        }
+    }
+
+    /// The records a command answered; a file log answers none this way.
+    func records() async -> [LogRecord] {
+        switch self {
+        case .command(let reader): await reader.records()
+        default: []
         }
     }
 
@@ -25,7 +41,7 @@ enum LogReader: Sendable {
         get async {
             switch self {
             case .jsonLines(let reader): await reader.lastScan
-            case .json: JSONLinesReader.ScanSummary()
+            default: JSONLinesReader.ScanSummary()
             }
         }
     }

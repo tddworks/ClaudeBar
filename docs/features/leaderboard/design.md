@@ -604,7 +604,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 │  └───────────────┬─────────────────┘          ├────────────────────────────────┤             │           │
 │                  ▼                            │ Username · DailyTokens ·       │             │           │
 │  Account.usageHistory ──days(in:)──▶ per login│ Board · Board.Member           │             │           │
-│   (Claude, Codex, Mistral, Oh My Pi)          │ LeaderboardUploader (hourly) ◀─┼── App driver timer      │
+│   (Claude, Codex, Mistral, Oh My Pi, OpenCode)│ LeaderboardUploader (hourly) ◀─┼── App driver timer      │
 │                                               │ RequestSigner (canonical)      │                         │
 │                                               ├─ @Mockable ports ──────────────┤                         │
 │                                               │ LeaderboardAPI                 │                         │

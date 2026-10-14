@@ -152,7 +152,7 @@ struct LeaderboardJoinView: View {
 
                 CardLabel(text: "SHARE TOKENS FROM").padding(.top, 4)
                 if shareable.isEmpty {
-                    Text("No provider on this Mac keeps token logs yet. Claude, Codex and Mistral do.")
+                    Text("No provider on this Mac keeps token logs yet. Claude, Codex, Mistral, Oh My Pi and OpenCode do.")
                         .font(theme.font(size: 11))
                         .foregroundStyle(theme.textTertiary)
                 }

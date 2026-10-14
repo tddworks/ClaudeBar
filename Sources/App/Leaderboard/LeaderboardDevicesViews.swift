@@ -613,7 +613,7 @@ struct LeaderboardAddThisMacView: View {
                 .tracking(1)
                 .foregroundStyle(theme.textSecondary)
             if shareable.isEmpty {
-                Text("No provider on this Mac keeps token logs yet. Claude, Codex and Mistral do.")
+                Text("No provider on this Mac keeps token logs yet. Claude, Codex, Mistral, Oh My Pi and OpenCode do.")
                     .font(theme.font(size: 11))
                     .foregroundStyle(theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)

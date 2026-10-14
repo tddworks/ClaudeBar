@@ -37,6 +37,35 @@
   "cli": "opencode",
   "enabledByDefault": true,
   "order": 180,
+  "usageHistory": {
+    "records": {
+      "command": {
+        "cli": "opencode",
+        "args": [
+          "db",
+          "WITH rows AS ( SELECT CAST(json_extract(data, '$.time.created') AS INTEGER) AS ms, json_extract(data, '$.role') AS role, json_extract(data, '$.id') AS id, json_extract(data, '$.tokens.input') AS input, json_extract(data, '$.tokens.output') AS output, json_extract(data, '$.tokens.cache.write') AS cacheWrite, json_extract(data, '$.tokens.cache.read') AS cacheRead, json_extract(data, '$.cost') AS cost FROM message WHERE json_valid(data) AND json_extract(data, '$.role') = 'assistant' AND json_type(data, '$.time.created') IN ('integer', 'real') ) SELECT role, id, ms / 1000 AS at, input, output, cacheWrite, cacheRead, cost FROM rows WHERE ms >= (strftime('%s', 'now') - 30 * 86400) * 1000 ORDER BY ms",
+          "--format",
+          "json"
+        ],
+        "timeout": 30
+      },
+      "shapes": [
+        {
+          "where": { "path": "$.role", "equals": "assistant" },
+          "at": "$.at",
+          "id": ["$.id"],
+          "tokens": {
+            "input": "$.input",
+            "output": "$.output",
+            "cacheWrite": "$.cacheWrite",
+            "cacheRead": "$.cacheRead"
+          },
+          "cost": "$.cost"
+        }
+      ]
+    },
+    "sessionGap": 1800
+  },
   "settings": [
     {
       "id": "apiKey",

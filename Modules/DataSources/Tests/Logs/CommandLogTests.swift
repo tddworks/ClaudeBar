@@ -1,0 +1,97 @@
+import Foundation
+import Mockable
+import Quotas
+import Testing
+@testable import DataSources
+
+/// A usage log read from one fixed command's JSON answer — a tool whose
+/// records live in a database it can query itself (`opencode db … --format
+/// json`). The answer is one JSON array, each element a record.
+@Suite
+struct CommandLogTests {
+    private let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    private let calendar = Calendar.current
+    private let now = Date()
+
+    private static let definition = UsageLog.Definition(
+        records: UsageLog.Records(
+            command: CommandCall(cli: "acme", args: ["db", "SELECT tokens FROM message", "--format", "json"], timeout: 15),
+            shapes: [UsageLog.Shape(at: "$.at", id: ["$.id"],
+                                    tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cacheRead"),
+                                    cost: "$.cost")]
+        ),
+        sessionGap: 1800
+    )
+
+    private func cli(output: String, exit: Int32 = 0, installed: Bool = true) -> MockCLIExecutor {
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willReturn(installed ? "/test/acme" : nil)
+        given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willReturn(CLIResult(output: output, exitCode: exit))
+        return cli
+    }
+
+    private func log(_ definition: UsageLog.Definition = Self.definition, _ executor: any CLIExecutor) -> UsageLog {
+        DataSources.makeUsageLog(definition, scripts: { _ in nil }, environment: { _ in nil },
+                                 homeDirectory: home, calendar: calendar, now: { [now] in now },
+                                 runCommand: { _ in executor })
+    }
+
+    private func row(id: String, at: Int, input: Int, output: Int, cost: Double) -> String {
+        #"{"id":"\#(id)","at":\#(at),"in":\#(input),"out":\#(output),"cacheRead":0,"cost":\#(cost)}"#
+    }
+
+    @Test func `should read one record a row of the command's JSON answer`() async throws {
+        let epoch = Int(now.timeIntervalSince1970)
+        let output = "[\(row(id: "a", at: epoch, input: 1000, output: 500, cost: 0.01))]"
+        let days = await log(cli(output: output)).days(last: 1)
+        #expect(days[0].totalTokens == 1500)
+        #expect(days[0].totalCost == Decimal(string: "0.01"))
+    }
+
+    @Test func `should count usage on the day it happened, a row older than the range dropped`() async throws {
+        let today = Int(now.timeIntervalSince1970)
+        let yesterday = Int(now.addingTimeInterval(-86_400).timeIntervalSince1970)
+        let output = "[\(row(id: "a", at: today, input: 1000, output: 500, cost: 0)), \(row(id: "b", at: yesterday, input: 2000, output: 1000, cost: 0))]"
+        let days = await log(cli(output: output)).days(last: 2)
+        #expect(days[1].totalTokens == 1500)
+        #expect(days[0].totalTokens == 3000)
+    }
+
+    @Test func `should show every day empty when the CLI is missing, fails, or prints nothing readable`() async throws {
+        for output in [cli(output: ""), cli(output: "not json", installed: false), cli(output: "{}"), cli(output: "[{}]", exit: 1)] {
+            #expect(await log(output).days(last: 1)[0].isEmpty)
+        }
+    }
+
+    @Test func `should count rows whose shape answers and skip the rest`() async throws {
+        let epoch = Int(now.timeIntervalSince1970)
+        let output = #"[{"id":"a","at":\#(epoch),"in":1000,"out":500}, {"kind":"user","at":\#(epoch)}, {"id":"c"}]"#
+        #expect(await log(cli(output: output)).days(last: 1)[0].totalTokens == 1500)
+    }
+
+    // MARK: - The definition
+
+    @Test func `should refuse a log that gives files and a command together, or neither`() {
+        let both = #"{"records": { "files": "~/x/*.jsonl", "command": {"cli": "acme"}, "at": "$.at", "tokens": {"total": "$.n"} }}"#
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode(UsageLog.Definition.self, from: Data(both.utf8)) }
+        let neither = #"{"records": { "at": "$.at", "tokens": {"total": "$.n"} }}"#
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode(UsageLog.Definition.self, from: Data(neither.utf8)) }
+    }
+
+    @Test func `should keep a command log when written out and read back`() throws {
+        let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(Self.definition))
+        #expect(again == Self.definition)
+        #expect(again.records.command?.cli == "acme")
+        #expect(again.records.files == nil)
+    }
+
+    @Test func `should fingerprint two different commands apart, so days kept under one are not reused for the other`() {
+        let other = UsageLog.Definition(
+            records: UsageLog.Records(
+                command: CommandCall(cli: "acme", args: ["db", "SELECT other FROM message", "--format", "json"], timeout: 15),
+                shapes: Self.definition.records.shapes),
+            sessionGap: 1800)
+        #expect(log(other, cli(output: "[]")).fingerprint != log(cli(output: "[]")).fingerprint)
+    }
+}

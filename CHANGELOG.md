@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Pause an account from the popover**: right-click it and choose **Pause**. It stops refreshing, leaves the menu bar, and can no longer raise an alert, but stays on the provider's page under **PAUSED** with its last numbers and a **Resume**. ([#560](https://github.com/tddworks/ClaudeBar/pull/560)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md)
+- **OpenCode on the Leaderboard**: tick OpenCode when you join and your daily token totals — every provider opencode drove, Zen included — are ranked, read from opencode's own database through one read-only query. Its tokens and cost also show in the daily usage cards. ([#557](https://github.com/tddworks/ClaudeBar/pull/557)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md)
 - **Windows file paths**: shared provider definitions find app-data files on Windows as well as Mac, including redirected `APPDATA` and the newest IDE quota file. Windows execution and quota display remain phase 5. ([#556](https://github.com/tddworks/ClaudeBar/pull/556), [#555](https://github.com/tddworks/ClaudeBar/issues/555)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/ENGINE_DESIGN.md)
 
 ---

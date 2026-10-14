@@ -163,11 +163,13 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │                   provider. Built by DataSources from the definition's
 │       │       │   │   │                   `usageHistory` (a UsageLog.Definition) filled with this
 │       │       │   │   │                   login's values (its folder); days(from:to:) reads them:
-│       │       │   │   ├── records         WHERE AND HOW — files (a glob) · format (a JSON object per
-│       │       │   │   │                   line, or per file) · the record's shape in the mapping's
-│       │       │   │   │                   path language (when, which model, tokens by kind, its own
-│       │       │   │   │                   cost, its identity), or its `shapes` when the log writes it
-│       │       │   │   │                   more than one way, each read whole
+│       │       │   │   ├── records         WHERE AND HOW — files (a glob) or one fixed read-only
+│       │       │   │   │   │               command whose JSON answer holds the rows · format (a
+│       │       │   │   │   │               JSON object per line, or per file) · the record's shape
+│       │       │   │   │   │               in the mapping's path language (when, which model,
+│       │       │   │   │   │               tokens by kind, its own cost, its identity), or its
+│       │       │   │   │   │               `shapes` when the log writes it more than one way,
+│       │       │   │   │   │               each read whole
 │       │       │   │   ├── prices: PriceList   WHAT A TOKEN COSTS — a price file beside the
 │       │       │   │   │                   definition, or a cloud's list through Bedrock's PriceCatalog
 │       │       │   │   └── sessionGap: seconds?   a pause longer than this starts a working session

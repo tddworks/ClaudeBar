@@ -1,5 +1,5 @@
 ---
-description: Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe or Oh My Pi) session logs. Use when the cards are missing or the numbers look off.
+description: Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe, Oh My Pi or OpenCode) session logs. Use when the cards are missing or the numbers look off.
 ---
 
 # Daily Usage
@@ -27,6 +27,7 @@ They appear for providers that keep local session logs:
 | Claude | Claude Code transcripts in `~/.claude/projects/**/*.jsonl`; an added account, its own folder's `projects/`. Your usual login also gets a **Claude Desktop · Token Usage** card from `Claude/buddy-tokens.json` under app-data (`~/Library/Application Support` on Mac, `%APPDATA%` on Windows), with tokens only and no cost |
 | Mistral | Vibe session metadata in `~/.vibe/logs/session/` |
 | Oh My Pi | omp's session logs in `~/.omp/agent/sessions/**/*.jsonl` (or `$PI_CODING_AGENT_DIR/sessions`), subagents included; every account omp drives adds up under Oh My Pi. See [Oh My Pi](../../providers/omp/README.md#daily-usage) |
+| OpenCode | opencode's own database, through one read-only `opencode db` query: every assistant message of the last 30 days, whatever provider opencode drove, as one total. Requires `opencode` on the PATH; without it the cards are empty. See [OpenCode Go](../../providers/opencode-go/README.md#daily-usage) |
 | Extensions | Whatever the extension's `dailyUsage` section returns; see [extensions](../extensions/README.md) |
 
 The cards and the chart only read these files; nothing is sent anywhere. If you join the [Leaderboard](../leaderboard/README.md), the providers you tick there upload their daily token totals, and nothing else from these logs.
