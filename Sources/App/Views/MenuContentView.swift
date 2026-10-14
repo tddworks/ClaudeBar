@@ -719,7 +719,7 @@ struct MenuContentView: View {
                 statsGrid(snapshot: snapshot)
                     .opacity(report.isLastSeen ? 0.55 : 1)
             }
-            .accountContextMenu(provider)
+            .contextMenu { accountMenuFor(provider) }
             .opacity(animateIn ? 1 : 0)
             .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
         } else if let account = selectedLogin, account.needsSetup {
@@ -775,10 +775,9 @@ struct MenuContentView: View {
     }
 
     /// The same menu, on whichever page is showing the login.
-    private func accountContextMenu(_ account: Account) -> some View {
-        contextMenu {
-            if let tab = monitor.selectedTab { accountMenu(account, in: tab) }
-        }
+    @ViewBuilder
+    private func accountMenuFor(_ account: Account) -> some View {
+        if let tab = monitor.selectedTab { accountMenu(account, in: tab) }
     }
 
     /// A login the person stopped watching: still on the page, with what it
@@ -791,7 +790,7 @@ struct MenuContentView: View {
                 .padding(.horizontal, 4)
             ForEach(tab.paused, id: \.id) { account in
                 pausedRow(account)
-                    .accountContextMenu(account)
+                    .contextMenu { accountMenuFor(account) }
             }
         }
     }
@@ -900,7 +899,7 @@ struct MenuContentView: View {
                     // is as heavy as the top. (strokeBorder lost the bottom's half pixel.)
                     .overlay(RoundedRectangle(cornerRadius: theme.pillCornerRadius).stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
                     .foregroundStyle(hidden ? theme.textTertiary : theme.textPrimary)
-                    .accountContextMenu(account)
+                    .contextMenu { accountMenuFor(account) }
                 }
             }
             // As the provider pills: a scroll view clips at its edges, so leave
@@ -948,7 +947,7 @@ struct MenuContentView: View {
                 compactErrorState(provider: provider)
             }
         }
-        .accountContextMenu(provider)
+        .contextMenu { accountMenuFor(provider) }
     }
 
     private func providerSectionHeader(provider: Account) -> some View {

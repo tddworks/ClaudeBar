@@ -180,15 +180,17 @@ struct ProviderTests {
     @Test
     func `should fetch nothing for a login the person paused`() async throws {
         let network = AcmeNetwork()
-        network.answer(Self.api, used: 30)
+        network.answer(Self.backup, used: 30)
         let acme = acme(network)
+        acme.configuration.use("backup")
         try await acme.refreshPlain()
         acme.defaultAccount.isEnabled = false
-        network.answer(Self.api, used: 90)
+        network.answer(Self.backup, used: 90)
 
         let usage = try await acme.refreshPlain()
 
-        // The numbers it last showed, not the ones it would have fetched.
+        // The numbers it last showed, not the ones it would have fetched: the
+        // backup source has no cache, so a fetch would have answered 10.
         #expect(usage.sessionQuota?.percentRemaining == 70)
         #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
     }
@@ -196,10 +198,11 @@ struct ProviderTests {
     @Test
     func `should keep the numbers it last showed when a login is paused while its fetch is in flight`() async throws {
         let network = AcmeNetwork()
-        network.answer(Self.api, used: 30)
+        network.answer(Self.backup, used: 30)
         let acme = acme(network)
+        acme.configuration.use("backup")
         try await acme.refreshPlain()
-        network.answer(Self.api, used: 90)
+        network.answer(Self.backup, used: 90)
         network.held = true
 
         let inFlight = Task { try await acme.refreshPlain() }
@@ -208,22 +211,25 @@ struct ProviderTests {
         network.release()
         _ = try await inFlight.value
 
+        // The fetch really answered 10; a paused login keeps its 70.
         #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
     }
 
     @Test
     func `should fetch again as soon as the person resumes a login`() async throws {
         let network = AcmeNetwork()
-        network.answer(Self.api, used: 30)
+        network.answer(Self.backup, used: 30)
         let acme = acme(network)
+        acme.configuration.use("backup")
         try await acme.refreshPlain()
         acme.defaultAccount.isEnabled = false
-        network.answer(Self.api, used: 90)
+        network.answer(Self.backup, used: 90)
 
         acme.defaultAccount.isEnabled = true
         let usage = try await acme.refreshPlain()
 
         #expect(usage.sessionQuota?.percentRemaining == 10)
+        #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 10)
     }
 
     // MARK: - Fallback
