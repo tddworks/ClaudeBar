@@ -178,14 +178,12 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `should select the first provider that is on when Claude is off at launch`() {
-            // Given — Claude disabled before init
+        func `should select the first provider that is on when the person turned Claude off`() {
+            // Given — Claude turned off before init, so it has no page to open on
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
-            let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
-            let codex = codexProduct.defaultAccount
-            claude.isEnabled = false
+            claudeProduct.isEnabled = false
 
             // When — monitor initializes
             let monitor = QuotaMonitor(

@@ -14,11 +14,13 @@ public struct Overview: Sendable {
 
     /// The lineup's products as cards, each watched login read under the
     /// person's policy. A paused login is on its product's page, never on
-    /// *All*: nothing is being watched for it.
+    /// *All* — and a product with no watched login has nothing to ring here,
+    /// so it has no card either.
     @MainActor
     public init(_ monitor: QuotaMonitor) {
-        self.init(cards: monitor.tabs.map { tab in
-            OverviewCard(id: tab.id, name: tab.name, logins: tab.watched.map { account in
+        self.init(cards: monitor.tabs.compactMap { tab in
+            guard !tab.watched.isEmpty else { return nil }
+            return OverviewCard(id: tab.id, name: tab.name, logins: tab.watched.map { account in
                 OverviewCard.Login(
                     id: account.id,
                     name: account.displayName,

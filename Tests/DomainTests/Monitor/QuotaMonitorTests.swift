@@ -1461,14 +1461,12 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `should select the first enabled provider at launch when Claude is disabled`() {
-        // Given - claude (default) is disabled before init
+    func `should select the first enabled provider at launch when the person turned Claude off`() {
+        // Given - claude is off before init, so it has no page to open on
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
-        let claude = claudeProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
-        let codex = codexProduct.defaultAccount
-        claude.isEnabled = false
+        claudeProduct.isEnabled = false
 
         // When
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
@@ -1728,7 +1726,7 @@ struct QuotaMonitorTests {
         monitor.setPaused(claude, on: true)
 
         // Then - the page is still there, paused, and the selection stays on it
-        #expect(monitor.lineup.isEmpty)
+        #expect(monitor.lineup.map(\.id) == ["codex"])
         #expect(monitor.selectedTab?.id == "claude")
         #expect(monitor.selectedTab?.paused.map(\.id) == ["claude"])
         #expect(monitor.selectedBadge == .paused)

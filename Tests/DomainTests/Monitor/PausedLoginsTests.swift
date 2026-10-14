@@ -116,7 +116,7 @@ struct PausedLoginsTests {
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
         #expect(tab.paused.isEmpty)
-        #expect(monitor.lineup.map(\.id) == ["codex", "codex.work"])
+        #expect(monitor.lineup.map(\.id) == ["codex", "codex.work", "claude"])
     }
 
     // MARK: - Pause and the product's switch are two facts
