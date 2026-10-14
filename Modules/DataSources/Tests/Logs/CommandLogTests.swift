@@ -32,7 +32,7 @@ struct CommandLogTests {
     }
 
     private func log(_ definition: UsageLog.Definition = Self.definition, _ executor: any CLIExecutor) -> UsageLog {
-        DataSources.makeUsageLog(definition, scripts: { _ in nil }, environment: { _ in nil },
+        DataSources.makeUsageLog(definition, platform: .current, scripts: { _ in nil }, environment: { _ in nil },
                                  homeDirectory: home, calendar: calendar, now: { [now] in now },
                                  runCommand: { _ in executor })
     }
@@ -44,7 +44,7 @@ struct CommandLogTests {
     @Test func `should read one record a row of the command's JSON answer`() async throws {
         let epoch = Int(now.timeIntervalSince1970)
         let output = "[\(row(id: "a", at: epoch, input: 1000, output: 500, cost: 0.01))]"
-        let days = await log(cli(output: output)).days(last: 1)
+        let days = await log(Self.definition, cli(output: output)).days(last: 1)
         #expect(days[0].totalTokens == 1500)
         #expect(days[0].totalCost == Decimal(string: "0.01"))
     }
@@ -53,21 +53,21 @@ struct CommandLogTests {
         let today = Int(now.timeIntervalSince1970)
         let yesterday = Int(now.addingTimeInterval(-86_400).timeIntervalSince1970)
         let output = "[\(row(id: "a", at: today, input: 1000, output: 500, cost: 0)), \(row(id: "b", at: yesterday, input: 2000, output: 1000, cost: 0))]"
-        let days = await log(cli(output: output)).days(last: 2)
+        let days = await log(Self.definition, cli(output: output)).days(last: 2)
         #expect(days[1].totalTokens == 1500)
         #expect(days[0].totalTokens == 3000)
     }
 
     @Test func `should show every day empty when the CLI is missing, fails, or prints nothing readable`() async throws {
         for output in [cli(output: ""), cli(output: "not json", installed: false), cli(output: "{}"), cli(output: "[{}]", exit: 1)] {
-            #expect(await log(output).days(last: 1)[0].isEmpty)
+            #expect(await log(Self.definition, output).days(last: 1)[0].isEmpty)
         }
     }
 
     @Test func `should count rows whose shape answers and skip the rest`() async throws {
         let epoch = Int(now.timeIntervalSince1970)
         let output = #"[{"id":"a","at":\#(epoch),"in":1000,"out":500}, {"kind":"user","at":\#(epoch)}, {"id":"c"}]"#
-        #expect(await log(cli(output: output)).days(last: 1)[0].totalTokens == 1500)
+        #expect(await log(Self.definition, cli(output: output)).days(last: 1)[0].totalTokens == 1500)
     }
 
     // MARK: - The definition
@@ -92,6 +92,6 @@ struct CommandLogTests {
                 command: CommandCall(cli: "acme", args: ["db", "SELECT other FROM message", "--format", "json"], timeout: 15),
                 shapes: Self.definition.records.shapes),
             sessionGap: 1800)
-        #expect(log(other, cli(output: "[]")).fingerprint != log(cli(output: "[]")).fingerprint)
+        #expect(log(other, cli(output: "[]")).fingerprint != log(Self.definition, cli(output: "[]")).fingerprint)
     }
 }
