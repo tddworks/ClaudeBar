@@ -32,32 +32,33 @@ struct ProductTabsTests {
 
     @Test
     func `should show a provider's logins under one tab`() throws {
-        let (_, codex, all, providers) = try lineup()
+        let (_, codex, _, providers) = try lineup()
 
-        let tabs = ProductTab.tabs(of: all, in: providers)
+        let tabs = ProductTab.tabs(in: providers)
 
         #expect(tabs.map(\.id) == ["claude", "codex"])
-        #expect(tabs[1].accounts.map(\.id) == codex.accounts.map(\.id))
+        #expect(tabs[1].logins.map(\.id) == codex.accounts.map(\.id))
         #expect(tabs[1].name == "Codex")
     }
 
     @Test
-    func `should keep the person's order in a tab and leave out paused logins`() throws {
+    func `should keep the person's order in a tab and take a paused login out of its chips`() throws {
         let (_, codex, _, providers) = try lineup()
         codex.accounts.move(codex.accounts[2], to: 0)
         codex.accounts[1].isEnabled = false
-        let shown = (codex.accounts.filter(\.isEnabled) as [Account])
 
-        let tab = try #require(ProductTab.tabs(of: shown, in: providers).first)
+        let tab = try #require(ProductTab.tabs(in: providers).last)
 
-        #expect(tab.accounts.map(\.id) == ["codex.side", "codex.work"])
+        #expect(tab.logins.map(\.id) == ["codex.side", "codex", "codex.work"])
+        #expect(tab.watched.map(\.id) == ["codex.side", "codex.work"])
+        #expect(tab.paused.map(\.id) == ["codex"])
     }
 
     @Test
     func `should hold every one of its provider's logins in a tab, and no other's`() throws {
-        let (_, _, all, providers) = try lineup()
+        let (_, _, _, providers) = try lineup()
 
-        let codex = try #require(ProductTab.tabs(of: all, in: providers).last)
+        let codex = try #require(ProductTab.tabs(in: providers).last)
 
         #expect(codex.contains("codex.work"))
         #expect(codex.contains("codex"))

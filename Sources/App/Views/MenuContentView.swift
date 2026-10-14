@@ -617,11 +617,13 @@ struct MenuContentView: View {
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
                         isSelected: shownPage == .provider && tab.contains(selectedProviderId),
-                        hasData: tab.accounts.contains { $0.snapshot != nil }
+                        hasData: tab.watched.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
                         page = .provider
-                        if !tab.contains(selectedProviderId), let first = tab.accounts.first {
+                        // The page belongs to a product, so a tab whose logins
+                        // are all paused opens on the first of them.
+                        if !tab.contains(selectedProviderId), let first = tab.logins.first {
                             selectedProviderId = first.id
                         }
                     }
@@ -698,7 +700,7 @@ struct MenuContentView: View {
             }
             .opacity(animateIn ? 1 : 0)
             .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
-        } else if let tab = monitor.selectedTab, tab.accounts.count > 1 {
+        } else if let tab = monitor.selectedTab, tab.showsAccountPages {
             accountsContent(tab)
         } else if let provider = selectedLogin, let snapshot = monitor.usage(of: provider) {
             let report = RefreshReport.of(provider)
@@ -717,6 +719,7 @@ struct MenuContentView: View {
                 statsGrid(snapshot: snapshot)
                     .opacity(report.isLastSeen ? 0.55 : 1)
             }
+            .accountContextMenu(provider)
             .opacity(animateIn ? 1 : 0)
             .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
         } else if let account = selectedLogin, account.needsSetup {
@@ -730,17 +733,25 @@ struct MenuContentView: View {
         }
     }
 
-    /// One product, every enabled login side by side: chips that hide one
-    /// from this view, a section per login, and the login that makes the
-    /// product's status what it is, named.
+    /// One product, its logins side by side: chips that hide one from this
+    /// view, a section per watched login, the ones paused under PAUSED with a
+    /// Resume, and the login that makes the product's status what it is, named.
     private func accountsContent(_ tab: ProductTab) -> some View {
         VStack(spacing: 12) {
-            accountChips(tab)
+            if !tab.watched.isEmpty {
+                accountChips(tab)
+            }
             if let state = newSessions.state(of: tab.provider) {
                 InUseStrip(state: state)
             }
-            ForEach(tab.accounts.filter { !hiddenAccountIds.contains($0.id) }, id: \.id) { account in
+            ForEach(tab.watched.filter { !hiddenAccountIds.contains($0.id) }, id: \.id) { account in
                 providerSection(provider: account)
+            }
+            if tab.watched.isEmpty {
+                nothingWatchedNotice(tab)
+            }
+            if !tab.paused.isEmpty {
+                pausedGroup(tab)
             }
             if let worst = tab.provider.accounts.worst {
                 worstAccountCallout(worst)
@@ -750,13 +761,105 @@ struct MenuContentView: View {
         .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
     }
 
+    /// *Pause* / *Use for New Terminal Sessions* — the login's own menu, the
+    /// same words the Accounts card's ⋯ uses, on its chip, on its header and
+    /// on the single login's card.
+    @ViewBuilder
+    private func accountMenu(_ account: Account, in tab: ProductTab) -> some View {
+        Button(account.isEnabled ? "Pause" : "Resume") { monitor.setPaused(account, on: account.isEnabled) }
+        if tab.provider.inUse?.canBeInUse(account) == true {
+            Divider()
+            Button("Use for New Terminal Sessions") { newSessions.use(account) }
+                .disabled(tab.provider.inUse?.isInUse(account) == true)
+        }
+    }
+
+    /// The same menu, on whichever page is showing the login.
+    private func accountContextMenu(_ account: Account) -> some View {
+        contextMenu {
+            if let tab = monitor.selectedTab { accountMenu(account, in: tab) }
+        }
+    }
+
+    /// A login the person stopped watching: still on the page, with what it
+    /// last showed and a way back (docs/features/multi-account/design.md §3.5).
+    private func pausedGroup(_ tab: ProductTab) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("PAUSED")
+                .popoverFont(9, weight: .semibold)
+                .foregroundStyle(theme.textTertiary)
+                .padding(.horizontal, 4)
+            ForEach(tab.paused, id: \.id) { account in
+                pausedRow(account)
+                    .accountContextMenu(account)
+            }
+        }
+    }
+
+    private func pausedRow(_ account: Account) -> some View {
+        HStack(spacing: 8) {
+            Text(String(account.displayName.prefix(1)).uppercased())
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(theme.textTertiary)
+                .frame(width: 18, height: 18)
+                .background(Circle().fill(theme.glassBackground))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(settings.shown(account.displayName))
+                    .popoverFont(12, weight: .medium)
+                    .foregroundStyle(theme.textTertiary)
+                Text(pausedDetail(of: account))
+                    .popoverFont(9, weight: .regular)
+                    .foregroundStyle(theme.textTertiary)
+            }
+            Spacer(minLength: 0)
+            Button("Resume") { monitor.setPaused(account, on: false) }
+                .buttonStyle(.plain)
+                .popoverFont(11, weight: .semibold)
+                .foregroundStyle(theme.accentPrimary)
+                .help("Watch \(settings.shown(account.displayName)) again")
+                .accessibilityLabel("Resume \(settings.shown(account.displayName))")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
+    }
+
+    /// What a paused login last showed — a fact about the past, never a status.
+    private func pausedDetail(of account: Account) -> String {
+        guard let snapshot = monitor.usage(of: account) else { return "No usage yet" }
+        let when = "last seen \(snapshot.ageDescription)"
+        guard let lowest = snapshot.lowestQuota else { return when }
+        return "\(when) · \(Int(lowest.percentRemaining))% \(lowest.quotaType.displayName)"
+    }
+
+    /// Every login paused: the product is still on, so its page says so instead
+    /// of showing nothing that reads like a failure.
+    private func nothingWatchedNotice(_ tab: ProductTab) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "pause.circle")
+                .foregroundStyle(theme.textTertiary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("No logins watched")
+                    .popoverFont(12, weight: .semibold)
+                    .foregroundStyle(theme.textSecondary)
+                Text("\(settings.shown(tab.name)) is on, but nothing is being fetched.")
+                    .popoverFont(10)
+                    .foregroundStyle(theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
+    }
+
     private func accountChips(_ tab: ProductTab) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 Text("ACCOUNTS")
                     .popoverFont(9, weight: .semibold)
                     .foregroundStyle(theme.textTertiary)
-                ForEach(tab.accounts, id: \.id) { account in
+                ForEach(tab.watched, id: \.id) { account in
                     let hidden = hiddenAccountIds.contains(account.id)
                     HStack(spacing: 4) {
                         Button {
@@ -797,11 +900,7 @@ struct MenuContentView: View {
                     // is as heavy as the top. (strokeBorder lost the bottom's half pixel.)
                     .overlay(RoundedRectangle(cornerRadius: theme.pillCornerRadius).stroke(theme.glassBorder, lineWidth: theme.cardBorderWidth))
                     .foregroundStyle(hidden ? theme.textTertiary : theme.textPrimary)
-                    .contextMenu {
-                        if tab.provider.inUse?.canBeInUse(account) == true {
-                            Button("Use for New Terminal Sessions") { newSessions.use(account) }.disabled(tab.provider.inUse?.isInUse(account) == true)
-                        }
-                    }
+                    .accountContextMenu(account)
                 }
             }
             // As the provider pills: a scroll view clips at its edges, so leave
@@ -849,6 +948,7 @@ struct MenuContentView: View {
                 compactErrorState(provider: provider)
             }
         }
+        .accountContextMenu(provider)
     }
 
     private func providerSectionHeader(provider: Account) -> some View {
@@ -1379,9 +1479,11 @@ struct MenuContentView: View {
     /// - Parameter kind: `.interactive` for explicit clicks (Refresh button,
     ///   provider switch), `.passive` for the popover-open refresh (issue #216).
     private func refresh(providerId: String, kind: RefreshKind = .interactive) async {
-        // A tab of logins refreshes every login it shows.
-        let members = monitor.tabs.first { $0.contains(providerId) }?.accounts
-            ?? monitor.login(id: providerId).map { [$0] } ?? []
+        // A tab of logins refreshes every login it watches — a paused one is
+        // not fetched, however it is reached, and an id the lineup no longer
+        // holds (a product turned off) is not fetched either.
+        let members = monitor.tabs.first { $0.contains(providerId) }?.watched
+            ?? monitor.lineup.filter { $0.id == providerId }
         // Provider stores error in lastError; isSyncing prevents duplicates.
         let refreshes: [Task<Void, Never>] = members.filter { !$0.isSyncing }.compactMap { login in
             guard let product = monitor.product(of: login) else { return nil }

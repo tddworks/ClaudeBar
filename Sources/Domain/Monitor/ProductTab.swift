@@ -1,9 +1,11 @@
 import Foundation
 import Providers
 
-/// A pill in the popover: one product, with every enabled login of it — so
-/// three Claude logins are one *Claude* tab, side by side, not three tabs.
-/// Its logins come in the order the person gave them.
+/// A pill in the popover: one product with **every** login of it — so three
+/// Claude logins are one *Claude* tab, side by side, not three tabs. The
+/// logins come in the order the person gave them, watched and paused: a
+/// paused login is on the page with a *Resume* and out of every judgement
+/// (docs/features/multi-account/design.md §3.5).
 @MainActor
 public struct ProductTab: Identifiable {
     /// The product's id — `codex`, never `codex.<acct>`.
@@ -11,23 +13,36 @@ public struct ProductTab: Identifiable {
     public let name: String
     /// The product.
     public let provider: Provider
-    /// Its logins in the lineup, in the person's order.
-    public let accounts: [Account]
+    /// Every login of it, in the person's order.
+    public let logins: [Account]
 
-    init(provider: Provider, accounts: [Account]) {
+    init(provider: Provider, logins: [Account]) {
         self.id = provider.id
         self.name = provider.name
         self.provider = provider
-        self.accounts = accounts
+        self.logins = logins
     }
 
-    /// The product's own switch (CANONICAL §1).
+    /// The product's own switch (CANONICAL §1) — off takes the whole product,
+    /// its tab included, out of the popover.
     public var isEnabled: Bool { provider.isEnabled }
+
+    /// The logins being watched: the page's chips and cards, and everything
+    /// that judges a login — its status, the badge, the menu bar, an alert.
+    public var watched: [Account] { logins.filter(\.isEnabled) }
+
+    /// The logins paused: the page's PAUSED rows, and nothing else.
+    public var paused: [Account] { logins.filter { !$0.isEnabled } }
+
+    /// Whether the product's page is its logins rather than a single login's
+    /// card: it is once there are several to tell apart, and whenever none is
+    /// watched — there is nothing else for the page to say.
+    public var showsAccountPages: Bool { logins.count > 1 || watched.isEmpty }
 
     /// A login's name on the product's row — only when there are several to
     /// tell apart; one login is just the product.
     public func loginName(_ login: Account) -> String? {
-        accounts.count > 1 ? login.displayName : nil
+        logins.count > 1 ? login.displayName : nil
     }
 
     /// What the product's page configures: its plain login, whose id the
@@ -35,17 +50,17 @@ public struct ProductTab: Identifiable {
     public var page: Account { provider.defaultAccount }
 
     public func contains(_ lineupId: String) -> Bool {
-        accounts.contains { $0.id == lineupId }
+        logins.contains { $0.id == lineupId }
     }
 
-    /// The lineup as tabs, in the order products first appear in it — each
-    /// login's product found through the root.
-    public static func tabs(of lineup: [Account], in providers: Providers) -> [ProductTab] {
-        let shown = Set(lineup.map(\.id))
-        var seen: Set<String> = []
-        return lineup.compactMap { login in
-            guard let product = providers.provider(of: login), seen.insert(product.id).inserted else { return nil }
-            return ProductTab(provider: product, accounts: product.accounts.filter { shown.contains($0.id) })
-        }
+    /// The popover's tabs: every product whose switch is on, with every login
+    /// of it. Turning a product off is what takes its tab away.
+    public static func tabs(in providers: Providers) -> [ProductTab] {
+        providers.all.filter(\.isEnabled).map { ProductTab(provider: $0, logins: Array($0.accounts)) }
+    }
+
+    /// Settings → Providers: every product, on or off, each with all its logins.
+    public static func everyProduct(in providers: Providers) -> [ProductTab] {
+        providers.all.map { ProductTab(provider: $0, logins: Array($0.accounts)) }
     }
 }

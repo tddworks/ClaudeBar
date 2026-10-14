@@ -126,11 +126,10 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `should add Codex to the lineup and keep Claude selected when the person turns Codex on`() {
-            // Given — Claude selected, Codex disabled
+        func `should add Codex to the lineup and keep Claude selected when the person resumes Codex`() {
+            // Given — Claude selected, Codex paused
             let settings = ProviderEnableDisableSpec.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
-            let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
             let codex = codexProduct.defaultAccount
             codex.isEnabled = false
@@ -141,10 +140,10 @@ struct ProviderEnableDisableSpec {
             )
             #expect(monitor.selectedProviderId == "claude")
 
-            // When — user enables Codex
-            monitor.setProviderEnabled("codex", enabled: true)
+            // When — the person resumes Codex
+            monitor.setPaused(codex, on: false)
 
-            // Then — Codex appears, Claude still selected
+            // Then — Codex is watched again, Claude still selected
             #expect(codex.isEnabled == true)
             #expect(monitor.lineup.count == 2)
             #expect(monitor.selectedProviderId == "claude")

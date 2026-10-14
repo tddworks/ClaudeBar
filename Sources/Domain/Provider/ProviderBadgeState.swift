@@ -23,6 +23,9 @@ public enum ProviderBadgeState: Equatable, Sendable {
     case usageOnly
     /// No probe has produced data yet (first launch, provider just enabled).
     case awaitingData
+    /// Every login of the product is paused — the person stopped watching, so
+    /// nothing is fetched and there are no numbers to show (CANONICAL §5).
+    case paused
     /// We have numbers, and this is what they say.
     case quota(QuotaStatus)
 

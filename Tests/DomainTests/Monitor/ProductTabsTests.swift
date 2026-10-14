@@ -27,7 +27,7 @@ struct ProductTabsTests {
         let tabs = monitor.productTabs
 
         #expect(tabs.map(\.id) == ["codex", "claude"])
-        #expect(tabs[0].accounts.count == 2)
+        #expect(tabs[0].logins.count == 2)
     }
 
     @Test

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaudeBar — Pause an account from the popover</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  body { align-items: flex-start; }
+  .grid { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; padding-top: 8px; }
+  .frame { width: 400px; opacity: 0; animation: popoverIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; }
+  .popover { width: 400px; }
+  .popover-content { position: relative; z-index: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Header ── */
+  .popover-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 4px; }
+  .logo-group { display: flex; align-items: center; gap: 8px; }
+  .logo-icon {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--accent-gradient);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: white; box-shadow: 0 2px 10px rgba(140,82,218,0.4);
+  }
+  .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+  .header-actions { display: flex; gap: 6px; }
+  .header-btn {
+    width: 28px; height: 28px; border-radius: 8px; border: none; background: var(--glass-bg);
+    color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.15s ease;
+  }
+
+  /* ── Account filter chips (watched logins only) ── */
+  .account-section-header { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+  .account-section-label {
+    font-size: 9px; font-weight: 600; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text-tertiary); flex-shrink: 0;
+  }
+  .account-filter-pills { display: flex; gap: 4px; flex: 1; }
+  .account-filter {
+    display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.15); background: transparent; cursor: pointer;
+    white-space: nowrap; transition: all 0.2s ease; flex-shrink: 0;
+  }
+  .account-filter.on { background: rgba(140,82,218,0.15); border-color: rgba(140,82,218,0.5); }
+  .account-filter.on .filter-name { color: var(--text-primary); font-weight: 600; }
+  .filter-avatar {
+    width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 8px; font-weight: 700;
+    background: var(--glass-bg); color: var(--text-secondary);
+  }
+  .filter-name { font-size: 10px; font-weight: 500; color: var(--text-secondary); line-height: 1; }
+  .filter-status { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Watched account sections ── */
+  .account-group { display: flex; flex-direction: column; gap: 6px; opacity: 0; animation: cardIn 0.5s ease forwards; }
+  .account-group:nth-child(1) { animation-delay: 0.25s; }
+  .account-group:nth-child(2) { animation-delay: 0.40s; }
+  .account-group-header { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+  .group-avatar {
+    width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0;
+  }
+  .group-name { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-secondary); flex: 1; }
+  .group-status-badge { font-size: 7px; font-weight: 600; padding: 2px 6px; border-radius: 5px; letter-spacing: 0.3px; }
+  .group-status-badge.healthy { background: rgba(90,235,174,0.12); color: var(--status-healthy); }
+  .group-status-badge.warning { background: rgba(250,184,90,0.12); color: var(--status-warning); }
+
+  .compact-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .compact-card {
+    padding: 10px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    border: 1px solid var(--card-border);
+  }
+  .compact-label-text { font-size: 7px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); }
+  .compact-value { font-size: 22px; font-weight: 700; letter-spacing: -1px; line-height: 1; margin: 4px 0 5px; }
+  .compact-value .unit { font-size: 11px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0; }
+  .compact-progress { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .compact-progress-fill { height: 100%; border-radius: 2px; background: var(--accent-gradient); }
+  .compact-progress-fill.warning { background: linear-gradient(90deg, var(--status-warning), #f59e0b); }
+
+  /* ── PAUSED group: one slim row per paused login, never a card ── */
+  .paused-group {
+    display: flex; flex-direction: column; gap: 6px; padding-top: 2px;
+    opacity: 0; animation: cardIn 0.5s ease 0.55s forwards;
+  }
+  .paused-label {
+    font-size: 9px; font-weight: 600; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text-tertiary); padding: 0 2px;
+  }
+  .paused-row {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.14);
+  }
+  .paused-row.dim { opacity: 0.55; }
+  .paused-avatar {
+    width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0;
+    background: rgba(120,120,135,0.2); color: var(--status-unreachable);
+  }
+  .paused-name { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+  .paused-detail { font-size: 9px; color: var(--text-tertiary); font-family: var(--font-mono); letter-spacing: 0.3px; }
+  .paused-spacer { flex: 1; }
+  .paused-tag {
+    font-size: 7px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--status-unreachable); background: rgba(120,120,135,0.15);
+    padding: 2px 5px; border-radius: 4px;
+  }
+  .resume-btn {
+    font-family: var(--font-body); font-size: 10px; font-weight: 600; cursor: pointer;
+    padding: 3px 9px; border-radius: 7px; border: 1px solid rgba(140,82,218,0.45);
+    background: rgba(140,82,218,0.12); color: var(--accent-purple); transition: all 0.15s ease;
+  }
+  .resume-btn:hover { background: rgba(140,82,218,0.22); color: var(--text-primary); }
+
+  /* ── Nothing watched ── */
+  .nothing-watched {
+    display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 10px;
+    background: rgba(120,120,135,0.08); border: 1px dashed rgba(255,255,255,0.16);
+    opacity: 0; animation: cardIn 0.5s ease 0.3s forwards;
+  }
+  .nothing-watched .paused-detail { display: block; margin-top: 2px; }
+
+  /* ── The account's menu (right-click) ── */
+  .menu-anchor { position: relative; display: inline-block; }
+  .menu {
+    position: absolute; z-index: 20; top: 100%; left: 50%; transform: translate(-50%, 6px);
+    min-width: 190px; padding: 4px; border-radius: 10px;
+    background: rgba(38, 24, 62, 0.98); border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+    opacity: 0; animation: cardIn 0.25s ease 0.9s forwards;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px;
+    font-size: 11px; color: var(--text-primary); cursor: pointer;
+  }
+  .menu-item:hover { background: var(--accent-purple); color: white; }
+  .menu-item .glyph { width: 12px; text-align: center; font-size: 10px; }
+  .menu-sep { height: 1px; margin: 4px 2px; background: rgba(255,255,255,0.12); }
+  .menu-hint { font-size: 8px; color: var(--text-tertiary); padding: 3px 8px 2px; }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-tertiary);
+    text-decoration: none; font-family: var(--font-mono); letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .back-link:hover { color: var(--accent-purple); }
+  .caption { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); letter-spacing: 0.5px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<div class="grid">
+
+  <!-- 1. Pausing from the account's menu -->
+  <div class="frame">
+    <a href="../index.html" class="back-link">← All Views</a>
+    <div class="caption">1 · RIGHT-CLICK A LOGIN → PAUSE</div>
+    <div class="popover panel orb-purple">
+      <div class="popover-content">
+        <div class="popover-header">
+          <div class="logo-group">
+            <div class="logo-icon">C</div>
+            <div class="logo-text">ClaudeBar</div>
+          </div>
+          <div class="header-actions">
+            <button class="header-btn">↻</button>
+            <button class="header-btn">⚙</button>
+          </div>
+        </div>
+
+        <div class="provider-pills">
+          <div class="provider-pill"><span class="pill-icon">◈</span> Codex</div>
+          <div class="provider-pill"><span class="pill-icon">✦</span> Gemini</div>
+          <div class="provider-pill"><span class="pill-icon">⬡</span> Copilot</div>
+        </div>
+
+        <div class="account-section-header">
+          <span class="account-section-label">Accounts</span>
+          <div class="account-filter-pills">
+            <div class="menu-anchor">
+              <div class="account-filter on">
+                <div class="filter-avatar">P</div>
+                <span class="filter-name">Personal</span>
+                <div class="filter-status" style="background:var(--status-healthy)"></div>
+              </div>
+              <div class="menu">
+                <div class="menu-item"><span class="glyph">⏸</span> Pause</div>
+                <div class="menu-item"><span class="glyph">▶</span> Use for New Terminal Sessions</div>
+                <div class="menu-hint">A chip click only hides a login from this view.</div>
+              </div>
+            </div>
+            <div class="account-filter on">
+              <div class="filter-avatar">W</div>
+              <span class="filter-name">Work</span>
+              <div class="filter-status" style="background:var(--status-warning)"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="account-group">
+          <div class="account-group-header">
+            <div class="group-avatar" style="background:rgba(140,82,218,0.25);color:rgb(180,140,240)">P</div>
+            <span class="group-name">Personal</span>
+            <span class="group-status-badge healthy">Healthy</span>
+          </div>
+          <div class="compact-stats">
+            <div class="compact-card">
+              <div class="compact-label-text">Opus</div>
+              <div class="compact-value">72<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill" style="width:72%"></div></div>
+            </div>
+            <div class="compact-card">
+              <div class="compact-label-text">Sonnet</div>
+              <div class="compact-value">88<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill" style="width:88%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="account-group">
+          <div class="account-group-header">
+            <div class="group-avatar" style="background:rgba(218,90,166,0.25);color:rgb(240,140,190)">W</div>
+            <span class="group-name">Work — Acme</span>
+            <span class="group-status-badge warning">Warning</span>
+          </div>
+          <div class="compact-stats">
+            <div class="compact-card">
+              <div class="compact-label-text">Opus</div>
+              <div class="compact-value">18<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill warning" style="width:18%"></div></div>
+            </div>
+            <div class="compact-card">
+              <div class="compact-label-text">Sonnet</div>
+              <div class="compact-value">41<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill warning" style="width:41%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annotation no-arrow">
+      <strong>Pause</strong> sits on the login's own menu — its chip, its section header, or a single login's card —
+      beside <strong>Use for New Terminal Sessions</strong>, with the same words the Accounts card's ⋯ menu uses.
+      Clicking the chip still only hides that login from this view: a chip tapped to tidy the popover never silences an alert.
+    </div>
+  </div>
+
+  <!-- 2. The paused login stays, under PAUSED -->
+  <div class="frame">
+    <div class="caption">2 · PAUSED — STILL THERE, STILL RESUMABLE</div>
+    <div class="popover panel">
+      <div class="popover-content">
+        <div class="popover-header">
+          <div class="logo-group">
+            <div class="logo-icon">C</div>
+            <div class="logo-text">ClaudeBar</div>
+          </div>
+          <div class="header-actions">
+            <button class="header-btn">↻</button>
+            <button class="header-btn">⚙</button>
+          </div>
+        </div>
+
+        <div class="provider-pills">
+          <div class="provider-pill active"><span class="pill-icon">◈</span> Codex</div>
+          <div class="provider-pill"><span class="pill-icon">✦</span> Gemini</div>
+          <div class="provider-pill"><span class="pill-icon">⬡</span> Copilot</div>
+        </div>
+
+        <div class="account-section-header">
+          <span class="account-section-label">Accounts</span>
+          <div class="account-filter-pills">
+            <div class="account-filter on">
+              <div class="filter-avatar">P</div>
+              <span class="filter-name">Personal</span>
+              <div class="filter-status" style="background:var(--status-healthy)"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="account-group">
+          <div class="account-group-header">
+            <div class="group-avatar" style="background:rgba(140,82,218,0.25);color:rgb(180,140,240)">P</div>
+            <span class="group-name">Personal</span>
+            <span class="group-status-badge healthy">Healthy</span>
+          </div>
+          <div class="compact-stats">
+            <div class="compact-card">
+              <div class="compact-label-text">Opus</div>
+              <div class="compact-value">72<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill" style="width:72%"></div></div>
+            </div>
+            <div class="compact-card">
+              <div class="compact-label-text">Sonnet</div>
+              <div class="compact-value">88<span class="unit">%</span></div>
+              <div class="compact-progress"><div class="compact-progress-fill" style="width:88%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="paused-group">
+          <div class="paused-label">Paused</div>
+          <div class="paused-row dim">
+            <div class="paused-avatar">W</div>
+            <div>
+              <div class="paused-name">Work — Acme</div>
+              <div class="paused-detail">last seen 3h ago · Opus 18%</div>
+            </div>
+            <div class="paused-spacer"></div>
+            <span class="paused-tag">Paused</span>
+            <button class="resume-btn">Resume</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annotation no-arrow">
+      A paused login is <strong>out of every judgement</strong>: no refresh, no menu-bar name, no health colour,
+      no alert, and no say in the product's status. What it keeps is its last numbers, printed as
+      <strong>last seen</strong> — a fact about the past, never a status.
+    </div>
+  </div>
+
+  <!-- 3. Every login paused — the tab is still there -->
+  <div class="frame">
+    <div class="caption">3 · EVERY LOGIN PAUSED</div>
+    <div class="popover panel">
+      <div class="popover-content">
+        <div class="popover-header">
+          <div class="logo-group">
+            <div class="logo-icon">C</div>
+            <div class="logo-text">ClaudeBar</div>
+          </div>
+          <div class="header-actions">
+            <button class="header-btn">↻</button>
+            <button class="header-btn">⚙</button>
+          </div>
+        </div>
+
+        <div class="provider-pills">
+          <div class="provider-pill active"><span class="pill-icon">◈</span> Codex</div>
+          <div class="provider-pill"><span class="pill-icon">✦</span> Gemini</div>
+          <div class="provider-pill"><span class="pill-icon">⬡</span> Copilot</div>
+        </div>
+
+        <div class="account-section-header">
+          <span class="account-section-label">Accounts</span>
+        </div>
+
+        <div class="paused-group" style="animation-delay:0.2s">
+          <div class="paused-label">Paused</div>
+          <div class="paused-row dim">
+            <div class="paused-avatar">P</div>
+            <div><div class="paused-name">Personal</div><div class="paused-detail">last seen Sat 14:02</div></div>
+            <div class="paused-spacer"></div>
+            <button class="resume-btn">Resume</button>
+          </div>
+          <div class="paused-row dim">
+            <div class="paused-avatar">W</div>
+            <div><div class="paused-name">Work — Acme</div><div class="paused-detail">last seen Sat 14:02</div></div>
+            <div class="paused-spacer"></div>
+            <button class="resume-btn">Resume</button>
+          </div>
+        </div>
+
+        <div class="nothing-watched">
+          <div style="font-size:16px">⏸</div>
+          <div>
+            <div class="paused-name">No logins watched</div>
+            <div class="paused-detail">Codex is on. Its logins are paused, so nothing is fetched.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annotation no-arrow">
+      <strong>Pause and the product's switch are two facts.</strong> A tab exists while the product is
+      <strong>on</strong>; pausing every login leaves the tab, dimmed and honest, so Monday's
+      <strong>Resume</strong> is one click. Turning the product <strong>off</strong> in Settings does hide it —
+      that is what the switch means.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

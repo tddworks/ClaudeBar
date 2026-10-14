@@ -1422,24 +1422,24 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `should select the enabled provider shown in the pill slot, skipping disabled ones`() {
-        // Given - gemini sits between two enabled providers but is disabled,
-        // so the pills read: 1 Claude, 2 Codex
+    func `should open the pill in that slot even when every login of it is paused`() {
+        // Given - gemini sits between two watched products with its login paused,
+        // so the pills read: 1 Claude, 2 Gemini, 3 Codex
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
-        let claude = claudeProduct.defaultAccount
         let geminiProduct = stubbedProduct("gemini", probe: MockUsageProbe(), settings: settings)
         let gemini = geminiProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
-        let codex = codexProduct.defaultAccount
         gemini.isEnabled = false
         let monitor = makeMonitor(providers: kept([claudeProduct, geminiProduct, codexProduct]))
 
         // When
         monitor.selectProvider(atPosition: 2)
 
-        // Then
-        #expect(monitor.selectedProviderId == "codex")
+        // Then - the second pill's page, paused, and no quota read from it
+        #expect(monitor.selectedProviderId == "gemini")
+        #expect(monitor.selectedTab?.id == "gemini")
+        #expect(monitor.selectedBadge == .paused)
     }
 
     @Test
@@ -1712,43 +1712,43 @@ struct QuotaMonitorTests {
         #expect(monitor.overallStatus == .healthy)
     }
 
-    // MARK: - Set Provider Enabled
+    // MARK: - Pause and resume
 
     @Test
-    func `should select the next enabled provider when the person disables the selected one`() {
+    func `should stay on a product whose only login the person paused`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
         let claude = claudeProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
-        let codex = codexProduct.defaultAccount
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         monitor.selectedProviderId = "claude"
 
-        // When - disable the currently selected provider
-        monitor.setProviderEnabled("claude", enabled: false)
+        // When - the person pauses the login the popover is showing
+        monitor.setPaused(claude, on: true)
 
-        // Then - provider is disabled and selection switches to first enabled
-        #expect(claude.isEnabled == false)
-        #expect(monitor.selectedProviderId == "codex")
+        // Then - the page is still there, paused, and the selection stays on it
+        #expect(monitor.lineup.isEmpty)
+        #expect(monitor.selectedTab?.id == "claude")
+        #expect(monitor.selectedTab?.paused.map(\.id) == ["claude"])
+        #expect(monitor.selectedBadge == .paused)
     }
 
     @Test
-    func `should keep the selection when the person enables another provider`() {
+    func `should keep the selection when the person resumes another login`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
-        let claude = claudeProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
         let codex = codexProduct.defaultAccount
         codex.isEnabled = false
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         monitor.selectedProviderId = "claude"
 
-        // When - enable a different provider
-        monitor.setProviderEnabled("codex", enabled: true)
+        // When - the person resumes a login of another product
+        monitor.setPaused(codex, on: false)
 
-        // Then - provider is enabled, selection unchanged
+        // Then - the login is watched again, selection unchanged
         #expect(codex.isEnabled == true)
         #expect(monitor.selectedProviderId == "claude")
     }

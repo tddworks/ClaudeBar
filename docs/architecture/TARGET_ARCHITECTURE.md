@@ -114,6 +114,11 @@ Providers  ◆                    THE PROVIDERS YOU KEEP — the Providers pane:
   login's. An older `providers.<id>.isEnabled` was the plain login's switch,
   so it is read once: off while another login of the product is on means the
   plain login was paused; otherwise the product was off.
+- A product's tab in the popover exists while its switch is on, and holds
+  **every login of it** — the watched ones as cards, the paused ones as *PAUSED*
+  rows — so *Resume* is a click away and a paused login never vanishes
+  silently. Only the watched ones reach an aggregate (`ProductTab.watched`);
+  turning the switch off is what takes the tab away.
 - `selectedProviderId` keeps its name and value (a login's id): the status
   export and `claudebar://` links carry it.
 

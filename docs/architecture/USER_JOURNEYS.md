@@ -40,7 +40,7 @@ the command that lands on the domain, and the node that answers.
 |---|---|---|---|---|---|
 | 1 | Mia glances at the menu bar | *38%*, amber | nothing | `monitor.lowestQuota` | `Monitor` → worst `Quota.status` |
 | 2 | Mia opens the popover | *Session · Weekly · Spark*, *% left*, *Resets in 1h 12m*, *Running hot*, *EXTRA USAGE*, *Updated 2m ago · via RPC*, *PLUS* | switches to a lighter model for an hour | `account.usage` | `Usage` → `[Quota]` · `Cost` · `Plan` |
-| 2a | Mia has two Codex logins | two pills, *Codex · me@…* and *Codex · work@…*, both pinned in the menu bar; Settings lists one **Codex** with *Add Account…* and a toggle per login | pauses *work* on the weekend; later clicks *work* when *me* runs low | `monitor.select(account)` · `account.disable()` · `provider.bestAccount` | `Provider` (the product) → `[Account]` (the logins) |
+| 2a | Mia has two Codex logins | one **Codex** tab in the popover: **ACCOUNTS** *Personal* and *Work — Acme* side by side, each with its own quotas, and a **PAUSED** row for a login she stopped watching; Settings lists one **Codex** with *Add Account…* and a toggle per login | pauses *work* on the weekend from the popover — right-click the login, **Pause**; later clicks *work* when *me* runs low, or **Resume** on Monday | `monitor.setPaused(_:on:)` · `monitor.select(account)` · `provider.bestAccount` | `Provider` (the product) → `[Account]` (the logins) |
 | 3 | Raj sees Codex fail | *Couldn't read your key* · *Session expired. Run `codex` in terminal to log in again.* · last usage dimmed, *Last seen 3h ago* | logs in, or opens settings | `account.sync.lastError` | `DataSourceError(step: .lookup)`; `usage` kept |
 | 3a | Raj has only the Codex app, no `codex` command | *NOT SET UP* — *CLI not found* — though the app on his Mac carries one | expects nothing to do | `provider.refresh(account)` | the definition says where its CLI may be; no setting needed (#458) |
 | 4 | Raj opens Codex settings | *DATA SOURCE: RPC · API*, *KEY LOOKUP ORDER*, *Test Connection*, *Built in* | switches to RPC, tests | `provider.use("rpc")` · `dataSource.fetchUsage()` | `Provider.dataSources` · `CredentialLookup` |
@@ -82,7 +82,7 @@ Twelve findings; each is a word or a law the model must keep.
 | F9 | An exported provider **carries no key** | 10 |
 | F10 | Import **says where the key will go** before asking for it; a *CLI* provider from someone else shows its command and asks before saving | 11 |
 | F11 | Two logins of one product are **two things Mia watches** but **one thing Raj fixes**: each login is a pill and a menu-bar entry; the data source, its settings and the look are set once for Codex | 2a, 4 |
-| F12 | **Pause is not remove**: a login can be switched off without losing its folder; and an expired key is not a red quota — it reads *Couldn't read your key*, not CRITICAL | 2a, 3 |
+| F12 | **Pause is not remove**: a login can be switched off without losing its folder, and a paused login stays on the popover's page, dimmed and resumable — a login never disappears without saying which of the two happened; an expired key is not a red quota — it reads *Couldn't read your key*, not CRITICAL | 2a, 3 |
 
 ## 4 · The words the new screens print
 
@@ -92,7 +92,8 @@ Twelve findings; each is a word or a law the model must keep.
 *Used · Remaining · Limit · Resets* · *never — a balance* · *Look* · *Name* ·
 *Symbol · colour* · *Save* · *Built in · Custom · Extension* · *Export* ·
 *Key needed* · *Couldn't read your key · Couldn't connect · Couldn't find the
-numbers* · *via API*.
+numbers* · *via API* · *ACCOUNTS* · *PAUSED* · *Pause* · *Resume* ·
+*No logins watched*.
 
 ## 5 · Acceptance scenarios
 
@@ -125,6 +126,14 @@ Scenario: Importing a CLI provider asks first
   Given a provider file whose data source is a CLI command
   When it is imported
   Then the command is shown before anything is saved or run
+
+Scenario: Pausing a login from the dashboard
+  Given Mia has two Codex logins and the popover is open on Codex
+  When she right-clicks "Work — Acme" and presses "Pause"
+  Then Work stops refreshing, leaves the menu bar and the ACCOUNTS chips, and no alert can name it
+   And it is listed under PAUSED with "last seen" and a "Resume" button
+  When she presses "Resume"
+  Then Work is watched again, with the numbers it last showed
 ```
 
 ## 6 · Open

@@ -28,6 +28,7 @@ Don't copy an existing `auth.json` or `.credentials.json` to make a second login
 ## See them side by side
 
 - In the popover, a provider with several accounts is one tab. Its accounts appear one below another, each with its own quotas. The **ACCOUNTS** chips at the top hide an account from this view only; it keeps refreshing and alerting. When an account makes the provider's status a warning, a line at the bottom names it, for example *"Work is at 18% Session — causing Warning"*.
+- **Pause an account from the popover.** Right-click it — on its chip or on its section — and choose **Pause**. It stops refreshing, leaves the menu bar, and no longer has a health colour or can raise an alert; its last numbers stay under **PAUSED** with **Resume**, so nothing about it is lost and Monday is one click. Turning a provider off in Settings still hides the whole provider, the tab included.
 - **Settings → Providers → Claude → Accounts** lists every login. Drag to reorder, use **⋯** to rename, pause or remove one, and click the pin to show it in the menu bar.
 - With one account, the provider is called by its name ("Codex"). With several, each shows the name you gave it, or its email.
 - In the menu bar, each pinned account gets a short name beside the icon: up to 12 characters of the name you gave, or up to 8 of the part of its email before the @. Names that would look alike are numbered (`work·1`, `work·2`). The tooltip shows the full name. Accounts count toward the three-entry menu bar limit.

@@ -116,11 +116,11 @@ private struct ProviderListRow: View {
 
     private var statusText: String {
         guard tab.isEnabled else { return "Disabled" }
-        let updated = tab.accounts.compactMap { $0.snapshot?.capturedAt }.max()
+        let updated = tab.logins.compactMap { $0.snapshot?.capturedAt }.max()
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         let when = updated.map { "Updated \(formatter.localizedString(for: $0, relativeTo: Date()))" } ?? "No data yet"
-        return tab.accounts.count > 1 ? "\(tab.accounts.count) accounts · \(when)" : when
+        return tab.logins.count > 1 ? "\(tab.logins.count) accounts · \(when)" : when
     }
 
     var body: some View {
@@ -143,7 +143,7 @@ private struct ProviderListRow: View {
                 if tab.isEnabled {
                     // Each login's usage, one meter per login (by name when there are several).
                     VStack(alignment: .trailing, spacing: 4) {
-                        ForEach(tab.accounts, id: \.id) { login in
+                        ForEach(tab.logins, id: \.id) { login in
                             if let quota = monitor.usage(of: login)?.lowestQuota {
                                 LoginMeter(name: tab.loginName(login).map(AppSettings.shared.shown), quota: quota)
                             }
