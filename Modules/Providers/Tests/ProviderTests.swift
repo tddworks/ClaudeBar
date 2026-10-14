@@ -177,6 +177,55 @@ struct ProviderTests {
         #expect(network.requests(to: Self.api) == 1)
     }
 
+    @Test
+    func `should fetch nothing for a login the person paused`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 30)
+        let acme = acme(network)
+        try await acme.refreshPlain()
+        acme.defaultAccount.isEnabled = false
+        network.answer(Self.api, used: 90)
+
+        let usage = try await acme.refreshPlain()
+
+        // The numbers it last showed, not the ones it would have fetched.
+        #expect(usage.sessionQuota?.percentRemaining == 70)
+        #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
+    }
+
+    @Test
+    func `should keep the numbers it last showed when a login is paused while its fetch is in flight`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 30)
+        let acme = acme(network)
+        try await acme.refreshPlain()
+        network.answer(Self.api, used: 90)
+        network.held = true
+
+        let inFlight = Task { try await acme.refreshPlain() }
+        try await Task.sleep(for: .milliseconds(50))
+        acme.defaultAccount.isEnabled = false
+        network.release()
+        _ = try await inFlight.value
+
+        #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
+    }
+
+    @Test
+    func `should fetch again as soon as the person resumes a login`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 30)
+        let acme = acme(network)
+        try await acme.refreshPlain()
+        acme.defaultAccount.isEnabled = false
+        network.answer(Self.api, used: 90)
+
+        acme.defaultAccount.isEnabled = true
+        let usage = try await acme.refreshPlain()
+
+        #expect(usage.sessionQuota?.percentRemaining == 10)
+    }
+
     // MARK: - Fallback
 
     @Test

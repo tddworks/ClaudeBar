@@ -137,6 +137,9 @@ public final class Account: Identifiable {
     // MARK: - Recording a fetch (the provider's)
 
     func succeed(_ usage: UsageSnapshot, from kind: String) -> UsageSnapshot {
+        // Paused while this fetch was in flight: the login keeps the numbers it
+        // last showed, and answers with them (CANONICAL §5).
+        guard isEnabled else { return snapshot ?? usage }
         snapshot = usage
         lastError = nil
         lastFailedStep = nil

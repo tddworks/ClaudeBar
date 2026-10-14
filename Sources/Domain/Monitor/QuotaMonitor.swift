@@ -179,6 +179,9 @@ public final class QuotaMonitor {
 
         do {
             let snapshot = try await product.refresh(provider, kind)
+            // Paused, or turned off, while the fetch was in flight: it publishes
+            // nothing — no status of its own, no alert, no observer (CANONICAL §5).
+            guard product.isInLineup(provider) else { return }
             await handleSnapshotUpdate(provider: provider, snapshot: snapshot)
         } catch {
             // Provider stores error in lastError - no need for external observer

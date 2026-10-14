@@ -256,6 +256,9 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
+        // A login paused, or a product turned off, is not fetched: it keeps the
+        // numbers it last showed, and says so rather than raising (CANONICAL §5).
+        guard isInLineup(account) else { return account.snapshot ?? .empty(for: id) }
         guard let active = startingDataSource(for: account) else {
             throw UsageError.noData
         }
