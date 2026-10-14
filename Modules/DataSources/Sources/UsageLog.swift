@@ -145,8 +145,10 @@ extension UsageLog {
 
         /// A log a fixed command answers: each element of its JSON array one
         /// record. Its `at` is a field of the row; a path can name no file.
+        /// The `format` says nothing here and is written as the default, so
+        /// the definition survives being written out and read back.
         public init(command: CommandCall, shapes: [Shape]) {
-            self.init(files: nil, command: command, format: .json, shapes: shapes)
+            self.init(files: nil, command: command, format: .jsonLines, shapes: shapes)
         }
 
         /// The one combined form. Exactly one of `files` and `command` is
