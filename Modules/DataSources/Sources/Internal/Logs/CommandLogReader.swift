@@ -20,7 +20,7 @@ struct CommandLogReader: Sendable {
         self.run = run
         // Resolve the trusted directory only when the command actually starts.
         self.directory = { call.workingDirectory.map { _ in
-            cliWorkingDirectory(platform: platform, homeDirectory: homeDirectory, environment: environment)
+            DataSources.cliWorkingDirectory(platform: platform, homeDirectory: homeDirectory, environment: environment)
         } }
     }
 
