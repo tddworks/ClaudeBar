@@ -120,7 +120,10 @@ struct ProductTabsTests {
     @Test
     func `should keep reading PAUSED when a paused login rests beside it`() throws {
         let (monitor, codex, _) = try monitor()
+        // Every login paused, and one of them also resting: pause is the
+        // person's word, and it wins.
         codex.accounts[1].restingUntil = Date.now.addingTimeInterval(3600)
+        codex.accounts[0].isEnabled = false
         codex.accounts[1].isEnabled = false
 
         let state = ProviderBadgeState(of: monitor.productTabs[0], quotaStatus: nil)
