@@ -1,6 +1,6 @@
 import Foundation
 import Mockable
-import Providers
+@testable import Providers
 import Quotas
 import Testing
 
@@ -189,11 +189,21 @@ struct RestTests {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         codex.rest.setMayRest(true, work)
-        try await usage(stub, codex, id: "work", primary: 100, secondary: 100, primaryReset: 1800, secondaryReset: 2)
+        try await usage(stub, codex, id: "work", primary: 100, secondary: 100, primaryReset: 1800, secondaryReset: 604_800)
         #expect(work.isResting)
 
-        try await Task.sleep(for: .seconds(2.5))
+        // Waking is the window's alone, read against the clock — nothing is
+        // scheduled, so a past window is all it takes.
+        work.restingUntil = Date.now.addingTimeInterval(-1)
+
         #expect(!work.isResting)
+        #expect(codex.accounts.watched.contains { $0 === work })
+        #expect(!codex.accounts.resting.contains { $0 === work })
+
+        // Fetched again, and a fresh answer that is not spent drops the rest.
+        try await usage(stub, codex, id: "work", primary: 5, secondary: 10, primaryReset: 1800, secondaryReset: 604_800)
+        #expect(!work.isResting)
+        #expect(work.restingUntil == nil)
         #expect(codex.accounts.watched.contains { $0 === work })
     }
 
