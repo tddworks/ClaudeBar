@@ -558,7 +558,8 @@ public final class QuotaMonitor {
     /// What the popover's header says about the selected tab — the tab's own
     /// answer, with the status the person's policy gives its watched logins.
     public var selectedBadge: ProviderBadgeState {
-        guard let tab = selectedTab else { return ProviderBadgeState(of: [], quotaStatus: nil) }
+        // No page, no badge — an empty cast, since `[]` fits both login shapes.
+        guard let tab = selectedTab else { return ProviderBadgeState(of: [Account](), quotaStatus: nil) }
         return ProviderBadgeState(of: tab, quotaStatus: selectedTabStatus)
     }
 
