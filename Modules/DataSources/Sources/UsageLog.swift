@@ -443,15 +443,15 @@ extension DataSources {
         encoder.outputFormatting = .sortedKeys
         var hash = SHA256()
         // Other apps are read on their own, so they never change how these days were summed.
-        // The decoder holds files or a command, never both and never neither.
+        // Exactly one of the two is held: a command's answer is named by its command, a
+        // log's records by their path. Both or neither never reaches here.
         let records: UsageLog.Records
         if let command = definition.records.command {
             records = .init(command: command, shapes: definition.records.shapes)
-        } else if let files = definition.records.files {
-            records = .init(files: Paths.fingerprintPath(files, homeDirectory: homeDirectory, environment: pathsEnvironment),
-                            format: definition.records.format, shapes: definition.records.shapes)
         } else {
-            records = .init(files: nil, command: nil, format: definition.records.format, shapes: definition.records.shapes)
+            records = .init(files: definition.records.files.map {
+                Paths.fingerprintPath($0, homeDirectory: homeDirectory, environment: pathsEnvironment)
+            }, command: nil, format: definition.records.format, shapes: definition.records.shapes)
         }
         let own = UsageLog.Definition(records: records, prices: definition.prices,
                                       freeWhen: definition.freeWhen, sessionGap: definition.sessionGap)

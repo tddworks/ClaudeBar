@@ -13,9 +13,11 @@ struct CommandLogTests {
     private let calendar = Calendar.current
     private let now = Date()
 
+    private static let call = CommandCall(cli: "acme", args: ["db", "SELECT tokens FROM message", "--format", "json"], timeout: 15)
+
     private static let definition = UsageLog.Definition(
         records: UsageLog.Records(
-            command: CommandCall(cli: "acme", args: ["db", "SELECT tokens FROM message", "--format", "json"], timeout: 15),
+            command: Self.call,
             shapes: [UsageLog.Shape(at: "$.at", id: ["$.id"],
                                     tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cacheRead"),
                                     cost: "$.cost")]
@@ -36,6 +38,9 @@ struct CommandLogTests {
                                  homeDirectory: home, calendar: calendar, now: { [now] in now },
                                  runCommand: { _ in executor })
     }
+
+    /// Where the command was asked to run, read once the log has read.
+    private final class Where: @unchecked Sendable { var directory: URL? }
 
     private func row(id: String, at: Int, input: Int, output: Int, cost: Double) -> String {
         #"{"id":"\#(id)","at":\#(at),"in":\#(input),"out":\#(output),"cacheRead":0,"cost":\#(cost)}"#
@@ -62,6 +67,39 @@ struct CommandLogTests {
         for output in [cli(output: ""), cli(output: "not json", installed: false), cli(output: "{}"), cli(output: "[{}]", exit: 1)] {
             #expect(await log(Self.definition, output).days(last: 1)[0].isEmpty)
         }
+    }
+
+    @Test func `should show every day empty when the command cannot start`() async throws {
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willReturn("/test/acme")
+        given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willThrow(UsageError.cliNotFound("acme"))
+        #expect(await log(Self.definition, cli).days(last: 1)[0].isEmpty)
+    }
+
+    @Test func `should show every day empty on a platform that runs no commands`() async throws {
+        let reader = CommandLogReader(call: Self.call, shapes: Self.definition.records.shapes.map(RecordShape.init), run: nil,
+                                      platform: .current, homeDirectory: home, environment: { _ in nil })
+        #expect(await reader.records().isEmpty)
+    }
+
+    @Test func `should run a command that asks for ClaudeBar's own folder in that folder`() async throws {
+        let ran = Where()
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willReturn("/test/acme")
+        given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, directory, _ in
+                ran.directory = directory
+                return CLIResult(output: "[]", exitCode: 0)
+            }
+        let definition = UsageLog.Definition(
+            records: UsageLog.Records(
+                command: CommandCall(cli: "acme", args: ["db", "SELECT tokens FROM message", "--format", "json"],
+                                     timeout: 15, workingDirectory: .dedicated),
+                shapes: Self.definition.records.shapes))
+        _ = await log(definition, cli).days(last: 1)
+        #expect(ran.directory == DataSources.cliWorkingDirectory(platform: .current, homeDirectory: home,
+                                                                environment: { _ in nil }))
     }
 
     @Test func `should count rows whose shape answers and skip the rest`() async throws {
