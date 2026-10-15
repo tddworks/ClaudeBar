@@ -70,8 +70,16 @@ struct CommandLogTests {
     @Test func `should count usage on the day it happened, a row older than the range dropped`() async throws {
         let today = Int(now.timeIntervalSince1970)
         let yesterday = Int(now.addingTimeInterval(-86_400).timeIntervalSince1970)
-        let output = "[\(row(id: "a", at: today, input: 1000, output: 500, cost: 0)), \(row(id: "b", at: yesterday, input: 2000, output: 1000, cost: 0))]"
+        let older = Int(now.addingTimeInterval(-40 * 86_400).timeIntervalSince1970)
+        let output = """
+        [\(row(id: "a", at: today, input: 1000, output: 500, cost: 0)), \
+        \(row(id: "b", at: yesterday, input: 2000, output: 1000, cost: 0)), \
+        \(row(id: "c", at: older, input: 4000, output: 2000, cost: 0))]
+        """
+        // The command answers everything it holds; the range asked for is cut
+        // here, so a wider answer never widens the answer's days.
         let days = await log(Self.definition, cli(output: output)).days(last: 2)
+        #expect(days.count == 2)
         #expect(days[1].totalTokens == 1500)
         #expect(days[0].totalTokens == 3000)
     }
