@@ -26,6 +26,10 @@ public enum ProviderBadgeState: Equatable, Sendable {
     /// Every login of the product is paused — the person stopped watching, so
     /// nothing is fetched and there are no numbers to show (CANONICAL §5).
     case paused
+    /// Every login rests on the app's word: their quotas are spent, which is
+    /// simply true — never PAUSED, which only the person's stop earns, and
+    /// never NO DATA (CANONICAL §5).
+    case resting(until: Date)
     /// We have numbers, and this is what they say.
     case quota(QuotaStatus)
 
@@ -63,13 +67,19 @@ public enum ProviderBadgeState: Equatable, Sendable {
 
     /// What the header says about the product a tab opens: a tab whose every
     /// login is paused reads *PAUSED* — the person stopped watching, which is
-    /// not the same as having nothing to show (CANONICAL §5). The tab answers;
-    /// no caller re-asks what its logins are doing.
+    /// not the same as having nothing to show (CANONICAL §5). A tab whose
+    /// every login rests reads *RESTING* — its quotas are simply spent. The
+    /// tab answers; no caller re-asks what its logins are doing.
     @MainActor
     public init(of tab: ProductTab, quotaStatus: QuotaStatus?) {
-        let state: ProviderBadgeState = tab.watched.isEmpty && !tab.paused.isEmpty
-            ? .paused
-            : ProviderBadgeState(of: tab.watched, quotaStatus: quotaStatus)
+        let state: ProviderBadgeState
+        if tab.watched.isEmpty && !tab.paused.isEmpty {
+            state = .paused
+        } else if tab.watched.isEmpty, let until = tab.resting.compactMap(\.restingUntil).min() {
+            state = .resting(until: until)
+        } else {
+            state = ProviderBadgeState(of: tab.watched, quotaStatus: quotaStatus)
+        }
         self = state
     }
 

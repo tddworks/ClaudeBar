@@ -20,6 +20,9 @@ public struct ProductTab: Identifiable {
     public let watched: [Account]
     /// The ones paused: the page's PAUSED rows, and nothing else.
     public let paused: [Account]
+    /// The ones resting on the app's word: the page's RESTING rows, out of
+    /// every judgement until their window ends.
+    public let resting: [Account]
 
     init(provider: Provider) {
         self.id = provider.id
@@ -28,6 +31,7 @@ public struct ProductTab: Identifiable {
         self.logins = Array(provider.accounts)
         self.watched = provider.accounts.watched
         self.paused = provider.accounts.paused
+        self.resting = provider.accounts.resting
     }
 
     /// The product's own switch (CANONICAL §1) — off takes the whole product,

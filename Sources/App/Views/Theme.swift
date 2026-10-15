@@ -756,6 +756,7 @@ extension ProviderBadgeState {
         case .usageOnly: ""
         case .awaitingData: "NO DATA"
         case .paused: "PAUSED"
+        case .resting: "RESTING"
         case .quota(let status): status.badgeText
         }
     }
@@ -769,7 +770,7 @@ extension ProviderBadgeState {
     /// Pill accent color, resolved against the active theme.
     func badgeColor(_ theme: any AppThemeProvider) -> Color {
         switch self {
-        case .syncing, .awaitingData, .notSetUp, .usageOnly, .paused: theme.textTertiary
+        case .syncing, .awaitingData, .notSetUp, .usageOnly, .paused, .resting: theme.textTertiary
         // Matches the warning triangle on the "Unavailable" card below it.
         case .unavailable: theme.statusWarning
         case .quota(let status): theme.statusColor(for: status)

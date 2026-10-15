@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Domain
 @testable import Infrastructure
+@testable import Providers
 
 /// Settings → Providers, by product (CANONICAL §1: the product's switch): one row per
 /// product, its switch hiding every login, its logins moving together.
@@ -77,5 +78,54 @@ struct ProductTabsTests {
         let (monitor, codex, _) = try monitor()
 
         #expect(monitor.productTabs[0].page === codex.defaultAccount)
+    }
+
+    // MARK: - A login resting on the app's word
+
+    @Test
+    func `should keep a resting login on the tab, out of the watched rows`() throws {
+        let (monitor, codex, _) = try monitor()
+        codex.accounts[1].restingUntil = Date.now.addingTimeInterval(3600)
+
+        let tab = monitor.productTabs[0]
+
+        #expect(tab.logins.count == 2)
+        #expect(tab.watched.count == 1)
+        #expect(tab.resting.map(\.id) == ["codex.work"])
+        #expect(tab.paused.isEmpty)
+    }
+
+    @Test
+    func `should read RESTING when every login rests, never PAUSED`() throws {
+        let (monitor, codex, _) = try monitor()
+        let until = Date.now.addingTimeInterval(3600)
+        codex.accounts[0].restingUntil = until
+        codex.accounts[1].restingUntil = until
+
+        let state = ProviderBadgeState(of: monitor.productTabs[0], quotaStatus: nil)
+
+        #expect(state == .resting(until: until))
+    }
+
+    @Test
+    func `should keep reading the quota badge while a login rests beside watched ones`() throws {
+        let (monitor, codex, _) = try monitor()
+        codex.accounts[1].restingUntil = Date.now.addingTimeInterval(3600)
+
+        let state = ProviderBadgeState(of: monitor.productTabs[0], quotaStatus: nil)
+
+        #expect(state == .awaitingData)
+    }
+
+    @Test
+    func `should keep reading PAUSED when a paused login rests beside it`() throws {
+        let (monitor, codex, _) = try monitor()
+        codex.accounts[1].restingUntil = Date.now.addingTimeInterval(3600)
+        codex.accounts[1].isEnabled = false
+
+        let state = ProviderBadgeState(of: monitor.productTabs[0], quotaStatus: nil)
+
+        #expect(state == .paused)
+        #expect(monitor.productTabs[0].resting.isEmpty)
     }
 }

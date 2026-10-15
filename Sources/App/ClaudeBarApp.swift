@@ -151,6 +151,11 @@ struct ClaudeBarApp: App {
             guard let monitor else { return }
             await quotaAlerts.review(refreshed.id, named: monitor.lineupName(of: refreshed), usage: monitor.usage(of: refreshed))
         }
+        // *Rest when spent* follows every refresh too: a spent login rests
+        // until its window ends, out of every judgement (CANONICAL §5).
+        monitor.onRefreshed { [weak monitor] refreshed in
+            monitor?.product(of: refreshed)?.rest.review(refreshed)
+        }
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()

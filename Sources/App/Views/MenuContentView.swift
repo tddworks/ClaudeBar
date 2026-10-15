@@ -759,6 +759,9 @@ struct MenuContentView: View {
             if tab.watched.isEmpty {
                 nothingWatchedNotice(tab)
             }
+            if !tab.resting.isEmpty {
+                restingGroup(tab)
+            }
             if !tab.paused.isEmpty {
                 pausedGroup(tab)
             }
@@ -776,12 +779,25 @@ struct MenuContentView: View {
         if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
     }
 
-    /// *Pause* / *Use for New Terminal Sessions* — the login's own menu, the
-    /// same words the Accounts card's ⋯ uses, on its chip, on its header and
-    /// on the single login's card.
+    /// *Pause* or *Resume*, whichever the login's state calls for — the page
+    /// picks the word; the domain does the acting.
+    private func pauseOrResume(_ account: Account) {
+        if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
+    }
+
+    /// *Pause* / *Wake* / *Use for New Terminal Sessions* / *Rest When Spent*
+    /// — the login's own menu, the same words the Accounts card's ⋯ uses, on
+    /// its chip, on its header and on the single login's card.
     @ViewBuilder
     private func accountMenu(_ account: Account, in tab: ProductTab) -> some View {
         Button(account.isEnabled ? "Pause" : "Resume") { pauseOrResume(account) }
+        if account.isResting {
+            Button("Wake Now") { tab.provider.rest.wake(account) }
+        }
+        Divider()
+        Toggle("Rest When Spent", isOn: Binding(
+            get: { tab.provider.rest.mayRest(account) },
+            set: { tab.provider.rest.setMayRest($0, account) }))
         if tab.provider.inUse?.canBeInUse(account) == true {
             Divider()
             Button("Use for New Terminal Sessions") { newSessions.use(account) }
@@ -808,6 +824,58 @@ struct MenuContentView: View {
                     .contextMenu { accountMenuFor(account) }
             }
         }
+    }
+
+    /// Logins resting on the app's word: their spent quota said when it
+    /// refills, so they sit out every judgement until then — with what they
+    /// last showed and a way to wake them sooner.
+    private func restingGroup(_ tab: ProductTab) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("RESTING")
+                .popoverFont(9, weight: .semibold)
+                .foregroundStyle(theme.textTertiary)
+                .padding(.horizontal, 4)
+            ForEach(tab.resting, id: \.id) { account in
+                restingRow(account, in: tab)
+                    .contextMenu { accountMenuFor(account) }
+            }
+        }
+    }
+
+    private func restingRow(_ account: Account, in tab: ProductTab) -> some View {
+        HStack(spacing: 8) {
+            Text(String(account.displayName.prefix(1)).uppercased())
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(theme.textTertiary)
+                .frame(width: 18, height: 18)
+                .background(Circle().fill(theme.glassBackground))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(settings.shown(account.displayName))
+                    .popoverFont(12, weight: .medium)
+                    .foregroundStyle(theme.textTertiary)
+                Text(restingDetail(of: account))
+                    .popoverFont(9, weight: .regular)
+                    .foregroundStyle(theme.textTertiary)
+            }
+            Spacer(minLength: 0)
+            Button("Wake") { tab.provider.rest.wake(account) }
+                .buttonStyle(.plain)
+                .popoverFont(11, weight: .semibold)
+                .foregroundStyle(theme.accentPrimary)
+                .help("Wake \(settings.shown(account.displayName)) now, and leave it alone")
+                .accessibilityLabel("Wake \(settings.shown(account.displayName))")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
+    }
+
+    /// What a resting login waits for, and what it last showed.
+    private func restingDetail(of account: Account) -> String {
+        let until = account.restingUntil.map { "resting until \($0.formatted(date: .abbreviated, time: .shortened))" }
+            ?? "resting"
+        guard let snapshot = monitor.usage(of: account) else { return until }
+        return "\(until) · last seen \(snapshot.ageDescription)"
     }
 
     private func pausedRow(_ account: Account) -> some View {
@@ -847,24 +915,28 @@ struct MenuContentView: View {
     }
 
     /// Every login paused: the product is still on, so its page says so instead
-    /// of showing nothing that reads like a failure.
+    /// of showing nothing that reads like a failure. Logins resting say so in
+    /// their own group — the notice would read like the person's doing.
+    @ViewBuilder
     private func nothingWatchedNotice(_ tab: ProductTab) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "pause.circle")
-                .foregroundStyle(theme.textTertiary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("No logins watched")
-                    .popoverFont(12, weight: .semibold)
-                    .foregroundStyle(theme.textSecondary)
-                Text("\(settings.shown(tab.name)) is on, but nothing is being fetched.")
-                    .popoverFont(10)
+        if tab.resting.isEmpty {
+            HStack(spacing: 8) {
+                Image(systemName: "pause.circle")
                     .foregroundStyle(theme.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("No logins watched")
+                        .popoverFont(12, weight: .semibold)
+                        .foregroundStyle(theme.textSecondary)
+                    Text("\(settings.shown(tab.name)) is on, but nothing is being fetched.")
+                        .popoverFont(10)
+                        .foregroundStyle(theme.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
     }
 
     private func accountChips(_ tab: ProductTab) -> some View {
