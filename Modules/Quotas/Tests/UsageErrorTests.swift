@@ -28,10 +28,18 @@ struct UsageErrorTests {
         #expect(error.errorDescription?.hasSuffix(".") == true)
     }
 
+    @Test
+    func `should say a resting login waits for its quota to refill`() {
+        let error = UsageError.resting(until: Date().addingTimeInterval(60 * 60))
+        #expect(error.errorDescription?.hasPrefix("Resting. Its quota refills ") == true)
+        #expect(error.errorDescription?.hasSuffix(".") == true)
+    }
+
     @Test(arguments: [
         UsageError.cliNotFound("claude"), .authenticationRequired, .parseFailed("x"), .timeout, .noData,
         .updateRequired, .folderTrustRequired, .executionFailed("x"), .subscriptionRequired,
         .rateLimited(retryAt: Date(timeIntervalSince1970: 1_000)),
+        .resting(until: Date(timeIntervalSince1970: 1_000)),
     ])
     func `should count the same failure twice as the same problem`(error: UsageError) {
         #expect(error == error)
@@ -43,5 +51,6 @@ struct UsageErrorTests {
         #expect(UsageError.cliNotFound("claude") != .cliNotFound("codex"))
         #expect(UsageError.executionFailed("a") != .executionFailed("b"))
         #expect(UsageError.rateLimited(retryAt: Date(timeIntervalSince1970: 1)) != .rateLimited(retryAt: Date(timeIntervalSince1970: 2)))
+        #expect(UsageError.resting(until: Date(timeIntervalSince1970: 1)) != .resting(until: Date(timeIntervalSince1970: 2)))
     }
 }

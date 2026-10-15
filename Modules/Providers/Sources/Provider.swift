@@ -48,6 +48,9 @@ public final class Provider {
     /// *In use* — which login new terminal sessions start with; `nil` when
     /// this product's CLI can't be started on a login's folder.
     public private(set) var inUse: InUse?
+    /// *Rest when spent* — the policy that rests a login whose longest quota
+    /// is spent, until the window ends.
+    public let rest: Rest
     /// Each login's live data sources, and the configuration revision they
     /// were made at — made in this one place, remade when older.
     @ObservationIgnored private var bound: [String: (revision: Int, sources: [DataSource])] = [:]
@@ -80,6 +83,7 @@ public final class Provider {
         self.accounts = Accounts(definition: definition, settings: settings, configuration: configuration,
                                  folders: folders, makeDataSource: makeDataSource, makeUsageHistory: makeUsageHistory)
         self.isEnabled = Self.productSwitch(definition, settings: settings, accounts: saved)
+        self.rest = Rest(providerId: definition.id, accounts: accounts, settings: settings)
         // `Accounts` is public and can outlive this provider: its callback
         // holds it weakly (TARGET §2.1).
         accounts.start(plainHistory: usageHistory, guestPasses: guestPasses,
@@ -179,9 +183,9 @@ public final class Provider {
 
     // MARK: - What only the product knows about one of its logins
 
-    /// In the lineup — pills, menu bar, refreshes, alerts: the login is on,
-    /// and so is its product.
-    public func isInLineup(_ account: Account) -> Bool { account.isEnabled && isEnabled }
+    /// In the lineup — pills, menu bar, refreshes, alerts: the login is
+    /// watched (the person's tick, and not resting), and so is its product.
+    public func isInLineup(_ account: Account) -> Bool { account.isWatched && isEnabled }
 
     /// *The name the lineup prints* — on a pill, the menu bar, an alert: the
     /// product's while it has one login to tell apart, else the login's own
@@ -256,11 +260,15 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
-        // A login the person paused is not fetched — said out loud, never
-        // answered with a made-up snapshot (CANONICAL §5). The product's own
-        // switch is a different fact: turning a product off hides it, and a
-        // person still fetches a login that is off while they set it up.
-        guard account.isEnabled else { throw UsageError.paused }
+        // A login the person paused is not fetched, and neither is one resting
+        // on the app's word — each said out loud, never answered with a made-up
+        // snapshot (CANONICAL §5). The product's own switch is a different
+        // fact: turning a product off hides it, and a person still fetches a
+        // login that is off while they set it up.
+        guard account.isWatched else {
+            if account.isEnabled, let until = account.restingUntil { throw UsageError.resting(until: until) }
+            throw UsageError.paused
+        }
         guard let active = startingDataSource(for: account) else {
             throw UsageError.noData
         }

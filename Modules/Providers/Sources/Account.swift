@@ -56,6 +56,28 @@ public final class Account: Identifiable {
     /// the next refresh.
     public func resume() { isEnabled = true }
 
+    /// Where this login's rest is kept — the plain login under its own name,
+    /// an added one beside its pause.
+    private var restStorage: (setting: String, owner: String) {
+        isDefault ? ("plainRestUntil", providerId) : ("restUntil", id)
+    }
+
+    /// The app's hold: when the spent quota's window ends — written by `Rest`,
+    /// the app's policy, never by the person (CANONICAL §5).
+    public internal(set) var restingUntil: Date? {
+        didSet {
+            let (setting, owner) = restStorage
+            settings.setValue(restingUntil.map { String($0.timeIntervalSince1970) }, setting, forProvider: owner)
+        }
+    }
+
+    /// Resting — the window has not ended yet, read against the clock:
+    /// nothing is scheduled, and nothing is fetched before.
+    public var isResting: Bool { restingUntil.map { $0 > Date.now } ?? false }
+
+    /// Being watched: the person's tick, and not resting on the app's word.
+    public var isWatched: Bool { isEnabled && !isResting }
+
     // MARK: - What we last saw
 
     public internal(set) var isSyncing = false
@@ -90,6 +112,10 @@ public final class Account: Identifiable {
         self.isEnabled = login.isDefault
             ? settings.isOn(Provider.plainLoginKey, forProvider: definition.id) ?? true
             : settings.isEnabled(forProvider: login.id, defaultValue: definition.enabledByDefault)
+        let (restSetting, restOwner) = restStorage
+        self.restingUntil = settings.value(restSetting, forProvider: restOwner)
+            .flatMap(Double.init)
+            .map { Date(timeIntervalSince1970: $0) }
     }
 
     /// *NOT SET UP* — no usage yet, and the last refresh found no tool on
@@ -151,7 +177,7 @@ public final class Account: Identifiable {
     /// fetch was refused rather than handed data it must not record
     /// (CANONICAL §5).
     func succeed(_ usage: UsageSnapshot, from kind: String) -> UsageSnapshot? {
-        guard isEnabled else { return nil }
+        guard isWatched else { return nil }
         snapshot = usage
         lastError = nil
         lastFailedStep = nil
@@ -163,9 +189,9 @@ public final class Account: Identifiable {
     /// the usage they gave stays, and the failure shows beside it as fetch
     /// health — never wiping what was seen.
     func noteFailure(_ error: Error) {
-        // A fetch that lands while the login is paused records nothing —
-        // neither a success nor a failure (CANONICAL §5).
-        guard isEnabled else { return }
+        // A fetch that lands while the login is paused or resting records
+        // nothing — neither a success nor a failure (CANONICAL §5).
+        guard isWatched else { return }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step
@@ -183,7 +209,7 @@ public final class Account: Identifiable {
     /// stale error the login kept before the pause (CANONICAL §5).
     @discardableResult
     func fail(_ error: Error) -> Error {
-        guard isEnabled else { return error }
+        guard isWatched else { return error }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step

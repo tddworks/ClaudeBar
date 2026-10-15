@@ -80,12 +80,17 @@ public final class Accounts {
             ?? logins.first { $0.displayName.lowercased() == wanted || $0.accountEmail?.lowercased() == wanted }
     }
 
-    /// The logins being watched — the one filter the product, the lineup and
-    /// every judgement read (CANONICAL §5). A paused login is out of all of them.
-    public var watched: [Account] { logins.filter(\.isEnabled) }
+    /// The logins being watched: the person's tick, and not resting on the
+    /// app's word — "the one filter the product, the lineup and every
+    /// judgement read".
+    public var watched: [Account] { logins.filter(\.isWatched) }
 
     /// The paused logins: on the product's page, out of every judgement.
     public var paused: [Account] { logins.filter { !$0.isEnabled } }
+
+    /// The logins resting on the app's word — the page's RESTING rows, out of
+    /// every judgement until their window ends. Pausing wins when both hold.
+    public var resting: [Account] { logins.filter { $0.isEnabled && $0.isResting } }
 
     /// More than one watched login, so each needs telling apart by name.
     public var hasSeveral: Bool {

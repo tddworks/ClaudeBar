@@ -300,6 +300,7 @@ extension UsageError {
         case .timeout: "timeout"
         case .noData: "noData"
         case .paused: "paused"
+        case .resting: "resting"
         case .updateRequired: "updateRequired"
         case .folderTrustRequired: "folderTrustRequired"
         case .executionFailed: "executionFailed"

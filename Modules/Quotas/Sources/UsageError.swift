@@ -31,6 +31,12 @@ public enum UsageError: Error, Sendable, LocalizedError {
     /// keeps the numbers it last showed (CANONICAL §5).
     case paused
 
+    /// The login rests on a spent quota whose window said when it refills —
+    /// the app's hold, never the person's pause. An outcome, like `.paused`:
+    /// the fetch did not happen, nothing is recorded, and the login keeps the
+    /// numbers it last showed (CANONICAL §5).
+    case resting(until: Date)
+
     /// The CLI needs to be updated
     case updateRequired
 
@@ -69,6 +75,9 @@ public enum UsageError: Error, Sendable, LocalizedError {
             return "No usage data available"
         case .paused:
             return "Paused"
+        case .resting(let until):
+            let relative = Date.RelativeFormatStyle(presentation: .numeric, unitsStyle: .wide).format(until)
+            return "Resting. Its quota refills \(relative)."
         case .updateRequired:
             return "CLI update required"
         case .folderTrustRequired:
@@ -109,6 +118,8 @@ extension UsageError: Equatable {
             return true
         case (.paused, .paused):
             return true
+        case (.resting(let a), .resting(let b)):
+            return a == b
         case (.updateRequired, .updateRequired):
             return true
         case (.folderTrustRequired, .folderTrustRequired):

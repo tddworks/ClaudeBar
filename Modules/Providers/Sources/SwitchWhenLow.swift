@@ -45,11 +45,12 @@ public final class SwitchWhenLow {
     }
 
     /// Where new sessions should move from `current`, among `logins` — `nil`
-    /// when the policy is off, `current` has room, or no ticked login has more left.
+    /// when the policy is off, `current` has room, or no ticked login with
+    /// more left is being watched (a resting login is not a place to move to).
     public func next(from current: Account, among logins: [Account]) -> Account? {
         guard isOn, let left = current.percentLeft, left < Double(below) else { return nil }
         return logins
-            .filter { $0 !== current && $0.isEnabled && mayPick($0) && ($0.percentLeft ?? -1) > left }
+            .filter { $0 !== current && $0.isWatched && mayPick($0) && ($0.percentLeft ?? -1) > left }
             .max { ($0.percentLeft ?? -1) < ($1.percentLeft ?? -1) }
     }
 }
