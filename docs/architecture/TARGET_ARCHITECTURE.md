@@ -434,6 +434,7 @@ added logins are folders and whose sign-in names that variable has In use.
 |---|---|---|
 | `InUse` (`Providers`) | which login new sessions start with: `login`, `logins`, `use`, `worthSwitchingTo`, `review()` | the rule for choosing changes |
 | `SwitchWhenLow` (`Providers`) | the opt-in policy: is it on, below what, which logins it may pick | the policy changes |
+| `Rest` (`Providers`) | the opt-in policy: is it on, which logins it may rest, the judgement after a refresh | the policy changes |
 | `LoginsInUse` (port, `Providers`) · `DiskLoginsInUse` | the record: one file per **CLI** (`in-use/claude`), the folder or empty — the shell starts a CLI, not a product | where the shell reads it changes |
 | `NewSessions` (`Domain`) | a choice waits for the shell lines; set up, by hand, cancel, turn off; the strip's state; `claudebar://use`; reviews each refresh | how a choice reaches the shell changes |
 | `ShellLines` (port, `Domain`) · `ShellSetup` (`Infrastructure`) | the lines per shell, between markers; an alias for the CLI replaced | a shell's syntax changes |

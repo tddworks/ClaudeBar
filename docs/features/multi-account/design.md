@@ -402,6 +402,10 @@ model disagree, the decision and its reason are in §8.
 - **A paused login is out of every judgement** — no refresh, no menu-bar name,
   no health colour, no alert, no say in the product's status, and none on *All*.
   What it keeps is its last numbers, printed as *last seen*.
+- **A resting login is the app's hold, not the person's**: its spent quota said
+  when it refills, so it sits under **RESTING** with the time — out of every
+  judgement, like a paused one, until the window ends or the person wakes it
+  ([rest-when-spent](../rest-when-spent/design.md)).
 - **A tab exists while the product's switch is on.** Pausing every login of a
   product leaves its tab, dimmed, its header reading *PAUSED* and its page
   saying *No logins watched* with a *Resume* per login — pause and the
@@ -489,6 +493,9 @@ are the cases the definition declares (§8).
 | the selection never lands on a login the popover's page is not showing | `QuotaMonitor.pause(_:)` |
 | a login is never removed from the popover without saying whether it was paused or forgotten | `ProductTab.logins` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it is not waiting, it stopped looking | `ProviderBadgeState.paused` |
+| a login rests on the app's word and pausing on the person's; both keep it out of every judgement, the page says which and until when, and pause wins when both hold | `Account.restingUntil` · `ProductTab.resting` |
+| a spent quota that cannot say when it refills never rests its login; the rest ends at the window's end, read against the clock, and *Wake* ends it sooner and for good | `Rest` |
+| a product whose every login rests reads *RESTING* — never PAUSED, which only the person's stop earns | `ProviderBadgeState.resting` |
 
 Two laws #358 put in two places, now one each: the identity check (it ran in
 `DataSource` **and** in `Provider.refresh`'s bridge branch) and display naming
