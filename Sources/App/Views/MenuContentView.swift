@@ -779,12 +779,6 @@ struct MenuContentView: View {
         if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
     }
 
-    /// *Pause* or *Resume*, whichever the login's state calls for — the page
-    /// picks the word; the domain does the acting.
-    private func pauseOrResume(_ account: Account) {
-        if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
-    }
-
     /// *Pause* / *Wake* / *Use for New Terminal Sessions* / *Rest When Spent*
     /// — the login's own menu, the same words the Accounts card's ⋯ uses, on
     /// its chip, on its header and on the single login's card.
