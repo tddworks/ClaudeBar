@@ -222,7 +222,8 @@ data. The reading rules every format shares:
   without `stats`). Otherwise a missing token field counts 0.
 - **`id`**'s paths together are a record's identity; a record missing any of
   them is never merged with another.
-- **`records` is the log**: `files` and `format`, then the record's shape —
+- **`records` is the log**: its **source** — files (`files` glob and `format`)
+  or one `command`, never both and never neither — then the record's shape —
   `where`, `at`, `id`, `model`, `tokens`, `cost` — or, when the log writes a
   record more than one way, a list of **`shapes`**; never both. Each file is
   read once, and a line is read whole by the first shape whose `where`
@@ -231,6 +232,25 @@ data. The reading rules every format shares:
   runs over all of the log's records, whatever their shape. Without `shapes`
   a definition is written back exactly as before, so its fingerprint and its
   kept days stay put.
+
+**One method, every reader answers.** A reader is told what to read, never
+asked what it holds: `records(since:)` is one method on the closed list, and
+each reader serves its own source — a file reader finds its own files (the
+glob is behind the reader, not beside it), the command reader runs its
+command through the same `CommandFetcher` every other command fetch uses, so
+"locate it, run it, check the exit, notice it could not start" is written
+once. Nothing above the reader branches on which kind of log it has, and no
+reader answers `[]` for a kind it isn't. The scan summary belongs to the
+reader that keeps files between scans, and says nothing for the others.
+
+**The range is the caller's cut.** `days(in:)` says from when, and the range
+it was asked for is cut by the aggregator — never by the log. So a command's
+query must not bound itself to a window of its own: `now − 30 days` knows
+neither the range asked for nor local midnight, and a closed day it left out
+would be read as empty and kept that way for good, which is exactly the
+failure the `DayLedger` makes permanent. A query may narrow (it is the log's
+own SQL), but never below the widest range the app asks for; the honest
+default is to answer everything and let `days(in:)` cut.
 
 **One record, written two ways.** Oh My Pi writes a turn's usage under the
 message, and a model call it makes outside the conversation (memory,
@@ -328,12 +348,13 @@ own cadence (popover open, never the background poll).
 | `UsageLog.Definition` (`DataSources`) | the JSON, `Codable`, no behaviour | the constants in both analyzers |
 | `UsageLog` (`DataSources`) | `days(from:to:)`: the readers, prices and aggregator for one login | both analyzers' entry points |
 | `JSONLinesReader` (`DataSources/Internal`) | one record per line a shape picks out; reads only what was appended since the last scan, re-reads a file that changed under it; a byte prefilter from the shapes' `where` texts | `SessionJSONLParser` + `SessionLogCache`, generalised |
-| `JSONLogReader` (`DataSources/Internal`) | one record per file, by the same first-matching-shape rule; `at.fromPath` reads the time from the path | `VibeSessionLogAnalyzer.loadSessions` |
 | `RecordShape` (`DataSources/Internal`) | one per shape: whether its `where` holds, and the record read whole from its paths; the first shape whose `where` holds reads a line | — (new) |
 | `LogRecord` (`DataSources/Internal`) | the one form every reader produces | `TokenUsageRecord`, `ParsedSession` |
 | `PriceList` (`DataSources/Internal`) | the record's own cost, else the list (exact → longest prefix → family → free → `freeWhen` → otherwise); cache savings | `ModelPricing` |
 | `LocalEndpoint` (`DataSources/Internal`) | `freeWhen.localEndpoint`: is the route in that file on this Mac? | `ClaudeLocalInferenceDetector` |
-| `LogFileFinder` (`DataSources/Internal`) | `files`' glob, changed since a date | `findRecentJSONLFiles` |
+| `JSONLogReader` (`DataSources/Internal`) | one record per file, by the same first-matching-shape rule; `at.fromPath` reads the time from the path; finds its own files | `VibeSessionLogAnalyzer.loadSessions` |
+| `CommandLogReader` (`DataSources/Internal`) | one command's JSON array, by the same first-matching-shape rule; the answer arrives through `CommandFetcher` | — (new) |
+| `LogFileFinder` (`DataSources/Internal`) | `files`' glob, changed since a date — behind the file readers | `findRecentJSONLFiles` |
 | `DayAggregator` (`DataSources/Internal`) | dedupe by `id` (last wins), split by local day, sessions by `sessionGap` (a record is a session without one), working time, cache savings, a cost line per model | both analyzers' `aggregate` |
 | `DayLedger` (`Providers/Internal`) | closed days kept per login; open days asked of the `UsageLog` | — (new) |
 | `UsageHistory` (`Providers`, @Observable, one per login) | `days(in:)`, every date present | `Domain/UsageHistory` (one object for all logins, two days only) |

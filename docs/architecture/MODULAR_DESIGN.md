@@ -160,9 +160,10 @@ Modules/DataSources/
 │       │              CloudWatchFetcher
 │       ├── Mapping/   JSONMapper (+ the path dialect) · TextMapper · ScriptMapper ·
 │       │              DecimalScript · HumanDate
-│       ├── Logs/      LogRecord · JSONLinesReader · JSONLogReader · CommandLogReader (a
-│       │              reader per log source) · LogFileFinder · DayAggregator · PriceList ·
-│       │              LocalEndpoint
+│       ├── Logs/      LogRecord · LogReader (one closed list, one `records(since:)`) ·
+│       │              JSONLinesReader · JSONLogReader · CommandLogReader (a reader per
+│       │              log source, each knowing its own) · LogFileFinder (behind the file
+│       │              readers) · DayAggregator · PriceList · LocalEndpoint
 │       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·
 │       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
 │       │              TerminalRenderer
