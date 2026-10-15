@@ -48,6 +48,14 @@ public final class Account: Identifiable {
         }
     }
 
+    /// *Pause* — stop watching this login, without forgetting it: no refresh,
+    /// no status, no alert, and the numbers it last showed (CANONICAL §5).
+    public func pause() { isEnabled = false }
+
+    /// *Resume* — watch it again. Its kept numbers are there to be replaced by
+    /// the next refresh.
+    public func resume() { isEnabled = true }
+
     // MARK: - What we last saw
 
     public internal(set) var isSyncing = false
@@ -136,10 +144,14 @@ public final class Account: Identifiable {
 
     // MARK: - Recording a fetch (the provider's)
 
-    func succeed(_ usage: UsageSnapshot, from kind: String) -> UsageSnapshot {
-        // Paused while this fetch was in flight: the login keeps the numbers it
-        // last showed, and answers with them (CANONICAL §5).
-        guard isEnabled else { return snapshot ?? usage }
+    /// Records what a fetch brought back, and answers with it.
+    ///
+    /// `nil` when the login was paused as this fetch landed: nothing is
+    /// recorded, the numbers it last showed stay, and the caller is told the
+    /// fetch was refused rather than handed data it must not record
+    /// (CANONICAL §5).
+    func succeed(_ usage: UsageSnapshot, from kind: String) -> UsageSnapshot? {
+        guard isEnabled else { return nil }
         snapshot = usage
         lastError = nil
         lastFailedStep = nil
@@ -163,8 +175,15 @@ public final class Account: Identifiable {
         }
     }
 
-    func fail(_ error: Error) {
-        guard isEnabled else { return }
+    /// Records what a failed fetch meant, and answers with the error its
+    /// caller should throw.
+    ///
+    /// A login paused as the fetch landed records nothing and keeps its last
+    /// numbers — and answers with the failure that happened, never with the
+    /// stale error the login kept before the pause (CANONICAL §5).
+    @discardableResult
+    func fail(_ error: Error) -> Error {
+        guard isEnabled else { return error }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step
@@ -178,6 +197,7 @@ public final class Account: Identifiable {
            tag == "authenticationRequired" || tag == "sessionExpired" {
             snapshot = nil
         }
+        return lastError ?? error
     }
 }
 

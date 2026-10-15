@@ -208,9 +208,9 @@ public final class Provider {
         definition.dataSource(configuration.activeKind)?.cache.map { .seconds($0.ttl) }
     }
 
-    /// The worst quota health across the enabled logins.
+    /// The worst quota health across the watched logins.
     public var status: QuotaStatus {
-        accounts.filter(\.isEnabled).map(\.status).max() ?? .healthy
+        accounts.watched.map(\.status).max() ?? .healthy
     }
 
     /// *Test Connection* — the active data source looks up the key and
@@ -256,11 +256,11 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
-        // A login the person paused is not fetched: it keeps the numbers it last
-        // showed, and says so rather than raising (CANONICAL §5). The product's
-        // own switch is a different fact — turning a product off hides it, and a
+        // A login the person paused is not fetched — said out loud, never
+        // answered with a made-up snapshot (CANONICAL §5). The product's own
+        // switch is a different fact: turning a product off hides it, and a
         // person still fetches a login that is off while they set it up.
-        guard account.isEnabled else { return account.snapshot ?? .empty(for: id) }
+        guard account.isEnabled else { throw UsageError.paused }
         guard let active = startingDataSource(for: account) else {
             throw UsageError.noData
         }
@@ -318,10 +318,19 @@ public final class Provider {
 
         var tried: Set = [current.kind]
         var reported: Error?
+        var refused = false
         while true {
             do {
                 let usage = try await current.fetchUsage()
-                return account.succeed(identified(usage, for: account), from: current.kind)
+                // Paused as this fetch landed: the login keeps its numbers and
+                // the refresh is refused. Leaving the loop rather than the
+                // `catch` below — a refusal is not a failed fetch, so it hands
+                // off to nothing and falls back to nothing (CANONICAL §5).
+                guard let recorded = account.succeed(identified(usage, for: account), from: current.kind) else {
+                    refused = true
+                    break
+                }
+                return recorded
             } catch {
                 let reason = Self.reason(of: error)
                 if case .rateLimited? = reason {
@@ -350,11 +359,13 @@ public final class Provider {
                 break
             }
         }
+        if refused { throw UsageError.paused }
         if let reported, tried.count > 1 {
             AppLog.probes.info("\(account.id): every data source failed; reporting \(reported.localizedDescription)")
         }
-        account.fail(reported ?? UsageError.noData)
-        throw account.lastError ?? UsageError.noData
+        // The login records the failure, if it is still watching, and says what
+        // its caller should throw (CANONICAL §5).
+        throw account.fail(reported ?? UsageError.noData)
     }
 
     /// `together` — every data source of the login answers at once; the usage
@@ -380,8 +391,7 @@ public final class Provider {
             let error = results.lazy.compactMap { result -> Error? in
                 if case .failure(let error) = result { return error } else { return nil }
             }.first ?? UsageError.noData
-            account.fail(error)
-            throw account.lastError ?? error
+            throw account.fail(error)
         }
         let metrics = answered.flatMap { $0.extensionMetrics ?? [] }
         let union = UsageSnapshot(
@@ -394,7 +404,9 @@ public final class Provider {
             extensionMetrics: metrics.isEmpty ? nil : metrics
         )
         let kind = sources.indices.first { if case .success = results[$0] { return true } else { return false } }.map { sources[$0].kind }
-        let usage = account.succeed(identified(union, for: account), from: kind ?? definition.defaultDataSource)
+        guard let usage = account.succeed(identified(union, for: account), from: kind ?? definition.defaultDataSource) else {
+            throw UsageError.paused
+        }
         let failed = results.lazy.compactMap { result -> Error? in
             if case .failure(let error) = result { return error } else { return nil }
         }.first

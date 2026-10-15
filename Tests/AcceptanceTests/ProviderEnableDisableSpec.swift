@@ -141,7 +141,7 @@ struct ProviderEnableDisableSpec {
             #expect(monitor.selectedProviderId == "claude")
 
             // When — the person resumes Codex
-            monitor.setPaused(codex, on: false)
+            monitor.resume(codex)
 
             // Then — Codex is watched again, Claude still selected
             #expect(codex.isEnabled == true)

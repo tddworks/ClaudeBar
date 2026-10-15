@@ -19,7 +19,9 @@ menu-bar names (slice 2); `accounts.signIn`, `provider.signIn` /
 Provider asking for a key per account (slice 5); the popover by provider —
 `ProductTab`, `QuotaMonitor.tabs` / `selectedTab`, `Provider.worstAccount`,
 account chips and the callout (slice 6); **pausing from the popover** —
-`ProductTab.logins` / `.watched` / `.paused`, `QuotaMonitor.setPaused(_:on:)`
+`ProductTab.logins` / `.watched` / `.paused`, `QuotaMonitor.pause(_:)` /
+`resume(_:)` as the one door the popover's account menu and the Accounts card share,
+`Account.pause()` / `resume()` as the login's own, the
 as the one door the popover's account menu and the Accounts card share, the
 *PAUSED* rows with *Resume*, and `ProviderBadgeState.paused` for a product
 whose every login is paused (slice 7, §3.5). `selectedProviderId` stays a lineup id
@@ -473,7 +475,7 @@ are the cases the definition declares (§8).
 | a folder already listed, or the default login, is not added twice | `Provider` (`addAccount`) |
 | sign-in never writes to an existing folder and saves nothing on failure, cancel or timeout | `AccountSignIn` |
 | display name is label, else email, else the provider's name | `Account.displayName` |
-| one refresh per account in flight; a failed refresh keeps the last usage | `Provider` |
+| one refresh per account in flight; a failed refresh keeps the last usage; a **paused login is never fetched** — the lifecycle says so before it spends a CLI or a request, and answers `UsageError.paused` | `Provider.refresh` |
 | today's usage is read from one login's local logs — Claude's default login's — so only that login shows it; guest passes likewise | `UsageHistory` (keyed by lineup id) · `Account.guestPasses` |
 | removing deletes only what ClaudeBar made — the account's settings, its vault corner, and its folder when it goes with the account; never a folder the person chose or the CLI's files | `Provider.remove`, asking `SignedInFolder.goesWithAccount` |
 | a data source whose key lookup ClaudeBar cannot see (`fetch: script`) declares an `identity`, or the definition is refused on load | `ProviderDefinition` validation (`DefinitionError`) |
@@ -482,9 +484,9 @@ are the cases the definition declares (§8).
 | an account is added only once its identity is known; *Add anyway* exists only after that step passed | `Provider` (`addAccount`) |
 | accounts keep the order the person gave them; the default is found by `isDefault`, not by position | `Provider.accounts` |
 | the provider's status names the account that causes it | `Provider.worstAccount` |
-| a fetch is judged when it **lands**: one landing while the login is paused lands nowhere, one landing after the person resumed serves the watched login — what *Resume* asked for. The paused-login rule itself is [CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)'s; this feature owns where it lands | `Provider.refresh` (doesn't start) · `Account.succeed` · `fail` · `noteFailure` (don't record) · `QuotaMonitor.refreshProvider` (doesn't publish) |
+| a fetch is judged when it **lands**: one landing while the login is paused lands nowhere — nothing recorded, success or failure, and nothing published — while one landing after the person resumed serves the watched login, which is what *Resume* asked for. The rule itself is [CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)'s | `Account.isEnabled` |
 | a product is off only when the person turns it off; pausing every login of it leaves its tab, dimmed, with *Resume* | `Provider.isEnabled` · `ProductTab` |
-| the selection never lands on a login the popover's page is not showing | `QuotaMonitor.setPaused(_:on:)` |
+| the selection never lands on a login the popover's page is not showing | `QuotaMonitor.pause(_:)` |
 | a login is never removed from the popover without saying whether it was paused or forgotten | `ProductTab.logins` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it is not waiting, it stopped looking | `ProviderBadgeState.paused` |
 
@@ -501,7 +503,8 @@ try await provider.signIn()                                    // sign in, check
 try provider.addAccount(signedInAt: url)                       // check, add, save
 provider.rename(account, to: name)
 provider.remove(account)
-monitor.setPaused(account, on: true)   // the popover's account menu and the Accounts card
+monitor.pause(account)                 // the popover's account menu and the Accounts card
+monitor.resume(account)
 
 // Composition root
 let vault = ProviderVault()
@@ -557,7 +560,7 @@ Each slice one PR, test first, green.
 | 4 ✅ | **one Accounts card** (§3.5) — renders `accounts.ways`, reorder, menu-bar pin, Rename · Pause · Remove, Re-auth; the 4-step Add Account sheet with VERIFY by step; `CodexAccountsCard` goes | a provider with `accounts: nil` shows no button; *Add anyway* is absent until identity passed; order survives relaunch |
 | 6 ✅ | **popover by provider** (§3.5) — `selection: Provider.ID`; account sections, view-filter chips, `worstAccount` callout; CANONICAL §8's build truth updated | one account looks like today; a failed fetch is grey with its last usage, never a Status colour; the callout names the account |
 | 5 ✅ | **`form` + scoped secrets** (`SecretStore.scoped(to:)`, `SecretVault`) — account-scope settings in the form; custom definitions can declare `accounts` | an added account's missing key is *Key needed*, never the default's |
-| 7 ✅ | **pause from the popover** (§3.5) — `ProductTab.logins` / `.watched` / `.paused`, `QuotaMonitor.setPaused(_:on:)`, the account menu, the *PAUSED* rows and *No logins watched* | a paused login leaves the chips, the menu bar and every aggregate, and is still on the page with *Resume*; a chip click still only filters; a product whose logins are all paused keeps its tab |
+| 7 ✅ | **pause from the popover** (§3.5) — `ProductTab.logins` / `.watched` / `.paused`, `QuotaMonitor.pause(_:)` / `resume(_:)`, the account menu, the *PAUSED* rows and *No logins watched* | a paused login leaves the chips, the menu bar and every aggregate, and is still on the page with *Resume*; a chip click still only filters; a product whose logins are all paused keeps its tab |
 | — | legacy providers | gain accounts in TARGET slices 2 and 5, when they become JSON — by adding an `accounts` block, nothing else |
 
 ## 8 · Open questions
@@ -641,7 +644,7 @@ and *who owns the thing?* — never from what is easiest to build.
   judgement. A chip *tapped* to tidy the popover must not silence an alert, so
   the click still only filters the view. What silences a login is a *command* —
   **Pause**, on the login's own menu (the chip's right-click and the section
-  header's) and on the Accounts card's `⋯`, both one `monitor.setPaused(_:on:)`
+  header's) and on the Accounts card's `⋯`, both one `monitor.pause(_:)` /
   so the two doors cannot drift. Pausing from the popover would have been
   impossible to undo there: a paused login leaves the lineup, and the tab was
   built from the lineup. So the tab now holds **every** login of a product whose

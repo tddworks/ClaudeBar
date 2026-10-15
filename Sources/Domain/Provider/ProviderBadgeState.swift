@@ -61,6 +61,18 @@ public enum ProviderBadgeState: Equatable, Sendable {
                   quotaStatus: quotaStatus)
     }
 
+    /// What the header says about the product a tab opens: a tab whose every
+    /// login is paused reads *PAUSED* — the person stopped watching, which is
+    /// not the same as having nothing to show (CANONICAL §5). The tab answers;
+    /// no caller re-asks what its logins are doing.
+    @MainActor
+    public init(of tab: ProductTab, quotaStatus: QuotaStatus?) {
+        let state: ProviderBadgeState = tab.watched.isEmpty && !tab.paused.isEmpty
+            ? .paused
+            : ProviderBadgeState(of: tab.watched, quotaStatus: quotaStatus)
+        self = state
+    }
+
     /// What the badge reads of one login.
     public struct Login: Sendable {
         let isSyncing: Bool

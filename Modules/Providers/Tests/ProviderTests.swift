@@ -178,21 +178,21 @@ struct ProviderTests {
     }
 
     @Test
-    func `should fetch nothing for a login the person paused`() async throws {
+    func `should refuse to fetch a login the person paused, and say so`() async throws {
         let network = AcmeNetwork()
         network.answer(Self.backup, used: 30)
         let acme = acme(network)
         acme.configuration.use("backup")
         try await acme.refreshPlain()
-        acme.defaultAccount.isEnabled = false
+        acme.defaultAccount.pause()
         network.answer(Self.backup, used: 90)
 
-        let usage = try await acme.refreshPlain()
+        await #expect { try await acme.refreshPlain() } throws: { ($0 as? UsageError) == .paused }
 
-        // The numbers it last showed, not the ones it would have fetched: the
-        // backup source has no cache, so a fetch would have answered 10.
-        #expect(usage.sessionQuota?.percentRemaining == 70)
+        // The numbers it last showed, and no second request: a refusal is not
+        // an empty snapshot.
         #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
+        #expect(network.requests(to: Self.backup) == 1)
     }
 
     @Test
@@ -207,9 +207,9 @@ struct ProviderTests {
 
         let inFlight = Task { try await acme.refreshPlain() }
         try await Task.sleep(for: .milliseconds(50))
-        acme.defaultAccount.isEnabled = false
+        acme.defaultAccount.pause()
         network.release()
-        _ = try await inFlight.value
+        await #expect { try await inFlight.value } throws: { ($0 as? UsageError) == .paused }
 
         // The fetch really answered 10; a paused login keeps its 70.
         #expect(acme.defaultAccount.snapshot?.sessionQuota?.percentRemaining == 70)
@@ -231,7 +231,7 @@ struct ProviderTests {
         // added login's usage as signed out.
         let inFlight = Task { try await acme.refresh(work) }
         try await Task.sleep(for: .milliseconds(50))
-        work.isEnabled = false
+        work.pause()
         network.release()
         await #expect(throws: (any Error).self) { try await inFlight.value }
 
@@ -246,10 +246,10 @@ struct ProviderTests {
         let acme = acme(network)
         acme.configuration.use("backup")
         try await acme.refreshPlain()
-        acme.defaultAccount.isEnabled = false
+        acme.defaultAccount.pause()
         network.answer(Self.backup, used: 90)
 
-        acme.defaultAccount.isEnabled = true
+        acme.defaultAccount.resume()
         let usage = try await acme.refreshPlain()
 
         #expect(usage.sessionQuota?.percentRemaining == 10)

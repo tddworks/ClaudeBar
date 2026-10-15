@@ -41,9 +41,10 @@ public final class Providers {
     /// Every login of every provider, on or off, in the pane's order.
     public var logins: [Account] { all.flatMap(\.accounts) }
 
-    /// The enabled logins of enabled providers, in the pane's order — what
-    /// the pills, the menu bar, refreshes and alerts show. Derived, never kept.
-    public var lineup: [Account] { all.flatMap { provider in provider.accounts.filter(provider.isInLineup) } }
+    /// The watched logins of the products that are on, in the pane's order —
+    /// what the pills, the menu bar, refreshes and alerts show. Derived, never
+    /// kept: a product's switch and a login's pause are two facts (CANONICAL §5).
+    public var lineup: [Account] { all.filter(\.isEnabled).flatMap { $0.accounts.watched } }
 
     public func provider(id: String) -> Provider? { all.first { $0.id == id } }
 

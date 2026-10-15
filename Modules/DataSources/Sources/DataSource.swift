@@ -299,6 +299,7 @@ extension UsageError {
         case .parseFailed: "parseFailed"
         case .timeout: "timeout"
         case .noData: "noData"
+        case .paused: "paused"
         case .updateRequired: "updateRequired"
         case .folderTrustRequired: "folderTrustRequired"
         case .executionFailed: "executionFailed"

@@ -80,22 +80,29 @@ public final class Accounts {
             ?? logins.first { $0.displayName.lowercased() == wanted || $0.accountEmail?.lowercased() == wanted }
     }
 
-    /// More than one enabled login, so each needs telling apart by name.
+    /// The logins being watched — the one filter the product, the lineup and
+    /// every judgement read (CANONICAL §5). A paused login is out of all of them.
+    public var watched: [Account] { logins.filter(\.isEnabled) }
+
+    /// The paused logins: on the product's page, out of every judgement.
+    public var paused: [Account] { logins.filter { !$0.isEnabled } }
+
+    /// More than one watched login, so each needs telling apart by name.
     public var hasSeveral: Bool {
-        logins.lazy.filter(\.isEnabled).prefix(2).count > 1
+        watched.prefix(2).count > 1
     }
 
-    /// The enabled login with the most left — *switch to work*.
+    /// The watched login with the most left — *switch to work*.
     public var best: Account? {
-        logins.filter(\.isEnabled).max {
+        watched.max {
             ($0.snapshot?.lowestQuota?.percentRemaining ?? -.infinity) < ($1.snapshot?.lowestQuota?.percentRemaining ?? -.infinity)
         }
     }
 
-    /// The enabled login that makes the provider's status what it is — the
+    /// The watched login that makes the provider's status what it is — the
     /// one the popover names. `nil` while every login is healthy.
     public var worst: Account? {
-        let worst = logins.filter(\.isEnabled).max { $0.status < $1.status }
+        let worst = watched.max { $0.status < $1.status }
         return worst.flatMap { $0.status > .healthy ? $0 : nil }
     }
 

@@ -26,6 +26,11 @@ public enum UsageError: Error, Sendable, LocalizedError {
     /// No quota data was available
     case noData
 
+    /// The login is paused, so this fetch did not happen — not a failure to
+    /// report, an outcome to say out loud: nothing is recorded, and the login
+    /// keeps the numbers it last showed (CANONICAL §5).
+    case paused
+
     /// The CLI needs to be updated
     case updateRequired
 
@@ -62,6 +67,8 @@ public enum UsageError: Error, Sendable, LocalizedError {
             return "Request timed out"
         case .noData:
             return "No usage data available"
+        case .paused:
+            return "Paused"
         case .updateRequired:
             return "CLI update required"
         case .folderTrustRequired:
@@ -99,6 +106,8 @@ extension UsageError: Equatable {
         case (.timeout, .timeout):
             return true
         case (.noData, .noData):
+            return true
+        case (.paused, .paused):
             return true
         case (.updateRequired, .updateRequired):
             return true

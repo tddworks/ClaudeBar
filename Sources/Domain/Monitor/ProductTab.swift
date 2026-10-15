@@ -15,24 +15,24 @@ public struct ProductTab: Identifiable {
     public let provider: Provider
     /// Every login of it, in the person's order.
     public let logins: [Account]
+    /// The ones being watched — the page's chips and cards, and everything
+    /// that judges a login. The product's own lists, never a filter here.
+    public let watched: [Account]
+    /// The ones paused: the page's PAUSED rows, and nothing else.
+    public let paused: [Account]
 
-    init(provider: Provider, logins: [Account]) {
+    init(provider: Provider) {
         self.id = provider.id
         self.name = provider.name
         self.provider = provider
-        self.logins = logins
+        self.logins = Array(provider.accounts)
+        self.watched = provider.accounts.watched
+        self.paused = provider.accounts.paused
     }
 
     /// The product's own switch (CANONICAL §1) — off takes the whole product,
     /// its tab included, out of the popover.
     public var isEnabled: Bool { provider.isEnabled }
-
-    /// The logins being watched: the page's chips and cards, and everything
-    /// that judges a login — its status, the badge, the menu bar, an alert.
-    public var watched: [Account] { logins.filter(\.isEnabled) }
-
-    /// The logins paused: the page's PAUSED rows, and nothing else.
-    public var paused: [Account] { logins.filter { !$0.isEnabled } }
 
     /// Whether the product's page is its logins rather than a single login's
     /// card: it is once there are several to tell apart, and whenever none is
@@ -56,11 +56,11 @@ public struct ProductTab: Identifiable {
     /// The popover's tabs: every product whose switch is on, with every login
     /// of it. Turning a product off is what takes its tab away.
     public static func tabs(in providers: Providers) -> [ProductTab] {
-        providers.all.filter(\.isEnabled).map { ProductTab(provider: $0, logins: Array($0.accounts)) }
+        providers.all.filter(\.isEnabled).map { ProductTab(provider: $0) }
     }
 
     /// Settings → Providers: every product, on or off, each with all its logins.
     public static func everyProduct(in providers: Providers) -> [ProductTab] {
-        providers.all.map { ProductTab(provider: $0, logins: Array($0.accounts)) }
+        providers.all.map { ProductTab(provider: $0) }
     }
 }

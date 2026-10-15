@@ -156,14 +156,42 @@ public final class QuotaMonitor {
 
     // MARK: - Monitoring Operations
 
-    /// Refreshes all enabled providers concurrently.
-    /// Each provider updates its own snapshot.
-    /// Disabled providers are skipped.
-    public func refreshAll() async {
+    /// Refreshes every watched login concurrently, each updating its own
+    /// snapshot. Today's usage is *not* read: this is also the background's
+    /// moment, and usage history is read with a page, never in the background.
+    public func refreshAll(kind: RefreshKind = .interactive) async {
+        await refresh(lineup, kind: kind)
+    }
+
+    /// The popover's page: every login it watches is refreshed, and today's
+    /// usage is read with it — the moment the page is on screen (CANONICAL §1).
+    /// Who is fetched is decided here, so a page draws and calls.
+    public func refresh(_ tab: ProductTab, kind: RefreshKind = .interactive) async {
+        await refresh(tab.watched, kind: kind) { await $0.usageHistory?.read() }
+    }
+
+    /// *TODAY'S USAGE* for every watched login — what the *All* page and the
+    /// notch read, and when they read it: with a page, never in the background.
+    public func readToday() async {
         await withTaskGroup(of: Void.self) { group in
-            for provider in lineup {
+            for login in lineup {
+                group.addTask { await login.usageHistory?.read() }
+            }
+        }
+    }
+
+    /// The logins, refreshed together — one place, whether it is the whole
+    /// watch list or one product's page.
+    private func refresh(
+        _ logins: [Account],
+        kind: RefreshKind,
+        also: (@Sendable (Account) async -> Void)? = nil
+    ) async {
+        await withTaskGroup(of: Void.self) { group in
+            for login in logins {
                 group.addTask {
-                    await self.refreshProvider(provider)
+                    await self.refreshProvider(login, kind: kind)
+                    await also?(login)
                 }
             }
         }
@@ -178,13 +206,13 @@ public final class QuotaMonitor {
         }
 
         do {
+            // A paused login's fetch is refused — before it starts, or as it
+            // lands — so nothing is recorded and there is nothing to publish.
             let snapshot = try await product.refresh(provider, kind)
-            // Paused, or turned off, while the fetch was in flight: it publishes
-            // nothing — no status of its own, no alert, no observer (CANONICAL §5).
-            guard product.isInLineup(provider) else { return }
             await handleSnapshotUpdate(provider: provider, snapshot: snapshot)
         } catch {
-            // Provider stores error in lastError - no need for external observer
+            // The refusal (.paused) and every failure: the login holds both, in
+            // `lastError`. No external observer is told.
         }
     }
 
@@ -218,10 +246,11 @@ public final class QuotaMonitor {
         refreshObservers.append(observer)
     }
 
-    /// Refreshes a single provider by its ID — the lineup's, so a paused login
-    /// is never fetched, whoever asks for it (CANONICAL §5).
+    /// Refreshes a single provider by its ID. Whether it may be fetched is the
+    /// product's to answer, and it answers `.paused` for a paused login
+    /// (CANONICAL §5) — so no caller filters first.
     public func refresh(providerId: String, kind: RefreshKind = .interactive) async {
-        guard let provider = lineup.first(where: { $0.id == providerId }) else {
+        guard let provider = login(id: providerId) else {
             return
         }
         await refreshProvider(provider, kind: kind)
@@ -498,13 +527,17 @@ public final class QuotaMonitor {
         if !enabled { selectFirstEnabledIfNeeded() }
     }
 
-    /// *Pause* / *Resume* a login — the one door the popover's account menu and
-    /// the Accounts card both come through. A paused login is out of every
-    /// judgement (CANONICAL §5); the selection stays on a login some page is
-    /// still showing, and moves to a watched one when it cannot.
-    public func setPaused(_ account: Account, on: Bool) {
-        account.isEnabled = !on
-        if on { selectFirstEnabledIfNeeded() }
+    /// *Pause* — the login stops being watched and keeps what it last showed
+    /// (`Account` owns that; CANONICAL §5). The Monitor's part is the
+    /// selection: it moves off a login no page is showing any more.
+    public func pause(_ account: Account) {
+        account.pause()
+        selectFirstEnabledIfNeeded()
+    }
+
+    /// *Resume* — the login is watched again, from the numbers it kept.
+    public func resume(_ account: Account) {
+        account.resume()
     }
 
     /// The tab the selected login belongs to.
@@ -522,12 +555,11 @@ public final class QuotaMonitor {
     /// The selected tab's worst quota status; `nil` while no watched login has usage.
     public var selectedTabStatus: QuotaStatus? { selectedLogins.compactMap { status(of: $0) }.max() }
 
-    /// What the popover's header says about the selected tab. A tab whose every
-    /// login is paused says *PAUSED* — it is not waiting for data, it has
-    /// stopped looking.
+    /// What the popover's header says about the selected tab — the tab's own
+    /// answer, with the status the person's policy gives its watched logins.
     public var selectedBadge: ProviderBadgeState {
-        if let tab = selectedTab, tab.watched.isEmpty, !tab.paused.isEmpty { return .paused }
-        return ProviderBadgeState(of: selectedLogins, quotaStatus: selectedTabStatus)
+        guard let tab = selectedTab else { return ProviderBadgeState(of: [], quotaStatus: nil) }
+        return ProviderBadgeState(of: tab, quotaStatus: selectedTabStatus)
     }
 
     /// Selects the tab in the given 1-based slot, counted the way the popover

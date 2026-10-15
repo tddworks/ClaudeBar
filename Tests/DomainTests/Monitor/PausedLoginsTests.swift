@@ -86,7 +86,7 @@ struct PausedLoginsTests {
         let (monitor, product) = watchedProduct("codex", snapshot(quota(18)))
         await monitor.refresh(providerId: "codex")
 
-        monitor.setPaused(product.defaultAccount, on: true)
+        monitor.pause(product.defaultAccount)
 
         let tab = try #require(monitor.tabs.first)
         #expect(tab.logins.map(\.id) == ["codex"])
@@ -99,7 +99,7 @@ struct PausedLoginsTests {
     func `should take a paused login out of a product's chips while its siblings stay`() throws {
         let (monitor, codex, _) = try twoLogins()
 
-        monitor.setPaused(codex.accounts[1], on: true)
+        monitor.pause(codex.accounts[1])
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
         #expect(tab.logins.map(\.id) == ["codex", "codex.work"])
@@ -111,8 +111,8 @@ struct PausedLoginsTests {
     func `should watch a login again when the person resumes it`() throws {
         let (monitor, codex, _) = try twoLogins()
 
-        monitor.setPaused(codex.accounts[1], on: true)
-        monitor.setPaused(codex.accounts[1], on: false)
+        monitor.pause(codex.accounts[1])
+        monitor.resume(codex.accounts[1])
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
         #expect(tab.paused.isEmpty)
@@ -125,8 +125,8 @@ struct PausedLoginsTests {
     func `should keep the product's tab while every one of its logins is paused`() throws {
         let (monitor, codex, _) = try twoLogins()
 
-        monitor.setPaused(codex.defaultAccount, on: true)
-        monitor.setPaused(codex.accounts[1], on: true)
+        monitor.pause(codex.defaultAccount)
+        monitor.pause(codex.accounts[1])
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
         #expect(tab.watched.isEmpty)
@@ -137,7 +137,7 @@ struct PausedLoginsTests {
     @Test
     func `should take the product's tab away when the person turns the product off`() throws {
         let (monitor, codex, _) = try twoLogins()
-        monitor.setPaused(codex.accounts[1], on: true)
+        monitor.pause(codex.accounts[1])
 
         monitor.setProductEnabled(monitor.productTabs[0], enabled: false)
 
@@ -150,7 +150,7 @@ struct PausedLoginsTests {
         let claude = try #require(monitor.tabs.first { $0.id == "claude" })
         #expect(!claude.showsAccountPages)
 
-        monitor.setPaused(claude.watched[0], on: true)
+        monitor.pause(claude.watched[0])
 
         #expect(monitor.tabs.first { $0.id == "claude" }?.showsAccountPages == true)
     }
@@ -162,7 +162,7 @@ struct PausedLoginsTests {
         let (monitor, codex, _) = try twoLogins()
         monitor.selectedProviderId = "codex.work"
 
-        monitor.setPaused(codex.accounts[1], on: true)
+        monitor.pause(codex.accounts[1])
 
         #expect(monitor.selectedTab?.id == "codex")
     }
@@ -173,7 +173,7 @@ struct PausedLoginsTests {
         await monitor.refresh(providerId: "claude")
         #expect(monitor.selectedBadge == .quota(.critical))
 
-        monitor.setPaused(product.defaultAccount, on: true)
+        monitor.pause(product.defaultAccount)
 
         #expect(monitor.selectedTabStatus == nil)
         #expect(monitor.selectedBadge == .paused)
@@ -193,7 +193,7 @@ struct PausedLoginsTests {
         await monitor.refresh(providerId: "claude")
         #expect(Overview(monitor).cards.map(\.id) == ["claude", "gemini"])
 
-        monitor.setPaused(claude.defaultAccount, on: true)
+        monitor.pause(claude.defaultAccount)
 
         #expect(Overview(monitor).cards.map(\.id) == ["gemini"])
     }
@@ -204,7 +204,7 @@ struct PausedLoginsTests {
         await monitor.refresh(providerId: "claude")
         let seen = product.defaultAccount.snapshot?.capturedAt
 
-        monitor.setPaused(product.defaultAccount, on: true)
+        monitor.pause(product.defaultAccount)
         await monitor.refreshAll()
 
         #expect(monitor.lineup.isEmpty)
@@ -223,7 +223,7 @@ struct PausedLoginsTests {
         // When — she pauses the login, and only then lets the fetch land
         let inFlight = Task { await monitor.refreshAll() }
         try await Task.sleep(for: .milliseconds(50))
-        monitor.setPaused(product.defaultAccount, on: true)
+        monitor.pause(product.defaultAccount)
         await probe.open()
         await inFlight.value
 

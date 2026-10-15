@@ -340,7 +340,7 @@ Claude Code sessions (Activity); where settings and secrets are kept
 | The user does | The node is told | Notes |
 |---|---|---|
 | toggles a provider in Providers | `provider.enable()` · `disable()` | every login of it; the pane keeps its place |
-| toggles one account | `monitor.setPaused(_:on:)` → `account.enable()` · `disable()` | pauses that login — no refresh, no pill, no judgement — and keeps its settings. The popover's account menu and the Accounts card are two doors to the same one; the selection never lands on a login that is off the page |
+| toggles one account | `monitor.pause(_:)` · `resume(_:)` → `account.pause()` · `resume()` | pauses that login — no refresh, no pill, no judgement — and keeps its settings. The popover's account menu and the Accounts card are two doors to the same one; the selection never lands on a login that is off the page |
 | drags the pane's order | `monitor.providers.move(_:to:)` | the lineup follows |
 | picks DATA SOURCE | `provider.use(_ kind:)` | one data source active at a time |
 | fills API KEY, REGION … | `provider.settings.set(_:to:)` | a secret goes to the vault; the form keeps the reference |
@@ -414,7 +414,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
-| a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published | `Account.isEnabled` |
+| a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isEnabled` |
 | a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it stopped looking, which is not the same as having nothing to show | `ProviderBadgeState.paused` |
 | a failed refresh keeps the last usage and records the error beside it — what we saw is never erased by failing to look again | `Account.sync` |

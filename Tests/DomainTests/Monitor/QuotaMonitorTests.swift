@@ -1723,7 +1723,7 @@ struct QuotaMonitorTests {
         monitor.selectedProviderId = "claude"
 
         // When - the person pauses the login the popover is showing
-        monitor.setPaused(claude, on: true)
+        monitor.pause(claude)
 
         // Then - the page is still there, paused, and the selection stays on it
         #expect(monitor.lineup.map(\.id) == ["codex"])
@@ -1744,7 +1744,7 @@ struct QuotaMonitorTests {
         monitor.selectedProviderId = "claude"
 
         // When - the person resumes a login of another product
-        monitor.setPaused(codex, on: false)
+        monitor.resume(codex)
 
         // Then - the login is watched again, selection unchanged
         #expect(codex.isEnabled == true)

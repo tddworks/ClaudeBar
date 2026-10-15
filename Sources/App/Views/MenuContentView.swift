@@ -220,10 +220,13 @@ struct MenuContentView: View {
             // intent, so Codex in RPC mode must not spawn `codex app-server`
             // here before the session was explicitly verified (issue #216).
             // Other providers treat .passive like an interactive refresh.
+            // Which page is showing is this view's; who is fetched is the
+            // domain's — All is everyone, a tab is its watched logins.
             if showsAll {
-                await refreshAllEnabled(kind: .passive)
+                await monitor.refreshAll(kind: .passive)
+                await monitor.readToday()
             } else {
-                await refresh(providerId: selectedProviderId, kind: .passive)
+                await refreshPage(kind: .passive)
             }
 
             // Check for updates when menu opens (no UI unless update found)
@@ -233,18 +236,21 @@ struct MenuContentView: View {
             }
             #endif
         }
-        .onChange(of: selectedProviderId) { _, newProviderId in
+        .onChange(of: selectedProviderId) {
             // Refresh immediately when the user switches provider while the
             // dropdown is open. Periodic background refresh is owned by the
             // app-lifetime loop in ClaudeBarApp, which restarts itself when the
             // selected or menu-bar provider changes.
-            Task {
-                await refresh(providerId: newProviderId)
-            }
+            Task { await refreshPage() }
         }
         .onChange(of: page) { _, newPage in
             // Opening All reads every provider, as opening the popover on it does.
-            if newPage == .all { Task { await refreshAllEnabled(kind: .passive) } }
+            if newPage == .all {
+                Task {
+                    await monitor.refreshAll(kind: .passive)
+                    await monitor.readToday()
+                }
+            }
         }
     }
 
@@ -422,9 +428,12 @@ struct MenuContentView: View {
         BinaryLocator.invalidateCaches()
         Task { await leaderboard.refresh() }
         if showsAll {
-            Task { await refreshAllEnabled() }
+            Task {
+                await monitor.refreshAll()
+                await monitor.readToday()
+            }
         } else {
-            Task { await refresh(providerId: selectedProviderId) }
+            Task { await refreshPage() }
         }
     }
 
@@ -761,12 +770,18 @@ struct MenuContentView: View {
         .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
     }
 
+    /// *Pause* or *Resume*, whichever the login's state calls for — the page
+    /// picks the word; the domain does the acting.
+    private func pauseOrResume(_ account: Account) {
+        if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
+    }
+
     /// *Pause* / *Use for New Terminal Sessions* — the login's own menu, the
     /// same words the Accounts card's ⋯ uses, on its chip, on its header and
     /// on the single login's card.
     @ViewBuilder
     private func accountMenu(_ account: Account, in tab: ProductTab) -> some View {
-        Button(account.isEnabled ? "Pause" : "Resume") { monitor.setPaused(account, on: account.isEnabled) }
+        Button(account.isEnabled ? "Pause" : "Resume") { pauseOrResume(account) }
         if tab.provider.inUse?.canBeInUse(account) == true {
             Divider()
             Button("Use for New Terminal Sessions") { newSessions.use(account) }
@@ -811,7 +826,7 @@ struct MenuContentView: View {
                     .foregroundStyle(theme.textTertiary)
             }
             Spacer(minLength: 0)
-            Button("Resume") { monitor.setPaused(account, on: false) }
+            Button("Resume") { monitor.resume(account) }
                 .buttonStyle(.plain)
                 .popoverFont(11, weight: .semibold)
                 .foregroundStyle(theme.accentPrimary)
@@ -1449,49 +1464,14 @@ struct MenuContentView: View {
 
     // MARK: - Actions
 
-    /// Refresh all enabled providers concurrently
+    /// The page under the pills: its logins refreshed and today's usage read
+    /// with it. Who is fetched is the domain's answer, not this page's — the
+    /// view draws and calls (CANONICAL §5).
     /// - Parameter kind: `.interactive` for explicit clicks (Refresh button),
     ///   `.passive` for the popover-open refresh (issue #216).
-    private func refreshAllEnabled(kind: RefreshKind = .interactive) async {
-        await withTaskGroup(of: Void.self) { group in
-            // The `isSyncing` guard reads main-actor provider state, so evaluate
-            // it here on the main actor (this closure inherits the caller's
-            // isolation). Each child task then awaits `refresh(_:)`, whose heavy
-            // probe work still suspends off-main, keeping the refreshes concurrent.
-            for provider in monitor.lineup where !provider.isSyncing {
-                guard let product = monitor.product(of: provider) else { continue }
-                group.addTask {
-                    do {
-                        try await product.refresh(provider, kind)
-                    } catch {
-                        // Provider stores error in lastError
-                    }
-                }
-            }
-        }
-        for provider in monitor.lineup {
-            await provider.usageHistory?.read()
-        }
-    }
-
-    /// Refresh a specific provider by ID
-    /// - Parameter kind: `.interactive` for explicit clicks (Refresh button,
-    ///   provider switch), `.passive` for the popover-open refresh (issue #216).
-    private func refresh(providerId: String, kind: RefreshKind = .interactive) async {
-        // A tab of logins refreshes every login it watches — a paused one is
-        // not fetched, however it is reached, and an id the lineup no longer
-        // holds (a product turned off) is not fetched either.
-        let members = monitor.tabs.first { $0.contains(providerId) }?.watched
-            ?? monitor.lineup.filter { $0.id == providerId }
-        // Provider stores error in lastError; isSyncing prevents duplicates.
-        let refreshes: [Task<Void, Never>] = members.filter { !$0.isSyncing }.compactMap { login in
-            guard let product = monitor.product(of: login) else { return nil }
-            return Task { _ = try? await product.refresh(login, kind) }
-        }
-        // Today's usage is read with the popover open, never in the background.
-        let history = members.compactMap(\.usageHistory).map { history in Task { await history.read() } }
-        for refresh in refreshes { await refresh.value }
-        for read in history { await read.value }
+    private func refreshPage(kind: RefreshKind = .interactive) async {
+        guard let tab = monitor.selectedTab else { return }
+        await monitor.refresh(tab, kind: kind)
     }
 
     /// The selected provider's guest passes, when it has any to offer.

@@ -51,7 +51,7 @@ struct PauseFromTheDashboardSpec {
             #expect(monitor.lineup.map(\.id) == ["codex"])
 
             // When — she pauses the login the popover is showing
-            monitor.setPaused(codex, on: true)
+            monitor.pause(codex)
 
             // Then — nothing is watched, the page says PAUSED and keeps the last numbers
             #expect(monitor.lineup.isEmpty)
@@ -71,10 +71,10 @@ struct PauseFromTheDashboardSpec {
             let codexProduct = stubbedProduct("codex", probe: probe, settings: settings)
             let codex = codexProduct.defaultAccount
             let monitor = QuotaMonitor(providers: kept([codexProduct]), clock: TestClock())
-            monitor.setPaused(codex, on: true)
+            monitor.pause(codex)
 
             // When — she presses Resume on Monday
-            monitor.setPaused(codex, on: false)
+            monitor.resume(codex)
             await monitor.refreshAll()
 
             // Then — it is watched again, with what it last showed
@@ -97,7 +97,7 @@ struct PauseFromTheDashboardSpec {
             #expect(Overview(monitor).cards.map(\.id) == ["claude", "gemini"])
 
             // When — she pauses Claude
-            monitor.setPaused(claudeProduct.defaultAccount, on: true)
+            monitor.pause(claudeProduct.defaultAccount)
 
             // Then — All shows only Gemini, and the menu bar has no Claude entry
             #expect(Overview(monitor).cards.map(\.id) == ["gemini"])
