@@ -28,12 +28,19 @@ jobs:
       # created for incompatible target"). Mirrors the passing tests.yml.
 
       # Cold runs re-fetch every external dependency into Tuist/.build (the
-      # aws-sdk-swift checkout alone takes ~3 min), recompile the project
-      # manifests, and rebuild all externals in DerivedData for each
-      # configuration. Cache all three so a run only builds what changed.
-      # Keys hash the dependency manifests; bump the `v1` suffix by hand to
-      # discard a poisoned cache. tests.yml uses the same keys and shares
-      # these caches.
+      # aws-sdk-swift checkout alone takes ~3 min), so cache that. Keys hash
+      # the dependency manifests; bump the `v1` suffix by hand to discard a
+      # poisoned cache. tests.yml uses the same key and shares this cache.
+      #
+      # DerivedData is deliberately NOT cached, in this workflow or tests.yml.
+      # It holds compiled modules and a build description written for one
+      # checkout, and a run that restored another's failed before a build or a
+      # test ran: "Unable to resolve module dependency: '_SubprocessCShims'
+      # (in target 'SwiftTerm')" — SwiftTerm's module map described a C target
+      # built somewhere else. tests.yml dropped its cache for this first, on
+      # the belief that build.yml "builds with fine"; build.yml then failed the
+      # same way, so both build from a clean DerivedData now. What crosses runs
+      # is the dependency checkouts, which `tuist install` revalidates.
       - name: Cache Tuist dependencies
         uses: actions/cache@v5
         with:
@@ -43,14 +50,6 @@ jobs:
           key: tuist-v1-${{ runner.os }}-${{ hashFiles('Tuist/Package.swift', 'Tuist.swift', 'App/Project.swift', 'Workspace.swift', 'Package.swift') }}
           restore-keys: |
             tuist-v1-${{ runner.os }}-
-
-      - name: Cache DerivedData
-        uses: actions/cache@v5
-        with:
-          path: .derivedData
-          key: derived-data-v1-${{ runner.os }}-${{ hashFiles('Tuist/Package.swift', 'Tuist.swift', 'App/Project.swift', 'Workspace.swift', 'Package.swift') }}
-          restore-keys: |
-            derived-data-v1-${{ runner.os }}-
 
       # `brew update` first: the runner image's Homebrew metadata is as old as
       # the image, and `Tuist/Package.swift` needs Tuist 4.209 or later (AGENTS.md).

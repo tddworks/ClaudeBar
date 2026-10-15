@@ -29,8 +29,9 @@ jobs:
       # aws-sdk-swift) — but not DerivedData. Every warm run that restored
       # build.yml's .derivedData failed before a test ran: "Unable to resolve
       # module dependency: '_SubprocessCShims' (in target 'SwiftTerm')" —
-      # compiled modules from another checkout. Tests build from a clean
-      # DerivedData; build.yml keeps its cache, which it builds with fine.
+      # compiled modules from another checkout. build.yml kept a cache of its
+      # own for a while on the belief that it "builds with fine"; it failed the
+      # same way, so neither workflow caches DerivedData now.
       - name: Cache Tuist dependencies
         uses: actions/cache@v5
         with:
