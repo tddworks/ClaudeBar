@@ -482,7 +482,7 @@ are the cases the definition declares (§8).
 | an account is added only once its identity is known; *Add anyway* exists only after that step passed | `Provider` (`addAccount`) |
 | accounts keep the order the person gave them; the default is found by `isDefault`, not by position | `Provider.accounts` |
 | the provider's status names the account that causes it | `Provider.worstAccount` |
-| a paused login is out of every judgement — no refresh, no status, no badge, no alert, no menu-bar name — and keeps only its last numbers, printed as *last seen*. A fetch **already in flight** when the person pauses is discarded at each of its three steps, so it lands nowhere | `Provider.refresh` (doesn't start) · `Account.succeed` (doesn't record) · `QuotaMonitor.refreshProvider` (doesn't publish) |
+| a paused login is out of every judgement — no refresh, no status, no badge, no alert, no menu-bar name — and keeps only its last numbers, printed as *last seen*. A fetch **that lands while the login is paused** is discarded at each of its three steps, success or failure alike, so it lands nowhere; one that lands after the person resumed serves the watched login, which is what *Resume* asked for | `Provider.refresh` (doesn't start) · `Account.succeed` · `fail` · `noteFailure` (don't record) · `QuotaMonitor.refreshProvider` (doesn't publish) |
 | a product is off only when the person turns it off; pausing every login of it leaves its tab, dimmed, with *Resume* | `Provider.isEnabled` · `ProductTab` |
 | the selection never lands on a login the popover's page is not showing | `QuotaMonitor.setPaused(_:on:)` |
 | a login is never removed from the popover without saying whether it was paused or forgotten | `ProductTab.logins` |

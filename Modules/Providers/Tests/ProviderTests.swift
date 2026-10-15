@@ -216,6 +216,30 @@ struct ProviderTests {
     }
 
     @Test
+    func `should keep the numbers it last showed when a login is paused while its fetch fails`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.backup, used: 30)
+        let acme = acme(network, logins: ["work"])
+        acme.configuration.use("backup")
+        let work = acme.accounts[1]
+        try await acme.refresh(work)
+        #expect(work.snapshot?.sessionQuota?.percentRemaining == 70)
+        network.fail(Self.backup, status: 401)
+        network.held = true
+
+        // The fetch lands after the pause, and a 401 would otherwise clear an
+        // added login's usage as signed out.
+        let inFlight = Task { try await acme.refresh(work) }
+        try await Task.sleep(for: .milliseconds(50))
+        work.isEnabled = false
+        network.release()
+        await #expect(throws: (any Error).self) { try await inFlight.value }
+
+        #expect(work.snapshot?.sessionQuota?.percentRemaining == 70)
+        #expect(work.lastError == nil)
+    }
+
+    @Test
     func `should fetch again as soon as the person resumes a login`() async throws {
         let network = AcmeNetwork()
         network.answer(Self.backup, used: 30)

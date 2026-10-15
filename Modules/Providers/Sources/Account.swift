@@ -151,6 +151,9 @@ public final class Account: Identifiable {
     /// the usage they gave stays, and the failure shows beside it as fetch
     /// health — never wiping what was seen.
     func noteFailure(_ error: Error) {
+        // A fetch that lands while the login is paused records nothing —
+        // neither a success nor a failure (CANONICAL §5).
+        guard isEnabled else { return }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step
@@ -161,6 +164,7 @@ public final class Account: Identifiable {
     }
 
     func fail(_ error: Error) {
+        guard isEnabled else { return }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step
