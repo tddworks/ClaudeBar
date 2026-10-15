@@ -100,6 +100,6 @@ struct CodexUsageHistoryTests {
     @Test func `should read an added login's history from its own Codex folder`() throws {
         let definition = try ProviderFactory.builtIn("codex")
         let account = try #require(definition.usageHistory(forAccount: ["codexHome": "/tmp/work-codex"]))
-        #expect(account.records.files == "/tmp/work-codex/sessions/**/rollout-*.jsonl")
+        #expect(account.records.source == .files(glob: "/tmp/work-codex/sessions/**/rollout-*.jsonl", format: .jsonLines))
     }
 }

@@ -77,6 +77,10 @@ struct MistralUsageHistoryTests {
         let rule = UsageLog.At.FromPath(pattern: #"session_(\d{8}_\d{6})"#, format: "yyyyMMdd_HHmmss", timeZone: "UTC")
         let definition = try #require(try ProviderFactory.builtIn("mistral").usageHistory)
         #expect(definition.records.shapes.map(\.at) == [.fromPath(rule)])
-        #expect(definition.records.format == .json)
+        guard case .files(_, let format) = definition.records.source else {
+            Issue.record("Mistral's usage history is not read from files")
+            return
+        }
+        #expect(format == .json)
     }
 }

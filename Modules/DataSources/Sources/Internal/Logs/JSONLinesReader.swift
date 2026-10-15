@@ -45,6 +45,7 @@ actor JSONLinesReader {
     private static let readChunkSize = 1 << 20
     private static let newline = UInt8(ascii: "\n")
 
+    private let glob: String
     private let shapes: [RecordShape]
     /// A line must hold one of these before it is decoded; `nil` reads every line.
     private let fragments: [[UInt8]]?
@@ -53,9 +54,17 @@ actor JSONLinesReader {
 
     var cachedFileCount: Int { entries.count }
 
-    init(records: UsageLog.Records) {
-        shapes = records.shapes.map(RecordShape.init)
+    init(glob: String, shapes: [RecordShape]) {
+        self.glob = glob
+        self.shapes = shapes
         fragments = shapes.fragments
+    }
+
+    /// Records from the files this log names that changed since `since`, in file
+    /// order and line order within each file. Files no longer named are forgotten;
+    /// unreadable ones are skipped.
+    func records(since: Date) -> [LogRecord] {
+        records(in: LogFileFinder.files(matching: glob, changedSince: since))
     }
 
     /// Records from `files`, in file order and line order within each file.

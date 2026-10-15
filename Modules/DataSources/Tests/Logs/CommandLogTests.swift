@@ -33,10 +33,23 @@ struct CommandLogTests {
         return cli
     }
 
-    private func log(_ definition: UsageLog.Definition = Self.definition, _ executor: any CLIExecutor) -> UsageLog {
-        DataSources.makeUsageLog(definition, platform: .current, scripts: { _ in nil }, environment: { _ in nil },
-                                 homeDirectory: home, calendar: calendar, now: { [now] in now },
-                                 runCommand: { _ in executor })
+    /// A platform that runs `executor` for the log's command — the one way a
+    /// login's log is built, so a test needs no seam of its own.
+    private func platform(running executor: (any CLIExecutor)?) -> Platform {
+        var platform = Platform.current
+        if let executor {
+            platform.runCommand = { _ in executor }
+        } else {
+            platform.runCommand = nil
+        }
+        return platform
+    }
+
+    private func log(_ definition: UsageLog.Definition = Self.definition,
+                     _ executor: (any CLIExecutor)?) -> UsageLog {
+        DataSources.makeUsageLog(definition, platform: platform(running: executor), scripts: { _ in nil },
+                                 environment: { _ in nil }, homeDirectory: home, calendar: calendar,
+                                 now: { [now] in now })
     }
 
     /// Where the command was asked to run, read once the log has read.
@@ -78,9 +91,7 @@ struct CommandLogTests {
     }
 
     @Test func `should show every day empty on a platform that runs no commands`() async throws {
-        let reader = CommandLogReader(call: Self.call, shapes: Self.definition.records.shapes.map(RecordShape.init), run: nil,
-                                      platform: .current, homeDirectory: home, environment: { _ in nil })
-        #expect(await reader.records().isEmpty)
+        #expect(await log(Self.definition, nil).days(last: 1)[0].isEmpty)
     }
 
     @Test func `should run a command that asks for ClaudeBar's own folder in that folder`() async throws {
@@ -120,8 +131,7 @@ struct CommandLogTests {
     @Test func `should keep a command log when written out and read back`() throws {
         let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(Self.definition))
         #expect(again == Self.definition)
-        #expect(again.records.command?.cli == "acme")
-        #expect(again.records.files == nil)
+        #expect(again.records.source == .command(Self.call))
     }
 
     @Test func `should fingerprint two different commands apart, so days kept under one are not reused for the other`() {

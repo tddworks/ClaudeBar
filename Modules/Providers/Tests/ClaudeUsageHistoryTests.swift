@@ -245,7 +245,7 @@ struct ClaudeUsageHistoryTests {
 
     @Test func `should read an added login's logs and route from its config folder, and have no history without one`() throws {
         let own = try #require(try ProviderFactory.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"]))
-        #expect(own.records.files == "/tmp/work/projects/**/*.jsonl")
+        #expect(own.records.source == .files(glob: "/tmp/work/projects/**/*.jsonl", format: .jsonLines))
         #expect(own.freeWhen?.localEndpoint?.file == "/tmp/work/.claude.json")
         #expect(own.freeWhen?.localEndpoint?.url.count == 2)
         #expect(try ProviderFactory.builtIn("claude").usageHistory(forAccount: [:]) == nil)

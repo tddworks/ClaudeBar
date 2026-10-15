@@ -13,7 +13,10 @@ struct OpenCodeUsageHistoryTests {
     /// The definition's query against a fixture database, as of `now` (UTC).
     private func rows(_ messages: [String], now: String) throws -> [[String: Any]] {
         let definition = try #require(try ProviderFactory.builtIn("opencode-go").usageHistory)
-        let call = try #require(definition.records.command)
+        guard case .command(let call) = definition.records.source else {
+            Issue.record("OpenCode's usage history is not read from a command")
+            return []
+        }
         let sql = call.args[1].replacingOccurrences(of: "'now'", with: "'\(now)'")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

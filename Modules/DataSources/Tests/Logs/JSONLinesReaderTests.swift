@@ -21,7 +21,11 @@ struct JSONLinesReaderTests {
         #"{"kind":"reply","request":"q_\#(id)","reply":{"id":"r_\#(id)","model":"\#(model)","usage":{"in":10,"out":5}},"at":"\#(at)"}"#
     }
 
-    private func reader() -> JSONLinesReader { JSONLinesReader(records: Self.records) }
+    /// A reader with no glob of its own: these tests name the files, and read
+    /// them whole, so what is under test is the scanning, not the finding.
+    private func reader(_ records: UsageLog.Records = Self.records) -> JSONLinesReader {
+        JSONLinesReader(glob: "", shapes: records.shapes.map(RecordShape.init))
+    }
 
     private func makeFile(_ content: String) throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -81,7 +85,7 @@ struct JSONLinesReaderTests {
             tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cached", inputIncludesCacheRead: true)
         )
         let line = #"{"in":100,"cached":70,"out":5,"at":"2026-03-11T10:00:00.000Z"}"#
-        let record = JSONLinesReader(records: records).read(content: line).first
+        let record = reader(records).read(content: line).first
         #expect(record?.input == 30)
         #expect(record?.cacheRead == 70)
         #expect(record?.tokens == 35)
@@ -136,7 +140,7 @@ struct JSONLinesReaderTests {
         {"kind":"turn","reply":{"role":"model","usage":{"in":100,"out":50,"usd":0.5}},"at":"2026-03-11T10:00:00.000Z"}
         {"kind":"side","usage":{"in":7,"out":3,"usd":0.01},"at":"2026-03-11T10:00:01.000Z"}
         """
-        let records = JSONLinesReader(records: Self.twoShapes).read(content: content)
+        let records = reader(Self.twoShapes).read(content: content)
 
         #expect(records.map(\.input) == [100, 7])
         #expect(records.map(\.output) == [50, 3])
@@ -148,12 +152,12 @@ struct JSONLinesReaderTests {
         {"kind":"turn","reply":{"role":"person","usage":{"in":100}},"at":"2026-03-11T10:00:00.000Z"}
         {"kind":"rollup","of":"side","usage":{"in":999},"at":"2026-03-11T10:00:01.000Z"}
         """
-        #expect(JSONLinesReader(records: Self.twoShapes).read(content: content).isEmpty)
+        #expect(reader(Self.twoShapes).read(content: content).isEmpty)
     }
 
     @Test func `should read a line by the first shape whose where holds, and by that shape alone`() {
         let line = #"{"kind":"side","reply":{"role":"model","usage":{"in":100,"out":50}},"usage":{"in":7,"out":3,"usd":0.01},"at":"2026-03-11T10:00:00.000Z"}"#
-        let record = JSONLinesReader(records: Self.twoShapes).read(content: line).first
+        let record = reader(Self.twoShapes).read(content: line).first
 
         #expect(record?.input == 100)
         #expect(record?.output == 50)

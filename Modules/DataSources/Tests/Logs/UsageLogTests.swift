@@ -189,7 +189,7 @@ struct UsageLogTests {
           "freeWhen": { "localEndpoint": { "file": "~/x.json", "url": ["$.a", ["$.b", "$.c"]] } } }
         """#
         let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8))
-        #expect(definition.records.format == .jsonLines)
+        #expect(definition.records.source == .files(glob: "~/x/*.jsonl", format: .jsonLines))
         #expect(definition.records.shapes.map(\.id) == [[]])
         #expect(definition.freeWhen?.localEndpoint?.url == [["$.a"], ["$.b", "$.c"]])
         let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition))
@@ -231,7 +231,7 @@ struct UsageLogTests {
 
         let moved = try definition.patched(with: patch).filled(["dir": "/tmp/work"], scope: "account")
 
-        #expect(moved.records.files == "/tmp/work/*.jsonl")
+        #expect(moved.records.source == .files(glob: "/tmp/work/*.jsonl", format: .jsonLines))
         #expect(moved.records.shapes == definition.records.shapes)
         #expect(moved.records.shapes.count == 2)
     }
