@@ -100,7 +100,7 @@ struct CloudflareAIDefinitionTests {
         #expect(definition.accounts?.ways == [.form])
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask about the account the token sees, from today's and this month's start in UTC`() async throws {
         let seen = Seen()
         _ = try await make(seen: seen).refreshPlain()
@@ -114,7 +114,7 @@ struct CloudflareAIDefinitionTests {
         #expect((body["query"] as? String)?.contains("aiGatewayRequestsAdaptiveGroups") == true)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show today's neurons against the 10k a day, resetting at UTC midnight`() async throws {
         let usage = try await make().refreshPlain()
         let quota = try #require(usage.quotas.first)
@@ -127,14 +127,14 @@ struct CloudflareAIDefinitionTests {
         #expect(quota.group == "Workers AI")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the whole day's neurons left when Workers AI ran nothing today`() async throws {
         let usage = try await make(usage: (200, Self.usage(today: nil, days: "[]", gateway: "[]"))).refreshPlain()
         #expect(usage.quotas.first?.percentRemaining == 100)
         #expect(usage.quotas.first?.resetText == "0 / 10k neurons today")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should price each day's neurons past 10k on Workers Paid, never the month's total`() async throws {
         let usage = try await make().refreshPlain()
         let cost = try #require(usage.costUsage)
@@ -144,14 +144,14 @@ struct CloudflareAIDefinitionTests {
         #expect(cost.lines == [CostLine(label: "Workers AI neurons", amount: Decimal(string: "0.242")!, detail: "22k past 10k a day")])
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should cost nothing on Free, which stops at the limit instead of charging`() async throws {
         let usage = try await make(plan: (200, Self.free)).refreshPlain()
         #expect(usage.accountTier == .custom("Free"))
         #expect(usage.costUsage == nil)
     }
 
-    @Test(.needsScriptEngine, arguments: [403, 400])
+    @Test(arguments: [403, 400])
     func `should leave the bill out and say why when the token can't read billing`(_ status: Int) async throws {
         let usage = try await make(plan: (status, Self.refused), bills: (status, Self.refused)).refreshPlain()
         #expect(usage.accountTier == nil)
@@ -160,13 +160,13 @@ struct CloudflareAIDefinitionTests {
         #expect(usage.quotas.first?.percentRemaining == 58)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show this month's Workers AI tokens with the busiest models`() async throws {
         let usage = try await make().refreshPlain()
         #expect(note(usage, "Workers AI tokens") == "1.2M in · 340k out this month · llama-3.1-8b-instruct, bge-m3")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show AI Gateway's tokens and what the providers charge, apart from the Cloudflare bill`() async throws {
         let usage = try await make().refreshPlain()
         #expect(note(usage, "AI Gateway") == "1M tokens · $2.51 at providers (est.) this month · gpt-5-mini, gemini-3.5-flash")
@@ -174,19 +174,19 @@ struct CloudflareAIDefinitionTests {
         #expect(usage.costUsage?.totalCost == Decimal(string: "0.242"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should leave AI Gateway out when nothing went through it`() async throws {
         let usage = try await make(usage: (200, Self.usage(gateway: "[]"))).refreshPlain()
         #expect(note(usage, "AI Gateway") == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the last invoice`() async throws {
         let usage = try await make().refreshPlain()
         #expect(note(usage, "Last invoice") == "$14.20 · Sep 21")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should use a pasted token when there is no environment token`() async throws {
         let seen = Seen()
         _ = try await make(environment: [:], vault: MemoryVault(["cloudflare-ai.apiToken": "pasted"]), seen: seen).refreshPlain()
@@ -209,7 +209,7 @@ struct CloudflareAIDefinitionTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask for analytics access when GraphQL won't show the account`() async throws {
         let denied = #"{"data":null,"errors":[{"message":"not authorized for that account","path":["viewer","accounts"],"extensions":{"code":"authz"}}]}"#
         let cloudflare = try make(usage: (200, denied))
@@ -218,7 +218,7 @@ struct CloudflareAIDefinitionTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should say what GraphQL said when it can't answer`() async throws {
         let failed = #"{"data":null,"errors":[{"message":"query time range is too large","extensions":{"code":"bad_request"}}]}"#
         let cloudflare = try make(usage: (200, failed))

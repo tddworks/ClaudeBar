@@ -40,7 +40,7 @@ struct OpenCodeDefinitionTests {
             DataSources.make(source,providerId:def.id,cliExecutor:cli,network:net,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{ name in env.map { $0[name] } ?? (name == "OPENCODE_API_KEY" ? key : nil) },homeDirectory:home,now:{now})
         },vault:vault)
     }
-    @Test(.needsScriptEngine) func `should show the 5-hour, weekly and monthly quotas with their resets and windows when OpenCode Go answers`() async throws {
+    @Test func `should show the 5-hour, weekly and monthly quotas with their resets and windows when OpenCode Go answers`() async throws {
         let p = try make()
         #expect(p.name == "OpenCode Go")
         #expect(!p.defaultAccount.isPaused)
@@ -52,7 +52,7 @@ struct OpenCodeDefinitionTests {
         #expect(qs[1].window?.length == 604800)
         #expect(qs[2].window?.length == nil)
     }
-    @Test(.needsScriptEngine, arguments:[("rolling","\"12.5\"",87.5),("weekly","130",0.0),("monthly","-4",100.0)])
+    @Test(arguments:[("rolling","\"12.5\"",87.5),("weekly","130",0.0),("monthly","-4",100.0)])
     func `should keep the percent left between 0 and 100 when OpenCode Go reports one window, as a number or text`(_ fixture:(String,String,Double)) async throws {
         let qs = try await make(body:"{\"usage\":{\"\(fixture.0)\":{\"percent\":\(fixture.1)}}}").refreshPlain().quotas
         #expect(qs.count == 1)
@@ -74,7 +74,7 @@ struct OpenCodeDefinitionTests {
     @Test func `should show a rate limit, not read the local database, when OpenCode Go is rate-limiting`() async throws {
         await #expect { try await make(status:429).refreshPlain() } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
     }
-    @Test(.needsScriptEngine) func `should show dollars left of each cap from opencode's own database when there is no key`() async throws {
+    @Test func `should show dollars left of each cap from opencode's own database when there is no key`() async throws {
         let p = try make(key:nil)
         #expect(await p.isPlainAvailable())
         let qs = try await p.refreshPlain().quotas
@@ -87,7 +87,7 @@ struct OpenCodeDefinitionTests {
         #expect(qs[2].resetsAt == Date(timeIntervalSince1970: 1776177000))
         #expect(qs[2].window?.length == TimeInterval(2_674_800)) // the anchored month itself: Mar 14 to Apr 14
     }
-    @Test(.needsScriptEngine) func `should show every cap full and no monthly window when nothing has been spent yet`() async throws {
+    @Test func `should show every cap full and no monthly window when nothing has been spent yet`() async throws {
         let row = #"[{"now_ms":1775044800000,"five_hour_cost":0,"five_hour_oldest_ms":null,"weekly_cost":0,"week_end_ms":1775433600000,"monthly_cost":0,"month_start_ms":null,"month_end_ms":null}]"#
         let qs = try await make(key:nil,local:row).refreshPlain().quotas
         #expect(qs.map(\.percentLeft) == [100,100,100])
@@ -95,7 +95,7 @@ struct OpenCodeDefinitionTests {
         #expect(qs[2].resetsAt == nil)
         #expect(qs[2].window?.length == nil)
     }
-    @Test(.needsScriptEngine, arguments:[-5.0,6.0,20.0]) func `should never show less than nothing left of a cap`(_ cost:Double) async throws {
+    @Test(arguments:[-5.0,6.0,20.0]) func `should never show less than nothing left of a cap`(_ cost:Double) async throws {
         let row = "[{\"now_ms\":1775044800000,\"five_hour_cost\":\(cost),\"weekly_cost\":0,\"week_end_ms\":1775433600000,\"monthly_cost\":0}]"
         let qs = try await make(key:nil,local:row).refreshPlain().quotas
         #expect(qs[0].dollarRemaining == Decimal(string: String(format: "%.2f", max(0, 12 - cost))))
@@ -122,36 +122,23 @@ struct OpenCodeDefinitionTests {
         }
         let sql = call.args[1].replacingOccurrences(of: "'now'", with: "'\(now)'")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let db = root.appendingPathComponent("opencode.db").path
+        let db = root.appendingPathComponent("opencode.db")
         let formatter = ISO8601DateFormatter()
         var setup = "CREATE TABLE message(data TEXT, time_created INTEGER);"
         for message in messages {
             let ms = Int64(try #require(formatter.date(from: message.at)).timeIntervalSince1970 * 1000)
             setup += "INSERT INTO message VALUES ('{\"providerID\":\"\(message.provider)\",\"role\":\"assistant\",\"cost\":\(message.cost),\"time\":{\"created\":\(ms)}}', 0);"
         }
-        for arguments in [[db, setup], ["-json", db, sql]] {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-            process.arguments = arguments
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            try process.run()
-            process.waitUntilExit()
-            if arguments.count == 3 {
-                let rows = try JSONSerialization.jsonObject(with: pipe.fileHandleForReading.readDataToEndOfFile()) as? [[String: Any]]
-                return try #require(rows?.first)
-            }
-        }
-        return [:]
+        try SQLiteFiles.make(at: db, setup)
+        return try #require(try SQLiteFiles.rows(at: db, sql).first)
     }
 
     private func ms(_ text: String) throws -> Int64 {
         Int64(try #require(ISO8601DateFormatter().date(from: text)).timeIntervalSince1970 * 1000)
     }
 
-    @Test(.needsSQLite) func `should add up the last 5 hours, the UTC week and the anchored month of OpenCode Go spend only`() throws {
+    @Test func `should add up the last 5 hours, the UTC week and the anchored month of OpenCode Go spend only`() throws {
         let row = try query([
             ("2026-01-31T14:30:00Z", 1.0, "opencode-go"),   // the first message: the month's anchor
             ("2026-04-29T09:00:00Z", 2.0, "opencode-go"),
@@ -170,7 +157,7 @@ struct OpenCodeDefinitionTests {
         #expect(row["monthly_cost"] as? Double == 4.75)
     }
 
-    @Test(.needsSQLite, arguments: [
+    @Test(arguments: [
         ("2024-03-14T14:30:00Z", "2024-04-02 10:00:00", "2024-04-14T14:30:00Z"),
         ("2024-01-20T09:00:00Z", "2024-04-05 12:00:00", "2024-04-20T09:00:00Z"),
         // The 31st in a 29-day February: the month ends on its last day.
@@ -181,13 +168,13 @@ struct OpenCodeDefinitionTests {
         #expect(row["month_end_ms"] as? Int64 == (try ms(fixture.2)))
     }
 
-    @Test(.needsSQLite) func `should show no spend and no month when there are no OpenCode Go messages`() throws {
+    @Test func `should show no spend and no month when there are no OpenCode Go messages`() throws {
         let row = try query([("2026-05-04T14:00:00Z", 5, "another")], now: "2026-05-04 15:00:00")
         #expect(row["five_hour_cost"] as? Double == 0)
         #expect(row["monthly_cost"] as? Double == 0)
         #expect(row["month_start_ms"] == nil || row["month_start_ms"] is NSNull)
     }
-    @Test(.needsScriptEngine) func `should use only an added login's own key, never the local database, and ask to sign in when it is gone`() async throws {
+    @Test func `should use only an added login's own key, never the local database, and ask to sign in when it is gone`() async throws {
         let vault = MemoryVault()
         let p = try make(vault:vault)
         let work = try p.accounts.add(filling:["apiKey":"work"])
@@ -196,7 +183,7 @@ struct OpenCodeDefinitionTests {
         vault.secrets["\(work.id).apiKey"] = nil
         await #expect(throws:UsageError.authenticationRequired) { try await p.refresh(work) }
     }
-    @Test(.needsScriptEngine, arguments:["opencode-go","opencode","both"])
+    @Test(arguments:["opencode-go","opencode","both"])
     func `should use the key opencode saved in its auth file under XDG_DATA_HOME`(_ entry:String) async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:home) }

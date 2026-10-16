@@ -87,7 +87,7 @@ struct ZaiDefinitionTests {
 
     // MARK: - Quota Limit Parsing Tests
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a quota for each limit Z.ai reports`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
@@ -99,7 +99,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.count == 2)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 35% of the session left when Z.ai reports 65% of tokens used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
@@ -113,7 +113,7 @@ struct ZaiDefinitionTests {
         #expect(tokenQuota?.percentRemaining == 35.0) // 100 - 65 = 35
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the token limit as the session`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
@@ -126,7 +126,7 @@ struct ZaiDefinitionTests {
         #expect(tokenQuota != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the time limit as the MCP quota, with 70% left when 30% is used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
@@ -140,7 +140,7 @@ struct ZaiDefinitionTests {
         #expect(timeQuota?.percentRemaining == 70.0) // 100 - 30 = 70
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the session when Z.ai reports only a token limit`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseOnlyTokens.utf8)
@@ -154,7 +154,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 55.0) // 100 - 45 = 55
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should report every quota as Z.ai's`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
@@ -167,7 +167,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.allSatisfy { $0.providerId == "zai" })
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show nothing left when Z.ai reports 100% used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseFullUsage.utf8)
@@ -179,7 +179,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 0.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show everything left when Z.ai reports 0% used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseNoUsage.utf8)
@@ -256,7 +256,7 @@ struct ZaiDefinitionTests {
     }
     """
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session, the weekly quota and MCP when Z.ai reports all three`() throws {
         let data = Data(Self.sampleQuotaLimitResponseRealZai.utf8)
         let snapshot = try read(data, providerId: "zai")
@@ -267,7 +267,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.contains { $0.quotaType == .timeLimit("MCP") })
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a 5-hour token limit as the session (unit 3)`() throws {
         let json = """
         { "data": { "limits": [
@@ -280,7 +280,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 87.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a 7-day token limit as the weekly quota (unit 6)`() throws {
         let json = """
         { "data": { "limits": [
@@ -293,7 +293,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 54.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session and the weekly quota apart when Z.ai reports two token limits`() throws {
         // Regression test: prior implementation mapped both TOKENS_LIMIT entries
         // to .session, so the second one (weekly) was effectively hidden.
@@ -307,7 +307,7 @@ struct ZaiDefinitionTests {
         #expect(sessionQuotas.first?.percentRemaining != weeklyQuotas.first?.percentRemaining)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a token limit with no window as the session`() throws {
         // Existing tests use payloads without `unit` — preserve original behavior.
         let json = """
@@ -319,7 +319,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.quotaType == .session)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should still show a token limit whose window is unknown, named by its unit`() throws {
         let json = """
         { "data": { "limits": [
@@ -335,7 +335,7 @@ struct ZaiDefinitionTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show all left for a negative usage and none left past 100% when Z.ai reports an out-of-range percentage`() throws {
         // Given - edge case where percentage might be negative or > 100
         let responseWithInvalidPercentage = """
@@ -388,7 +388,7 @@ struct ZaiDefinitionTests {
     }
     """
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session and the weekly quota when the plan counts credits`() throws {
         let data = Data(Self.sampleQuotaLimitResponseCreditPlan.utf8)
         let snapshot = try read(data, providerId: "zai")
@@ -398,7 +398,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.contains { $0.quotaType == .weekly })
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a 5-hour credit limit as the session (unit 3)`() throws {
         let json = """
         { "data": { "limits": [
@@ -411,7 +411,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 87.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a 7-day credit limit as the weekly quota (unit 6)`() throws {
         let json = """
         { "data": { "limits": [
@@ -424,7 +424,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.percentRemaining == 80.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should still show a credit limit whose window is unknown, named by its unit`() throws {
         let json = """
         { "data": { "limits": [
@@ -436,7 +436,7 @@ struct ZaiDefinitionTests {
         #expect(snapshot.quotas.first?.quotaType == .modelSpecific("Credits (unit 99)"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session, the weekly quota and MCP when Z.ai mixes token and credit limits`() throws {
         let json = """
         { "data": { "limits": [

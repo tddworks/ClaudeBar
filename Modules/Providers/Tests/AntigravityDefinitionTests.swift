@@ -86,7 +86,7 @@ struct AntigravityDefinitionTests {
 
     // MARK: - The running app
 
-    @Test(.needsLocalServer, .needsScriptEngine) func `should show the running app's shared pools with their stated windows`() async throws {
+    @Test(.needsLocalServer) func `should show the running app's shared pools with their stated windows`() async throws {
         let seen = Seen()
         let provider = try make(answers: ["RetrieveUserQuotaSummary": (200, #"{"response":\#(Self.summary)}"#)], seen: seen)
         let quotas = try await provider.refreshPlain().quotas
@@ -99,7 +99,7 @@ struct AntigravityDefinitionTests {
         #expect(request.value(forHTTPHeaderField: "X-Codeium-Csrf-Token") == "9f808dbe-cb96-4829")
     }
 
-    @Test(.needsLocalServer, .needsScriptEngine) func `should show a quota per model with the plan and email when an older app answers`() async throws {
+    @Test(.needsLocalServer) func `should show a quota per model with the plan and email when an older app answers`() async throws {
         let snapshot = try await make(answers: ["GetUserStatus": (200, Self.userStatus)]).refreshPlain()
         #expect(snapshot.quotas.map(\.quotaType) == [.modelSpecific("Claude Sonnet"), .modelSpecific("Gemini Pro")])
         #expect(snapshot.quotas.map(\.percentRemaining) == [75, 50])
@@ -110,7 +110,7 @@ struct AntigravityDefinitionTests {
 
     // MARK: - The app closed: Google, with its saved login
 
-    @Test(.needsLocalServer, .needsScriptEngine) func `should show Google's quota with the saved login when the app is closed`() async throws {
+    @Test(.needsLocalServer) func `should show Google's quota with the saved login when the app is closed`() async throws {
         let seen = Seen()
         let provider = try make(running: false, answers: [
             "retrieveUserQuotaSummary": (200, Self.summary),
@@ -132,7 +132,7 @@ struct AntigravityDefinitionTests {
         }
     }
 
-    @Test(.needsLocalServer, .needsScriptEngine) func `should run agy to renew a saved login Google refuses, then show the quota`() async throws {
+    @Test(.needsLocalServer) func `should run agy to renew a saved login Google refuses, then show the quota`() async throws {
         let seen = Seen()
         let provider = try make(running: false, answers: ["retrieveUserQuotaSummary": (200, Self.summary)],
                                 keychain: #"{"token":{"access_token":"ya29.stale","refresh_token":"1//r"}}"#,

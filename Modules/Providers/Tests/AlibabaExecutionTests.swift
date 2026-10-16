@@ -55,7 +55,7 @@ struct AlibabaExecutionTests {
 
     // MARK: - API key
 
-    @Test(.needsScriptEngine) func `should show the plan from the region's gateway when the person has an API key`() async throws {
+    @Test func `should show the plan from the region's gateway when the person has an API key`() async throws {
         let sent = Sent()
         let snapshot = try await make(vault: MemoryVault(["alibaba.apiKey": "sk-1"]), sent: sent).refreshPlain()
         #expect(snapshot.quotas.map(\.quotaType) == [.session, .weekly, .timeLimit("Monthly")])
@@ -68,7 +68,7 @@ struct AlibabaExecutionTests {
         #expect(String(decoding: request.httpBody ?? Data(), as: UTF8.self).contains("sfm_codingplan_public_intl"))
     }
 
-    @Test(.needsScriptEngine) func `should ask China Mainland's own gateway, commodity and dashboard when that region is chosen`() async throws {
+    @Test func `should ask China Mainland's own gateway, commodity and dashboard when that region is chosen`() async throws {
         let sent = Sent()
         let provider = try make(region: "cn", vault: MemoryVault(["alibaba.apiKey": "sk-1"]), sent: sent)
         _ = try await provider.refreshPlain()
@@ -78,13 +78,13 @@ struct AlibabaExecutionTests {
         #expect(provider.plainDashboardURL?.host == "bailian.console.aliyun.com")
     }
 
-    @Test(.needsScriptEngine) func `should give the billing month the length of the month ending on its reset`() async throws {
+    @Test func `should give the billing month the length of the month ending on its reset`() async throws {
         let snapshot = try await make(vault: MemoryVault(["alibaba.apiKey": "sk-1"])).refreshPlain()
         let month = try #require(snapshot.quota(for: .timeLimit("Monthly")))
         #expect(month.window?.length == TimeInterval(28 * 86400))
     }
 
-    @Test(.needsScriptEngine, arguments: [("2024-03-01T00:00:00Z", 29), ("2026-03-31T00:00:00Z", 31), ("2026-01-31T00:00:00Z", 31)])
+    @Test(arguments: [("2024-03-01T00:00:00Z", 29), ("2026-03-31T00:00:00Z", 31), ("2026-01-31T00:00:00Z", 31)])
     func `should measure billing months in UTC and clamp the previous month end`(_ fixture: (String, Int)) async throws {
         let quota = Self.quota.replacingOccurrences(of: "2026-03-01T00:00:00Z", with: fixture.0)
         let snapshot = try await make(vault: MemoryVault(["alibaba.apiKey": "fake"]), quota: quota).refreshPlain()
@@ -93,7 +93,7 @@ struct AlibabaExecutionTests {
 
     // MARK: - Console cookie
 
-    @Test(.needsScriptEngine) func `should use the browser's console session when there is no API key`() async throws {
+    @Test func `should use the browser's console session when there is no API key`() async throws {
         let sent = Sent()
         let browser = [BrowserCookie(name: "login_aliyunid_ticket", value: "t"), BrowserCookie(name: "login_aliyunid_csrf", value: "c-1"),
                        BrowserCookie(name: "sec_token", value: "s-1")]
@@ -110,7 +110,7 @@ struct AlibabaExecutionTests {
         #expect(body.removingPercentEncoding?.contains(#""commodityCode":"sfm_codingplan_public_intl""#) == true)
     }
 
-    @Test(.needsScriptEngine) func `should take the console token from the console page when the pasted cookie has none`() async throws {
+    @Test func `should take the console token from the console page when the pasted cookie has none`() async throws {
         let sent = Sent()
         let provider = try make(mode: "cookie", vault: MemoryVault(["alibaba.cookie": "login_aliyunid_ticket=t"]),
                                 page: #"<script>window.ALIYUN = {"sec_token": "page-9"}</script>"#, sent: sent)
@@ -123,7 +123,7 @@ struct AlibabaExecutionTests {
         #expect(request.value(forHTTPHeaderField: "x-csrf-token") == nil)
     }
 
-    @Test(.needsScriptEngine) func `should send the pasted cookie before the browser's`() async throws {
+    @Test func `should send the pasted cookie before the browser's`() async throws {
         let sent = Sent()
         _ = try await make(mode: "cookie", vault: MemoryVault(["alibaba.cookie": "sec_token=pasted"]),
                            browser: [BrowserCookie(name: "sec_token", value: "browser")], sent: sent).refreshPlain()
@@ -147,7 +147,7 @@ struct AlibabaExecutionTests {
         #expect(try make(mode: "cookie").accounts.form.map(\.id) == ["cookie", "region"])
     }
 
-    @Test(.needsScriptEngine) func `should use an added cookie account's own cookie, never the browser's`() async throws {
+    @Test func `should use an added cookie account's own cookie, never the browser's`() async throws {
         let sent = Sent()
         let provider = try make(mode: "cookie", browser: [BrowserCookie(name: "sec_token", value: "browser")], sent: sent)
         let work = try provider.accounts.add(filling: ["cookie": "sec_token=work", "region": "cn"])

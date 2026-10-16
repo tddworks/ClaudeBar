@@ -61,7 +61,7 @@ struct OpenAIDefinitionTests {
         #expect(openai.definition.profile.links.status == URL(string: "https://status.openai.com"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask for the last 30 days of spend from today's UTC midnight, with the Admin key`() async throws {
         let seen = Seen()
         _ = try await make(seen: seen).refreshPlain()
@@ -69,7 +69,7 @@ struct OpenAIDefinitionTests {
         #expect(seen.last?.value(forHTTPHeaderField: "Authorization") == "Bearer sk-admin")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should add up the spend exactly, with a line per item, largest first`() async throws {
         let usage = try await make().refreshPlain()
         let cost = try #require(usage.costUsage)
@@ -80,14 +80,14 @@ struct OpenAIDefinitionTests {
         #expect(usage.quotas.isEmpty)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show nothing spent when the organization used nothing`() async throws {
         let usage = try await make(body: #"{"object":"page","data":[],"has_more":false,"next_page":null}"#).refreshPlain()
         #expect(usage.costUsage?.totalCost == 0)
         #expect(usage.costUsage?.lines.isEmpty == true)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should use a pasted Admin key when there is no environment key`() async throws {
         let seen = Seen()
         _ = try await make(environment: [:], vault: MemoryVault(["openai.apiKey": "sk-pasted"]), seen: seen).refreshPlain()

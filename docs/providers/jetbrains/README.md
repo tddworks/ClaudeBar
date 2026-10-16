@@ -19,7 +19,6 @@ ClaudeBar reads `options/AIAssistantQuotaManager2.xml` under the app-data folder
 - **"Your JetBrains IDE couldn't get the AI quota …"** The IDE itself failed to fetch it. Open AI Assistant in the IDE to try again.
 - **The numbers change when your IDE updates them,** not on their own. With several IDEs, the one you used last wins.
 - **Not set up** means no JetBrains IDE on this computer has saved a quota yet.
-- **Windows can resolve and read the quota file, but quota cards still need the mapping-script connection.** Until that connection is implemented, refreshing usage reports *Unavailable* at mapping.
 
 ## See also
 

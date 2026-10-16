@@ -68,7 +68,7 @@ struct WarpDefinitionTests {
         #expect(warp.definition.profile.look.icon == "WarpIcon")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask Warp the way its app does, with the key, as JSON, and as Warp`() async throws {
         let seen = Seen()
         _ = try await make(seen: seen).refreshPlain()
@@ -82,7 +82,7 @@ struct WarpDefinitionTests {
         #expect((body["query"] as? String)?.contains("requestLimitInfo") == true)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the monthly credits used and when they refresh`() async throws {
         let usage = try await make().refreshPlain()
         let monthly = try #require(usage.quotas.first { $0.quotaType == .timeLimit("Monthly") })
@@ -91,7 +91,7 @@ struct WarpDefinitionTests {
         #expect(abs((monthly.resetsAt?.timeIntervalSince1970 ?? 0) - (date("2026-02-28T19:16:33.462988Z")?.timeIntervalSince1970 ?? -1)) < 0.001)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should add up the add-on credits of the person and every workspace, with the soonest expiry`() async throws {
         let usage = try await make().refreshPlain()
         let addOn = try #require(usage.quotas.first { $0.quotaType == .modelSpecific("Add-on") })
@@ -100,7 +100,7 @@ struct WarpDefinitionTests {
         #expect(addOn.resetsAt == date("2026-03-01T10:00:00Z"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show an unlimited plan as full, with no refresh countdown`() async throws {
         let body = #"{"data":{"user":{"__typename":"UserOutput","user":{"requestLimitInfo":{"isUnlimited":true,"nextRefreshTime":"2026-02-28T19:16:33Z","requestLimit":0,"requestsUsedSinceLastRefresh":40},"bonusGrants":[],"workspaces":[]}}}}"#
         let usage = try await make(body: body).refreshPlain()
@@ -111,14 +111,14 @@ struct WarpDefinitionTests {
         #expect(monthly.resetsAt == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should read numbers Warp sends as text`() async throws {
         let body = #"{"data":{"user":{"__typename":"UserOutput","user":{"requestLimitInfo":{"isUnlimited":"false","nextRefreshTime":"2026-02-28T19:16:33Z","requestLimit":"100","requestsUsedSinceLastRefresh":"25"}}}}}"#
         let usage = try await make(body: body).refreshPlain()
         #expect(usage.quotas.first?.percentRemaining == 75)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should use a pasted key when there is no environment key`() async throws {
         let seen = Seen()
         _ = try await make(environment: [:], vault: MemoryVault(["warp.apiKey": "wk-pasted"]), seen: seen).refreshPlain()
@@ -133,7 +133,7 @@ struct WarpDefinitionTests {
         #expect(account.lastFailedStep == .lookup)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask for a new key when Warp answers that the key is unauthorized`() async throws {
         let warp = try make(body: #"{"errors":[{"message":"Unauthorized"}]}"#)
         await #expect(throws: UsageError.sessionExpired(hint: "Create a new API key in Warp: Settings → Platform → API Keys.")) {
@@ -141,7 +141,7 @@ struct WarpDefinitionTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should say what Warp answered when it reports another error`() async throws {
         let warp = try make(body: #"{"errors":[{"message":"Something broke"}]}"#)
         await #expect(throws: UsageError.executionFailed("Warp: Something broke")) { try await warp.refresh(warp.defaultAccount) }

@@ -31,8 +31,6 @@ struct UnavailableTests {
         (CredentialLookup.keychain(KeychainCredential(service: "acme", fields: ["token": "$"])), "Reading a Keychain item"),
         (.browserCookies(BrowserCookieCredential(domains: ["acme.test"], names: ["session"])), "Reading a browser's cookies"),
         (.browserStorage(BrowserStorageCredential(origin: "https://acme.test", values: [:])), "Reading a browser's storage"),
-        (.sqlite(SQLiteCredential(path: "~/state.db", query: "SELECT token FROM auth", fields: ["token": "$.token"])),
-         "Reading a SQLite database"),
     ])
     func `should fail at finding the key, naming the lookup, and never ask the server`(_ lookup: CredentialLookup, _ what: String) async {
         let source = source(credential: lookup)
@@ -50,7 +48,6 @@ struct UnavailableTests {
         (.script(ScriptCall(run: "usage.sh", folder: "~/acme")), "Running a script"),
         (.localServer(LocalServerCall(app: "Acme", process: .init(names: ["acme-server"]), paths: ["/usage"])),
          "Reading a local server"),
-        (.sqlite(SQLiteCall(path: "~/state.db", query: "SELECT used FROM usage")), "Reading a SQLite database"),
     ])
     func `should count as set up and fail at fetching, naming what it would run or read`(_ fetch: Fetch, _ what: String) async {
         let source = source(fetch)
@@ -70,18 +67,5 @@ struct UnavailableTests {
         await #expect(throws: Self.unavailable(.fetch, "Rendering acme's screen")) {
             try await source.fetchUsage()
         }
-    }
-
-    @Test
-    func `should fail at mapping, naming it, after the answer arrives`() async {
-        given(network).request(.any).willProduce { request in
-            (Data("{}".utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
-        }
-        let source = source(mapping: .script(ScriptMapping(file: "acme.js")))
-
-        await #expect(throws: Self.unavailable(.mapping, "Running a mapping script")) {
-            try await source.fetchUsage()
-        }
-        verify(network).request(.any).called(1)
     }
 }

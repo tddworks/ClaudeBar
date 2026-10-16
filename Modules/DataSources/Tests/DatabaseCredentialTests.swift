@@ -39,17 +39,12 @@ struct DatabaseCredentialTests {
 
     private func database(_ sql: String) throws -> (URL, () -> Void) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let file = root.appendingPathComponent("state.db")
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [file.path, sql]
-        try process.run()
-        process.waitUntilExit()
+        try SQLiteFiles.make(at: file, sql)
         return (file, { try? FileManager.default.removeItem(at: root) })
     }
 
-    @Test(.needsSQLite)
+    @Test
     func `should use a key kept in another app's database without ever changing that database`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(key TEXT, value TEXT); INSERT INTO items VALUES ('auth', '\(Self.token)');")
         defer { cleanUp() }
@@ -62,7 +57,7 @@ struct DatabaseCredentialTests {
         #expect(try Data(contentsOf: file) == before)
     }
 
-    @Test(.needsSQLite)
+    @Test
     func `should refuse, at finding the key, a lookup that would change the other app's database`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(value TEXT);")
         defer { cleanUp() }
@@ -71,7 +66,7 @@ struct DatabaseCredentialTests {
         await #expect { try await source.fetchResponse() } throws: { ($0 as? DataSourceError)?.step == .lookup }
     }
 
-    @Test(.needsSQLite)
+    @Test
     func `should ask to sign in when the other app's database holds no key`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(key TEXT, value TEXT);")
         defer { cleanUp() }

@@ -22,24 +22,12 @@ struct OpenCodeUsageHistoryTests {
         }
         let sql = call.args[1].replacingOccurrences(of: "'now'", with: "'\(now)'")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let db = root.appendingPathComponent("opencode.db").path
+        let db = root.appendingPathComponent("opencode.db")
         var setup = "CREATE TABLE message(data TEXT, time_created INTEGER);"
         for message in messages { setup += "INSERT INTO message VALUES ('\(message)', 0);" }
-        for arguments in [[db, setup], ["-json", db, sql]] {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-            process.arguments = arguments
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            try process.run()
-            process.waitUntilExit()
-            if arguments.count == 3 {
-                return try JSONSerialization.jsonObject(with: pipe.fileHandleForReading.readDataToEndOfFile()) as? [[String: Any]] ?? []
-            }
-        }
-        return []
+        try SQLiteFiles.make(at: db, setup)
+        return try SQLiteFiles.rows(at: db, sql)
     }
 
     /// An assistant message as opencode writes it: tokens, cost and time in `data`.
@@ -52,7 +40,7 @@ struct OpenCodeUsageHistoryTests {
         Int64(ISO8601DateFormatter().date(from: iso)!.timeIntervalSince1970 * 1000)
     }
 
-    @Test(.needsSQLite) func `should read every assistant message the database holds, whatever provider it drove`() throws {
+    @Test func `should read every assistant message the database holds, whatever provider it drove`() throws {
         let rows = try rows([
             message(id: "msg_1", at: ms("2026-04-01T10:00:00Z"), provider: "opencode", input: 10, output: 5, cacheRead: 100), // Zen
             message(id: "msg_2", at: ms("2026-04-20T10:00:00Z"), provider: "opencode-go", input: 20, output: 10, cost: 0.5),
@@ -68,7 +56,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(rows[1]["at"] as? Int == 1_775_037_600) // the time in seconds, not milliseconds
     }
 
-    @Test(.needsSQLite) func `should answer a day any window of its own would have cut away`() throws {
+    @Test func `should answer a day any window of its own would have cut away`() throws {
         // A window in the query would leave this day empty, and the ledger keeps
         // a closed day as read — so the wrong answer would be permanent.
         let rows = try rows([
@@ -78,7 +66,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(rows.map { $0["id"] as? String } == ["ancient", "recent"])
     }
 
-    @Test(.needsSQLite) func `should read a message without a cost, and skip one without a time`() throws {
+    @Test func `should read a message without a cost, and skip one without a time`() throws {
         let rows = try rows([
             #"{"providerID":"opencode","role":"assistant","id":"msg_2","time":{"created":1775037600000},"tokens":{"input":10,"output":5}}"#,
             #"{"providerID":"opencode","role":"assistant","id":"msg_3","tokens":{"input":10,"output":5}}"#,

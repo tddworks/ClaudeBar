@@ -16,7 +16,7 @@ needs; each became a generic piece, never a vendor type:
 
 | Need | Generic piece |
 |---|---|
-| a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in JavaScriptCore, no I/O, host `humanDate()`; the scripts ship beside the definition. `values` hands it settings (`{{setting.x}}`); a blank one isn't there, and the script never writes one back |
+| a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in QuickJS (vendored, the same on every platform), no I/O, host `humanDate()`; a script's `Date` local time is the person's zone, on every platform: the engine takes it from the `TimeZone` port ([#570](https://github.com/tddworks/ClaudeBar/issues/570)); no `Intl`, and `toLocaleString()` doesn't group digits. The scripts ship beside the definition. `values` hands it settings (`{{setting.x}}`); a blank one isn't there, and the script never writes one back |
 | Claude Code's Keychain item | `CredentialLookup.keychain(service, fields)` via `security`, hex-decoded, written back as compact JSON |
 | expiry in milliseconds, a JSON refresh body with `scope` | `OAuth2Refresh.dueWhen`, `bodyFormat`, `scope`; values keep their JSON type on write-back; a failed refresh re-reads the store |
 | another CLI's Keychain login (`gh`, go-keyring) | `keychain.account`, `keychain.encoding: goKeyringBase64`; an encoded item is never written back |
@@ -462,7 +462,10 @@ A row of an app's own database as the answer: one case, one worker,
 read-only, refuses a statement that would write, and reads text and UTF-8
 or UTF-16LE BLOBs; the key lookup and the fetch both use it. The answer is
 the rows, `[{column: text}]`. *Configured* while the file exists; its
-`Connection` names no URL and runs nothing.
+`Connection` names no URL and runs nothing. It runs on the one SQLite
+vendored in `Vendor/CSQLite` ([#570](https://github.com/tddworks/ClaudeBar/issues/570)),
+built so a query reads as it did on the Mac's own SQLite: a double-quoted
+string is text (`SQLITE_DQS=3`) and the math functions are there.
 
 ```text
 "sqlite": { "path": "…/state.vscdb", "query": "SELECT value FROM ItemTable WHERE key = '…'" }

@@ -140,7 +140,7 @@ struct MiniMaxDefinitionTests {
         #expect(provider.definition.accounts?.ways == [.form])
     }
 
-    @Test(.needsScriptEngine) func `should show 17% left and 1245/1500 requests used when MiniMax counts the requests remaining`() async throws {
+    @Test func `should show 17% left and 1245/1500 requests used when MiniMax counts the requests remaining`() async throws {
         let quota = try #require(try await make().refreshPlain().quotas.first)
         #expect(quota.percentRemaining == 17)
         #expect(quota.quotaType == .modelSpecific("minimax-m2"))
@@ -149,7 +149,7 @@ struct MiniMaxDefinitionTests {
         #expect(quota.window?.length == nil)
     }
 
-    @Test(.needsScriptEngine) func `should show a 5-hour and a weekly window for each model when MiniMax answers with Token Plan percentages`() async throws {
+    @Test func `should show a 5-hour and a weekly window for each model when MiniMax answers with Token Plan percentages`() async throws {
         let quotas = try await make(body: Self.sampleTokenPlanResponse).refreshPlain().quotas
         #expect(quotas.count == 4)
         #expect(quotas.map(\.percentRemaining) == [100, 98, 100, 100])
@@ -159,14 +159,14 @@ struct MiniMaxDefinitionTests {
         #expect(quotas[1].resetText == "2% used")
     }
 
-    @Test(.needsScriptEngine) func `should show each model's quota, and no reset when MiniMax gives no end time`() async throws {
+    @Test func `should show each model's quota, and no reset when MiniMax gives no end time`() async throws {
         #expect(try await make(body: Self.sampleMultiModelResponse).refreshPlain().quotas.map(\.percentRemaining) == [17, 80])
         let quota = try #require(try await make(body: Self.sampleNoEndTimeResponse).refreshPlain().quotas.first)
         #expect(quota.percentRemaining == 50)
         #expect(quota.resetsAt == nil)
     }
 
-    @Test(.needsScriptEngine) func `should fail with MiniMax's own message, or with no data, when MiniMax reports an error or no models`() async throws {
+    @Test func `should fail with MiniMax's own message, or with no data, when MiniMax reports an error or no models`() async throws {
         await #expect(throws: UsageError.executionFailed("MiniMax API error: invalid api key")) {
             try await make(body: Self.sampleErrorResponse).refreshPlain()
         }
@@ -181,24 +181,24 @@ struct MiniMaxDefinitionTests {
         #expect(provider.defaultAccount.lastFailedStep == .mapping)
     }
 
-    @Test(.needsScriptEngine) func `should show no data when MiniMax reports neither a count nor a percentage left`() async throws {
+    @Test func `should show no data when MiniMax reports neither a count nor a percentage left`() async throws {
         let body = #"{"base_resp":{"status_code":0},"model_remains":[{"model_name":"general","current_interval_total_count":0,"current_interval_usage_count":0}]}"#
         await #expect(throws: UsageError.noData) { try await make(body: body).refreshPlain() }
     }
 
-    @Test(.needsScriptEngine, arguments: ["china", "international"])
+    @Test(arguments: ["china", "international"])
     func `should ask the saved region's MiniMax and open its dashboard`(_ region: String) async throws {
         let provider = try make(region: region)
         #expect(try await provider.refreshPlain().quotas.count == 1)
         #expect(provider.plainDashboardURL?.host == (region == "international" ? "platform.minimax.io" : "platform.minimaxi.com"))
     }
 
-    @Test(.needsScriptEngine) func `should ask MiniMax China when no region is saved`() async throws {
+    @Test func `should ask MiniMax China when no region is saved`() async throws {
         let provider = try make(region: nil)
         #expect(try await provider.refreshPlain().quotas.count == 1)
     }
 
-    @Test(.needsScriptEngine) func `should use the key from the environment variable the person named`() async throws {
+    @Test func `should use the key from the environment variable the person named`() async throws {
         let provider = try make(authEnvVar: "MY_MINIMAX_KEY", vault: MemoryVault(), environment: ["MY_MINIMAX_KEY": "personal"])
         #expect(try await provider.refreshPlain().quotas.count == 1)
     }
@@ -208,12 +208,12 @@ struct MiniMaxDefinitionTests {
         #expect(try make(authEnvVar: "MY_MINIMAX_KEY").configuration.definitionAsRun.dataSource("api")?.credential?.lookupOrder.first == "$MY_MINIMAX_KEY")
     }
 
-    @Test(.needsScriptEngine) func `should use MINIMAX_API_KEY when the named environment variable is empty`() async throws {
+    @Test func `should use MINIMAX_API_KEY when the named environment variable is empty`() async throws {
         let provider = try make(authEnvVar: "", vault: MemoryVault(), environment: ["MINIMAX_API_KEY": "personal"])
         #expect(try await provider.refreshPlain().quotas.count == 1)
     }
 
-    @Test(.needsScriptEngine) func `should use an added login's own key and region, never the environment, and ask to sign in when its key is gone`() async throws {
+    @Test func `should use an added login's own key and region, never the environment, and ask to sign in when its key is gone`() async throws {
         let vault = MemoryVault(["minimax.apiKey": "personal"])
         let provider = try make(vault: vault, environment: ["MINIMAX_API_KEY": "environment"])
         let work = try provider.accounts.add(filling: ["apiKey": "work", "region": "international"])

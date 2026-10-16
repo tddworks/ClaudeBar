@@ -61,7 +61,7 @@ struct OpenRouterDefinitionTests {
         #expect(provider.definition.accounts?.ways == [.form])
     }
 
-    @Test(.needsScriptEngine, arguments: ["6.50", "0", "1245.67", "-1.25", "0.005"])
+    @Test(arguments: ["6.50", "0", "1245.67", "-1.25", "0.005"])
     func `should show the credits left after usage as exact dollars, with no ceiling, no percentage and no window`(_ remaining: String) async throws {
         let usage = try await make(body: report(remaining: remaining)).refreshPlain()
         let quota = try #require(usage.quotas.first)
@@ -74,12 +74,12 @@ struct OpenRouterDefinitionTests {
         #expect(quota.resetText == "Total: $\(cents(Decimal(string: "10.00")!)) · Used: $\(cents(used))")
     }
 
-    @Test(.needsScriptEngine) func `should show the credits left when OpenRouter reports amounts as numbers`() async throws {
+    @Test func `should show the credits left when OpenRouter reports amounts as numbers`() async throws {
         let numbers = try await make(body: #"{"data":{"total_credits":10,"total_usage":3.5}}"#).refreshPlain()
         #expect(numbers.quotas.first?.left == .money(Money(Decimal(string: "6.5")!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine, arguments: ["0", "-1.25"])
+    @Test(arguments: ["0", "-1.25"])
     func `should show the credits depleted, with no percentage, when they are spent or overdrawn`(_ remaining: String) async throws {
         let usage = try await make(body: report(remaining: remaining)).refreshPlain()
         #expect(usage.quotas.first?.status == .depleted)
@@ -115,7 +115,7 @@ struct OpenRouterDefinitionTests {
         #expect(account.lastFailedStep == .lookup)
     }
 
-    @Test(.needsScriptEngine) func `should use the environment key for the default login and each added login's own saved key`() async throws {
+    @Test func `should use the environment key for the default login and each added login's own saved key`() async throws {
         let vault = MemoryVault(["openrouter.apiKey": "personal"])
         let settings = InMemoryProviderSettings()
         let provider = try make(environment: ["OPENROUTER_API_KEY": "environment"], vault: vault, settings: settings,
@@ -129,7 +129,7 @@ struct OpenRouterDefinitionTests {
         #expect(vault.secrets["\(work.id).apiKey"] == "work")
     }
 
-    @Test(.needsScriptEngine) func `should use the key from the environment variable the person named`() async throws {
+    @Test func `should use the key from the environment variable the person named`() async throws {
         let replies = ["Bearer named": #"{"data":{"total_credits":"40","total_usage":"0"}}"#,
                        "Bearer default": #"{"data":{"total_credits":"1","total_usage":"0"}}"#]
         let settings = InMemoryProviderSettings()

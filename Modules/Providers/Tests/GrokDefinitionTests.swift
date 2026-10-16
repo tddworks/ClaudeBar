@@ -68,7 +68,7 @@ struct GrokDefinitionTests {
     }
     """
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the weekly credits, each product and the prepaid balance, and no on-demand while its cap is zero`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
@@ -80,7 +80,7 @@ struct GrokDefinitionTests {
         #expect(snapshot.quotas.last?.left == .money(Money(Decimal(string: "2.49")!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the weekly credits left`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
@@ -90,7 +90,7 @@ struct GrokDefinitionTests {
         #expect(weekly.percentRemaining == 4.0) // 100 - 96
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show what is left of Build, Imagine and Voice`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
@@ -106,7 +106,7 @@ struct GrokDefinitionTests {
         #expect(voice.percentRemaining == 99.0) // 100 - 1
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset the credits when the weekly billing period ends`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
@@ -118,7 +118,7 @@ struct GrokDefinitionTests {
         #expect(weekly.windowDuration == TimeInterval(7 * 24 * 3600))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the login's email`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
@@ -127,7 +127,7 @@ struct GrokDefinitionTests {
         #expect(snapshot.accountEmail == "user@example.com")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the credits as monthly when the billing period is monthly`() async throws {
         let json = """
         {
@@ -145,7 +145,7 @@ struct GrokDefinitionTests {
         #expect(quota.percentRemaining == 50.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show on-demand spend once it has a cap`() async throws {
         let json = """
         {
@@ -164,7 +164,7 @@ struct GrokDefinitionTests {
         #expect(onDemand.percentRemaining == 75.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the credits as Usage, with no guessed window, when no period is stated`() async throws {
         let json = """
         {
@@ -183,14 +183,14 @@ struct GrokDefinitionTests {
         #expect(snapshot.quota(for: .timeLimit("Usage"))?.window?.length == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no quotas when Grok reports nothing`() async throws {
         let snapshot = try await parse(Data("{}".utf8), providerId: "grok")
 
         #expect(snapshot.quotas.isEmpty)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no quota, not a made-up 100%, when billing names a period but no usage`() async throws {
         let json = """
         {
@@ -214,7 +214,7 @@ struct GrokDefinitionTests {
         #expect(snapshot.quotas.isEmpty)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should fail when Grok's billing answer isn't JSON`() async throws {
         await #expect(throws: UsageError.parseFailed("Failed to parse billing response as JSON")) {
             try await parse(Data("not json".utf8), providerId: "grok")
@@ -223,19 +223,19 @@ struct GrokDefinitionTests {
 
     // MARK: - Product Name Tests
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should name Grok's products without the Grok prefix`() async throws {
         #expect(try await productName("GrokBuild") == "Build")
         #expect(try await productName("GrokImagine") == "Imagine")
         #expect(try await productName("GrokVoice") == "Voice")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should name an unknown product in separate words`() async throws {
         #expect(try await productName("SomeNewProduct") == "Some New Product")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should name a product called just Grok as Grok`() async throws {
         #expect(try await productName("Grok") == "Grok")
     }
@@ -246,39 +246,39 @@ struct GrokDefinitionTests {
         try JSONSerialization.data(withJSONObject: ["config": config])
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the plan Grok's settings name`() async throws {
         let usage = try await parse(try billing(["creditUsagePercent": 10]), settings: #"{"subscription_tier_display":"SuperGrok Heavy"}"#)
         #expect(usage.accountTier == .custom("SuperGrok Heavy"))
     }
 
-    @Test(.needsScriptEngine, arguments: [("SUPERGROK_HEAVY", "SuperGrok Heavy"), ("supergrok", "SuperGrok"), ("Grok Team", "Grok Team")])
+    @Test(arguments: [("SUPERGROK_HEAVY", "SuperGrok Heavy"), ("supergrok", "SuperGrok"), ("Grok Team", "Grok Team")])
     func `should name the plan from billing when Grok's settings don't`(_ tier: String, _ plan: String) async throws {
         let usage = try await parse(try billing(["creditUsagePercent": 10, "subscriptionTier": tier]))
         #expect(usage.accountTier == .custom(plan))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should still show the credits when Grok's settings can't be read`() async throws {
         let usage = try await parse(try billing(["creditUsagePercent": 10]), settings: "oops", settingsStatus: 500)
         #expect(usage.quotas.first?.percentRemaining == 90)
         #expect(usage.accountTier == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the prepaid balance in dollars`() async throws {
         let usage = try await parse(try billing(["creditUsagePercent": 10, "prepaidBalance": ["val": "2490"]]))
         let prepaid = try #require(usage.quotas.first { $0.quotaType == .modelSpecific("Prepaid") })
         #expect(prepaid.left == .money(Money(Decimal(string: "24.9")!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine, arguments: [#"{}"#, #"{"val":0}"#])
+    @Test(arguments: [#"{}"#, #"{"val":0}"#])
     func `should leave out an empty prepaid balance rather than show it depleted`(_ balance: String) async throws {
         let usage = try await parse(Data(#"{"config":{"creditUsagePercent":10,"prepaidBalance":\#(balance)}}"#.utf8))
         #expect(!usage.quotas.contains { $0.quotaType == .modelSpecific("Prepaid") })
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset at the billing period's end when Grok names no current period`() async throws {
         let usage = try await parse(try billing(["creditUsagePercent": 10,
                                                  "billingPeriodStart": "2026-07-01T00:00:00+00:00",

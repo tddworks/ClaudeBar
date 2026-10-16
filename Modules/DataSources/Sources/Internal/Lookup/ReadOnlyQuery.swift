@@ -1,13 +1,13 @@
-#if os(macOS)
+import CSQLite
 import Foundation
 import Quotas
-import SQLite3
 
-/// The Mac's SQLite: a query against another app's own database, read and
-/// never written — the platform's `sqlite`, for the key lookup and the fetch
-/// (ENGINE_DESIGN §2.9). The database is opened read-only and a statement
-/// that would change it is refused before it runs. Each column comes back as
-/// text: TEXT as it is, a BLOB as the UTF-8 or UTF-16LE text an app stored in it.
+/// The one SQLite (pinned in `Vendor/CSQLite`, #570): a query against
+/// another app's own database, read and never written, for the key lookup
+/// and the fetch (ENGINE_DESIGN §2.9). The database is opened read-only and a
+/// statement that would change it is refused before it runs. Each column
+/// comes back as text: TEXT as it is, a BLOB as the UTF-8 or UTF-16LE text an
+/// app stored in it.
 enum ReadOnlyQuery {
     /// At most this many rows and bytes per value, so an unexpected table
     /// can't flood a mapping.
@@ -68,4 +68,3 @@ enum ReadOnlyQuery {
         return String(decoding: data, as: UTF8.self)
     }
 }
-#endif

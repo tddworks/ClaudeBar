@@ -71,7 +71,7 @@ struct GeminiDefinitionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://aistudio.google.com")
     }
 
-    @Test(.needsScriptEngine) func `should ask for the quota of the project Code Assist names, with the Gemini CLI's login`() async throws {
+    @Test func `should ask for the quota of the project Code Assist names, with the Gemini CLI's login`() async throws {
         let seen = Seen()
         let (provider, _) = try make(seen: seen)
         _ = try await provider.refreshPlain()
@@ -80,14 +80,14 @@ struct GeminiDefinitionTests {
         #expect(seen.requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer fresh" })
     }
 
-    @Test(.needsScriptEngine) func `should still show the quotas when Code Assist names no project`() async throws {
+    @Test func `should still show the quotas when Code Assist names no project`() async throws {
         let seen = Seen()
         let (provider, _) = try make(project: (200, "{}"), seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)
         #expect(seen.body(to: ":retrieveUserQuota") == "{}")
     }
 
-    @Test(.needsScriptEngine) func `should show the quotas without a project after Code Assist fails three times to name one`() async throws {
+    @Test func `should show the quotas without a project after Code Assist fails three times to name one`() async throws {
         let seen = Seen()
         let (provider, _) = try make(project: (500, ""), seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)
@@ -95,7 +95,7 @@ struct GeminiDefinitionTests {
         #expect(seen.body(to: ":retrieveUserQuota") == "{}")
     }
 
-    @Test(.needsScriptEngine) func `should show one Pro, Flash and Flash Lite quota each at its lowest model, with no guessed window`() async throws {
+    @Test func `should show one Pro, Flash and Flash Lite quota each at its lowest model, with no guessed window`() async throws {
         let (provider, _) = try make()
         let quotas = try await provider.refreshPlain().quotas
         #expect(quotas.map(\.quotaType) == [.modelSpecific("Pro"), .modelSpecific("Flash"), .modelSpecific("Flash Lite")])
@@ -104,19 +104,19 @@ struct GeminiDefinitionTests {
         #expect(quotas.allSatisfy { $0.window?.length == nil })
     }
 
-    @Test(.needsScriptEngine) func `should show a model outside the known tiers under its own name`() async throws {
+    @Test func `should show a model outside the known tiers under its own name`() async throws {
         let (provider, _) = try make(quota: #"{"buckets":[{"modelId":"gemini-other","remainingFraction":0.5}]}"#)
         #expect(try await provider.refreshPlain().quotas.first?.quotaType == .modelSpecific("gemini-other"))
     }
 
-    @Test(.needsScriptEngine) func `should show when a quota resets as a moment and a countdown`() async throws {
+    @Test func `should show when a quota resets as a moment and a countdown`() async throws {
         let (provider, _) = try make()
         let pro = try #require(try await provider.refreshPlain().quotas.first)
         #expect(pro.resetsAt == ISO8601DateFormatter().date(from: "2026-05-10T17:28:41Z"))
         #expect(pro.resetText == "Resets in 3h 55m")
     }
 
-    @Test(.needsScriptEngine) func `should fail when Gemini reports no quotas`() async throws {
+    @Test func `should fail when Gemini reports no quotas`() async throws {
         let (provider, _) = try make(quota: #"{"buckets":[]}"#)
         await #expect(throws: UsageError.parseFailed("No quota buckets in response")) { try await provider.refreshPlain() }
     }
@@ -126,7 +126,7 @@ struct GeminiDefinitionTests {
         #expect(await provider.isPlainAvailable() == false)
     }
 
-    @Test(.needsScriptEngine) func `should renew a refused login by running the Gemini CLI, then show the quotas`() async throws {
+    @Test func `should renew a refused login by running the Gemini CLI, then show the quotas`() async throws {
         let seen = Seen()
         let (provider, home) = try make(token: "stale", refuseStale: true, seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)

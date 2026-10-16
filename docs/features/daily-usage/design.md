@@ -192,7 +192,7 @@ function read(record, context) {
 That line becomes two records — `gpt-5` with 3,000 input, 9,000 cache read
 and 800 output tokens, `gpt-5-mini` with 3,000 and 200 — priced, deduped and
 summed into days exactly like Claude's. The rules are a mapping script's
-(§2): it runs in JavaScriptCore with no file, network or process access;
+(§2): it runs in QuickJS with no file, network or process access;
 `context` holds `now`, `timeZone`, the file's `path` and the definition's
 `values`; money helpers (`jsonDecimal`, `decimalAdd`) keep a stated cost
 exact; and it turns one record into records, nothing else. A script is
@@ -201,7 +201,7 @@ slower than paths, so `where` filters first, and a tool whose fields paths
 
 **Neither Claude nor Mistral uses a script**, and the script tier is not
 built with them. Claude's logs are paths plus options (`where`, a composite
-`id`, `sessionGap`, `freeWhen`), and they run to gigabytes: a JavaScriptCore
+`id`, `sessionGap`, `freeWhen`), and they run to gigabytes: a script engine
 call per line would undo the incremental reader and the byte prefilter.
 Mistral's one tool-shaped fact — the time in the folder's name — is a
 common one (logs rotated by date), so it is an option, `at.fromPath`, that

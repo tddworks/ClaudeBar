@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import Providers
-import DataSources
+@testable import DataSources
 import Quotas
 import Mockable
 #if canImport(FoundationNetworking)
@@ -49,7 +49,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Real API Response
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show an Ultra plan's monthly requests, then its Auto and API pools on the billing cycle`() async throws {
         // Actual response from cursor.com/api/usage-summary
         let json = """
@@ -114,7 +114,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Plan Usage
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a Pro plan's monthly requests used out of its limit`() async throws {
         let json = """
         {
@@ -146,7 +146,7 @@ struct CursorDefinitionTests {
         #expect(quota.resetsAt != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show on-demand spend beside the monthly requests when on-demand is enabled`() async throws {
         let json = """
         {
@@ -183,7 +183,7 @@ struct CursorDefinitionTests {
         #expect(abs(onDemand!.percentRemaining - 75.0) < 0.1)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no requests left when the plan is used up`() async throws {
         let json = """
         {
@@ -208,7 +208,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].resetText == "500/500 requests")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should measure a Pro plan with bonus credits against its whole capacity, not show it empty`() async throws {
         // Regression: a Pro user with bonus credits. The `used`/`limit` fields describe
         // only the *included* base (2000/2000 = maxed), but `breakdown.total` shows the
@@ -264,7 +264,7 @@ struct CursorDefinitionTests {
         #expect(api.windowDuration == TimeInterval(30 * 24 * 3600))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no requests left, not below zero, when usage is over the limit`() async throws {
         let json = """
         {
@@ -290,7 +290,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Unlimited & Special Cases
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the plan and no made-up 100% when the plan is unlimited`() async throws {
         let json = """
         {
@@ -310,7 +310,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.accountTier == .custom("BUSINESS"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a free plan's monthly requests left`() async throws {
         let json = """
         {
@@ -337,7 +337,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Enterprise Plan
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show an Enterprise plan's monthly, Auto and API pools and the team's on-demand credits`() async throws {
         let json = """
         {
@@ -414,7 +414,7 @@ struct CursorDefinitionTests {
         #expect(teamQuota.resetText == "0/10000 team credits")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should measure an Enterprise member's requests against the plan's whole capacity when no limit is given`() async throws {
         let json = """
         {
@@ -487,7 +487,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Billing Cycle
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should know the reset when the billing cycle end has fractional seconds`() async throws {
         let json = """
         {
@@ -510,7 +510,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].resetsAt != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should know the reset when the billing cycle end has whole seconds`() async throws {
         let json = """
         {
@@ -535,7 +535,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Auto / API pool percents
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show one monthly window when Cursor reports only the total`() async throws {
         let json = """
         {
@@ -565,7 +565,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].resetText == "100/500 requests")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Auto and API pools full when nothing of them is used`() async throws {
         let json = """
         {
@@ -599,7 +599,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[1].windowDuration == TimeInterval(30 * 24 * 3600))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no Auto or API pool when Cursor leaves their share empty`() async throws {
         let json = """
         {
@@ -627,7 +627,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].percentRemaining == 50)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no Auto or API pool when their share isn't a number`() async throws {
         let json = """
         {
@@ -654,7 +654,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no Auto or API pool when their share is true or false`() async throws {
         // JSON true/false are CFBoolean and must not become 1.0 / 0.0. Integer 0
         // still has to produce a card (see `should show the Auto and API pools full when nothing of them is used`).
@@ -684,7 +684,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].percentRemaining == 50)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show nothing left, not below zero, when the Auto and API pools are over their limit`() async throws {
         let json = """
         {
@@ -717,7 +717,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[2].percentRemaining == 0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no Auto or API pool when their share is negative`() async throws {
         let json = """
         {
@@ -745,7 +745,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[0].percentRemaining == 90)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Auto and API pools without reset or pace when the billing cycle has no start`() async throws {
         // Existing fixtures sometimes only have billingCycleEnd (see `should show a Pro plan's monthly requests used out of its limit`).
         let json = """
@@ -793,7 +793,7 @@ struct CursorDefinitionTests {
         #expect(api.windowDuration == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Auto and API pools without reset or window when the billing cycle start is unreadable`() async throws {
         let json = """
         {
@@ -826,7 +826,7 @@ struct CursorDefinitionTests {
         #expect(snapshot.quotas[2].windowDuration == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should keep the monthly window first so the menu bar shows it by default`() async throws {
         let json = """
         {
@@ -859,7 +859,7 @@ struct CursorDefinitionTests {
 
     // MARK: - JWT Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should sign in as the user the login token names`() async throws {
         // JWT with payload: {"sub": "user_abc123", "iat": 1234567890}
         let header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
@@ -871,7 +871,7 @@ struct CursorDefinitionTests {
         #expect(userId == "user_abc123")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should sign in as a user whose id holds a pipe, as Cursor's do`() async throws {
         // Cursor JWTs have sub like "github|user_01J6BBEPT2KSQKPPRGXDY8M1F4"
         // Payload: {"sub": "github|user_01ABC", "type": "session"}
@@ -887,7 +887,7 @@ struct CursorDefinitionTests {
         #expect(userId == "github|user_01ABC")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should sign in as the user a short login token names`() async throws {
         // Payload: {"sub": "u1"}
         let header = "eyJhbGciOiJIUzI1NiJ9"
@@ -898,7 +898,7 @@ struct CursorDefinitionTests {
         #expect(userId == "u1")
     }
 
-    @Test(.needsScriptEngine, arguments: ["not-a-jwt", "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig"])
+    @Test(arguments: ["not-a-jwt", "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig"])
     func `should sign in without a session cookie when the login token names no user`(_ token: String) async throws {
         // Not a JWT, or one with no `sub`: the cookie is left out, and Cursor answers for itself.
         let capture = CookieCapture()
@@ -908,7 +908,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Numeric Type Handling
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the requests left when Cursor counts them with decimals`() async throws {
         // Some API responses return numbers as doubles
         let json = """
@@ -935,7 +935,7 @@ struct CursorDefinitionTests {
 
     // MARK: - Account Tier Detection
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Ultra plan`() async throws {
         let json = """
         {
@@ -960,14 +960,11 @@ struct CursorDefinitionTests {
     }
     private func database(in root: URL, token: String?) throws -> URL {
         let url=root.appendingPathComponent("Library/Application Support/Cursor/User/globalStorage/state.vscdb")
-        try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
-        let process=Process();process.executableURL=URL(fileURLWithPath:"/usr/bin/sqlite3")
         let insert=token.map {" INSERT INTO ItemTable VALUES ('cursorAuth/accessToken','\($0)');"} ?? ""
-        process.arguments=[url.path,"CREATE TABLE ItemTable(key TEXT,value TEXT);"+insert]
-        try process.run();process.waitUntilExit();#expect(process.terminationStatus == 0)
+        try SQLiteFiles.make(at:url,"CREATE TABLE ItemTable(key TEXT,value TEXT);"+insert)
         return url
     }
-    @Test(.needsSQLite) func `should keep the Cursor app's login and added logins apart through rename, relaunch, a lost token and removal`() async throws {
+    @Test func `should keep the Cursor app's login and added logins apart through rename, relaunch, a lost token and removal`() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer {try? FileManager.default.removeItem(at:root)}
         let personal=try token("personal|desktop"), work=try token("work|account"), other=try token("work|similar")
@@ -981,9 +978,12 @@ struct CursorDefinitionTests {
             return (data,HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!)
         }
         let definition=try ProviderFactory.builtIn("cursor")
+        var platform=Platform.current
+        platform.applicationData={home,_ in home.appendingPathComponent("Library/Application Support")}
+        let fixturePlatform=platform
         let make: @MainActor () -> Provider = {
             Provider(definition:definition,settings:settings,accounts:settings.accounts(forProvider:"cursor"),makeDataSource:{source,login in
-                DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in personal},homeDirectory:root,now:{Date()})
+                DataSources.make(source,providerId:"cursor",platform:fixturePlatform,network:network,scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in personal},homeDirectory:root,now:{Date()})
             },vault:vault)
         }
         let first=make()

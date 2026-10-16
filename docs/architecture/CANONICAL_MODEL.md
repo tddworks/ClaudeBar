@@ -110,7 +110,7 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │                       cli(a TUI, keys) · command(args) · file(path) · script(path)
 │       │       │   ├── mapping: Mapping    WHAT THE BYTES SAY — a closed sum:
 │       │       │   │                       json(paths, each, used|left, resets) · text(patterns) ·
-│       │       │   │                       script(file) — JavaScript in JavaScriptCore, no I/O,
+│       │       │   │                       script(file) — JavaScript in QuickJS, no I/O,
 │       │       │   │                       for a format no rule can say (a TUI screen)
 │       │       │   │                       · usage — ClaudeBar's own documented output (extensions)
 │       │       │   └── fallback: kind?     the data source to try when this one fails — Codex's
