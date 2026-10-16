@@ -69,7 +69,7 @@ struct PausedLoginsTests {
         }
     }
 
-    /// A product whose fetch answers `usage`, watched until the person pauses it.
+    /// A product whose fetch answers `usage`, counted until the person pauses it.
     private func watchedProduct(_ id: String, _ usage: UsageSnapshot) -> (QuotaMonitor, Provider) {
         let settings = MockRepositoryFactory.makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -91,7 +91,7 @@ struct PausedLoginsTests {
         let tab = try #require(monitor.tabs.first)
         #expect(tab.logins.map(\.id) == ["codex"])
         #expect(tab.paused.map(\.id) == ["codex"])
-        #expect(tab.watched.isEmpty)
+        #expect(tab.unpaused.isEmpty)
         #expect(product.defaultAccount.snapshot?.quotas.first?.percentRemaining == 18)
     }
 
@@ -103,7 +103,7 @@ struct PausedLoginsTests {
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
         #expect(tab.logins.map(\.id) == ["codex", "codex.work"])
-        #expect(tab.watched.map(\.id) == ["codex"])
+        #expect(tab.unpaused.map(\.id) == ["codex"])
         #expect(tab.paused.map(\.id) == ["codex.work"])
     }
 
@@ -129,7 +129,7 @@ struct PausedLoginsTests {
         monitor.pause(codex.accounts[1])
 
         let tab = try #require(monitor.tabs.first { $0.id == "codex" })
-        #expect(tab.watched.isEmpty)
+        #expect(tab.unpaused.isEmpty)
         #expect(tab.paused.count == 2)
         #expect(tab.showsAccountPages)
     }
@@ -145,12 +145,12 @@ struct PausedLoginsTests {
     }
 
     @Test
-    func `should show a product's page as its logins when none of them is watched`() throws {
+    func `should show a product's page as its logins when all of them are paused`() throws {
         let (monitor, _, _) = try twoLogins()
         let claude = try #require(monitor.tabs.first { $0.id == "claude" })
         #expect(!claude.showsAccountPages)
 
-        monitor.pause(claude.watched[0])
+        monitor.pause(claude.unpaused[0])
 
         #expect(monitor.tabs.first { $0.id == "claude" }?.showsAccountPages == true)
     }

@@ -109,7 +109,7 @@ struct ProviderSelectionSpec {
             let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
             let codex = codexProduct.defaultAccount
-            codex.isEnabled = false
+            codex.isPaused = true
 
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct, codexProduct]),
@@ -218,7 +218,7 @@ struct ProviderSelectionSpec {
             let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
             let codex = codexProduct.defaultAccount
-            codex.isEnabled = false
+            codex.isPaused = true
 
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct, codexProduct]),

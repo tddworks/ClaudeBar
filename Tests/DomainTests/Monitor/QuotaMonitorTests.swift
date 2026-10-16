@@ -320,7 +320,7 @@ struct QuotaMonitorTests {
             providerIds: ["codex", "codex", "claude"], showPercentage: true,
             showDuration: false, mode: .used
         ).map(\.text) == ["Codex 1%", "Claude 1%"])
-        codex.isEnabled = false
+        codex.isPaused = true
         #expect(monitor.additionalMenuBarLabels(
             providerIds: ["codex", "claude"], showPercentage: true,
             showDuration: false, mode: .remaining
@@ -1238,7 +1238,7 @@ struct QuotaMonitorTests {
         let claude = claudeProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
         let codex = codexProduct.defaultAccount
-        codex.isEnabled = false
+        codex.isPaused = true
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // Then
@@ -1318,7 +1318,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
         let claude = claudeProduct.defaultAccount
-        claude.isEnabled = false
+        claude.isPaused = true
         let monitor = makeMonitor(providers: kept([claudeProduct]))
         monitor.selectedProviderId = "claude"
 
@@ -1411,7 +1411,7 @@ struct QuotaMonitorTests {
         let claude = claudeProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
         let codex = codexProduct.defaultAccount
-        codex.isEnabled = false
+        codex.isPaused = true
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // When
@@ -1430,7 +1430,7 @@ struct QuotaMonitorTests {
         let geminiProduct = stubbedProduct("gemini", probe: MockUsageProbe(), settings: settings)
         let gemini = geminiProduct.defaultAccount
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
-        gemini.isEnabled = false
+        gemini.isPaused = true
         let monitor = makeMonitor(providers: kept([claudeProduct, geminiProduct, codexProduct]))
 
         // When
@@ -1660,7 +1660,7 @@ struct QuotaMonitorTests {
         let claudeProvider = claudeProviderProduct.defaultAccount
         let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
         let codexProvider = codexProviderProduct.defaultAccount
-        codexProvider.isEnabled = false
+        codexProvider.isPaused = true
 
         let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
@@ -1704,7 +1704,7 @@ struct QuotaMonitorTests {
         #expect(monitor.overallStatus == .critical)
 
         // Disable codex
-        codexProvider.isEnabled = false
+        codexProvider.isPaused = true
 
         // Then - only claude's healthy status matters
         #expect(monitor.overallStatus == .healthy)
@@ -1739,7 +1739,7 @@ struct QuotaMonitorTests {
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
         let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
         let codex = codexProduct.defaultAccount
-        codex.isEnabled = false
+        codex.isPaused = true
         let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         monitor.selectedProviderId = "claude"
 
@@ -1747,7 +1747,7 @@ struct QuotaMonitorTests {
         monitor.resume(codex)
 
         // Then - the login is watched again, selection unchanged
-        #expect(codex.isEnabled == true)
+        #expect(codex.isPaused == false)
         #expect(monitor.selectedProviderId == "claude")
     }
 }

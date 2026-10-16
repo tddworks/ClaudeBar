@@ -181,7 +181,7 @@ public final class Provider {
 
     /// In the lineup — pills, menu bar, refreshes, alerts: the login is on,
     /// and so is its product.
-    public func isInLineup(_ account: Account) -> Bool { account.isEnabled && isEnabled }
+    public func isInLineup(_ account: Account) -> Bool { !account.isPaused && isEnabled }
 
     /// *The name the lineup prints* — on a pill, the menu bar, an alert: the
     /// product's while it has one login to tell apart, else the login's own
@@ -208,10 +208,8 @@ public final class Provider {
         definition.dataSource(configuration.activeKind)?.cache.map { .seconds($0.ttl) }
     }
 
-    /// The worst quota health across the watched logins.
-    public var status: QuotaStatus {
-        accounts.watched.map(\.status).max() ?? .healthy
-    }
+    /// Its logins' status — the healthiest of them (CANONICAL §5).
+    public var status: QuotaStatus { accounts.status }
 
     /// *Test Connection* — the active data source looks up the key and
     /// fetches for a login (the default unless named), stopping BEFORE
@@ -260,7 +258,7 @@ public final class Provider {
         // answered with a made-up snapshot (CANONICAL §5). The product's own
         // switch is a different fact: turning a product off hides it, and a
         // person still fetches a login that is off while they set it up.
-        guard account.isEnabled else { throw UsageError.paused }
+        guard !account.isPaused else { throw UsageError.paused }
         guard let active = startingDataSource(for: account) else {
             throw UsageError.noData
         }

@@ -12,15 +12,15 @@ public struct Overview: Sendable {
         self.cards = cards
     }
 
-    /// The lineup's products as cards, each watched login read under the
+    /// The lineup's products as cards, each unpaused login read under the
     /// person's policy. A paused login is on its product's page, never on
-    /// *All* — and a product with no watched login has nothing to ring here,
+    /// *All* — and a product with no unpaused login has nothing to ring here,
     /// so it has no card either.
     @MainActor
     public init(_ monitor: QuotaMonitor) {
         self.init(cards: monitor.tabs.compactMap { tab in
-            guard !tab.watched.isEmpty else { return nil }
-            return OverviewCard(id: tab.id, name: tab.name, logins: tab.watched.map { account in
+            guard !tab.unpaused.isEmpty else { return nil }
+            return OverviewCard(id: tab.id, name: tab.name, logins: tab.unpaused.map { account in
                 OverviewCard.Login(
                     id: account.id,
                     name: account.displayName,
@@ -88,14 +88,19 @@ public struct OverviewCard: Identifiable, Sendable {
         self.logins = logins
     }
 
-    /// The login whose quota runs out first.
+    /// The login the card reads: its healthiest, then the one with the most
+    /// left — a product's logins are interchangeable (CANONICAL §5) — with
+    /// that login's quota that runs out first.
     private var tightestOf: (login: Login, quota: UsageQuota)? {
         logins
             .compactMap { login in login.snapshot?.lowestQuota.map { (login, $0) } }
-            .min { $0.quota.percentRemaining < $1.quota.percentRemaining }
+            .min { a, b in
+                let (sa, sb) = (a.login.status ?? .healthy, b.login.status ?? .healthy)
+                return sa != sb ? sa < sb : a.quota.percentRemaining > b.quota.percentRemaining
+            }
     }
 
-    /// The ring: the quota with the least left, across every login.
+    /// The ring: the healthiest login's quota with the least left.
     public var tightest: UsageQuota? { tightestOf?.quota }
 
     /// The row under it: that login's next-lowest quota.
@@ -106,7 +111,7 @@ public struct OverviewCard: Identifiable, Sendable {
             .min { $0.percentRemaining < $1.percentRemaining }
     }
 
-    /// The tightest login's name — only when there are several to tell apart.
+    /// The name of the login the ring reads — only when there are several to tell apart.
     public var tightestLogin: String? {
         logins.count > 1 ? tightestOf?.login.name : nil
     }
@@ -116,8 +121,8 @@ public struct OverviewCard: Identifiable, Sendable {
     /// Where a tap lands: the product's first login.
     public var firstLoginId: String? { logins.first?.id }
 
-    /// The worst login's status; `nil` while none has numbers.
-    public var status: QuotaStatus? { logins.compactMap(\.status).max() }
+    /// The healthiest login's status; `nil` while none has numbers.
+    public var status: QuotaStatus? { logins.compactMap(\.status).min() }
 
     /// The same word the header uses: no *Healthy* without numbers (#259).
     public var badge: ProviderBadgeState {

@@ -79,7 +79,7 @@ struct AntigravityDefinitionTests {
     @Test func `should keep Antigravity's name, on by default, with no dashboard and no account form`() throws {
         let provider = try make()
         #expect(provider.name == "Antigravity")
-        #expect(provider.defaultAccount.isEnabled)
+        #expect(!provider.defaultAccount.isPaused)
         #expect(provider.plainDashboardURL == nil)
         #expect(provider.accounts.form.isEmpty)
     }

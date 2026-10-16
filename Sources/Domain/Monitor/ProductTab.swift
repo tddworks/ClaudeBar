@@ -3,7 +3,7 @@ import Providers
 
 /// A pill in the popover: one product with **every** login of it — so three
 /// Claude logins are one *Claude* tab, side by side, not three tabs. The
-/// logins come in the order the person gave them, watched and paused: a
+/// logins come in the order the person gave them, unpaused and paused: a
 /// paused login is on the page with a *Resume* and out of every judgement
 /// (docs/features/multi-account/design.md §3.5).
 @MainActor
@@ -15,9 +15,9 @@ public struct ProductTab: Identifiable {
     public let provider: Provider
     /// Every login of it, in the person's order.
     public let logins: [Account]
-    /// The ones being watched — the page's chips and cards, and everything
+    /// The ones not paused — the page's chips and cards, and everything
     /// that judges a login. The product's own lists, never a filter here.
-    public let watched: [Account]
+    public let unpaused: [Account]
     /// The ones paused: the page's PAUSED rows, and nothing else.
     public let paused: [Account]
 
@@ -26,7 +26,7 @@ public struct ProductTab: Identifiable {
         self.name = provider.name
         self.provider = provider
         self.logins = Array(provider.accounts)
-        self.watched = provider.accounts.watched
+        self.unpaused = provider.accounts.unpaused
         self.paused = provider.accounts.paused
     }
 
@@ -36,8 +36,8 @@ public struct ProductTab: Identifiable {
 
     /// Whether the product's page is its logins rather than a single login's
     /// card: it is once there are several to tell apart, and whenever none is
-    /// watched — there is nothing else for the page to say.
-    public var showsAccountPages: Bool { logins.count > 1 || watched.isEmpty }
+    /// unpaused — there is nothing else for the page to say.
+    public var showsAccountPages: Bool { logins.count > 1 || unpaused.isEmpty }
 
     /// A login's name on the product's row — only when there are several to
     /// tell apart; one login is just the product.

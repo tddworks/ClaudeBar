@@ -101,7 +101,7 @@ struct MenuBarSpec {
             let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
             let codex = codexProduct.defaultAccount
-            codex.isEnabled = false
+            codex.isPaused = true
 
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct, codexProduct]),

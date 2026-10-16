@@ -23,7 +23,7 @@ provider's page as before.
 | **All** | the pill, and the page it opens: a card per provider in the lineup |
 | **page** | what the popover shows under the pills: *All*, *Leaderboard*, or one provider |
 | **card** | one provider on *All*: its badge, its **tightest** quota as a ring, the next quota, a tap target |
-| **tightest** | the quota with the least left (`UsageSnapshot.lowestQuota`); with several logins, the tightest of their tightest |
+| **tightest** | the quota with the least left (`UsageSnapshot.lowestQuota`); with several logins, the healthiest login's — the one the product's status reads |
 | **Open on** | where the popover lands each time it opens: *Where I left it* (default) or *All* |
 
 ## The pill row
@@ -65,7 +65,7 @@ today). The divider shows when either of them does.
 |---|---|
 | All is offered only with two or more products in the lineup; with fewer, the page falls back to the provider | `Overview.isOffered` |
 | cards follow the pill order; they never re-sort as quotas change | `Overview.cards` |
-| a card's ring is its tightest quota; with several logins, the tightest login's, named | `OverviewCard` |
+| a card's ring is its tightest quota; with several logins, the healthiest login's, named — a product's logins are interchangeable ([CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | `OverviewCard` |
 | a product with no numbers still gets a card, saying *Unavailable*, *Not set up* or *Syncing* like the header (#259) | `OverviewCard.badge` |
 | the header's badge on All is the worst card's; the counts are of cards with numbers | `Overview` |
 | tapping a card opens that product on its first login | `MenuContentView` → `PopoverPage.provider` |
@@ -84,7 +84,7 @@ today). The divider shows when either of them does.
 ## Tests
 
 - Domain: `OverviewTests` — offered with two products, not one; cards in pill
-  order; tightest quota and the next; tightest login across several; a card
+  order; tightest quota and the next; the best login across several; a card
   without numbers says why; counts and header badge.
 - Domain: `PopoverOpensOnTests` — an open lands on All, or keeps the page.
 - Infrastructure: `JSONSettingsRepositoryAppTests` — `.whereILeftIt` when unset,

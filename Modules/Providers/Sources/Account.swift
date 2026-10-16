@@ -37,24 +37,26 @@ public final class Account: Identifiable {
     /// before it was recorded.
     public let madeBy: AccountOrigin?
 
-    /// The login's own *Pause* — never the product's switch.
-    public var isEnabled: Bool {
+    /// The login's own *Pause* — never the product's switch. Kept under the
+    /// login's on-switch, so the saved settings read as before.
+    public var isPaused: Bool {
         didSet {
             if isDefault {
-                settings.setOn(isEnabled, Provider.plainLoginKey, forProvider: providerId)
+                settings.setOn(!isPaused, Provider.plainLoginKey, forProvider: providerId)
             } else {
-                settings.setEnabled(isEnabled, forProvider: id)
+                settings.setEnabled(!isPaused, forProvider: id)
             }
         }
     }
 
-    /// *Pause* — stop watching this login, without forgetting it: no refresh,
-    /// no status, no alert, and the numbers it last showed (CANONICAL §5).
-    public func pause() { isEnabled = false }
+    /// *Pause* — take this login out of every judgement, without forgetting
+    /// it: no refresh, no status, no alert, and the numbers it last showed
+    /// (CANONICAL §5).
+    public func pause() { isPaused = true }
 
-    /// *Resume* — watch it again. Its kept numbers are there to be replaced by
-    /// the next refresh.
-    public func resume() { isEnabled = true }
+    /// *Resume* — it counts again. Its kept numbers are there to be replaced
+    /// by the next refresh.
+    public func resume() { isPaused = false }
 
     // MARK: - What we last saw
 
@@ -87,9 +89,9 @@ public final class Account: Identifiable {
         self.email = login.email
         self.values = values
         self.madeBy = madeBy
-        self.isEnabled = login.isDefault
+        self.isPaused = !(login.isDefault
             ? settings.isOn(Provider.plainLoginKey, forProvider: definition.id) ?? true
-            : settings.isEnabled(forProvider: login.id, defaultValue: definition.enabledByDefault)
+            : settings.isEnabled(forProvider: login.id, defaultValue: definition.enabledByDefault))
     }
 
     /// *NOT SET UP* — no usage yet, and the last refresh found no tool on
@@ -151,7 +153,7 @@ public final class Account: Identifiable {
     /// fetch was refused rather than handed data it must not record
     /// (CANONICAL §5).
     func succeed(_ usage: UsageSnapshot, from kind: String) -> UsageSnapshot? {
-        guard isEnabled else { return nil }
+        guard !isPaused else { return nil }
         snapshot = usage
         lastError = nil
         lastFailedStep = nil
@@ -165,7 +167,7 @@ public final class Account: Identifiable {
     func noteFailure(_ error: Error) {
         // A fetch that lands while the login is paused records nothing —
         // neither a success nor a failure (CANONICAL §5).
-        guard isEnabled else { return }
+        guard !isPaused else { return }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step
@@ -183,7 +185,7 @@ public final class Account: Identifiable {
     /// stale error the login kept before the pause (CANONICAL §5).
     @discardableResult
     func fail(_ error: Error) -> Error {
-        guard isEnabled else { return error }
+        guard !isPaused else { return error }
         if let failure = error as? DataSourceError {
             lastError = failure.reason
             lastFailedStep = failure.step

@@ -37,7 +37,7 @@ paths, field names, client ids, CLI arguments — is data.
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Provider ◆  THE PRODUCT and THE lifecycle: isEnabled · the data source   │
 │             in use · fallback · refresh(account) · use(kind)             │
-│   └ accounts: [Account] — the logins: values · isEnabled · usage · sync  │
+│   └ accounts: [Account] — the logins: values · isPaused · usage · sync   │
 └──────────────────────────────────┬───────────────────────────────────────┘
                                    │ refresh(account) → dataSource.fetchUsage(for: account)
                                    ▼

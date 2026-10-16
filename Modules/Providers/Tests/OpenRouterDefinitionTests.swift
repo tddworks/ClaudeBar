@@ -122,7 +122,7 @@ struct OpenRouterDefinitionTests {
                                 replies: ["Bearer environment": #"{"data":{"total_credits":"40","total_usage":"0"}}"#,
                                           "Bearer work": #"{"data":{"total_credits":"7.50","total_usage":"0"}}"#])
         let work = try provider.accounts.add(filling: ["apiKey": "work"])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
         #expect(try await provider.refresh(work).quotas.first?.dollarRemaining == Decimal(string: "7.50"))
         #expect(settings.accounts(forProvider: provider.id).first?.probeConfig["apiKey"] == nil)

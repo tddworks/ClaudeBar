@@ -217,7 +217,7 @@ struct MiniMaxDefinitionTests {
         let vault = MemoryVault(["minimax.apiKey": "personal"])
         let provider = try make(vault: vault, environment: ["MINIMAX_API_KEY": "environment"])
         let work = try provider.accounts.add(filling: ["apiKey": "work", "region": "international"])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refresh(work).quotas.first?.percentRemaining == 17)
         #expect(provider.dashboardURL(of: work)?.host == "platform.minimax.io")
         vault.secrets["\(work.id).apiKey"] = nil

@@ -235,7 +235,7 @@ struct AmpDefinitionTests {
         let vault = MemoryVault()
         let provider = try make(Self.sampleOutput, vault: vault)
         let work = try provider.accounts.add(filling: ["apiKey": "work-key"])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refresh(work).quotas.count == 2)
         vault.secrets["\(work.id).apiKey"] = nil
         await #expect(throws: UsageError.authenticationRequired) { try await provider.refresh(work) }

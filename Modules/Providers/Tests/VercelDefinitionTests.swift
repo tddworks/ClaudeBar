@@ -87,7 +87,7 @@ struct VercelDefinitionTests {
         let provider = try make(environment: ["AI_GATEWAY_API_KEY": "environment"], vault: vault, settings: settings,
                                 replies: ["Bearer environment": #"{"balance":40}"#, "Bearer work": #"{"balance":"7.50"}"#])
         let work = try provider.accounts.add(filling: ["apiKey": "work"])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
         #expect(try await provider.refresh(work).quotas.first?.dollarRemaining == Decimal(string: "7.50"))
         #expect(settings.accounts(forProvider: provider.id).first?.probeConfig["apiKey"] == nil)

@@ -221,7 +221,7 @@ struct MenuContentView: View {
             // here before the session was explicitly verified (issue #216).
             // Other providers treat .passive like an interactive refresh.
             // Which page is showing is this view's; who is fetched is the
-            // domain's — All is everyone, a tab is its watched logins.
+            // domain's — All is everyone, a tab is its unpaused logins.
             if showsAll {
                 await monitor.refreshAll(kind: .passive)
                 await monitor.readToday()
@@ -626,7 +626,7 @@ struct MenuContentView: View {
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
                         isSelected: shownPage == .provider && tab.contains(selectedProviderId),
-                        hasData: tab.watched.contains { $0.snapshot != nil }
+                        hasData: tab.unpaused.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
                         page = .provider
@@ -743,27 +743,27 @@ struct MenuContentView: View {
     }
 
     /// One product, its logins side by side: chips that hide one from this
-    /// view, a section per watched login, the ones paused under PAUSED with a
+    /// view, a section per unpaused login, the ones paused under PAUSED with a
     /// Resume, and the login that makes the product's status what it is, named.
     private func accountsContent(_ tab: ProductTab) -> some View {
         VStack(spacing: 12) {
-            if !tab.watched.isEmpty {
+            if !tab.unpaused.isEmpty {
                 accountChips(tab)
             }
             if let state = newSessions.state(of: tab.provider) {
                 InUseStrip(state: state)
             }
-            ForEach(tab.watched.filter { !hiddenAccountIds.contains($0.id) }, id: \.id) { account in
+            ForEach(tab.unpaused.filter { !hiddenAccountIds.contains($0.id) }, id: \.id) { account in
                 providerSection(provider: account)
             }
-            if tab.watched.isEmpty {
-                nothingWatchedNotice(tab)
+            if tab.unpaused.isEmpty {
+                allPausedNotice(tab)
             }
             if !tab.paused.isEmpty {
                 pausedGroup(tab)
             }
-            if let worst = tab.provider.accounts.worst {
-                worstAccountCallout(worst)
+            if let cause = tab.provider.accounts.cause {
+                causeCallout(cause)
             }
         }
         .opacity(animateIn ? 1 : 0)
@@ -773,7 +773,7 @@ struct MenuContentView: View {
     /// *Pause* or *Resume*, whichever the login's state calls for — the page
     /// picks the word; the domain does the acting.
     private func pauseOrResume(_ account: Account) {
-        if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
+        if account.isPaused { monitor.resume(account) } else { monitor.pause(account) }
     }
 
     /// *Pause* / *Use for New Terminal Sessions* — the login's own menu, the
@@ -781,7 +781,7 @@ struct MenuContentView: View {
     /// on the single login's card.
     @ViewBuilder
     private func accountMenu(_ account: Account, in tab: ProductTab) -> some View {
-        Button(account.isEnabled ? "Pause" : "Resume") { pauseOrResume(account) }
+        Button(account.isPaused ? "Resume" : "Pause") { pauseOrResume(account) }
         if tab.provider.inUse?.canBeInUse(account) == true {
             Divider()
             Button("Use for New Terminal Sessions") { newSessions.use(account) }
@@ -830,7 +830,7 @@ struct MenuContentView: View {
                 .buttonStyle(.plain)
                 .popoverFont(11, weight: .semibold)
                 .foregroundStyle(theme.accentPrimary)
-                .help("Watch \(settings.shown(account.displayName)) again")
+                .help("Resume \(settings.shown(account.displayName))")
                 .accessibilityLabel("Resume \(settings.shown(account.displayName))")
         }
         .padding(.horizontal, 8)
@@ -848,12 +848,12 @@ struct MenuContentView: View {
 
     /// Every login paused: the product is still on, so its page says so instead
     /// of showing nothing that reads like a failure.
-    private func nothingWatchedNotice(_ tab: ProductTab) -> some View {
+    private func allPausedNotice(_ tab: ProductTab) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "pause.circle")
                 .foregroundStyle(theme.textTertiary)
             VStack(alignment: .leading, spacing: 1) {
-                Text("No logins watched")
+                Text("All logins paused")
                     .popoverFont(12, weight: .semibold)
                     .foregroundStyle(theme.textSecondary)
                 Text("\(settings.shown(tab.name)) is on, but nothing is being fetched.")
@@ -873,7 +873,7 @@ struct MenuContentView: View {
                 Text("ACCOUNTS")
                     .popoverFont(9, weight: .semibold)
                     .foregroundStyle(theme.textTertiary)
-                ForEach(tab.watched, id: \.id) { account in
+                ForEach(tab.unpaused, id: \.id) { account in
                     let hidden = hiddenAccountIds.contains(account.id)
                     HStack(spacing: 4) {
                         Button {
@@ -926,13 +926,13 @@ struct MenuContentView: View {
     }
 
     /// "Work is at 18% Session — causing Warning": the aggregate names its cause.
-    private func worstAccountCallout(_ worst: Account) -> some View {
-        let status = monitor.status(of: worst) ?? worst.status
-        let lowest = monitor.usage(of: worst)?.lowestQuota
+    private func causeCallout(_ cause: Account) -> some View {
+        let status = monitor.status(of: cause) ?? cause.status
+        let lowest = monitor.usage(of: cause)?.lowestQuota
         let detail = lowest.map { " is at \(Int($0.percentRemaining))% \($0.quotaType.displayName)" } ?? ""
         return HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(theme.statusColor(for: status))
-            Text("\(settings.shown(worst.displayName))\(detail) — causing \(status.badgeText.capitalized)")
+            Text("\(settings.shown(cause.displayName))\(detail) — causing \(status.badgeText.capitalized)")
                 .popoverFont(11)
                 .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)

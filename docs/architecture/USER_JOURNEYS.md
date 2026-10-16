@@ -93,7 +93,7 @@ Twelve findings; each is a word or a law the model must keep.
 *Symbol · colour* · *Save* · *Built in · Custom · Extension* · *Export* ·
 *Key needed* · *Couldn't read your key · Couldn't connect · Couldn't find the
 numbers* · *via API* · *ACCOUNTS* · *PAUSED* · *Pause* · *Resume* ·
-*No logins watched*.
+*All logins paused*.
 
 ## 5 · Acceptance scenarios
 
@@ -133,7 +133,7 @@ Scenario: Pausing a login from the dashboard
   Then Work stops refreshing, leaves the menu bar and the ACCOUNTS chips, and no alert can name it
    And it is listed under PAUSED with "last seen" and a "Resume" button
   When she presses "Resume"
-  Then Work is watched again, with the numbers it last showed
+  Then Work counts again, with the numbers it last showed
 ```
 
 ## 6 · Open

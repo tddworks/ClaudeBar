@@ -148,10 +148,10 @@ private struct AccountRow: View {
                 .foregroundStyle(.white)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(Self.palette[index % Self.palette.count]))
-                .opacity(account.isEnabled ? 1 : 0.4)
+                .opacity(account.isPaused ? 0.4 : 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.displayName)
-                    .foregroundStyle(account.isEnabled ? theme.textPrimary : theme.textTertiary)
+                    .foregroundStyle(account.isPaused ? theme.textTertiary : theme.textPrimary)
                 if let email = account.accountEmail, email != account.displayName {
                     Text(email).font(.caption).foregroundStyle(theme.textSecondary).textSelection(.enabled)
                 } else if account.isDefault {
@@ -179,8 +179,8 @@ private struct AccountRow: View {
             Menu {
                 Button("Rename…", action: onRename)
                 // The same door the popover's account menu comes through.
-                Button(account.isEnabled ? "Pause" : "Resume") {
-                    if account.isEnabled { monitor.pause(account) } else { monitor.resume(account) }
+                Button(account.isPaused ? "Resume" : "Pause") {
+                    if account.isPaused { monitor.resume(account) } else { monitor.pause(account) }
                 }
                 if !account.isDefault {
                     Divider()

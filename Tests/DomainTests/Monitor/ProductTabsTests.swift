@@ -22,7 +22,7 @@ struct ProductTabsTests {
     @Test
     func `should list each provider once with all its logins, whether on or off`() throws {
         let (monitor, codex, _) = try monitor()
-        codex.accounts[1].isEnabled = false
+        codex.accounts[1].isPaused = true
 
         let tabs = monitor.productTabs
 
@@ -38,7 +38,7 @@ struct ProductTabsTests {
 
         #expect(!monitor.productTabs[0].isEnabled)
         #expect(!monitor.lineup.contains { $0.id.hasPrefix("codex") })
-        #expect(codex.accounts.allSatisfy(\.isEnabled) == true)
+        #expect(codex.accounts.allSatisfy { !$0.isPaused } == true)
     }
 
     @Test

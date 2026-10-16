@@ -38,14 +38,15 @@ struct OverviewTests {
     }
 
     @Test
-    func `should ring the tightest login's quota and name that login when there are several`() {
+    func `should ring the healthiest login's tightest quota and name that login when there are several`() {
         let card = card("codex",
                         login("personal", snapshot(quota(74), quota(58, .weekly))),
                         login("work", snapshot(quota(18), quota(41, .weekly))))
 
-        #expect(card.tightest?.percentRemaining == 18)
-        #expect(card.next?.percentRemaining == 41)
-        #expect(card.tightestLogin == "work")
+        // A product's logins are interchangeable: the card reads the one you'd work on.
+        #expect(card.tightest?.percentRemaining == 58)
+        #expect(card.next?.percentRemaining == 74)
+        #expect(card.tightestLogin == "personal")
         #expect(card.loginCount == 2)
     }
 
@@ -57,12 +58,21 @@ struct OverviewTests {
     }
 
     @Test
-    func `should take the worst login's status for the card`() {
+    func `should keep the card healthy while one login has room`() {
         let card = card("codex",
                         login("personal", snapshot(quota(74))),
-                        login("work", snapshot(quota(10))))
+                        login("work", snapshot(quota(0))))
 
-        #expect(card.badge == .quota(.critical))
+        #expect(card.badge == .quota(.healthy))
+    }
+
+    @Test
+    func `should read the card depleted only when every login is empty`() {
+        let card = card("codex",
+                        login("personal", snapshot(quota(0))),
+                        login("work", snapshot(quota(0))))
+
+        #expect(card.badge == .quota(.depleted))
     }
 
     @Test

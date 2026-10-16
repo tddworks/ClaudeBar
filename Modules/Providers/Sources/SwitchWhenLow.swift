@@ -49,7 +49,7 @@ public final class SwitchWhenLow {
     public func next(from current: Account, among logins: [Account]) -> Account? {
         guard isOn, let left = current.percentLeft, left < Double(below) else { return nil }
         return logins
-            .filter { $0 !== current && $0.isEnabled && mayPick($0) && ($0.percentLeft ?? -1) > left }
+            .filter { $0 !== current && !$0.isPaused && mayPick($0) && ($0.percentLeft ?? -1) > left }
             .max { ($0.percentLeft ?? -1) < ($1.percentLeft ?? -1) }
     }
 }

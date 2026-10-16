@@ -43,7 +43,7 @@ struct OpenCodeDefinitionTests {
     @Test(.needsScriptEngine) func `should show the 5-hour, weekly and monthly quotas with their resets and windows when OpenCode Go answers`() async throws {
         let p = try make()
         #expect(p.name == "OpenCode Go")
-        #expect(p.defaultAccount.isEnabled)
+        #expect(!p.defaultAccount.isPaused)
         let qs = try await p.refreshPlain().quotas
         #expect(qs.map(\.percentRemaining) == [99,83,0])
         #expect(qs.map(\.quotaType) == [.session,.weekly,.timeLimit("Monthly")])

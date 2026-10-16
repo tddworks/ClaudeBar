@@ -278,13 +278,13 @@ struct CodexAccountsTests {
 
         let codex = try stub.makeProvider("codex", accounts: stub.settings.accounts(forProvider: "codex"))
         let added = Array(codex.accounts.dropFirst())
-        added[0].isEnabled = false
+        added[0].isPaused = true
 
         #expect(codex.accounts.count == 3)
         #expect(codex.defaultAccount.id == "codex")
         #expect(added.map(codex.lineupName(of:)) == ["a@example.com", "b@example.com"])
         #expect(Set(codex.accounts.map(\.id)).count == 3)
-        #expect(added[1].isEnabled)
+        #expect(!added[1].isPaused)
         #expect(stub.settings.isEnabled(forProvider: added[0].id) == false)
     }
 
@@ -350,7 +350,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `should show the worst enabled login's status and pick the login with the most left as best`() async throws {
+    func `should keep Codex healthy while one login has room, and pick the login with the most left as best`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(accountId: "me")
@@ -368,12 +368,12 @@ struct CodexAccountsTests {
 
         #expect(me.status == .critical)
         #expect(work.status == .healthy)
-        #expect(codex.status == .critical)
+        #expect(codex.status == .healthy)
         #expect(codex.accounts.best === work)
 
-        me.isEnabled = false
+        work.isPaused = true
 
-        #expect(codex.status == .healthy)
+        #expect(codex.status == .critical)
     }
 
     // MARK: - Helpers

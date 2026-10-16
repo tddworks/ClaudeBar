@@ -74,7 +74,7 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 ├── lineup → [Account]                      DERIVED — the enabled accounts of the enabled providers,
 │                                           in that order: the pills, the menu bar, the notifications
 ├── selection: Provider.ID                  which provider the popover opens on; it shows every login
-│                                           of it side by side — the watched ones with their quotas, the
+│                                           of it side by side — the unpaused ones with their quotas, the
 │                                           paused ones under PAUSED (multi-account design §3.5)
 │   │
 │   └── Provider  ◆                         THE PRODUCT — HOW TO FIND OUT, once for all its logins.
@@ -126,14 +126,23 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       ├── capabilities  ◇                 WHAT ELSE IT OFFERS (§2.1) — declared in the definition, run
 │       │                                   by their own context, handed to each login filled with its
 │       │                                   values: `usageHistory` (a UsageLog.Definition) · `accounts.signIn`
-│       ├── accounts: [Account]  ◆          NEVER EMPTY. One account is the "default" — the plain login
+│       ├── accounts: Accounts  ◆           NEVER EMPTY. One account is the "default" — the plain login.
+│       │   │                               Its logins are INTERCHANGEABLE, and it is the one owner of the
+│       │   │                               rule that says so:
+│       │   ├── unpaused → [Account]        DERIVED — the logins not paused
+│       │   ├── paused → [Account]          DERIVED — the PAUSED group
+│       │   ├── status                      DERIVED — unpaused-with-usage .map(status).min(): the product
+│       │   │                               has room while one login does. ← THE RULE, one owner
+│       │   ├── best → Account?             DERIVED — the unpaused login with the most left: "switch to work"
+│       │   ├── cause → Account?            DERIVED — best, while it isn't healthy: the callout's subject
+│       │   │                               ("Home is at 18% Weekly — causing Warning")
 │       │   └── Account  ◆                  A LOGIN YOU PAY FOR — who, and what we last saw. No behaviour
 │       │       ├── id: Account.ID          `<provider>` for the default, `<provider>.<acct>` for an added one
 │       │       ├── providerId          its product, by id — a value, never a reference
 │       │       ├── label · email           what you gave, or the login file holds — names the pill
 │       │       ├── values                  its account-scope settings — the Codex folder, the login's
 │       │       │                           account id; a secret as a reference
-│       │       ├── isEnabled               PAUSE without forgetting — no refresh, no pill, no judgement.
+│       │       ├── isPaused                PAUSE without forgetting — no refresh, no pill, no judgement.
 │       │       │                           Its last numbers stay, printed as *last seen*. "Remove" forgets
 │       │       ├── usage: Usage?  ◇        WHAT WE LAST SAW — survives a failed refresh; carries the
 │       │       │                           plan and organization the data source learned
@@ -197,8 +206,7 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── command: TerminalCommand ◇  `claude` + `CLAUDE_CONFIG_DIR` — from `accounts.signIn`
 │       │   ├── worthSwitchingTo: Account?  DERIVED — the login in use is low, another has more left
 │       │   └── switchWhenLow: SwitchWhenLow  ◆   opt-in: isOn · below · mayPick(login)
-│       ├── status                          DERIVED — the worst across its enabled accounts
-│       └── bestAccount                     DERIVED — the enabled account with the most left: "switch to work"
+│       └── status                          DERIVED → accounts.status (tell, don't ask)
 │
 └── statusPolicy: StatusPolicy  ◇           HOW STRICT TO BE — absolute thresholds, or pace-aware
                                             with the user's burn-rate threshold. ONE for the app
@@ -305,7 +313,7 @@ question it answers for the person.
 | its logins — add (form · folder · sign-in), remove, rename, reorder | never empty; the default login's id is the provider's; no two logins share a folder |
 | its settings | a kind owns its rule; an account's own value beats the provider's; a change rebinds the logins |
 | how it finds out — data source choice, fallback, refresh per login, *Test Connection* | the last usage survives a failure; the failed step is named; a 429 is a rate limit; a fallback is never silent |
-| derived reads — status, best and worst account | the worst account's status; the one with the most left |
+| derived reads — status, best account, cause | its logins are a pool: the healthiest login's status; the best is the one with the most left |
 
 **Offered** — CAPABILITIES. Each answers *another* question, on its own
 cadence and often with its own store, so the provider only **declares** it in
@@ -367,14 +375,15 @@ Claude Code sessions (Activity); where settings and secrets are kept
 ## 4 · The reads — what the tree answers
 
 ```text
-monitor.overallStatus                → Status       the menu bar's colour: the worst
-monitor.lowestQuota                  → Quota?       across the lineup (enabled accounts of enabled providers)
+monitor.overallStatus                → Status       the menu bar's colour: the worst PRODUCT's status
+monitor.lowestQuota                  → Quota?       each enabled product's best account's lowest quota; the lowest of those
 monitor.lineup                       → [Account]    the pills and the menu-bar entries
 account.usage                        → Usage?       that login's latest — what its pill shows
 account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
-provider.status                      → Status       the worst across its enabled accounts
-provider.bestAccount                 → Account?     the most left — "switch to work"
+provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
+provider.accounts.best               → Account?     the most left — "switch to work"
+provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
 provider.inUse?.login                → Account      the login new terminal sessions start with
 account.isInUse · account.canBeInUse → Bool         the chip's mark; whether it can be chosen
 newSessions.state(of: provider)      → State?       the strip: waiting for setup · worth switching · in use
@@ -385,10 +394,11 @@ quota.pace                           → Pace         unknown without a window
 quota.window?.timeUntilReset         → Duration?    "Resets in 2h 5m"
 account.budgetStatus                 → BudgetStatus? ON TRACK · NEAR LIMIT · OVER BUDGET —
                                                     usage.cost judged by account.budget
-tab.logins                           → [Account]    the product's logins, watched and paused, in the
+tab.logins                           → [Account]    the product's logins, unpaused and paused, in the
                                                     person's order — the popover's page
-tab.watched                          → [Account]    the ones being watched: its chips, its cards, and
-                                                    every aggregate (status, badge, alert, menu bar)
+tab.unpaused                         → [Account]    the ones not paused: its chips, its cards, and every
+                                                    aggregate (status, badge, alert, menu bar)
+tab.paused                           → [Account]    the PAUSED group — the exception, named
 dataSource.fetchResponse(for:)       → Response     Test Connection: what came back, unmapped
 mapping.read(response)               → Usage        Map fields: the live card
 definition.missingSettings           → [Setting]    Import: "Key needed"
@@ -406,6 +416,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | accounts are SIMULTANEOUS — every enabled login is fetched and shown side by side under its provider; the popover shows the selected provider's. (A vendor that allows one live login at a time would add an `active` account; none does today) | `Monitor.selection` |
 | one definition serves every account: the account's values fill `{{account.x}}` when the fetch runs; a data source is never copied per login | `DataSource` |
 | status is QUOTA health, derived from usage; a failed fetch is FETCH health, in `sync` — a key that expired never turns the menu bar red | `Account.status` · `Account.sync` |
+| **a product's logins are INTERCHANGEABLE** — a pool: the product reads its healthiest unpaused login (min), so one empty login never holds its product at DEPLETED while another has room; it reads DEPLETED only when every one is empty. Products are not: one product's room never covers another's, so the menu bar reads the worst product (max). Every login keeps its own truth — its row, pill and alert say its own status and when it resets. A login with no usage yet never stands for its product | `Accounts.status` · `Monitor.overallStatus` |
 | *in use* is the TERMINAL's choice, not the monitor's: every enabled login is still fetched and shown; only new `claude` / `codex` sessions start on the login in use. It is not the `active` account the law above rules out | `InUse` |
 | the login in use is the plain login or a folder login of the same product; only its folder is recorded, nowhere else, **under its CLI's name** (`in-use/claude`) — the shell starts a CLI, not a product; nothing recorded, or a folder no login has, is the plain login; removing it goes back to the plain login | `InUse` · `LoginsInUse` |
 | **a CLI is wrapped once**, however many products run it: two products on `claude` share its record, and the last choice wins | `NewSessions` (its commands, each once) · `ShellSetup` |
@@ -416,7 +427,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
-| a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isEnabled` |
+| a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isPaused` |
 | a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it stopped looking, which is not the same as having nothing to show | `ProviderBadgeState.paused` |
 | a failed refresh keeps the last usage and records the error beside it — what we saw is never erased by failing to look again | `Account.sync` |

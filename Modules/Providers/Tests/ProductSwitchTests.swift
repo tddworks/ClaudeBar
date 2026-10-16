@@ -38,7 +38,7 @@ struct ProductSwitchTests {
         codex.isEnabled = false
 
         let shown = codex.accounts.filter(codex.isInLineup).count
-        let on = codex.accounts.filter(\.isEnabled).count
+        let on = codex.accounts.filter { !$0.isPaused }.count
         #expect(shown == 0)
         #expect(on == 2)
     }
@@ -47,7 +47,7 @@ struct ProductSwitchTests {
     func `should keep the provider on and its other logins shown when one login is paused`() throws {
         let codex = try codex(twoLogins())
 
-        codex.defaultAccount.isEnabled = false
+        codex.defaultAccount.isPaused = true
 
         #expect(codex.isEnabled)
         #expect(!codex.plainIsInLineup)
@@ -58,14 +58,14 @@ struct ProductSwitchTests {
     func `should remember the provider's switch and a login's pause apart across a relaunch`() throws {
         let settings = twoLogins()
         let first = try codex(settings)
-        first.defaultAccount.isEnabled = false
+        first.defaultAccount.isPaused = true
         first.isEnabled = false
 
         let again = try codex(settings)
 
         #expect(!again.isEnabled)
-        #expect(!again.defaultAccount.isEnabled)
-        #expect(again.accounts[1].isEnabled)
+        #expect(again.defaultAccount.isPaused)
+        #expect(!again.accounts[1].isPaused)
     }
 
     // MARK: - Upgrade: the old switch was the plain login's
@@ -78,7 +78,7 @@ struct ProductSwitchTests {
         let codex = try codex(settings)
 
         #expect(codex.isEnabled)
-        #expect(!codex.defaultAccount.isEnabled)
+        #expect(codex.defaultAccount.isPaused)
         #expect(codex.isInLineup(codex.accounts[1]))
     }
 
@@ -90,7 +90,7 @@ struct ProductSwitchTests {
         let codex = try codex(settings)
 
         #expect(!codex.isEnabled)
-        #expect(codex.defaultAccount.isEnabled)
+        #expect(!codex.defaultAccount.isPaused)
     }
 
     @Test
@@ -98,11 +98,11 @@ struct ProductSwitchTests {
         let settings = twoLogins()
         settings.setEnabled(false, forProvider: "codex")
         let first = try codex(settings)
-        first.defaultAccount.isEnabled = true
+        first.defaultAccount.isPaused = false
 
         let again = try codex(settings)
 
         #expect(again.isEnabled)
-        #expect(again.defaultAccount.isEnabled)
+        #expect(!again.defaultAccount.isPaused)
     }
 }

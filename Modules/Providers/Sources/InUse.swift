@@ -89,7 +89,7 @@ public final class InUse {
         let current = login
         guard current.status >= .critical, let left = current.percentLeft else { return nil }
         return logins
-            .filter { $0 !== current && $0.isEnabled && ($0.percentLeft ?? -1) > left }
+            .filter { $0 !== current && !$0.isPaused && ($0.percentLeft ?? -1) > left }
             .max { ($0.percentLeft ?? -1) < ($1.percentLeft ?? -1) }
     }
 

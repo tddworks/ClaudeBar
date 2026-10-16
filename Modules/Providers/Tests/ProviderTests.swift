@@ -400,33 +400,77 @@ struct ProviderTests {
     // MARK: - Status across logins
 
     @Test
-    func `should take the worst enabled login's status, and call the login with the most left the best`() async throws {
+    func `should keep room while one login has it, because a product's logins are interchangeable`() async throws {
         let network = AcmeNetwork()
         network.answer(Self.api, used: 40)
-        network.answer(Self.api, login: "low", used: 90)
+        network.answer(Self.api, login: "low", used: 100)
         network.answer(Self.api, login: "high", used: 10)
         let acme = acme(network, logins: ["low", "high"])
         for account in acme.accounts { try await acme.refresh(account) }
 
-        #expect(acme.status == .critical)
-        #expect(acme.accounts.best?.accountId == "high")
-
-        acme.accounts[1].isEnabled = false
+        #expect(acme.accounts[1].status == .depleted)
         #expect(acme.status == .healthy)
+        #expect(acme.accounts.best?.accountId == "high")
     }
 
     @Test
-    func `should name the login that makes the provider's status, and none when all is well`() async throws {
+    func `should read depleted only when every login is empty`() async throws {
         let network = AcmeNetwork()
-        network.answer(Self.api, used: 40)
+        network.answer(Self.api, used: 100)
+        network.answer(Self.api, login: "low", used: 100)
+        let acme = acme(network, logins: ["low"])
+        for account in acme.accounts { try await acme.refresh(account) }
+
+        #expect(acme.status == .depleted)
+    }
+
+    @Test
+    func `should leave a paused login out of the product's status`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 90)
+        network.answer(Self.api, login: "high", used: 10)
+        let acme = acme(network, logins: ["high"])
+        for account in acme.accounts { try await acme.refresh(account) }
+        #expect(acme.status == .healthy)
+
+        acme.accounts[1].isPaused = true
+
+        #expect(acme.status == .critical)
+    }
+
+    @Test
+    func `should never let a login with no usage yet stand for the product`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 90)
+        let acme = acme(network, logins: ["new"])
+        try await acme.refresh(acme.accounts[0])
+
+        #expect(acme.status == .critical)
+        #expect(acme.accounts.best === acme.accounts[0])
+    }
+
+    @Test
+    func `should name the login that sets the product's status, and none when all is well`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 70)
         network.answer(Self.api, login: "low", used: 90)
         let acme = acme(network, logins: ["low"])
 
-        #expect(acme.accounts.worst == nil)
+        #expect(acme.accounts.cause == nil)
         for account in acme.accounts { try await acme.refresh(account) }
 
-        #expect(acme.accounts.worst?.accountId == "low")
-        acme.accounts[1].isEnabled = false
-        #expect(acme.accounts.worst == nil)
+        // The plain login (30% left) is the best one, so it is the one to name.
+        #expect(acme.accounts.cause === acme.accounts[0])
+    }
+
+    @Test
+    func `should name no login while one of them is healthy`() async throws {
+        let network = AcmeNetwork()
+        network.answer(Self.api, used: 10)
+        network.answer(Self.api, login: "low", used: 100)
+        let acme = acme(network, logins: ["low"])
+        for account in acme.accounts { try await acme.refresh(account) }
+
+        #expect(acme.accounts.cause == nil)
     }
 }

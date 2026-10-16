@@ -45,12 +45,12 @@ struct ProductTabsTests {
     func `should keep the person's order in a tab and take a paused login out of its chips`() throws {
         let (_, codex, _, providers) = try lineup()
         codex.accounts.move(codex.accounts[2], to: 0)
-        codex.accounts[1].isEnabled = false
+        codex.accounts[1].isPaused = true
 
         let tab = try #require(ProductTab.tabs(in: providers).last)
 
         #expect(tab.logins.map(\.id) == ["codex.side", "codex", "codex.work"])
-        #expect(tab.watched.map(\.id) == ["codex.side", "codex.work"])
+        #expect(tab.unpaused.map(\.id) == ["codex.side", "codex.work"])
         #expect(tab.paused.map(\.id) == ["codex"])
     }
 

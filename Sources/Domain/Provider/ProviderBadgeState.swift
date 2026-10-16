@@ -67,9 +67,9 @@ public enum ProviderBadgeState: Equatable, Sendable {
     /// no caller re-asks what its logins are doing.
     @MainActor
     public init(of tab: ProductTab, quotaStatus: QuotaStatus?) {
-        let state: ProviderBadgeState = tab.watched.isEmpty && !tab.paused.isEmpty
+        let state: ProviderBadgeState = tab.unpaused.isEmpty && !tab.paused.isEmpty
             ? .paused
-            : ProviderBadgeState(of: tab.watched, quotaStatus: quotaStatus)
+            : ProviderBadgeState(of: tab.unpaused, quotaStatus: quotaStatus)
         self = state
     }
 

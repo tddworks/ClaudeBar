@@ -59,7 +59,7 @@ struct ProviderEnableDisableSpec {
             let claude = claudeProduct.defaultAccount
             let codexProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
             let codex = codexProduct.defaultAccount
-            codex.isEnabled = false
+            codex.isPaused = true
 
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct, codexProduct]),
@@ -108,7 +108,7 @@ struct ProviderEnableDisableSpec {
             #expect(monitor.overallStatus == .critical)
 
             // When — user disables Codex
-            codex.isEnabled = false
+            codex.isPaused = true
 
             // Then — overall status improves to healthy
             #expect(monitor.overallStatus == .healthy)
@@ -132,7 +132,7 @@ struct ProviderEnableDisableSpec {
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
             let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
             let codex = codexProduct.defaultAccount
-            codex.isEnabled = false
+            codex.isPaused = true
 
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct, codexProduct]),
@@ -144,7 +144,7 @@ struct ProviderEnableDisableSpec {
             monitor.resume(codex)
 
             // Then — Codex is watched again, Claude still selected
-            #expect(codex.isEnabled == true)
+            #expect(codex.isPaused == false)
             #expect(monitor.lineup.count == 2)
             #expect(monitor.selectedProviderId == "claude")
         }

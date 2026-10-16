@@ -17,9 +17,9 @@ menu-bar names (slice 2); `accounts.signIn`, `provider.signIn` /
 `signInAgain` (slice 4); `accounts.form`, `addAccount(filling:)`,
 `SecretStore.scoped(to:)` and `SecretVault`, with API providers made in Add
 Provider asking for a key per account (slice 5); the popover by provider —
-`ProductTab`, `QuotaMonitor.tabs` / `selectedTab`, `Provider.worstAccount`,
+`ProductTab`, `QuotaMonitor.tabs` / `selectedTab`, `Accounts.cause` (was `worstAccount`),
 account chips and the callout (slice 6); **pausing from the popover** —
-`ProductTab.logins` / `.watched` / `.paused`, `QuotaMonitor.pause(_:)` /
+`ProductTab.logins` / `.unpaused` (was `.watched`) / `.paused`, `QuotaMonitor.pause(_:)` /
 `resume(_:)` as the one door the popover's account menu and the Accounts card share,
 `Account.pause()` / `resume()` as the login's own, the
 as the one door the popover's account menu and the Accounts card share, the
@@ -125,7 +125,8 @@ diff:
 | **label** | the name a person gave an account ("work") | the email |
 | **display name** | what the pill says: label, else email, else the provider's name | the menu bar label |
 | **menu bar label** | the shortened text in the 16 px status item — the page's, not the model's | display name |
-| **worst account** | the enabled account whose status is the provider's — the callout's subject | the default account |
+| **best account** | the unpaused account with the most left — the one you'd work on; a product's logins are interchangeable, so the product is as healthy as its healthiest login | the default account |
+| **cause** | the best account while its status isn't healthy — the callout's subject | the worst account |
 
 *Primary* is deliberately not a word here. The concept used it for "drives
 the menu bar icon", which pins already say, and it would blur with
@@ -155,15 +156,23 @@ Monitor ◆                                  the menu bar's root
          │       ├── patch                 by data source kind: what an added login changes (RFC 7396)
          │       └── identity              which field names the login; a mismatch fails closed
          ├── settingsForm ◇                [Setting], each with a SCOPE: provider | account
-         ├── accounts: [Account] ◆         NEVER EMPTY; [0] is the default
+         ├── accounts: Accounts ◆          NEVER EMPTY; [0] is the default. Its logins are
+         │   │                             INTERCHANGEABLE — and it owns the rule that says so:
+         │   ├── unpaused                  DERIVED — the logins not paused
+         │   ├── paused                    DERIVED — the PAUSED group
+         │   ├── status                    DERIVED — unpaused-with-usage .map(status).min()
+         │   │                             ← THE RULE, one owner: room while one login has it
+         │   ├── best                      DERIVED — the most left: "switch to work"
+         │   ├── cause                     DERIVED — best, while it isn't healthy: the callout
          │   └── Account ◆                 A LOGIN — no behaviour of its own
          │       ├── id                    `<provider>` · `<provider>.<acct>` — pins and settings keyed by it
          │       ├── label?                the person's name for it
          │       ├── values                account-scope settings (non-secret)
-         │       ├── isEnabled             pause, not forget
+         │       ├── isPaused              ● the person: Pause / Resume — pause, not forget
          │       ├── usage? · sync         what we saw · fetch health — kept apart
+         │       ├── status                DERIVED — QUOTA HEALTH: its worst quota — its row, its pill
          │       └── displayName           DERIVED — label ?? email ?? provider.name
-         ├── worstAccount              DERIVED — the enabled account whose status is provider.status
+         ├── status                    DERIVED → accounts.status (tell, don't ask)
          ├── bound: [Account.ID: [DataSource]]   internal — made ONCE per login from the patched,
          │                                       filled definition, with that login's vault
          └── refresh(account) · add(…) · rename(account, to:) · remove(account)
@@ -267,7 +276,7 @@ ProviderFactory.make(definition, settings, vault)
         └─ fails (bad folder, unfilled {{account.x}})?  → logged by account id, account left out.
                                                           The app never crashes.
   ▼
-QuotaMonitor(providers) → lineup = provider.accounts.filter(isEnabled), for every enabled provider
+QuotaMonitor(providers) → lineup = provider.accounts.filter(!isPaused), for every enabled provider
 ```
 
 Every provider is a `Provider`: its enabled logins are its pills ([TARGET §2.1](../../architecture/TARGET_ARCHITECTURE.md#21--the-product-and-its-roles)).
@@ -355,7 +364,7 @@ model disagree, the decision and its reason are in §8.
 │ ClaudeBar                             ↻  ⚙   │
 │ (Claude) (Codex) (Gemini) (Copilot) (Amp)    │ ← monitor.tabs — a product whose switch is on;
 │                                              │   selection: Provider.ID
-│ ACCOUNTS  (P Personal●) (W Work●) (S Side●)  │ ← tab.watched — a VIEW FILTER (page's),
+│ ACCOUNTS  (P Personal●) (W Work●) (S Side●)  │ ← tab.unpaused — a VIEW FILTER (page's),
 │                                              │   shown only when the product has 2 or more logins
 │ P PERSONAL                       [Healthy]   │ ← account.displayName · account.status
 │ ┌ OPUS 72% ────────┐ ┌ SONNET 88% ───────┐   │ ← account.usage.quotas
@@ -363,8 +372,8 @@ model disagree, the decision and its reason are in §8.
 │ ┌ OPUS 18% ────────┐ ┌ SONNET 41% ───────┐   │
 │ S SIDE PROJECT                [Re-auth ↻]    │ ← account.sync.lastError — FETCH health:
 │ ┌ OPUS — (72% · 2h ago) ┐                    │   grey, last usage kept, never a Status colour
-│ ⚠ Work — Acme is at 18% Opus — causing the   │ ← provider.worstAccount (DERIVED) — names who
-│   Warning                                    │   makes provider.status what it is
+│ (no callout: Personal has room, so the       │ ← provider.cause (DERIVED) — nil while the best
+│  product reads Healthy)                      │   account is healthy; else it names that account
 └──────────────────────────────────────────────┘
 ```
 
@@ -380,12 +389,12 @@ model disagree, the decision and its reason are in §8.
 ```text
 ┌──────────────────────────────────────────────┐
 │ (Claude) (Codex ✓ PAUSED) (Gemini)           │
-│ ACCOUNTS  (P Personal●)                      │ ← tab.watched — still only the ones being watched
+│ ACCOUNTS  (P Personal●)                      │ ← tab.unpaused — still only the ones not paused
 │ P PERSONAL                       [Healthy]   │
 │ ┌ OPUS 72% ────────┐ ┌ SONNET 88% ───────┐   │
 │ PAUSED                                       │ ← tab.paused — the login is on the page, not in it
 │ (W) Work — Acme  last seen 3h ago · 18%  [Resume]
-│ ⏸ No logins watched — Codex is on            │ ← only when tab.watched is empty
+│ ⏸ All logins paused — Codex is on            │ ← only when tab.unpaused is empty
 └──────────────────────────────────────────────┘
 
   right-click a chip, or a section header:
@@ -404,7 +413,7 @@ model disagree, the decision and its reason are in §8.
   What it keeps is its last numbers, printed as *last seen*.
 - **A tab exists while the product's switch is on.** Pausing every login of a
   product leaves its tab, dimmed, its header reading *PAUSED* and its page
-  saying *No logins watched* with a *Resume* per login — pause and the
+  saying *All logins paused* with a *Resume* per login — pause and the
   product's switch are two facts. Turning the switch off in Settings is what
   takes a tab away.
 
@@ -419,7 +428,7 @@ provider with an `accounts` block gets it.
 │ ┌ ⊕ Add Account ────────────────────────────────────┐    │ ← only when definition.accounts.ways
 │ └───────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────┘
-  ⋯ = Rename · Pause (isEnabled) · Remove (not on the default)
+  ⋯ = Rename · Pause (isPaused) · Remove (not on the default)
 ```
 
 - **The avatar** is the first letter of `displayName`, in a colour from a
@@ -483,8 +492,8 @@ are the cases the definition declares (§8).
 | a menu bar name is shortened for width and never widens to a full email | `MenuBarAccountName` (App) |
 | an account is added only once its identity is known; *Add anyway* exists only after that step passed | `Provider` (`addAccount`) |
 | accounts keep the order the person gave them; the default is found by `isDefault`, not by position | `Provider.accounts` |
-| the provider's status names the account that causes it | `Provider.worstAccount` |
-| a fetch is judged when it **lands**: one landing while the login is paused lands nowhere — nothing recorded, success or failure, and nothing published — while one landing after the person resumed serves the watched login, which is what *Resume* asked for. The rule itself is [CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)'s | `Account.isEnabled` |
+| a product's logins are interchangeable: the provider's status is its healthiest login's, and the callout names the best account while it isn't healthy — one empty login never holds the product at DEPLETED while another has room ([CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | `Accounts.status` · `Accounts.cause` |
+| a fetch is judged when it **lands**: one landing while the login is paused lands nowhere — nothing recorded, success or failure, and nothing published — while one landing after the person resumed serves the watched login, which is what *Resume* asked for. The rule itself is [CANONICAL §5](../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)'s | `Account.isPaused` |
 | a product is off only when the person turns it off; pausing every login of it leaves its tab, dimmed, with *Resume* | `Provider.isEnabled` · `ProductTab` |
 | the selection never lands on a login the popover's page is not showing | `QuotaMonitor.pause(_:)` |
 | a login is never removed from the popover without saying whether it was paused or forgotten | `ProductTab.logins` |
@@ -648,7 +657,7 @@ and *who owns the thing?* — never from what is easiest to build.
   so the two doors cannot drift. Pausing from the popover would have been
   impossible to undo there: a paused login leaves the lineup, and the tab was
   built from the lineup. So the tab now holds **every** login of a product whose
-  switch is on — watched ones as cards, paused ones as *PAUSED* rows with
+  switch is on — unpaused ones as cards, paused ones as *PAUSED* rows with
   *Resume* — which is also why *pause* and *the product's switch* stopped being
   the same fact: pausing your last login turned the whole product off, and the
   person could not tell that from having turned it off. A hidden login still

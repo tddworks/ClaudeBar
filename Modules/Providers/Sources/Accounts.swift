@@ -80,30 +80,37 @@ public final class Accounts {
             ?? logins.first { $0.displayName.lowercased() == wanted || $0.accountEmail?.lowercased() == wanted }
     }
 
-    /// The logins being watched — the one filter the product, the lineup and
+    /// The logins not paused — the one filter the product, the lineup and
     /// every judgement read (CANONICAL §5). A paused login is out of all of them.
-    public var watched: [Account] { logins.filter(\.isEnabled) }
+    public var unpaused: [Account] { logins.filter { !$0.isPaused } }
 
     /// The paused logins: on the product's page, out of every judgement.
-    public var paused: [Account] { logins.filter { !$0.isEnabled } }
+    public var paused: [Account] { logins.filter { $0.isPaused } }
 
-    /// More than one watched login, so each needs telling apart by name.
+    /// More than one unpaused login, so each needs telling apart by name.
     public var hasSeveral: Bool {
-        watched.prefix(2).count > 1
+        unpaused.prefix(2).count > 1
     }
 
-    /// The watched login with the most left — *switch to work*.
+    /// The unpaused login with the most left — *switch to work*.
     public var best: Account? {
-        watched.max {
+        unpaused.max {
             ($0.snapshot?.lowestQuota?.percentRemaining ?? -.infinity) < ($1.snapshot?.lowestQuota?.percentRemaining ?? -.infinity)
         }
     }
 
-    /// The watched login that makes the provider's status what it is — the
-    /// one the popover names. `nil` while every login is healthy.
-    public var worst: Account? {
-        let worst = watched.max { $0.status < $1.status }
-        return worst.flatMap { $0.status > .healthy ? $0 : nil }
+    /// A product's logins are interchangeable (CANONICAL §5): it is as
+    /// healthy as its healthiest unpaused login, so one empty login never holds
+    /// it at DEPLETED while another has room. A login with no usage yet never
+    /// stands for it.
+    public var status: QuotaStatus {
+        unpaused.filter { $0.snapshot != nil }.map(\.status).min() ?? .healthy
+    }
+
+    /// The login the popover names for the product's status — the best one,
+    /// while even it isn't healthy. `nil` while all is well.
+    public var cause: Account? {
+        best.flatMap { $0.status > .healthy ? $0 : nil }
     }
 
     /// What *Add Account*'s form asks for: the account settings the active
@@ -165,7 +172,7 @@ public final class Accounts {
             for name in entry.secrets.keys { configuration.vault?.delete(name, provider: lineupId) }
             throw UsageError.executionFailed("This \(name) account can't be added.")
         }
-        account.isEnabled = true
+        account.isPaused = false
         return account
     }
 

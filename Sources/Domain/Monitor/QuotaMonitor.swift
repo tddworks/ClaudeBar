@@ -156,7 +156,7 @@ public final class QuotaMonitor {
 
     // MARK: - Monitoring Operations
 
-    /// Refreshes every watched login concurrently, each updating its own
+    /// Refreshes every unpaused login concurrently, each updating its own
     /// snapshot. Today's usage is *not* read: this is also the background's
     /// moment, and usage history is read with a page, never in the background.
     public func refreshAll(kind: RefreshKind = .interactive) async {
@@ -167,10 +167,10 @@ public final class QuotaMonitor {
     /// usage is read with it — the moment the page is on screen (CANONICAL §1).
     /// Who is fetched is decided here, so a page draws and calls.
     public func refresh(_ tab: ProductTab, kind: RefreshKind = .interactive) async {
-        await refresh(tab.watched, kind: kind) { await $0.usageHistory?.read() }
+        await refresh(tab.unpaused, kind: kind) { await $0.usageHistory?.read() }
     }
 
-    /// *TODAY'S USAGE* for every watched login — what the *All* page and the
+    /// *TODAY'S USAGE* for every unpaused login — what the *All* page and the
     /// notch read, and when they read it: with a page, never in the background.
     public func readToday() async {
         await withTaskGroup(of: Void.self) { group in
@@ -288,10 +288,11 @@ public final class QuotaMonitor {
     // MARK: - Queries
 
 
-    /// Returns the lowest quota across all enabled providers
+    /// The lowest quota across the enabled products, each read by its login
+    /// with the most left — a product's logins are interchangeable (CANONICAL §5).
     public func lowestQuota() -> UsageQuota? {
-        lineup
-            .compactMap { usage(of: $0)?.lowestQuota }
+        products
+            .compactMap { logins in logins.compactMap { usage(of: $0)?.lowestQuota }.max() }
             .min()
     }
 
@@ -480,11 +481,17 @@ public final class QuotaMonitor {
     /// HOW STRICT TO BE — the person's policy (Settings → General).
     public var statusPolicy: StatusPolicy { readStatusPolicy() }
 
-    /// Returns the overall status across enabled providers (worst status wins)
+    /// The worst product's status, each product as healthy as its healthiest
+    /// login (CANONICAL §5): its logins are interchangeable, products are not.
     public var overallStatus: QuotaStatus {
-        lineup
-            .compactMap { usage(of: $0)?.overallStatus(under: statusPolicy) }
+        products
+            .compactMap { logins in logins.compactMap { status(of: $0) }.min() }
             .max() ?? .healthy
+    }
+
+    /// The lineup, a product at a time: each enabled product's unpaused logins.
+    private var products: [[Account]] {
+        providers.all.filter(\.isEnabled).map(\.accounts.unpaused)
     }
 
     // MARK: - Selection
@@ -527,7 +534,7 @@ public final class QuotaMonitor {
         if !enabled { selectFirstEnabledIfNeeded() }
     }
 
-    /// *Pause* — the login stops being watched and keeps what it last showed
+    /// *Pause* — the login is out of every judgement and keeps what it last showed
     /// (`Account` owns that; CANONICAL §5). The Monitor's part is the
     /// selection: it moves off a login no page is showing any more.
     public func pause(_ account: Account) {
@@ -535,7 +542,7 @@ public final class QuotaMonitor {
         selectFirstEnabledIfNeeded()
     }
 
-    /// *Resume* — the login is watched again, from the numbers it kept.
+    /// *Resume* — the login counts again, from the numbers it kept.
     public func resume(_ account: Account) {
         account.resume()
     }
@@ -543,20 +550,22 @@ public final class QuotaMonitor {
     /// The tab the selected login belongs to.
     public var selectedTab: ProductTab? { tabs.first { $0.contains(selectedProviderId) } }
 
-    /// The logins being watched on the selected tab: what the page's cards
+    /// The unpaused logins on the selected tab: what the page's cards
     /// show and what judges anything.
-    public var selectedLogins: [Account] { selectedTab?.watched ?? selectedLogin.map { [$0] } ?? [] }
+    public var selectedLogins: [Account] { selectedTab?.unpaused ?? selectedLogin.map { [$0] } ?? [] }
 
     /// One login's quota status under the person's policy; `nil` with no usage.
     public func status(of login: Account) -> QuotaStatus? {
         usage(of: login)?.overallStatus(under: statusPolicy)
     }
 
-    /// The selected tab's worst quota status; `nil` while no watched login has usage.
-    public var selectedTabStatus: QuotaStatus? { selectedLogins.compactMap { status(of: $0) }.max() }
+    /// The selected tab's status: its healthiest unpaused login's, for a
+    /// product's logins are interchangeable (CANONICAL §5); `nil` while no
+    /// unpaused login has usage.
+    public var selectedTabStatus: QuotaStatus? { selectedLogins.compactMap { status(of: $0) }.min() }
 
     /// What the popover's header says about the selected tab — the tab's own
-    /// answer, with the status the person's policy gives its watched logins.
+    /// answer, with the status the person's policy gives its unpaused logins.
     public var selectedBadge: ProviderBadgeState {
         // No page, no badge — an empty cast, since `[]` fits both login shapes.
         guard let tab = selectedTab else { return ProviderBadgeState(of: [Account](), quotaStatus: nil) }

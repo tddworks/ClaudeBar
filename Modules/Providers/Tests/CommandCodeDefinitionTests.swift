@@ -265,7 +265,7 @@ struct CommandCodeDefinitionTests {
         let vault = MemoryVault(["commandcode.apiKey":"personal"])
         let provider = try make(vault:vault,environment:["COMMAND_CODE_API_KEY":"personal"])
         let work = try provider.accounts.add(filling:["apiKey":"work"])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refresh(work).accountEmail == "alice")
         vault.secrets["\(work.id).apiKey"] = nil
         await #expect(throws:UsageError.authenticationRequired) { try await provider.refresh(work) }
@@ -318,7 +318,7 @@ struct CommandCodeDefinitionTests {
         #expect(providerProduct.lineupName(of: provider) == "Command Code")
         #expect(provider.cliCommand == "cmd")
         #expect(providerProduct.dashboardURL(of: provider)?.absoluteString == "https://commandcode.ai/usage")
-        #expect(provider.isEnabled)
+        #expect(!provider.isPaused)
         #expect(provider.snapshot == nil)
         #expect(provider.lastError == nil)
         #expect(!provider.isSyncing)

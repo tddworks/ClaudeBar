@@ -184,7 +184,7 @@ struct KiroDefinitionTests {
         defer { try? FileManager.default.removeItem(at: home) }
         let provider = try make("Credits (10 of 50 covered in plan)", workHome: home.path)
         let work = try provider.accounts.add(filling: ["home":home.path])
-        #expect(work.isEnabled)
+        #expect(!work.isPaused)
         #expect(try await provider.refresh(work).quotas.first?.percentRemaining == 20)
         #expect(try await provider.refreshPlain().quotas.first?.percentRemaining == 80)
         try FileManager.default.removeItem(at: home)

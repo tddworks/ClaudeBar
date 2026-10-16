@@ -52,7 +52,7 @@ struct ZaiExecutionTests {
     @Test func `should show Z.ai, on, with its subscription page as the dashboard`() throws {
         let provider = try make()
         #expect(provider.name == "Z.ai")
-        #expect(provider.defaultAccount.isEnabled)
+        #expect(!provider.defaultAccount.isPaused)
         #expect(provider.plainDashboardURL?.absoluteString == "https://z.ai/subscribe")
     }
 

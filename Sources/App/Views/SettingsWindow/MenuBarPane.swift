@@ -138,8 +138,8 @@ private struct MenuBarProviderCard: View {
                     .accessibilityLabel("Remove \(name)")
                 }
             }
-            if !provider.isEnabled || quotas.isEmpty {
-                Text(provider.isEnabled ? "Waiting for quota data… Your choices are saved." : "Enable this provider in Providers to show its usage.")
+            if provider.isPaused || quotas.isEmpty {
+                Text(provider.isPaused ? "Enable this provider in Providers to show its usage." : "Waiting for quota data… Your choices are saved.")
                     .font(theme.font(size: 11))
                     .foregroundStyle(theme.textSecondary)
                     .padding(.top, 10)

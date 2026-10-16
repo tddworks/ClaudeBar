@@ -61,7 +61,7 @@ struct AccountNamesTests {
     func `should stop telling a login apart when the other is paused`() throws {
         let codex = try codex(InMemoryProviderSettings(), [login("a", email: "a@example.com")])
 
-        codex.accounts[1].isEnabled = false
+        codex.accounts[1].isPaused = true
 
         #expect(codex.accounts.hasSeveral == false)
         #expect(codex.lineupName(of: codex.defaultAccount) == "Codex")

@@ -67,7 +67,7 @@ struct GeminiDefinitionTests {
     @Test func `should be Gemini, on by default, with AI Studio as its dashboard`() throws {
         let (provider, _) = try make()
         #expect(provider.name == "Gemini")
-        #expect(provider.defaultAccount.isEnabled)
+        #expect(!provider.defaultAccount.isPaused)
         #expect(provider.plainDashboardURL?.absoluteString == "https://aistudio.google.com")
     }
 

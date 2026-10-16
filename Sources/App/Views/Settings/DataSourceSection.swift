@@ -325,7 +325,7 @@ struct DataSourceSection: View {
         }
         guard provider.definition.dataSource(newKind)?.verifyBeforeBackground != true else { return }
         Task {
-            for account in provider.accounts where account.isEnabled {
+            for account in provider.accounts where !account.isPaused {
                 await monitor.refresh(providerId: account.id)
             }
         }
