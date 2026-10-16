@@ -14,6 +14,8 @@ import Quotas
 public struct UsageLog: Sendable {
     let definition: Definition
     let reader: LogReader
+    /// The log's second place of writing, when the definition names one.
+    let also: LogReader?
     let prices: PriceList?
     let localEndpoint: LocalEndpoint?
     /// The local calendar its days are counted in.
@@ -41,7 +43,13 @@ public struct UsageLog: Sendable {
     /// The reader is told from when to read and answers every record it has;
     /// `range` is cut here, never by the log.
     public func days(in range: DateRange) async -> [DailyUsageStat] {
-        let raw = await reader.records(since: range.first)
+        var raw = await reader.records(since: range.first)
+        // The second place of writing reads in full whatever the first read:
+        // an upgraded install's history spans both, and a place the database
+        // doesn't have contributes nothing.
+        if let also {
+            raw += await also.records(since: range.first)
+        }
         if let scan = await reader.scan {
             AppLog.probes.info("Usage history: scanned the log's recent files (\(scan.reused) unchanged, \(scan.extended) appended, \(scan.reparsed) read in full)")
         }
@@ -109,13 +117,18 @@ extension UsageLog {
     }
 
     /// The log: where its records are — files on this Mac, or the answer of
-    /// one fixed command — and the shape a usage record is written in, or its
-    /// `shapes`, when the log writes one more than one way. Paths are in the
-    /// mapping's path language.
+    /// one fixed command or query — and the shape a usage record is written
+    /// in, or its `shapes`, when the log writes one more than one way. Paths
+    /// are in the mapping's path language.
     public struct Records: Sendable, Equatable, Codable {
-        /// Where the records are. The two cases are the whole of it, so a log
-        /// that holds both, or neither, cannot be written at all.
+        /// Where the records are. The three cases are the whole of it, so a
+        /// log that holds none of them cannot be written at all.
         public let source: Source
+        /// A second place the same log writes its records — a tool that
+        /// changed where it keeps them, so an upgrade's history spans both.
+        /// Read in full, its records added to the first source's; a place
+        /// this database doesn't have contributes nothing.
+        public let also: Source?
         /// The ways the log writes a record, in order: a line is read by the
         /// first whose `where` holds, and by it alone. One, unless the
         /// definition lists `shapes`.
@@ -130,6 +143,10 @@ extension UsageLog {
             /// One fixed, read-only command whose JSON answer holds the records —
             /// a tool whose logs are a database it can query itself.
             case command(CommandCall)
+            /// One fixed, read-only query of an app's own database, each row
+            /// of the answer a record — the app's records without its CLI in
+            /// between, so a subcommand's coming and going changes nothing.
+            case sqlite(SQLiteCall)
         }
 
         /// A log that writes a record one way, its fields given inline.
@@ -150,14 +167,22 @@ extension UsageLog {
             self.init(source: .command(command), shapes: shapes)
         }
 
-        init(source: Source, shapes: [Shape]) {
+        /// A log a fixed read-only query of an app's own database answers:
+        /// each row of the answer one record. Its `at` is a field of the row.
+        public init(sqlite: SQLiteCall, also: Source? = nil, shapes: [Shape]) {
+            self.init(source: .sqlite(sqlite), also: also, shapes: shapes)
+        }
+
+        init(source: Source, also: Source? = nil, shapes: [Shape]) {
             self.source = source
+            self.also = also
             self.shapes = shapes
         }
 
         /// A record's fields sit inline or in `shapes`, never both; in a list
         /// every shape has a `where`, so none silently takes another's lines;
-        /// the log itself is files or a command, never both and never neither.
+        /// the log itself is files, a command or a query, never both and never
+        /// neither.
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let source = try Source(from: container)
@@ -174,20 +199,20 @@ extension UsageLog {
                 throw DecodingError.dataCorruptedError(forKey: .shapes, in: container,
                     debugDescription: "`shapes` lists at least one shape, and every shape has a `where`.")
             }
-            self.init(source: source, shapes: shapes)
+            var also: Source?
+            if container.contains(.also) {
+                also = try Source(from: container.nestedContainer(keyedBy: CodingKeys.self, forKey: .also))
+            }
+            self.init(source: source, also: also, shapes: shapes)
         }
 
         /// A log read from files is written as before, so its fingerprint —
         /// and the days kept under it — stay put; a command's answer is named
-        /// by its command.
+        /// by its command, a query by itself.
         public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-            switch source {
-            case .command(let call): try container.encode(call, forKey: .command)
-            case .files(let glob, let format):
-                try container.encode(glob, forKey: .files)
-                try container.encode(format, forKey: .format)
-            }
+            try source.encode(into: &container)
+            if let also { try also.encode(into: &container, key: .also) }
             if shapes.count == 1 {
                 try shapes[0].encode(to: encoder)
             } else {
@@ -195,7 +220,7 @@ extension UsageLog {
             }
         }
 
-        enum CodingKeys: String, CodingKey { case files, command, format, shapes, `where`, at, id, model, tokens, cost }
+        enum CodingKeys: String, CodingKey { case files, command, sqlite, also, format, shapes, `where`, at, id, model, tokens, cost }
     }
 
     /// One way a log writes a usage record, read whole: its own filter and
@@ -397,20 +422,45 @@ extension UsageLog {
 }
 
 extension UsageLog.Records.Source {
-    /// The JSON stays flat — `files` with `format`, or `command` — so a
-    /// definition written before the sum was one keeps its fingerprint and
-    /// its kept days.
+    /// The JSON key the source is written under — `files` with `format`,
+    /// `command`, or `sqlite` — so a definition written before the sum was
+    /// one keeps its fingerprint and its kept days.
+    var key: UsageLog.Records.CodingKeys {
+        switch self {
+        case .command: .command
+        case .files: .files
+        case .sqlite: .sqlite
+        }
+    }
+
+    /// Written flat, under the source's own key.
+    func encode(into container: inout KeyedEncodingContainer<UsageLog.Records.CodingKeys>, key: UsageLog.Records.CodingKeys? = nil) throws {
+        switch self {
+        case .command(let call): try container.encode(call, forKey: key ?? .command)
+        case .sqlite(let call): try container.encode(call, forKey: key ?? .sqlite)
+        case .files(let glob, let format):
+            try container.encode(glob, forKey: key ?? .files)
+            if key == nil { try container.encode(format, forKey: .format) }
+        }
+    }
+
+    /// The JSON stays flat — `files` with `format`, `command`, or `sqlite` —
+    /// so a definition written before the sum was one keeps its fingerprint
+    /// and its kept days.
     init(from container: KeyedDecodingContainer<UsageLog.Records.CodingKeys>) throws {
         let command = try container.decodeIfPresent(CommandCall.self, forKey: .command)
+        let sqlite = try container.decodeIfPresent(SQLiteCall.self, forKey: .sqlite)
         let files = try container.decodeIfPresent(String.self, forKey: .files)
-        switch (command, files) {
-        case (.some(let call), .none):
+        switch (command, sqlite, files) {
+        case (.some(let call), .none, .none):
             self = .command(call)
-        case (.none, .some(let glob)):
+        case (.none, .some(let call), .none):
+            self = .sqlite(call)
+        case (.none, .none, .some(let glob)):
             self = .files(glob: glob, format: try container.decodeIfPresent(UsageLog.Format.self, forKey: .format) ?? .jsonLines)
-        case (.some, .some), (.none, .none):
+        default:
             throw DecodingError.dataCorruptedError(forKey: .files, in: container,
-                debugDescription: "A log is read from files or from a command's answer, never both and never neither.")
+                debugDescription: "A log is read from files, from a command's answer, or from a database query — one of them, never more and never none.")
         }
     }
 }
@@ -444,7 +494,7 @@ extension DataSources {
         encoder.outputFormatting = .sortedKeys
         var hash = SHA256()
         // Other apps are read on their own, so they never change how these days were summed.
-        // A command's answer is named by its command; a log's records by their path.
+        // A command's answer is named by its command; a log's records by their path or query.
         let source: UsageLog.Records.Source
         switch definition.records.source {
         case .command(let call):
@@ -452,8 +502,11 @@ extension DataSources {
         case .files(let glob, let format):
             source = .files(glob: Paths.fingerprintPath(glob, homeDirectory: homeDirectory, environment: pathsEnvironment),
                             format: format)
+        case .sqlite(let call):
+            source = .sqlite(SQLiteCall(path: PathPattern(Paths.fingerprintPath(call.path.description, homeDirectory: homeDirectory, environment: pathsEnvironment)),
+                                        query: call.query))
         }
-        let records = UsageLog.Records(source: source, shapes: definition.records.shapes)
+        let records = UsageLog.Records(source: source, also: definition.records.also, shapes: definition.records.shapes)
         let own = UsageLog.Definition(records: records, prices: definition.prices,
                                       freeWhen: definition.freeWhen, sessionGap: definition.sessionGap)
         hash.update(data: (try? encoder.encode(own)) ?? Data())
@@ -463,10 +516,15 @@ extension DataSources {
         hash.update(data: Data((definition.prices.flatMap { scripts($0.file) } ?? "").utf8))
         hash.update(data: Data("\(DayAggregator.summingVersion)\n".utf8))
         let fingerprint = hash.finalize().map { String(format: "%02x", $0) }.joined()
+        let also = definition.records.also.map {
+            LogReader(UsageLog.Records(source: $0, shapes: definition.records.shapes), expand: expand,
+                      platform: platform, homeDirectory: homeDirectory, environment: pathsEnvironment)
+        }
         return UsageLog(
             definition: definition,
             reader: LogReader(definition.records, expand: expand, platform: platform,
                               homeDirectory: homeDirectory, environment: pathsEnvironment),
+            also: also,
             prices: definition.prices.flatMap { PriceList.load($0.file, from: scripts) },
             localEndpoint: definition.freeWhen?.localEndpoint.map { LocalEndpoint(file: expand($0.file), url: $0.url) },
             calendar: platform.calendar,

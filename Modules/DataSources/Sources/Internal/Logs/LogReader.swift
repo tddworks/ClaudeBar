@@ -2,12 +2,14 @@ import Foundation
 
 /// The reader for a log's source — one per case of the closed list. Each one
 /// is told what to read and never asked what it holds: a file reader finds
-/// its own files, the command reader runs its command, and nothing above
-/// branches on which kind of log it has.
+/// its own files, the command reader runs its command, the database reader
+/// asks the platform's SQLite, and nothing above branches on which kind of
+/// log it has.
 enum LogReader: Sendable {
     case jsonLines(JSONLinesReader)
     case json(JSONLogReader)
     case command(CommandLogReader)
+    case sqlite(SQLiteLogReader)
 
     /// - Parameter expand: the caller's path language — `~` and
     ///   `${VAR:-default}` — resolved the way the platform's paths are.
@@ -28,6 +30,9 @@ enum LogReader: Sendable {
                                                                   environment: environment)
                                } })
             }, shapes: shapes))
+        case .sqlite(let call):
+            self = .sqlite(SQLiteLogReader(call: call, rows: platform.sqlite, shapes: shapes,
+                                           homeDirectory: homeDirectory, environment: environment))
         }
     }
 
@@ -37,6 +42,7 @@ enum LogReader: Sendable {
         case .jsonLines(let reader): await reader.records(since: since)
         case .json(let reader): reader.records(since: since)
         case .command(let reader): await reader.records(since: since)
+        case .sqlite(let reader): reader.records(since: since)
         }
     }
 
@@ -46,7 +52,7 @@ enum LogReader: Sendable {
         get async {
             switch self {
             case .jsonLines(let reader): await reader.lastScan
-            case .json, .command: nil
+            case .json, .command, .sqlite: nil
             }
         }
     }
