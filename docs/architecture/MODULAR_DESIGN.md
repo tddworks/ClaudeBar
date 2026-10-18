@@ -351,11 +351,59 @@ passing 6 contract suites, with no edit above the line.
 | Port | Takes over today's | Mac adapter | Windows adapter |
 |---|---|---|---|
 | `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
-| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `proc_listallpids`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, `EnumProcesses`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The pipe runner and the conversation are one neutral copy |
+| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `proc_listallpids`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, `EnumProcesses`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers five facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) |
 | `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | the trusted-localhost client, `lsof` / `pgrep` | the same client; the listener table |
 | `Terminal` | `runCLI` · `screenRenderer` | SwiftTerm on a pty | the console's pseudo-terminal (ConPTY) |
 | `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 |
 | `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) |
+
+#### Processes: a program the person has
+
+A data source asks for a program in the person's words: *run the CLI they
+installed*, *talk to it*, *run their own script*, *what does their login
+set*, *is that app running*. Pipes, argv, `PATH` and signals are how, and
+stay below. So the port is split by what each fact answers, and the
+business is one neutral copy above it:
+
+```text
+DOMAIN, neutral, one copy
+  Processes        the programs on this machine, from the five facts below
+    .program(named:)  → Program?      an installed CLI, found
+    .script(at:)      → Program?      the person's script file, when it is there
+    .loginEnvironment → LoginShellEnvironment
+  Program          a program found, started the way this OS starts it
+    .run(args, input, environment, timeout, in:) → what it printed
+        throws the facts: missing · couldn't start · exited n   ◀ the one owner
+    .talk(args, environment, in:)                → a conversation
+TECHNICAL, neutral, one copy
+  PipeCLIExecutor (the timeout race, stdout and stderr as one text)
+  PipeConversation (a line at a time, read on its own thread)
+PORTS, Ports/Processes.swift: what each OS answers, one question each
+  InstalledPrograms   find(name) → path?          login PATH + tool folders │ PATH + PATHEXT
+  ScriptStart         command(path) → argv        sh 'exec "$1"'            │ the file itself
+  LoginShell          command(printing:between:)  $SHELL -l -i              │ PowerShell profile
+  ChildLaunch         environment(for:) · end()   PATH + tool folders,      │ names ignoring case,
+                                                  SIGTERM then SIGKILL      │ TerminateProcess
+  RunningPrograms     paths()                     proc_listallpids          │ EnumProcesses
+```
+
+- **Each piece changes for one reason.** How a CLI is found changes
+  `InstalledPrograms`; a new kind of script changes `ScriptStart`; a login
+  shell changes `LoginShell`; a timeout changes `PipeCLIExecutor`; how a
+  failed run is worded changes `Program`.
+- **A new platform answers the five facts**, in one adapter that conforms to
+  them (`MacProcesses`, `WindowsProcesses`), and passes `ProcessesContract`.
+  Nothing above the ports is edited. A fetch kind that runs a program uses
+  `Program` and edits no adapter.
+- **A worker never sees argv, `PATH` or a pipe.** `CommandFetcher`,
+  `ScriptFetcher` and `JSONRPCFetcher` find a `Program` and tell it to run
+  or talk; `LoginShellEnvironment` owns its markers and hands `LoginShell`
+  them to print between.
+- **A test hands in the running, not the facts.** `Processes.with(pipes:…)`
+  keeps this OS's facts and runs programs on what the test gives, so the
+  factory's stubbed `make` and a provider's test say the same thing.
+- `RunningPrograms` answers a local server's question; it moves to
+  `LocalNetwork` with slice 3.
 
 ### The shape
 
@@ -433,7 +481,9 @@ Modules/DataSources/Sources/
 ├── Ports/                     the porting surface, @Mockable, one file each
 │   ├── TimeZoneSource.swift   the person's zone, and DataSources.timeZone() ·
 │   │                          .calendar(), the one public way to it (#567)
-│   ├── Processes.swift        finding and starting programs (#579)
+│   ├── Processes.swift        InstalledPrograms · ScriptStart · LoginShell ·
+│   │                          ChildLaunch · RunningPrograms: what an OS
+│   │                          answers about programs (#579)
 │   └── Terminal · Secrets · LocalNetwork   (slices 3–5)
 └── Internal/
     ├── Platform.swift         ◇ struct Platform — holds the ports, nothing
@@ -449,23 +499,26 @@ Modules/DataSources/Sources/
     ├── Time/WindowsZones.swift   a Windows zone key to its zone: CLDR's table
     │                             (+Table, generated from Vendor/CLDR) or the OS's
     │                             offset — neutral, so its tests run everywhere
-    ├── Process/               PipeCLIExecutor · PipeConversation · SubprocessSupport:
-    │                            one pipe runner and conversation for every
-    │                            platform; an adapter hands them its facts (#579)
+    ├── Process/               Processes · Program: a program the person has,
+    │                            found, run and talked to, its failures reported;
+    │                            PipeCLIExecutor · PipeConversation ·
+    │                            SubprocessSupport underneath, one copy for every
+    │                            platform (#579)
     ├── Fetch/ Lookup/ Mapping/ Logs/ Network/   neutral workers
     ├── macOS/                 #if os(macOS), whole file: one adapter per port
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
-    │   ├── Process/MacProcesses.swift   Processes: BinaryLocator, ChildTeardown,
-    │   │                               RunningProcesses, the login shell (#579)
+    │   ├── Process/MacProcesses.swift   the five facts: BinaryLocator, sh,
+    │   │                               $SHELL -l -i, ChildTeardown,
+    │   │                               RunningProcesses (#579)
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
     │                                 under their ports in slices 3–5
     └── Windows/               #if os(Windows), whole file: the same ports
         ├── Platform+Windows.swift    static let current = Platform(name: "Windows", …)
         ├── Time/WindowsTimeZone.swift   the zone's registry key and offset (#567)
-        ├── Process/WindowsProcesses.swift   Processes: PathBinaryLocator (PATH +
-        │                                   PATHEXT), TerminateProcess, EnumProcesses,
-        │                                   PowerShell (#579)
+        ├── Process/WindowsProcesses.swift   the five facts: PathBinaryLocator (PATH +
+        │                                   PATHEXT), the file itself, PowerShell,
+        │                                   TerminateProcess, EnumProcesses (#579)
         └── Logs/                     FileStamp+Windows · ByteSearch+Windows
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's

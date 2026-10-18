@@ -188,7 +188,7 @@ fields would mean nothing in each mode.
 
 | Tag | Meaning | Worker |
 |---|---|---|
-| `command` | run a command over pipes; read its output; its exit code is a fact | `CommandFetcher` (`PipeCLIExecutor`) |
+| `command` | run a command over pipes; read its output; its exit code is a fact | `CommandFetcher` (a `Program`, over `PipeCLIExecutor`) |
 | `cli` | drive a TUI that only draws in a terminal — Claude's `/usage`, Codex's `/status` — and capture its screen | `CLIFetcher` (the PTY executor), unchanged |
 
 - **Nothing that exists moves.** `cli` keeps its meaning, so `claude.json`,
@@ -439,9 +439,11 @@ shell, `/bin/sh` script execution, `pgrep`/`lsof` local-server discovery and
 the trusted `Application Support/ClaudeBar/Probe` folder. Windows derives
 the folder from its app-data root; missing connections still fail as named
 `Unavailable`. Since phase 5's slice 2 (#579) both reach programs through
-the `Processes` port: one pipe runner and one conversation for every
-platform, with Windows running a script as the file itself and reading a
-login variable through the PowerShell profile. Windows still has no
+`Processes`: a worker finds a `Program` and tells it to run or talk, one
+copy for every platform, while each OS answers only how a CLI is found, how
+a script starts, how its login is read, how a child is launched and ended,
+and what is running (MODULAR_DESIGN §10). Windows runs a script as the file
+itself and reads a login variable through the PowerShell profile. Windows still has no
 pseudo-terminal or local-server discovery (slices 3 and 4).
 
 ```text
