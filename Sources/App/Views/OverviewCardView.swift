@@ -139,10 +139,14 @@ private struct OverviewQuotaLineView: View {
     let delay: Double
 
     @Environment(\.appTheme) private var theme
+    @Environment(\.popoverTextSize) private var popoverTextSize
     @State private var settings = AppSettings.shared
 
-    private let labelWidth: CGFloat = 82
-    private let valueWidth: CGFloat = 46
+    /// Held columns so every bar on the page starts and ends in the same
+    /// place. They scale with the popover's text size, which widens the
+    /// popover by the same factor — the bar keeps its share of the row.
+    private var labelWidth: CGFloat { popoverTextSize.scaled(82) }
+    private var valueWidth: CGFloat { popoverTextSize.scaled(46) }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -153,7 +157,9 @@ private struct OverviewQuotaLineView: View {
             value
                 .frame(width: valueWidth, alignment: .trailing)
         }
-        .frame(height: 20)
+        // A minimum, not a height: the label is two lines when a quota has a
+        // reset, and at a larger text size a fixed height would compress them.
+        .frame(minHeight: 20)
     }
 
     private var label: some View {
@@ -169,6 +175,9 @@ private struct OverviewQuotaLineView: View {
                     .lineLimit(1)
             }
         }
+        // The name is what tells two quotas apart, so it stays readable when
+        // the column has to cut it.
+        .help(title)
     }
 
     /// The page's own bar, on the mode the person chose. A balance with no
