@@ -21,11 +21,11 @@ ClaudeBar chooses the mode itself; there is no switch.
 | Mode | Needs | Used when |
 |---|---|---|
 | API (preferred) | An OpenCode Zen API key: `OPENCODE_API_KEY`, or the `opencode-go` / `opencode` entry in `~/.local/share/opencode/auth.json` (or `$XDG_DATA_HOME/opencode/auth.json`) | A key is found. Numbers match the opencode.ai dashboard |
-| Local database (fallback) | This Mac's opencode database (`~/.local/share/opencode/opencode.db`) | No key is found. Estimates usage from this Mac's opencode history. Works with OpenCode v1 and v2 |
+| Local database (fallback) | This Mac's opencode database (`~/.local/share/opencode/opencode.db`) | No key is found. Estimates usage from this Mac's opencode history. Works with OpenCode 1 and 2, and counts spend from before an upgrade |
 
 ## Daily usage
 
-With Daily Usage Cards on (Settings → General), OpenCode Go shows today's tokens and cost from opencode's own database (one read-only query): every assistant message the database holds, whatever provider opencode drove — Zen, OpenCode Go, a custom endpoint — added up as one total. The cost is what opencode itself recorded, so it reads $0 for a provider that logs no cost. The query runs when you open the popover; it reads the database directly, so OpenCode v1 and v2 both work, and history from before a v1 → v2 upgrade is counted too.
+With Daily Usage Cards on (Settings → General), OpenCode Go shows today's tokens and cost from opencode's own database, read directly: every assistant message the database holds, whatever provider opencode drove — Zen, OpenCode Go, a custom endpoint — added up as one total. The cost is what opencode itself recorded, so it reads $0 for a provider that logs no cost. It's read when you open the popover. OpenCode 1 and 2 both work, and history from before an upgrade to 2 is counted too.
 
 The same totals are what the [Leaderboard](../../features/leaderboard/README.md) shares when you tick OpenCode there.
 

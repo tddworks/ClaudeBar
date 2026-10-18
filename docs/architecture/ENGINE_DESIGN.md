@@ -37,6 +37,7 @@ needs; each became a generic piece, never a vendor type:
 | a date in a request: "the last 30 days" (OpenAI) | `{{system.day±N.<format>}}` from `SystemValues`, made with the fetch's `now` |
 | a file in a folder named by version, across several apps (JetBrains IDEs) | a `*` in any path, a path as a list, the most recently changed match — `Paths` |
 | a row of an app's own database as the answer (Windsurf) | `fetch.sqlite` over `ReadOnlyQuery`, shared with the `sqlite` key lookup |
+| an app that moved its records to other tables between versions, an upgraded store holding both (OpenCode 1 → 2, #566) | `queries` on a `sqlite` call: each names the tables it `requires`, and the first one the store has runs — one data source, whatever the layout |
 | a sign-in a browser keeps in local storage (Devin) | `browserStorage`, every value from one profile, behind `BrowserStorageReading` |
 | a GraphQL read scoped to the account the token sees, from this month's start; a refused billing step that must not stop the usage (Cloudflare AI) | `{{system.month.<format>}}`; `http.steps` with `keep` and a POST body; `acceptedStatuses` on an optional step, so the script reads the refusal |
 | a key exported only in the login shell (Z.ai, #170) | `"loginShell": true` on an `environment` lookup — the engine's login-shell port, asked only by a lookup that says so |
@@ -461,17 +462,42 @@ A row of an app's own database as the answer: one case, one worker,
 `SQLiteFetcher`. `ReadOnlyQuery`, taken out of `SQLiteReader`, opens
 read-only, refuses a statement that would write, and reads text and UTF-8
 or UTF-16LE BLOBs; the key lookup and the fetch both use it. The answer is
-the rows, `[{column: text}]`. *Configured* while the file exists; its
-`Connection` names no URL and runs nothing. It runs on the one SQLite
+the rows, `[{column: text}]`, at most 1 000 of them: the cap guards a
+mapping's answer, so an unexpected table can't flood a script. A usage log
+read through the same worker gets every row (its records go to the
+aggregator, never to a script), so the caller sets the cap. *Configured*
+while the file exists and one of its queries fits the store; its
+`Connection` names no URL and runs nothing.
+
+**One call, the store's layout chosen inside it.** SQLite prepares a
+statement against the tables that exist, so a query naming a missing table
+cannot run at all. An app that moves its records between versions keeps
+one query per set of tables, in order, each naming the tables it
+`requires`; the call runs the first one whose tables the store has. Which
+tables a store has is where to read, not another way to get usage, so it
+stays inside the fetch: the data source, its kind, the chain and an added
+login's patch don't change when the app moves its tables again. It is
+never a version flag: the question is which tables this store has, not
+which release wrote it. A plain `query` is one query that requires
+nothing. It runs on the one SQLite
 vendored in `Vendor/CSQLite` ([#570](https://github.com/tddworks/ClaudeBar/issues/570)),
 built so a query reads as it did on the Mac's own SQLite: a double-quoted
 string is text (`SQLITE_DQS=3`) and the math functions are there.
 
 ```text
 "sqlite": { "path": "…/state.vscdb", "query": "SELECT value FROM ItemTable WHERE key = '…'" }
+
+"sqlite": { "path": "…/opencode.db", "queries": [            // a store whose tables moved
+  { "requires": ["message", "session_message"], "query": "…" },   // upgraded: both places
+  { "requires": ["session_message"],            "query": "…" },
+  { "requires": ["message"],                    "query": "…" } ] }
         │
         ▼
 SQLiteFetcher ── is the file there? ──► no → not Configured
+        │
+        ▼
+SQLiteCall      the first of `queries` whose `requires` tables the store has
+                ── none ──► not Configured
         │
         ▼
 ReadOnlyQuery   (shared with the sqlite key lookup)
@@ -514,7 +540,9 @@ Credential { token, organization } ──► {{token}} {{organization}}
 | a computed value comes from the fetch's `now`, never the wall clock; days are UTC midnights | `SystemValues` |
 | `*` matches within one folder name; of every match, the most recently changed file; none is a missing file | `Paths` |
 | no database is written: a statement that would change it is refused, for a lookup and a fetch alike | `ReadOnlyQuery` |
-| a database fetch is *Configured* only while its file exists | `SQLiteFetcher` |
+| a database fetch is *Configured* only while its file exists and one of its queries fits the store | `SQLiteFetcher` |
+| a `sqlite` call runs the first of its queries whose required tables the store has; a store's layout is chosen inside the call, never by another data source | `SQLiteCall` (tables read through `ReadOnlyQuery`) |
+| a fetch's answer is at most 1 000 rows; a log's records are read in full — the caller sets the cap | `ReadOnlyQuery` (cap from `SQLiteFetcher` / `SQLiteLogReader`) |
 | a credential's values all come from one browser profile, never mixed; the first profile with a `token` wins | `BrowserStorageReader` |
 | a value read from a browser is a credential like a cookie: never logged, sent only to the hosts the definition names | `BrowserStorageReader`, `Connection` |
 

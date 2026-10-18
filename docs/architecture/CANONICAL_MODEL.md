@@ -172,8 +172,9 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │                   provider. Built by DataSources from the definition's
 │       │       │   │   │                   `usageHistory` (a UsageLog.Definition) filled with this
 │       │       │   │   │                   login's values (its folder); days(from:to:) reads them:
-│       │       │   │   ├── records         WHERE AND HOW — files (a glob) or one fixed read-only
-│       │       │   │   │   │               command whose JSON answer holds the rows · format (a
+│       │       │   │   ├── records         WHERE AND HOW — files (a glob), one fixed read-only
+│       │       │   │   │   │               command whose JSON answer holds the rows, or one
+│       │       │   │   │   │               read-only query of the app's own database · format (a
 │       │       │   │   │   │               JSON object per line, or per file) · the record's shape
 │       │       │   │   │   │               in the mapping's path language (when, which model,
 │       │       │   │   │   │               tokens by kind, its own cost, its identity), or its

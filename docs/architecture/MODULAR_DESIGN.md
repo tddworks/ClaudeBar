@@ -161,7 +161,7 @@ Modules/DataSources/
 │       ├── Mapping/   JSONMapper (+ the path dialect) · TextMapper · ScriptMapper ·
 │       │              DecimalScript · HumanDate
 │       ├── Logs/      LogRecord · LogReader (one closed list, one `records(since:)`) ·
-│       │              JSONLinesReader · JSONLogReader · CommandLogReader (a reader per
+│       │              JSONLinesReader · JSONLogReader · CommandLogReader · SQLiteLogReader (a reader per
 │       │              log source, each knowing its own) · LogFileFinder (behind the file
 │       │              readers) · DayAggregator · PriceList · LocalEndpoint
 │       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·

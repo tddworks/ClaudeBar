@@ -222,8 +222,9 @@ data. The reading rules every format shares:
   without `stats`). Otherwise a missing token field counts 0.
 - **`id`**'s paths together are a record's identity; a record missing any of
   them is never merged with another.
-- **`records` is the log**: its **source** — files (`files` glob and `format`)
-  or one `command`, never both and never neither — then the record's shape —
+- **`records` is the log**: its **source** — files (`files` glob and `format`),
+  one `command`, or one `sqlite` call on an app's own database; exactly one of
+  them — then the record's shape —
   `where`, `at`, `id`, `model`, `tokens`, `cost` — or, when the log writes a
   record more than one way, a list of **`shapes`**; never both. Each file is
   read once, and a line is read whole by the first shape whose `where`
@@ -239,7 +240,14 @@ each reader serves its own source — a file reader finds its own files (the
 glob is behind the reader, not beside it), the command reader runs its
 command through the same `CommandFetcher` every other command fetch uses, so
 "locate it, run it, check the exit, notice it could not start" is written
-once. Nothing above the reader branches on which kind of log it has, and no
+once, and the database reader runs the same `SQLiteCall` every `sqlite`
+fetch does — the first of its queries whose tables the store has — through
+the same `ReadOnlyQuery`, for every row: a log's records go to the
+aggregator, never to a script, so a fetch's 1 000-row cap is not theirs. A
+store none of its queries fits reads empty, as a missing file does; a query
+that fails on a store it fits is logged as a failed query, never as a
+missing database. A column that is a number reads as one, so a shape reads
+a row exactly as it reads a command's JSON. Nothing above the reader branches on which kind of log it has, and no
 reader answers `[]` for a kind it isn't. The scan summary belongs to the
 reader that keeps files between scans, and says nothing for the others.
 
@@ -251,6 +259,14 @@ would be read as empty and kept that way for good, which is exactly the
 failure the `DayLedger` makes permanent. A query may narrow (it is the log's
 own SQL), but never below the widest range the app asks for; the honest
 default is to answer everything and let `days(in:)` cut.
+
+**One log, kept in more than one place.** An app can move where it keeps its
+records: OpenCode 2 writes messages to `session_message`, and an install
+upgraded from 1 keeps 1's in `message` (#566). To the person it is one
+history. The `sqlite` call's first query, for a store with both tables,
+reads both; `id` dedupe counts a message both places hold once. The log
+stays one source: which tables a store has is chosen inside the call (see
+ENGINE_DESIGN, `fetch.sqlite`), not by a second source beside it.
 
 **One record, written two ways.** Oh My Pi writes a turn's usage under the
 message, and a model call it makes outside the conversation (memory,
@@ -354,6 +370,7 @@ own cadence (popover open, never the background poll).
 | `LocalEndpoint` (`DataSources/Internal`) | `freeWhen.localEndpoint`: is the route in that file on this Mac? | `ClaudeLocalInferenceDetector` |
 | `JSONLogReader` (`DataSources/Internal`) | one record per file, by the same first-matching-shape rule; `at.fromPath` reads the time from the path; finds its own files | `VibeSessionLogAnalyzer.loadSessions` |
 | `CommandLogReader` (`DataSources/Internal`) | one command's JSON array, by the same first-matching-shape rule; the answer arrives through `CommandFetcher` | — (new) |
+| `SQLiteLogReader` (`DataSources/Internal`) | one `sqlite` call's rows, every row, through `ReadOnlyQuery`, by the same first-matching-shape rule; a store none of its queries fits reads empty | — (new, #566) |
 | `LogFileFinder` (`DataSources/Internal`) | `files`' glob, changed since a date — behind the file readers | `findRecentJSONLFiles` |
 | `DayAggregator` (`DataSources/Internal`) | dedupe by `id` (last wins), split by local day, sessions by `sessionGap` (a record is a session without one), working time, cache savings, a cost line per model | both analyzers' `aggregate` |
 | `DayLedger` (`Providers/Internal`) | closed days kept per login; open days asked of the `UsageLog` | — (new) |
