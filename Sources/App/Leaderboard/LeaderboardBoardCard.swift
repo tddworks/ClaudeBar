@@ -93,15 +93,19 @@ struct LeaderboardBoardCard: View {
 
     /// Small text chips inside the card, so they read as a filter on it
     /// rather than as more tabs; shown when more than one provider is shared.
+    /// The row scrolls when the names don't fit — a chip never shrinks or
+    /// wraps, so every filter stays reachable.
     @ViewBuilder
     private var providerFilter: some View {
         if sharedProviders.count > 1 {
-            HStack(spacing: 4) {
-                FilterChip(title: "All", isOn: provider == nil) { provider = nil }
-                ForEach(sharedProviders, id: \.id) { shared in
-                    FilterChip(title: shared.name, isOn: provider == shared.id) { provider = shared.id }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    FilterChip(title: "All", isOn: provider == nil) { provider = nil }
+                    ForEach(sharedProviders, id: \.id) { shared in
+                        FilterChip(title: shared.name, isOn: provider == shared.id) { provider = shared.id }
+                    }
                 }
-                Spacer(minLength: 0)
+                .padding(1)
             }
         }
     }
