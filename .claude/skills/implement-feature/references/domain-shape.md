@@ -72,7 +72,7 @@ lastThirtyDays = month.isEmpty ? .nothingUsed : .used(month)   // Days decides
 if case .used(let days) = history.lastThirtyDays { UsageHistoryChartView(days: days) }
 ```
 
-The proposed shape is small: one enum, one new property on `Days`, and the view draws each state instead of guessing. Since it changes what `UsageHistory` says, it goes into the [daily-usage design](../../../../docs/features/daily-usage/design.md) first.
+The proposed shape is small: one enum, one new property on `Days`, and the view draws each state instead of guessing. Since it changes what `UsageHistory` says, it goes into the [daily-usage design](../../../../docs/features/usage-history/daily-usage/design.md) first.
 
 ## Keep it in scope
 

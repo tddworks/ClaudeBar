@@ -120,7 +120,7 @@ never written per data source: it is `accounts.folder.signedInAs`, said once.
 
 ### Added accounts: what an account's sign-in reaches
 
-**An account shows only what its own sign-in reaches** ([multi-account design](../../../docs/features/multi-account/design.md#what-an-accounts-sign-in-reaches)).
+**An account shows only what its own sign-in reaches** ([multi-account design](../../../docs/features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)).
 The default account is signed in on this Mac. An added account is signed in
 through what the person gave it: a key, a folder, or both. Write every read
 **once, for any account**:

@@ -796,7 +796,7 @@ struct MenuContentView: View {
     }
 
     /// A login the person stopped watching: still on the page, with what it
-    /// last showed and a way back (docs/features/multi-account/design.md §3.5).
+    /// last showed and a way back (docs/features/providers/multi-account/design.md §3.5).
     private func pausedGroup(_ tab: ProductTab) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("PAUSED")

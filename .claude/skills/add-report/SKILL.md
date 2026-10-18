@@ -24,7 +24,7 @@ This skill covers **report-style features** — cards that:
 
 ## First, which kind of report is it?
 
-Usage history is data now ([daily-usage design](../../../docs/features/daily-usage/design.md)).
+Usage history is data now ([daily-usage design](../../../docs/features/usage-history/daily-usage/design.md)).
 A report is almost always a new **view over days the login already reads**, not new
 reading code. Place it before anything else:
 
@@ -166,7 +166,7 @@ Write the tests first (state and return values, Chicago school), then the value.
 ### 2a. Another tool's history → its definition
 
 Add a `usageHistory` block to `<id>.json` — `files`, `format`, `where`, fields,
-`prices`, `sessionGap` — the shape is in the [daily-usage design §2](../../../docs/features/daily-usage/design.md#2--the-definition-usagehistory-beside-datasources).
+`prices`, `sessionGap` — the shape is in the [daily-usage design §2](../../../docs/features/usage-history/daily-usage/design.md#2--the-definition-usagehistory-beside-datasources).
 Golden tests in `Modules/Providers/Tests/` over fixture logs (see `ClaudeUsageHistoryTests`).
 No Swift.
 
@@ -193,7 +193,7 @@ the `Engine` the App builds once. The App never passes anything per provider.
 
 ### 3a. The card view
 
-**Location:** `Sources/App/Views/{Name}CardView.swift`. Match the existing
+**Location:** `Sources/App/UsageHistory/{Name}CardView.swift`. Match the existing
 cards; `DailyUsageCardView` is the reference:
 
 ```swift

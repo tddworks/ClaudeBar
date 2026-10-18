@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Each added account shows only its own sign-in**: a second account never reads this Mac's keys, logs or database, and an added Codex account now falls back to its own terminal too. ([#577](https://github.com/tddworks/ClaudeBar/issues/577)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/design.md#what-an-accounts-sign-in-reaches)
+- **Each added account shows only its own sign-in**: a second account never reads this Mac's keys, logs or database, and an added Codex account now falls back to its own terminal too. ([#577](https://github.com/tddworks/ClaudeBar/issues/577)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)
 - **One script engine and SQLite everywhere**: provider scripts run in a bundled QuickJS instead of JavaScriptCore, and app databases through a bundled SQLite, so Windows runs them too. Mac quotas are unchanged. ([#571](https://github.com/tddworks/ClaudeBar/pull/571), [#570](https://github.com/tddworks/ClaudeBar/issues/570)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
 - **Commands and scripts on Windows**: providers that run a command, a script or a JSON-RPC CLI now run on Windows, on the Mac's pipe runner. An extension's script must be a `.cmd`, `.bat` or `.exe` there. ([#580](https://github.com/tddworks/ClaudeBar/pull/580), [#579](https://github.com/tddworks/ClaudeBar/issues/579)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
 
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.16] - 2026-10-16
 
 ### Changed
-- **One empty account no longer turns its provider DEPLETED**: a provider's accounts are interchangeable, so its header, its All card and Settings read its healthiest account. Each account still shows its own status and reset. ([#568](https://github.com/tddworks/ClaudeBar/pull/568), [#564](https://github.com/tddworks/ClaudeBar/pull/564)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md)
+- **One empty account no longer turns its provider DEPLETED**: a provider's accounts are interchangeable, so its header, its All card and Settings read its healthiest account. Each account still shows its own status and reset. ([#568](https://github.com/tddworks/ClaudeBar/pull/568), [#564](https://github.com/tddworks/ClaudeBar/pull/564)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/multi-account/README.md)
 
 ### Fixed
 - **Windows Leaderboard days**: a day of usage is counted in your own time zone, as Windows has it, instead of GMT, so in Korea a day no longer ends at 09:00. The Mac app is unchanged. ([#567](https://github.com/tddworks/ClaudeBar/pull/567), [#565](https://github.com/tddworks/ClaudeBar/issues/565)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenCode daily usage**: the 30 days a query kept for itself now come from the range you asked for, so an older day is counted on its own day instead of read as empty and kept that way. ([#559](https://github.com/tddworks/ClaudeBar/pull/559)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/opencode-go/README.md)
 
 ### Added
-- **Pause an account from the popover**: right-click it and choose **Pause**. It stops refreshing, leaves the menu bar, and can no longer raise an alert, but stays on the provider's page under **PAUSED** with its last numbers and a **Resume**. ([#560](https://github.com/tddworks/ClaudeBar/pull/560)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md)
+- **Pause an account from the popover**: right-click it and choose **Pause**. It stops refreshing, leaves the menu bar, and can no longer raise an alert, but stays on the provider's page under **PAUSED** with its last numbers and a **Resume**. ([#560](https://github.com/tddworks/ClaudeBar/pull/560)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/multi-account/README.md)
 - **OpenCode on the Leaderboard**: tick OpenCode when you join and your daily token totals — every provider opencode drove, Zen included — are ranked, read from opencode's own database through one read-only query. Its tokens and cost also show in the daily usage cards. ([#559](https://github.com/tddworks/ClaudeBar/pull/559)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md)
 - **Windows file paths**: shared provider definitions find app-data files on Windows as well as Mac, including redirected `APPDATA` and the newest IDE quota file. Windows execution and quota display remain phase 5. ([#556](https://github.com/tddworks/ClaudeBar/pull/556), [#555](https://github.com/tddworks/ClaudeBar/issues/555)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/ENGINE_DESIGN.md)
 
@@ -63,25 +63,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.13] - 2026-10-11
 
 ### Removed
-- **Overview Mode**: the switch in Settings → General is gone; the new **All** pill does its job in one tap. If you had it on, the popover opens on All. ([#539](https://github.com/tddworks/ClaudeBar/pull/539)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
+- **Overview Mode**: the switch in Settings → General is gone; the new **All** pill does its job in one tap. If you had it on, the popover opens on All. ([#539](https://github.com/tddworks/ClaudeBar/pull/539)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/all-providers/README.md)
 
 ### Added
-- **All providers**: an **All** pill, first in the popover, shows every provider on one page, a card each with the quota that runs out first. Click a card to open that provider; ⌘0 comes back. Settings → General → Open On makes it the first page you see. ([#539](https://github.com/tddworks/ClaudeBar/pull/539)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
+- **All providers**: an **All** pill, first in the popover, shows every provider on one page, a card each with the quota that runs out first. Click a card to open that provider; ⌘0 comes back. Settings → General → Open On makes it the first page you see. ([#539](https://github.com/tddworks/ClaudeBar/pull/539)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/all-providers/README.md)
 
 ---
 
 ## [0.5.12] - 2026-10-10
 
 ### Changed
-- **Claude Code card**: finished sessions no longer take a row each. The card shows a count (*1 needs you · 2 working · 5 done*) and rows only for sessions still going; ▾ shows the Done ones, one row per repo. *Needs you* is now red and *Done* grey, in the menu bar and notch too. ([#534](https://github.com/tddworks/ClaudeBar/pull/534)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/session-hooks/README.md)
+- **Claude Code card**: finished sessions no longer take a row each. The card shows a count (*1 needs you · 2 working · 5 done*) and rows only for sessions still going; ▾ shows the Done ones, one row per repo. *Needs you* is now red and *Done* grey, in the menu bar and notch too. ([#534](https://github.com/tddworks/ClaudeBar/pull/534)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
 
 ### Fixed
 - **Antigravity with the app closed**: when the saved sign-in has expired, ClaudeBar runs `agy` once to renew it and shows your quota, instead of *Session expired* whenever Antigravity hadn't run for an hour. ([#541](https://github.com/tddworks/ClaudeBar/issues/541))
 - **The 30-day chart**: the *Daily usage — last 30 days* card draws as soon as the popover opens, the way the cards above it do — before, it stayed invisible for a second and never appeared at all in a screenshot. ([#536](https://github.com/tddworks/ClaudeBar/pull/536))
 
 ### Added
-- **Session titles**: each Claude Code session shows its title under the repo, in the popover card, the notch and notifications: the name you gave it with `/rename`, else Claude Code's own. Two terminals in one repo are told apart at a glance. ([#538](https://github.com/tddworks/ClaudeBar/pull/538)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/session-hooks/README.md)
-- **Your own popover title**: name the popover header your own way, such as your team's name, in place of *ClaudeBar* (Settings → Appearance → Popover Title). Leave it blank to go back. ([#532](https://github.com/tddworks/ClaudeBar/pull/532)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/popover-title/README.md)
+- **Session titles**: each Claude Code session shows its title under the repo, in the popover card, the notch and notifications: the name you gave it with `/rename`, else Claude Code's own. Two terminals in one repo are told apart at a glance. ([#538](https://github.com/tddworks/ClaudeBar/pull/538)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
+- **Your own popover title**: name the popover header your own way, such as your team's name, in place of *ClaudeBar* (Settings → Appearance → Popover Title). Leave it blank to go back. ([#532](https://github.com/tddworks/ClaudeBar/pull/532)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/app/popover-title/README.md)
 
 ---
 
@@ -92,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Leaderboard tab on refresh**: opening the popover, Refresh or a new upload keeps your rank and the board on screen until the new ones arrive, instead of going back to *Loading…*; if updating fails, the last board stays with a note. ([#524](https://github.com/tddworks/ClaudeBar/pull/524))
 
 ### Added
-- **Daily usage by model**: the 30-day chart splits by model — choose what is counted (cost, tokens, cache) and split the bars by the models the log names; hover a day to see each model's part, the unnamed line included. ([#511](https://github.com/tddworks/ClaudeBar/pull/511)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/daily-usage/README.md)
+- **Daily usage by model**: the 30-day chart splits by model — choose what is counted (cost, tokens, cache) and split the bars by the models the log names; hover a day to see each model's part, the unnamed line included. ([#511](https://github.com/tddworks/ClaudeBar/pull/511)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 
 ---
 
@@ -140,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Share your rank**: Share on the Leaderboard's *Your rank* makes an image of your place, square or wide, with your name shown or masked, to copy, save or share. Drawn on your Mac; nothing is uploaded. ([#504](https://github.com/tddworks/ClaudeBar/pull/504)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/leaderboard/README.md#share-your-rank)
 - **Oh My Pi daily usage**: today's cost and tokens, the 30-day chart and Leaderboard sharing for Oh My Pi, read from omp's own session logs — subagents and the model calls it makes outside the chat included, a forked session's copies counted once. ([#502](https://github.com/tddworks/ClaudeBar/pull/502)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/omp/README.md#daily-usage)
-- **Platformer's runner**: a small pixel runner walks the brick floor. It strolls when your quota is healthy, runs when it's low, falls into a pit when it's empty, and jumps for a coin after each refresh. Turn it off in Settings → Appearance → Runner. ([#505](https://github.com/tddworks/ClaudeBar/pull/505)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/themes/README.md)
+- **Platformer's runner**: a small pixel runner walks the brick floor. It strolls when your quota is healthy, runs when it's low, falls into a pit when it's empty, and jumps for a coin after each refresh. Turn it off in Settings → Appearance → Runner. ([#505](https://github.com/tddworks/ClaudeBar/pull/505)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/app/themes/README.md)
 
 ---
 
@@ -153,7 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pop theme: a dollar balance or spend now prints in the same outlined style as a percentage, with its caption beside it, so a card's big numbers no longer look like two different fonts ([#499](https://github.com/tddworks/ClaudeBar/issues/499))
 
 ### Added
-- **Platformer theme**: a Super Mario–style 8-bit level with a score line, a ? block to refresh, blocks for bars and Pixel or Classic text. ([#501](https://github.com/tddworks/ClaudeBar/pull/501)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/themes/README.md)
+- **Platformer theme**: a Super Mario–style 8-bit level with a score line, a ? block to refresh, blocks for bars and Pixel or Classic text. ([#501](https://github.com/tddworks/ClaudeBar/pull/501)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/app/themes/README.md)
 
 ---
 
@@ -188,19 +188,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings → Updates** now says which version is ready ("Version 0.5.4 is ready to install") and its button reads Install Update; the sidebar footer names the new version too, instead of only "update available". ([#473](https://github.com/tddworks/ClaudeBar/pull/473))
 
 ### Added
-- **Quota alerts**: pick your own percentages in Settings → Sync & Alerts, and get a notification when a login's quota falls below one, once per crossing, by the account's name. ([#479](https://github.com/tddworks/ClaudeBar/pull/479)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota-alerts/README.md)
+- **Quota alerts**: pick your own percentages in Settings → Sync & Alerts, and get a notification when a login's quota falls below one, once per crossing, by the account's name. ([#479](https://github.com/tddworks/ClaudeBar/pull/479)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/quota-alerts/README.md)
 
 ---
 
 ## [0.5.4] - 2026-10-04
 
 ### Removed
-- **Breaking:** extensions' `dailyUsage`, `metricsRow` and `statusBanner` sections are no longer read; their quotas, cost and health check still show. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
+- **Breaking:** extensions' `dailyUsage`, `metricsRow` and `statusBanner` sections are no longer read; their quotas, cost and health check still show. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
 
 ### Changed
-- **Settings → Providers, one row per provider:** with two Claude accounts, Claude is one row showing each account's usage, its page is titled Claude, and its switch turns the whole provider on or off. Each account keeps its own Pause, and your current setup carries over. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
-- A provider whose CLI isn't installed, or that you never signed in to, now reads Not set up instead of Unavailable, and shows any daily usage it can still read. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/daily-usage/README.md) ([#198](https://github.com/tddworks/ClaudeBar/issues/198))
-- Extensions now show like any provider: their settings sit on the provider's page in Settings and their secret fields move to the Keychain. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
+- **Settings → Providers, one row per provider:** with two Claude accounts, Claude is one row showing each account's usage, its page is titled Claude, and its switch turns the whole provider on or off. Each account keeps its own Pause, and your current setup carries over. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/multi-account/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
+- A provider whose CLI isn't installed, or that you never signed in to, now reads Not set up instead of Unavailable, and shows any daily usage it can still read. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md) ([#198](https://github.com/tddworks/ClaudeBar/issues/198))
+- Extensions now show like any provider: their settings sit on the provider's page in Settings and their secret fields move to the Keychain. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
 
 ### Fixed
 - **Leaderboard:** your upload stays hourly after your Mac sleeps, instead of falling hours behind, and Refresh now uploads it too. ([#468](https://github.com/tddworks/ClaudeBar/pull/468))
@@ -208,7 +208,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **In use:** with more than one Claude or Codex login, choose which one your next `claude` / `codex` starts with, from the popover, Settings or `claudebar://use`. ClaudeBar suggests a switch when the login in use runs low, or switches for you if you turn that on. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/in-use/README.md) ([#465](https://github.com/tddworks/ClaudeBar/pull/465))
-- Claude Desktop's tokens today now show as their own card under Claude, even without Claude Code. Without it, Claude says what your limits need, with a button to set that up, instead of an error. Thanks @jsvisa. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/daily-usage/README.md) ([#198](https://github.com/tddworks/ClaudeBar/issues/198))
+- Claude Desktop's tokens today now show as their own card under Claude, even without Claude Code. Without it, Claude says what your limits need, with a button to set that up, instead of an error. Thanks @jsvisa. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md) ([#198](https://github.com/tddworks/ClaudeBar/issues/198))
 
 ---
 

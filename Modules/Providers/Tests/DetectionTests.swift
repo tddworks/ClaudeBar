@@ -84,7 +84,7 @@ struct DetectionTests {
         let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         try FileManager.default.createDirectory(at: extensions, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: repo.appendingPathComponent("docs/features/extensions/example-provider"),
+        try FileManager.default.copyItem(at: repo.appendingPathComponent("docs/features/providers/extensions/example-provider"),
                                          to: extensions.appendingPathComponent("example-provider"))
 
         let example = try #require(detect().first { $0.profile.origin == .extension })

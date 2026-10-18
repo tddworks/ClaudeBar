@@ -35,11 +35,11 @@ A key that's missing means "use the default", so a fresh install starts with an 
 | `providers.<id>.cliPath` | The *CLI location* a person chose for a provider that runs a CLI; absent means "find it as usual" (#210) | `"providers": { "claude": { "cliPath": "/opt/tools/bin/claude" } }` |
 | `providers.<id>.hiddenQuotaKeys` | Quotas a person stopped watching for a product, by quota key (`model:gemini-2.0-flash`); shared by its accounts. A key no longer reported is ignored, and hiding every quota hides none (#140) | `"providers": { "gemini": { "hiddenQuotaKeys": ["model:gemini-2.0-flash"] } }` |
 | `<provider>.*` | A provider's own settings, each named in its definition's `settings` (`<id>.<setting>`), and its data source choice (`<id>.probeMode`) | `"kimi": { "probeMode": "api", "region": "international" }` |
-| `hook.*` | [Session hooks](features/session-hooks/README.md) | `"hook": { "enabled": true }` |
-| `alerts.*` | [Quota alerts](features/quota-alerts/README.md): the percentages you chose | `"alerts": { "thresholds": [60, 35] }` |
-| `notify.*` | [Notify!](features/notify/README.md) device link and surfaces | `"notify": { "enabled": true, "widgetEnabled": true }` |
+| `hook.*` | [Session hooks](features/activity/session-hooks/README.md) | `"hook": { "enabled": true }` |
+| `alerts.*` | [Quota alerts](features/alerting/quota-alerts/README.md): the percentages you chose | `"alerts": { "thresholds": [60, 35] }` |
+| `notify.*` | [Notify!](features/alerting/notify/README.md) device link and surfaces | `"notify": { "enabled": true, "widgetEnabled": true }` |
 | `leaderboard.*` | [Leaderboard](features/leaderboard/README.md) membership (name, what you share, last upload) and `leaderboard.on`, which outlives leaving | `"leaderboard": { "on": false, "username": "tokenwhale" }` |
-| `ext-<extension-id>.*` | A user [extension](features/extensions/README.md)'s non-secret config fields, as provider settings. Values an older version kept under `extensions.<extension-id>.*` move here once | `"ext-my-api": { "baseURL": "https://…" }` |
+| `ext-<extension-id>.*` | A user [extension](features/providers/extensions/README.md)'s non-secret config fields, as provider settings. Values an older version kept under `extensions.<extension-id>.*` move here once | `"ext-my-api": { "baseURL": "https://…" }` |
 
 Provider ids are the folder names under [providers/](providers/) (`claude`, `codex`, `zai`, `opencode-go`…). A provider's settings are listed in its definition, `Modules/Providers/Resources/Providers/<id>.json`; an added account's own values are kept with that account. A value an older version saved under another key, or as a number or a list, is still read, and moves to `<id>.<setting>` the first time it's saved.
 
@@ -54,14 +54,14 @@ A few `app.*` keys worth knowing:
 | `app.menuBarProviderLogoEnabled` | `false` (default) shows a single readout without a logo; `true` starts it with the provider's logo. Several providers or accounts always show logos |
 | `app.menuBarAccountLabelsEnabled` | `true` (default) shows names when the same provider has multiple enabled accounts; `false` hides those names. Single accounts never show an account name in either mode |
 | `app.hideAccountEmail` | `false` (default) shows account emails; `true` masks them as `s•••@g•••.com` in the menu bar, its tooltip and the popover. The eye beside the account toggles it ([#375](https://github.com/tddworks/ClaudeBar/issues/375)) |
-| `app.popoverTitle` | `""` (default) shows **ClaudeBar** at the top of the popover; any other text shows there instead, on one line, at most 24 characters ([popover title](features/popover-title/README.md)) |
-| `app.popoverOpensOn` | `whereILeftIt` (default) keeps the page the popover was on; `all` opens it on the All page every time. Unset with the old `app.overviewModeEnabled` on reads `all` ([all providers](features/all-providers/README.md)) |
+| `app.popoverTitle` | `""` (default) shows **ClaudeBar** at the top of the popover; any other text shows there instead, on one line, at most 24 characters ([popover title](features/app/popover-title/README.md)) |
+| `app.popoverOpensOn` | `whereILeftIt` (default) keeps the page the popover was on; `all` opens it on the All page every time. Unset with the old `app.overviewModeEnabled` on reads `all` ([all providers](features/monitoring/all-providers/README.md)) |
 | `app.popoverTextSize` | `medium` (default), `large`, `extraLarge` — scales the popover's text up to 1.4× and widens the window to fit. No smaller step is offered: the popover's smallest labels are already 8pt |
 | `app.menuBarProviderSettings` | Per-provider menu bar choices: `{ "codex": { "primaryQuotaKey": "session", "secondaryQuotaKey": "weekly", "stacked": false, "stackedSize": "small" } }` |
 | `app.nativeMenuBarIconsEnabled` | `false` (default) keeps brand colors; `true` uses monochrome provider marks for every menu bar account, adapting to the bar’s appearance |
 | `app.statusColorOverrides` | `{ "warning": "#F2BF33" }`; only the levels you set |
 
-The full list is the code: app-wide keys are read and written in [`JSONSettingsRepository.swift`](../Sources/Infrastructure/Storage/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.swift`](../Modules/Providers/Sources/Extensions.swift)).
+The full list is the code: app-wide keys are read and written in [`JSONSettingsRepository.swift`](../Sources/Infrastructure/Settings/Storage/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.swift`](../Modules/Providers/Sources/Extensions.swift)).
 
 ## Editing by hand
 

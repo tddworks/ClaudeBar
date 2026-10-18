@@ -4,7 +4,7 @@
 day before — as the reference for new report cards. Since UH2 it is data:
 Claude's logs, prices and local-route rule live in `claude.json` and
 `claude-prices.json`; the engine names no vendor
-([daily-usage design](../../../../docs/features/daily-usage/design.md)).
+([daily-usage design](../../../../docs/features/usage-history/daily-usage/design.md)).
 
 ## File Map
 
@@ -32,9 +32,9 @@ Modules/Quotas/Sources/
 ├── DailyUsageReport.swift        # today vs yesterday with deltas
 └── DateRange.swift               # a run of local days
 
-Sources/App/Views/
-├── DailyUsageCardView.swift      # card + DailyUsageMetric
-└── MenuContentView.swift         # reads (provider as? Account)?.usageHistory?.report
+Sources/App/
+├── UsageHistory/DailyUsageCardView.swift   # card + DailyUsageMetric
+└── Views/MenuContentView.swift             # reads (provider as? Account)?.usageHistory?.report
 
 Tests:
 ├── Modules/DataSources/Tests/Logs/   # neutral fixtures: reader, prices, local route, the whole log

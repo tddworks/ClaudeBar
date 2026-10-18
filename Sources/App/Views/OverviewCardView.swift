@@ -2,7 +2,7 @@ import SwiftUI
 import Domain
 
 /// The *All* page: a two-column grid of cards, one per provider, with the
-/// counts above it (docs/features/all-providers/design.md).
+/// counts above it (docs/features/monitoring/all-providers/design.md).
 struct OverviewPageView: View {
     let overview: Overview
     let open: (OverviewCard) -> Void

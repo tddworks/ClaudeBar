@@ -59,25 +59,25 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | JetBrains AI | Monthly AI credits from your IDE | [docs](docs/providers/jetbrains/README.md) |
 | OpenAI API | Organization spend over the last 30 days, per line item | [docs](docs/providers/openai/README.md) |
 | Cloudflare AI | Workers AI neurons against 10k a day, Workers AI and AI Gateway tokens, the Workers Paid overage and the last invoice | [docs](docs/providers/cloudflare-ai/README.md) |
-| Your own | Anything a script can print, via `~/.claudebar/extensions/` | [docs](docs/features/extensions/README.md) |
+| Your own | Anything a script can print, via `~/.claudebar/extensions/` | [docs](docs/features/providers/extensions/README.md) |
 
 ## What It Covers
 
 | Area | What you can do |
 |---|---|
-| All providers | Every provider's tightest quota on one page, one tap from its own → [docs](docs/features/all-providers/README.md) |
-| Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/menu-bar/README.md) |
-| [Multiple Codex accounts](docs/features/multi-account/README.md) | Separate logins, identified by email, with independent quotas |
-| Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/status-colors/README.md) |
-| Notch | Quota and live Claude Code sessions in the MacBook notch → [docs](docs/features/notch/README.md) |
-| Touch Bar | Quota gauges on a MacBook Pro Touch Bar → [docs](docs/features/touch-bar/README.md) |
-| Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/notify/README.md) |
-| Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/session-hooks/README.md) |
-| Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/daily-usage/README.md) |
+| All providers | Every provider's tightest quota on one page, one tap from its own → [docs](docs/features/monitoring/all-providers/README.md) |
+| Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/app/menu-bar/README.md) |
+| [Multiple Codex accounts](docs/features/providers/multi-account/README.md) | Separate logins, identified by email, with independent quotas |
+| Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/quota/status-colors/README.md) |
+| Notch | Quota and live Claude Code sessions in the MacBook notch → [docs](docs/features/activity/notch/README.md) |
+| Touch Bar | Quota gauges on a MacBook Pro Touch Bar → [docs](docs/features/alerting/touch-bar/README.md) |
+| Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/alerting/notify/README.md) |
+| Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/activity/session-hooks/README.md) |
+| Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/usage-history/daily-usage/README.md) |
 | Leaderboard | Share daily token totals and see where you rank → [docs](docs/features/leaderboard/README.md) |
-| Themes | Dark, Light, CLI, Christmas, Pop, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
-| Extensions | Add any quota source with a manifest and a script → [docs](docs/features/extensions/README.md) |
-| URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/url-schemes/README.md) |
+| Themes | Dark, Light, CLI, Christmas, Pop, or your terminal's `.itermcolors` → [docs](docs/features/app/themes/README.md) |
+| Extensions | Add any quota source with a manifest and a script → [docs](docs/features/providers/extensions/README.md) |
+| URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/app/url-schemes/README.md) |
 
 Every doc, one line each: [docs index](docs/README.md). Something not working: [troubleshooting](docs/troubleshooting.md).
 

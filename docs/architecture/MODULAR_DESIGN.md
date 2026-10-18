@@ -246,16 +246,20 @@ testability" alone.
 no call site changes while files move, and each old target is deleted once
 it is empty.
 
+Until then, each target groups its files by the context they will move to,
+so a folder already names its destination:
+
 | Today | Goes to |
 |---|---|
-| `Domain/Monitor/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
-| `Domain/Notify/`, `Infrastructure/Notifications/`, `Notify/` | `Alerting` |
-| `Domain/Session/`, `Domain/Notch/`, `Infrastructure/Hooks/` | `Activity` (`NSScreen+NotchMetrics` → App) |
-| `Domain/Settings/`, `Infrastructure/Storage/` | `Storage` (`StatusColorPolicy`, `MenuBarProviderSettings` → App) |
-| `Domain/Provider/` page state (`MenuBarLabel`, `MenuBar*Display`, `MenuBarStackedSize`, `CountdownColon`, `PopoverContentHeight`) | the App |
-| `Infrastructure/Claude/ClaudeGuestPassSource` | the App — Claude's alone, a source the composition root hands in behind `GuestPassSource` |
-| `Infrastructure/TerminalImport/` | the App — themes are presentation |
-| `Tests/DomainTests`, `InfrastructureTests` | split per module, following their sources; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests` |
+| `Domain/Monitoring/`, `Infrastructure/Monitoring/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
+| `Domain/Alerting/`, `Infrastructure/Alerting/`, `App/Alerting/` (its drivers stay in the App) | `Alerting` |
+| `Domain/Activity/`, `Infrastructure/Activity/`, `App/Activity/` (views stay in the App) | `Activity` (`NSScreen+NotchMetrics` → App) |
+| `Domain/InUse/`, `Infrastructure/InUse/` | not decided: beside `InUse` in `Providers`, or a module of its own (§9) |
+| `Domain/Settings/`, `Infrastructure/Settings/` | `Storage` |
+| `Domain/App/` (page state, `StatusColorPolicy`, `MenuBarProviderSettings`, `PopoverTitle`), `Infrastructure/App/` (terminal theme import) | the App |
+| `Domain/Providers/`, `Infrastructure/Providers/` (`ClaudeGuestPassSource`) | deleted (`AccountInfo`, `UsageProbe` are unused); the guest-pass source to the App, the composition root naming its vendor |
+| `Infrastructure/DataSources/` (`ShellEnvironment`, `SimpleCLIExecutor`) | `DataSources` |
+| `Tests/DomainTests`, `InfrastructureTests`, `AppTests` | split per module, following their sources' context folders; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests` |
 
 The kernel still holds a few types that belong elsewhere; each carries a
 `- Note: Interim` naming its final shape, and the canonical model lists them
@@ -265,6 +269,9 @@ under *where the code is still behind*.
 
 - **`Storage` as a module, or each module's settings in its own `Internal/`?**
   `settings.json` is one file many contexts write, so one owner today.
+- **Where In use's app half goes.** `NewSessions` and the shell lines follow
+  refreshes and write the person's shell files; `InUse` itself is in
+  `Providers`. Beside it, or an `InUse` module once a second consumer appears?
 - **One module per heavy SDK.** AWS is the only one today; the next gets its
   own `…Clients` module behind its own port in `DataSources`.
 - **Usage History as its own module, later?** Not now: `Providers` is its

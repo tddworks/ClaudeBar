@@ -4,7 +4,7 @@ description: Choose which Claude or Codex login new terminal sessions start with
 
 # In use: which login new sessions start with
 
-With more than one Claude or Codex login ([multiple accounts](../multi-account/README.md)), you choose which one your **next** `claude` or `codex` starts with, without signing out and in again. Sessions already running keep their login.
+With more than one Claude or Codex login ([multiple accounts](../providers/multi-account/README.md)), you choose which one your **next** `claude` or `codex` starts with, without signing out and in again. Sessions already running keep their login.
 
 ## Switch
 
@@ -12,7 +12,7 @@ Any of these:
 
 - **Popover:** the login in use has an **IN USE** badge on its chip; every other login's chip ends in **Use**. One click switches. Right-clicking a chip has **Use for New Terminal Sessions** too.
 - **Settings → Providers → Claude (or Codex) → Accounts:** the radio button on a login's row.
-- **A link:** `open "claudebar://use?provider=claude&account=work"` ([URL schemes](../url-schemes/README.md)). The account is its name, its email or `default` for the plain login.
+- **A link:** `open "claudebar://use?provider=claude&account=work"` ([URL schemes](../app/url-schemes/README.md)). The account is its name, its email or `default` for the plain login.
 
 The login in use has a terminal mark on its chip.
 
@@ -45,5 +45,5 @@ When it drops below 20%, and another login has more left:
 
 ## See also
 
-- [Multiple accounts](../multi-account/README.md)
+- [Multiple accounts](../providers/multi-account/README.md)
 - [Design](design.md), for contributors

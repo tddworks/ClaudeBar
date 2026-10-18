@@ -657,7 +657,7 @@ credits* quota, `current` of `maximum`, resetting at `nextRefill.next`.
 An added OpenAI account needs no `accounts` block: its `apiKey` is an
 account-scope setting, so the `setting` lookup is its own, and
 `OPENAI_ADMIN_KEY` is this Mac's, read by the default login alone
-([what an account's sign-in reaches](../features/multi-account/design.md#what-an-accounts-sign-in-reaches)).
+([what an account's sign-in reaches](../features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)).
 
 `openai-costs.js` adds `data[].results[].amount.value` into one `cost`, a
 line per `line_item`, for "Last 30 days".

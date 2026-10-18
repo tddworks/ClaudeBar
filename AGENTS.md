@@ -30,16 +30,18 @@ swift test                               # the modules alone, from the root Pack
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
 | `Modules/Diagnostics` | `AppLog` |
-| `Sources/Domain` | `QuotaMonitor`, extension providers, Notify!, sessions. Re-exports the modules |
+| `Sources/Domain` | `QuotaMonitor`, Notify!, sessions, In use. Re-exports the modules |
 | `Sources/Infrastructure` | storage, notifications, hooks, Claude's guest-pass source |
 | `Sources/App` | SwiftUI views that read the domain directly; the composition root |
+
+- **A feature lives in its context's folder** ([CANONICAL_MODEL §7](docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): `Activity/`, `Alerting/`, `InUse/`, `Monitoring/`, `Providers/`, `Settings/`, `UsageHistory/`, `DataSources/` inside `Sources/Domain`, `Infrastructure`, `App` and their tests, and `docs/features/<context>/<feature>/`. What is the App's own (page state, themes) sits in `App/` until [MODULAR_DESIGN §8](docs/architecture/MODULAR_DESIGN.md#8--still-to-carve) moves it.
 
 - **Modules never `import Domain`**, and no module's Swift names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `DataSources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md).
 
 - **`QuotaMonitor` is the single source of truth** for provider state. No ViewModel or AppState layer; views consume the domain.
 - **Settings**: a provider's settings are its definition's `settings`, read with the generic `value`/`dataSourceKind`/`isOn` of `ProviderSettingsRepository`; a value an old card saved elsewhere is read through the compatibility tables in `JSONSettingsRepository` and `ProviderVault`. All settings persist through `JSONSettingsRepository` to `~/.claudebar/settings.json` → [docs/settings.md](docs/settings.md).
-- **Notify! and session hooks are destinations, not providers**: they get standalone repositories beside `HookSettingsRepository`, never under `ProviderSettingsRepository` → [features/notify/design.md](docs/features/notify/design.md).
-- **Themes** implement `AppThemeProvider` and register in `ThemeRegistry` → [themes design](docs/features/themes/design.md). Card backgrounds use `theme.cardGradient` / `theme.glassBorder`.
+- **Notify! and session hooks are destinations, not providers**: they get standalone repositories beside `HookSettingsRepository`, never under `ProviderSettingsRepository` → [features/notify/design.md](docs/features/alerting/notify/design.md).
+- **Themes** implement `AppThemeProvider` and register in `ThemeRegistry` → [themes design](docs/features/app/themes/design.md). Card backgrounds use `theme.cardGradient` / `theme.glassBorder`.
 - The design is five documents read in order, journeys first: [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) maps them.
 
 ## Design docs are the source of truth

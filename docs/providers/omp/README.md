@@ -4,7 +4,7 @@ description: Track the rate-limit windows of every account Oh My Pi (omp) is sig
 
 # Oh My Pi
 
-Oh My Pi is a coding-agent harness that holds sign-ins for several upstream providers. ClaudeBar shows every rate-limit window `omp` reports, grouped into one section per upstream account (for example "Claude", "Codex · work"), each with its reset time. USD limits appear as spend meters. Below them, under their own *Today's usage* title, the [daily usage](../../features/daily-usage/README.md) cards and chart show what omp used on this Mac, and Oh My Pi can be shared on the [leaderboard](../../features/leaderboard/README.md).
+Oh My Pi is a coding-agent harness that holds sign-ins for several upstream providers. ClaudeBar shows every rate-limit window `omp` reports, grouped into one section per upstream account (for example "Claude", "Codex · work"), each with its reset time. USD limits appear as spend meters. Below them, under their own *Today's usage* title, the [daily usage](../../features/usage-history/daily-usage/README.md) cards and chart show what omp used on this Mac, and Oh My Pi can be shared on the [leaderboard](../../features/leaderboard/README.md).
 
 ## Setup
 

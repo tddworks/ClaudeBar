@@ -10,8 +10,8 @@ User guide: [README.md](README.md). Mockup: `design-concept/in-use/index.html`.
 
 | For | Read |
 |---|---|
-| Logins, folders, `Account`, `Provider` | [multiple accounts](../multi-account/design.md) |
-| `claudebar://` routing | [URL schemes](../url-schemes/README.md) |
+| Logins, folders, `Account`, `Provider` | [multiple accounts](../providers/multi-account/design.md) |
+| `claudebar://` routing | [URL schemes](../app/url-schemes/README.md) |
 
 ## The one sentence
 
@@ -96,7 +96,7 @@ Views never compare accounts, inspect folders, count logins or read quotas.
 | What follows a refresh is never the Monitor's | `QuotaMonitor.onRefreshed` |
 | `claudebar://use` takes exactly `provider` and `account`, each once | `URLSchemeAction` |
 
-Changed by this feature: a folder ClaudeBar made by *Sign in with browser* was "ClaudeBar's, and nothing else uses it". Now the person's terminal may use it, through the record ([multiple accounts](../multi-account/design.md)).
+Changed by this feature: a folder ClaudeBar made by *Sign in with browser* was "ClaudeBar's, and nothing else uses it". Now the person's terminal may use it, through the record ([multiple accounts](../providers/multi-account/design.md)).
 
 ## 5 · Open questions
 

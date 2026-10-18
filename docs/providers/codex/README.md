@@ -14,7 +14,7 @@ Shows your OpenAI Codex rate-limit windows (usually the 5-hour session and weekl
 
 ## Multiple accounts
 
-Use **Accounts → Add Account** in the provider settings to add another ChatGPT login: sign in with your browser, or choose a Codex folder that's already signed in. Accounts are told apart by their ChatGPT account, so two workspaces under one email are two accounts. Each can be named and pinned separately in the menu bar. See [multiple accounts](../../features/multi-account/README.md) for setup and reconnect instructions.
+Use **Accounts → Add Account** in the provider settings to add another ChatGPT login: sign in with your browser, or choose a Codex folder that's already signed in. Accounts are told apart by their ChatGPT account, so two workspaces under one email are two accounts. Each can be named and pinned separately in the menu bar. See [multiple accounts](../../features/providers/multi-account/README.md) for setup and reconnect instructions.
 
 ## Data sources
 

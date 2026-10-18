@@ -57,7 +57,7 @@ def check_line_budgets():
         lines = text.count("\n")
         if lines > budget:
             report(path, f"{lines} lines, budget {budget}")
-    for path in glob.glob("docs/providers/*/README.md") + glob.glob("docs/features/*/README.md"):
+    for path in glob.glob("docs/providers/*/README.md") + glob.glob("docs/features/**/README.md", recursive=True):
         lines = read(path).count("\n")
         if lines > FEATURE_README_BUDGET:
             report(path, f"{lines} lines, budget {FEATURE_README_BUDGET}")
@@ -68,7 +68,7 @@ def check_line_budgets():
 
 
 def check_descriptions():
-    for path in glob.glob("docs/providers/*/README.md") + glob.glob("docs/features/*/README.md"):
+    for path in glob.glob("docs/providers/*/README.md") + glob.glob("docs/features/**/README.md", recursive=True):
         match = re.match(r"---\n(.*?)\n---\n", read(path), re.S)
         desc = match and re.search(r"^description:\s*(.+)$", match.group(1), re.M)
         if not desc:
@@ -128,10 +128,13 @@ def check_links():
 
 
 def check_provider_coverage():
-    for path in glob.glob("Sources/Domain/Provider/*/*Provider.swift"):
-        match = re.search(r'public let id: String = "([^"]+)"', read(path))
-        if match and not os.path.exists(f"docs/providers/{match.group(1)}/README.md"):
-            report(path, f"no docs/providers/{match.group(1)}/README.md")
+    # A built-in provider is a definition: a JSON file with a profile, named for its id.
+    for path in glob.glob("Modules/Providers/Resources/Providers/*.json"):
+        if '"profile"' not in read(path):
+            continue
+        provider = os.path.splitext(os.path.basename(path))[0]
+        if not os.path.exists(f"docs/providers/{provider}/README.md"):
+            report(path, f"no docs/providers/{provider}/README.md")
 
 
 def check_generated():

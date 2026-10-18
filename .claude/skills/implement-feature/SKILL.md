@@ -51,7 +51,7 @@ Read the design in order ([ARCHITECTURE.md](../../../docs/architecture/ARCHITECT
 [USER_JOURNEYS.md](../../../docs/architecture/USER_JOURNEYS.md) (the person and the moment),
 [CANONICAL_MODEL.md](../../../docs/architecture/CANONICAL_MODEL.md) (the tree, the words, each law
 and its owner, *owned* vs *offered*), [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (the
-pieces and their one job, the flows), then any `docs/features/<x>/design.md` it touches. Then answer:
+pieces and their one job, the flows), then any `docs/features/<context>/<x>/design.md` it touches. Then answer:
 
 | Question | If yes |
 |---|---|
@@ -231,6 +231,8 @@ behaviour lives on before you change it:
 | `Sources/Domain` | `QuotaMonitor`, Notify!, sessions, In use's `NewSessions` | `Tests/DomainTests/` |
 | `Sources/Infrastructure` | storage, notifications, hooks, the shell environment, Claude's guest-pass runner | `Tests/InfrastructureTests/` |
 | `Sources/App` | SwiftUI views reading the domain directly; `ClaudeBarApp.init`, the composition root, which builds the `Engine` and names no provider | `Tests/AppTests/`, `Tests/AcceptanceTests/` |
+
+Inside `Sources/Domain`, `Infrastructure`, `App` and their tests, put a new file in the folder of the context that owns its question ([CANONICAL_MODEL §7](../../../docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): a session rule in `Activity/`, a destination in `Alerting/`, a refresh rule in `Monitoring/`. The feature's docs go in `docs/features/<context>/<x>/`. A file that fits no context's question is a sign the design is missing a word; ask before inventing a folder.
 
 A bug in a migrated provider is fixed in its JSON, or generically in
 `DataSources`, never with vendor-named Swift. Modules never `import Domain`.

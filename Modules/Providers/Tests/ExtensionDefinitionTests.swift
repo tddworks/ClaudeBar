@@ -5,20 +5,20 @@ import Quotas
 import Testing
 
 /// An extension's `manifest.json`, read as a definition of origin
-/// *Extension* (docs/features/extensions/design.md). The person's file stays as it is.
+/// *Extension* (docs/features/providers/extensions/design.md). The person's file stays as it is.
 @MainActor
 @Suite
 struct ExtensionDefinitionTests {
     private let root = FileManager.default.temporaryDirectory.appendingPathComponent("extensions-\(UUID().uuidString)", isDirectory: true)
 
-    /// `docs/features/extensions/example-provider`, copied, its health check
+    /// `docs/features/providers/extensions/example-provider`, copied, its health check
     /// (a network call) taken out.
     private func example() throws -> URL {
         let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let folder = root.appendingPathComponent("example-provider", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: repo.appendingPathComponent("docs/features/extensions/example-provider"), to: folder)
+        try FileManager.default.copyItem(at: repo.appendingPathComponent("docs/features/providers/extensions/example-provider"), to: folder)
         let manifest = folder.appendingPathComponent("manifest.json")
         var json = try JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as! [String: Any]
         json["sections"] = (json["sections"] as! [[String: Any]]).filter { $0["type"] as? String != "healthCheck" }

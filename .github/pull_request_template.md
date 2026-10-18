@@ -9,7 +9,7 @@ Fixes #
 ## Design
 
 <!-- Where this lives in the design docs — they are the source of truth (AGENTS.md):
-     CANONICAL_MODEL / TARGET_ARCHITECTURE section, or docs/features/<x>/design.md.
+     CANONICAL_MODEL / TARGET_ARCHITECTURE section, or docs/features/<context>/<x>/design.md.
      If the design changed: what changed, and where it was confirmed (issue or PR comment).
      Write "No design change" when the code only catches up with the docs. -->
 
