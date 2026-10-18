@@ -9,14 +9,16 @@ import Quotas
 /// comes back as text: TEXT as it is, a BLOB as the UTF-8 or UTF-16LE text an
 /// app stored in it.
 enum ReadOnlyQuery {
-    /// At most this many rows and bytes per value, so an unexpected table
-    /// can't flood a mapping.
+    /// At most this many rows for an answer handed to a mapping, and bytes
+    /// per value, so an unexpected table can't flood a script. A usage log
+    /// asks for every row: its records go to the aggregator, never a script.
     static let rowLimit = 1_000
     static let valueLimit = 1_048_576
 
-    /// The rows `query` reads from the database at `path`. `name` is how the
-    /// database is called in a failure.
-    static func rows(at path: String, query: String, name: String) throws -> [[String: String]] {
+    /// The rows `query` reads from the database at `path`, at most `limit`
+    /// of them (`nil`: every row). `name` is how the database is called in a
+    /// failure.
+    static func rows(at path: String, query: String, name: String, limit: Int? = rowLimit) throws -> [[String: String]] {
         var database: OpaquePointer?
         guard sqlite3_open_v2(path, &database, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(database)
@@ -33,13 +35,20 @@ enum ReadOnlyQuery {
             throw UsageError.executionFailed("ClaudeBar may only read \(name)")
         }
         var rows: [[String: String]] = []
-        while rows.count < rowLimit {
+        while limit.map({ rows.count < $0 }) ?? true {
             let step = sqlite3_step(statement)
             if step == SQLITE_DONE { break }
             guard step == SQLITE_ROW else { throw UsageError.executionFailed("Couldn't query \(name)") }
             rows.append(row(statement))
         }
         return rows
+    }
+
+    /// The tables the database at `path` holds — what a call's `requires`
+    /// is checked against.
+    static func tables(at path: String, name: String) throws -> Set<String> {
+        let rows = try rows(at: path, query: "SELECT name FROM sqlite_master WHERE type = 'table'", name: name, limit: nil)
+        return Set(rows.compactMap { $0["name"] })
     }
 
     private static func row(_ statement: OpaquePointer?) -> [String: String] {

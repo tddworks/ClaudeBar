@@ -1,9 +1,6 @@
 // OpenCode Go's plan, added up from opencode's own database by one read-only
 // query (see opencode-go.json): $12 per 5 hours, $30 per week, $60 per month.
-// The row arrives as the database wrote it — a column may be a number or its
-// text — so every column reads as a number either way. The v2 query names its
-// database with is_v2; a 0 is v1's, and the v1 query answers instead (the
-// local1 fallback).
+// A database answers each column as text, so every column reads as a number.
 function read(response, context) {
     const rows = response.json;
     const row = Array.isArray(rows) ? rows[0] : null;
@@ -11,22 +8,22 @@ function read(response, context) {
         const n = typeof value === "number" ? value : parseFloat(value);
         return Number.isFinite(n) ? n : null;
     };
-    if (row && num(row.is_v2) === 0)
-        return {error: {parseFailed: "This database is opencode v1's"}};
     if (!row || num(row.five_hour_cost) == null || num(row.weekly_cost) == null
         || num(row.monthly_cost) == null || num(row.now_ms) == null)
         return {error: {parseFailed: "No usage rows from opencode's database"}};
     // Money of a ceiling (the Left law): what is left of each cap, to the cent.
     const left = (spent, cap) => ({money: Math.max(0, cap - spent).toFixed(2), of: String(cap), currency: "USD"});
+    const oldest = num(row.five_hour_oldest_ms);
     const quotas = [
         {type: "session", left: left(num(row.five_hour_cost), 12), windowSeconds: 18000,
-         resetsAt: (row.five_hour_oldest_ms != null ? num(row.five_hour_oldest_ms) : num(row.now_ms)) / 1000 + 18000},
+         resetsAt: (oldest != null ? oldest : num(row.now_ms)) / 1000 + 18000},
         {type: "weekly", left: left(num(row.weekly_cost), 30), windowSeconds: 604800, resetsAt: num(row.week_end_ms) / 1000}
     ];
     // Before a first message there is no billing month yet: no window to state.
-    const anchored = row.month_start_ms != null && row.month_end_ms != null;
+    const start = num(row.month_start_ms), end = num(row.month_end_ms);
+    const anchored = start != null && end != null;
     quotas.push({type: "time", name: "Monthly", left: left(num(row.monthly_cost), 60),
-        resetsAt: anchored ? num(row.month_end_ms) / 1000 : null,
-        windowSeconds: anchored ? (num(row.month_end_ms) - num(row.month_start_ms)) / 1000 : null});
+        resetsAt: anchored ? end / 1000 : null,
+        windowSeconds: anchored ? (end - start) / 1000 : null});
     return {quotas: quotas};
 }

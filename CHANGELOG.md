@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **One script engine and SQLite everywhere**: provider scripts run in a bundled QuickJS instead of JavaScriptCore, and app databases through a bundled SQLite, so Windows runs them too. Mac quotas are unchanged. ([#571](https://github.com/tddworks/ClaudeBar/pull/571), [#570](https://github.com/tddworks/ClaudeBar/issues/570)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
 
+### Fixed
+- **OpenCode Go on OpenCode 2**: without an API key, the estimate and daily cards read opencode's database directly, so OpenCode 1 and 2 both work and spend from before an upgrade still counts. ([#566](https://github.com/tddworks/ClaudeBar/issues/566), [#572](https://github.com/tddworks/ClaudeBar/pull/572))
+
 ---
 
 ## [0.5.16] - 2026-10-16
@@ -18,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **One empty account no longer turns its provider DEPLETED**: a provider's accounts are interchangeable, so its header, its All card and Settings read its healthiest account. Each account still shows its own status and reset. ([#568](https://github.com/tddworks/ClaudeBar/pull/568), [#564](https://github.com/tddworks/ClaudeBar/pull/564)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md)
 
 ### Fixed
-- **OpenCode Go on OpenCode 2**: the local estimate and daily usage cards read opencode's database directly, so they work on OpenCode 1 and 2 — v2 removed the `opencode db` command the old read went through. History from before an upgrade counts too. ([#566](https://github.com/tddworks/ClaudeBar/issues/566)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/opencode-go/README.md)
 - **Windows Leaderboard days**: a day of usage is counted in your own time zone, as Windows has it, instead of GMT, so in Korea a day no longer ends at 09:00. The Mac app is unchanged. ([#567](https://github.com/tddworks/ClaudeBar/pull/567), [#565](https://github.com/tddworks/ClaudeBar/issues/565)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
 - **Oh My Pi, Antigravity**: each card says which models it counts, Gemini or Claude & GPT, instead of "Antigravity Weekly (2)", and the pool Claude and GPT share shows once, not twice. A menu-bar pick of an Antigravity quota needs choosing again. ([#562](https://github.com/tddworks/ClaudeBar/pull/562)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/omp/design.md)
 - **Stuck on Syncing... again**: stopping a CLI at its deadline no longer waits forever when the CLI is still running after being killed. ClaudeBar gives it 2 seconds, then logs a warning naming it and its process id, and moves on to the fallback. ([#561](https://github.com/tddworks/ClaudeBar/pull/561), [#550](https://github.com/tddworks/ClaudeBar/issues/550)) -> [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/codex/design.md)

@@ -84,14 +84,79 @@ public struct DirectoryCall: Sendable, Equatable, Codable {
 /// `"sqlite": { "path": "~/…/state.vscdb", "query": "SELECT value FROM …" }`
 /// — the rows an app's own database answers, each column as text. Opened
 /// read-only; a query that would change it is refused.
+///
+/// An app that moved its records to other tables between versions lists
+/// `queries` instead, each naming the tables it `requires`: the call runs
+/// the first one the store has (SQLite prepares against the tables that
+/// exist, so a query naming a missing one cannot run at all). Which tables
+/// a store has is where to read, never another data source (#566).
 public struct SQLiteCall: Sendable, Equatable, Codable {
     public let path: PathPattern
-    public let query: String
+    /// In order; never empty. A plain `query` is one that requires nothing.
+    public let queries: [Query]
+
+    /// One way of reading the store: the tables it reads, and the SQL.
+    public struct Query: Sendable, Equatable, Codable {
+        public let requires: [String]
+        public let query: String
+
+        public init(requires: [String] = [], query: String) {
+            self.requires = requires
+            self.query = query
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            requires = try container.decodeIfPresent([String].self, forKey: .requires) ?? []
+            query = try container.decode(String.self, forKey: .query)
+        }
+    }
 
     public init(path: PathPattern, query: String) {
-        self.path = path
-        self.query = query
+        self.init(path: path, queries: [Query(query: query)])
     }
+
+    public init(path: PathPattern, queries: [Query]) {
+        self.path = path
+        self.queries = queries
+    }
+
+    /// The query this store can answer: the first whose tables it has, or
+    /// `nil` when it has none of them.
+    func query(in tables: Set<String>) -> String? {
+        queries.first { Set($0.requires).isSubset(of: tables) }?.query
+    }
+
+    /// Whether choosing needs the store's tables at all.
+    var needsTables: Bool { queries.contains { !$0.requires.isEmpty } }
+
+    /// `query` or `queries`, exactly one, and a list holds at least one.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let path = try container.decode(PathPattern.self, forKey: .path)
+        let one = try container.decodeIfPresent(String.self, forKey: .query)
+        let many = try container.decodeIfPresent([Query].self, forKey: .queries)
+        switch (one, many) {
+        case (.some(let query), .none): self.init(path: path, query: query)
+        case (.none, .some(let queries)) where !queries.isEmpty: self.init(path: path, queries: queries)
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .queries, in: container,
+                debugDescription: "A database call has one `query` or a non-empty list of `queries`, never both.")
+        }
+    }
+
+    /// One query that requires nothing is written flat, as before.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(path, forKey: .path)
+        if queries.count == 1, queries[0].requires.isEmpty {
+            try container.encode(queries[0].query, forKey: .query)
+        } else {
+            try container.encode(queries, forKey: .queries)
+        }
+    }
+
+    enum CodingKeys: String, CodingKey { case path, query, queries }
 }
 
 /// `"cloudWatch": {…}` — today's sums of `metrics` in `namespace`, one row per

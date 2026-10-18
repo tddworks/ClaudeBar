@@ -118,6 +118,57 @@ struct DatabaseFetchTests {
         #expect(try JSONDecoder().decode(Fetch.self, from: try JSONEncoder().encode(fetch)) == fetch)
     }
 
+    // MARK: - A store whose tables moved: the first query it can answer
+
+    /// An app that kept its records in `old`, then `new`, and an upgraded
+    /// store that holds both: one query per set of tables, in order.
+    private static let layouts = SQLiteCall(path: "~/state.vscdb", queries: [
+        SQLiteCall.Query(requires: ["old", "new"], query: "SELECT 'both' AS v FROM new LIMIT 1"),
+        SQLiteCall.Query(requires: ["new"], query: "SELECT 'new' AS v"),
+        SQLiteCall.Query(requires: ["old"], query: "SELECT 'old' AS v"),
+    ])
+
+    @Test(arguments: [
+        ("CREATE TABLE old(v TEXT); CREATE TABLE new(v TEXT); INSERT INTO new VALUES ('x');", "both"),
+        ("CREATE TABLE new(v TEXT);", "new"),
+        ("CREATE TABLE old(v TEXT);", "old"),
+    ])
+    func `should read with the first query whose tables the database has`(_ setup: String, _ answer: String) async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try database(setup)
+
+        let response = try await SQLiteFetcher(call: Self.layouts, homeDirectory: root, environment: { _ in nil }).fetch(with: nil)
+
+        #expect(try rows(response) == [["v": answer]])
+    }
+
+    @Test
+    func `should not be configured when the database has none of the tables its queries read`() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try database("CREATE TABLE other(v TEXT);")
+        let fetcher = SQLiteFetcher(call: Self.layouts, homeDirectory: root, environment: { _ in nil })
+
+        #expect(!fetcher.isReady())
+        await #expect(throws: UsageError.self) { try await fetcher.fetch(with: nil) }
+    }
+
+    @Test
+    func `should keep a database call written out and read back, one query flat as before`() throws {
+        let many = try JSONDecoder().decode(SQLiteCall.self, from: try JSONEncoder().encode(Self.layouts))
+        #expect(many == Self.layouts)
+        let one = try JSONSerialization.jsonObject(with: try JSONEncoder().encode(SQLiteCall(path: "~/a.db", query: "SELECT 1"))) as? [String: String]
+        #expect(one == ["path": "~/a.db", "query": "SELECT 1"])
+    }
+
+    @Test(arguments: [
+        #"{"path":"~/a.db"}"#,
+        #"{"path":"~/a.db","queries":[]}"#,
+        #"{"path":"~/a.db","query":"SELECT 1","queries":[{"query":"SELECT 2"}]}"#,
+    ])
+    func `should refuse a database call with no query, or with both a query and a list`(_ json: String) {
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode(SQLiteCall.self, from: Data(json.utf8)) }
+    }
+
     @Test
     func `should find a key an app stored as a UTF-16 BLOB`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
