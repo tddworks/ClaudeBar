@@ -42,7 +42,7 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 - **Max or Pro billed through Apple showing "The Claude CLI did not see this account's subscription".** On some subscriptions `/usage` reports API billing instead of a plan — either the cost panel on its own, or "only available for subscription plans". ClaudeBar sees from `~/.claude.json` that you have a subscription, so it tries the API rather than showing $0.00. If the API also fails, run `claude login` again or switch to API mode.
 - **"Authentication required" when you're already signed in** usually means the Keychain read failed. The log records the `security` exit status. See [troubleshooting](../../troubleshooting.md).
 - **Account email and organization come from `~/.claude.json`**, because Claude CLI v2.1.79+ no longer shows them on the Usage tab.
-- **More than one Claude login?** Use **Accounts → Add Account** in the provider settings to sign in with your browser or choose a `CLAUDE_CONFIG_DIR` folder. See [multiple accounts](../../features/multi-account/README.md). Each account shows its own today's cost and 30-day chart, read from its own folder's logs; guest passes stay with your usual login.
+- **More than one Claude login?** Use **Accounts → Add Account** in the provider settings to sign in with your browser or choose a `CLAUDE_CONFIG_DIR` folder. See [multiple accounts](../../features/providers/multi-account/README.md). Each account shows its own today's cost and 30-day chart, read from its own folder's logs; guest passes stay with your usual login.
 - **Daily cost and token cards** read `~/.claude/projects/*/*.jsonl`. They're only calculated when the popover is open, not during background refreshes.
 - **Claude Desktop's tokens** appear as their own **Claude Desktop · Token Usage** card on your usual login, read from Desktop's app-data folder: `~/Library/Application Support/Claude/buddy-tokens.json` on macOS, `%APPDATA%\Claude\buddy-tokens.json` on Windows (or `~/AppData/Roaming/Claude/buddy-tokens.json` if `APPDATA` is empty or unset). It counts Desktop on this computer only, shows no cost, and doesn't change your limits or the menu bar. Your session and weekly limits still need Claude Code: without it, Claude says so in a card with a *Set up Claude Code* button, with the Desktop card below it.
 - **Share Claude Code** (guest passes) only appears for Max accounts.
@@ -50,4 +50,4 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 
 ## See also
 
-[design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Notch](../../features/notch/README.md)
+[design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Notch](../../features/activity/notch/README.md)

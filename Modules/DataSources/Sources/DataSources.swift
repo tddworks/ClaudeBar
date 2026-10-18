@@ -48,7 +48,7 @@ public enum DataSources {
     /// Where this platform finds a CLI by name: its full path, or `nil` when
     /// it isn't installed or the platform can't look (§10).
     public static func locate(_ cli: String) -> String? {
-        Platform.current.binaryLocator?.locate(cli)
+        Platform.current.processes?.installed.find(cli)
     }
 
     /// A data source on this machine: the real network and this platform's
@@ -105,13 +105,12 @@ public enum DataSources {
     ) -> DataSource {
         var platform = Platform.current
         platform.runCLI = { _ in cliExecutor }
-        platform.runCommand = { _ in cliExecutor }
-        platform.rpcTransport = makeTransport
+        platform.processes = platform.processes?.with(pipes: { _ in cliExecutor }, conversation: makeTransport,
+                                                      paths: processPaths)
         platform.keychain = security
         platform.browserCookies = browserCookies
         platform.browserStorage = browserStorage
         platform.localNetwork = network
-        platform.processList = processPaths
         return make(
             definition,
             providerId: providerId,
@@ -225,10 +224,8 @@ public enum DataSources {
         case .httpSteps(let steps):
             return HTTPStepsFetcher(steps: steps, network: network, zone: platform.timeZone, now: now)
         case .jsonRpc(let call):
-            guard let runCLI = platform.runCLI, let transport = platform.rpcTransport else {
-                return unavailable("Running \(call.cli)")
-            }
-            return JSONRPCFetcher(call: call, cliExecutor: runCLI(CLICall(cli: call.cli)), makeTransport: transport,
+            guard let processes = platform.processes else { return unavailable("Running \(call.cli)") }
+            return JSONRPCFetcher(call: call, processes: processes,
                                   directory: workingDirectory(call.workingDirectory, platform: platform,
                                                               homeDirectory: homeDirectory, environment: environment))
         case .cli(let call):
@@ -245,18 +242,18 @@ public enum DataSources {
                                                               homeDirectory: homeDirectory, environment: environment), screen: render)
             }
         case .command(let call):
-            guard let runCommand = platform.runCommand else { return unavailable("Running \(call.cli)") }
-            return CommandFetcher(call: call, makeExecutor: runCommand,
+            guard let processes = platform.processes else { return unavailable("Running \(call.cli)") }
+            return CommandFetcher(call: call, processes: processes,
                                   directory: workingDirectory(call.workingDirectory, platform: platform,
                                                               homeDirectory: homeDirectory, environment: environment))
         case .file(let call):
             return FileFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
         case .localServer(let call):
-            guard let runCommand = platform.runCommand, let localNetwork = platform.localNetwork,
-                  let processList = platform.processList, let localServer = platform.localServer else {
+            guard let processes = platform.processes, let localNetwork = platform.localNetwork,
+                  let localServer = platform.localServer else {
                 return unavailable("Reading a local server")
             }
-            return localServer(call, runCommand(ProcessEnvironment()), localNetwork, processList)
+            return localServer(call, processes.pipes(ProcessEnvironment()), localNetwork, { processes.running.paths() })
         case .cloudWatch(let call):
             return CloudWatchFetcher(call: call, client: cloudWatch, catalog: priceCatalog, zone: platform.timeZone, now: now)
         case .directory(let call):
@@ -264,8 +261,8 @@ public enum DataSources {
         case .sqlite(let call):
             return SQLiteFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
         case .script(let call):
-            guard let runCommand = platform.runCommand, let command = platform.scriptCommand else { return unavailable("Running a script") }
-            return ScriptFetcher(call: call, providerId: providerId, secrets: secrets, makeExecutor: runCommand, command: command,
+            guard let processes = platform.processes else { return unavailable("Running a script") }
+            return ScriptFetcher(call: call, providerId: providerId, secrets: secrets, processes: processes,
                                  directory: URL(fileURLWithPath: Paths.expand(call.folder, homeDirectory: homeDirectory, environment: environment),
                                                 isDirectory: true))
         }

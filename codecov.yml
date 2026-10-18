@@ -36,10 +36,10 @@ ignore:
   - "Modules/Leaderboard/Sources/Internal/macOS/Platform+macOS.swift"  # hands out the key store and machine below
   - "Modules/Leaderboard/Sources/Internal/macOS/KeychainSigningKeyStore.swift"  # Keychain
   - "Modules/Leaderboard/Sources/Internal/macOS/IOKitMachineIdentity.swift"  # IOKit; MacModel names what it reads
-  - "Sources/Infrastructure/Hooks/HookHTTPServer.swift"  # a local socket server
-  - "Sources/Infrastructure/Shared/SystemAlertSender.swift"  # NSAlert, notifications
-  - "Sources/Infrastructure/Shared/SystemPowerStateProvider.swift"  # IOKit
-  - "Sources/Infrastructure/Shared/SystemClock.swift"  # the clock
-  - "Sources/Infrastructure/Shared/SimpleCLIExecutor.swift"  # Process
-  - "Sources/Infrastructure/Notch/NSScreen+NotchMetrics.swift"  # NSScreen
-  - "Sources/Infrastructure/Storage/KeychainCredentialRepository.swift"  # Keychain
+  - "Sources/Infrastructure/Activity/Hooks/HookHTTPServer.swift"  # a local socket server
+  - "Sources/Infrastructure/Alerting/SystemAlertSender.swift"  # NSAlert, notifications
+  - "Sources/Infrastructure/Monitoring/SystemPowerStateProvider.swift"  # IOKit
+  - "Sources/Infrastructure/Monitoring/SystemClock.swift"  # the clock
+  - "Sources/Infrastructure/DataSources/SimpleCLIExecutor.swift"  # Process
+  - "Sources/Infrastructure/Activity/Notch/NSScreen+NotchMetrics.swift"  # NSScreen
+  - "Sources/Infrastructure/Settings/Storage/KeychainCredentialRepository.swift"  # Keychain

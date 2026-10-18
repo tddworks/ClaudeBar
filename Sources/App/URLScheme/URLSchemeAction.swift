@@ -8,7 +8,7 @@ import Foundation
 /// anything else, whether a parameter, a fragment, a user, a port or an extra
 /// path, is not an action. `claudebar://use?provider=claude&account=work`
 /// is the one with parameters: exactly those two, each once. See
-/// docs/features/url-schemes/README.md.
+/// docs/features/app/url-schemes/README.md.
 enum URLSchemeAction: Equatable, Sendable {
     case open
     case refresh

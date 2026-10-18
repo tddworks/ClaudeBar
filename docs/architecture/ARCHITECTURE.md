@@ -20,7 +20,7 @@ and a later one may cite an earlier one, never the reverse.
 | 4 | [MODULAR_DESIGN.md](MODULAR_DESIGN.md) | **Where does the code live?** The modules and what each may import |
 | 5 | [ENGINE_DESIGN.md](ENGINE_DESIGN.md) | **How does each case work?** Every fetch, credential, setting and CLI rule a definition can use |
 
-Then outward, one per thing: `docs/features/<x>/design.md` and
+Then outward, one per thing: `docs/features/<context>/<x>/design.md` and
 `docs/providers/<id>/design.md` apply the five to one feature or one vendor,
 and hold only what is that thing's own — its research, its quirks, its laws.
 

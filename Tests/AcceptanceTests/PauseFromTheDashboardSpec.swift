@@ -12,7 +12,7 @@ import Mockable
 /// and comes back with one *Resume*.
 ///
 /// (docs/architecture/USER_JOURNEYS.md moment 2a,
-///  docs/features/multi-account/design.md §3.5)
+///  docs/features/providers/multi-account/design.md §3.5)
 @Suite("Feature: Pause a login from the dashboard")
 struct PauseFromTheDashboardSpec {
     private static func makeSettings() -> MockProviderSettingsRepository {

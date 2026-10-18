@@ -10,7 +10,7 @@ on:
       - 'scripts/check-docs.py'
       - 'scripts/gen-docs.py'
       - 'scripts/*changelog*'
-      - 'Sources/Domain/Provider/**'
+      - 'Modules/Providers/Resources/Providers/**'
       - '.github/workflows/docs.yml'
   push:
     branches: [main]
@@ -19,7 +19,7 @@ on:
       - 'scripts/check-docs.py'
       - 'scripts/gen-docs.py'
       - 'scripts/*changelog*'
-      - 'Sources/Domain/Provider/**'
+      - 'Modules/Providers/Resources/Providers/**'
 
 permissions:
   contents: read

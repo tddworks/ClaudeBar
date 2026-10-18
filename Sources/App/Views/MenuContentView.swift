@@ -693,7 +693,7 @@ struct MenuContentView: View {
     // MARK: - Metrics Content
 
     /// The All page in the style the person chose — the same cards, printed as
-    /// bars (docs/features/all-providers/design.md).
+    /// bars (docs/features/monitoring/all-providers/design.md).
     @ViewBuilder
     private var allPage: some View {
         if settings.allPageStyle == .bars {
@@ -809,7 +809,7 @@ struct MenuContentView: View {
     }
 
     /// A login the person stopped watching: still on the page, with what it
-    /// last showed and a way back (docs/features/multi-account/design.md §3.5).
+    /// last showed and a way back (docs/features/providers/multi-account/design.md §3.5).
     private func pausedGroup(_ tab: ProductTab) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("PAUSED")

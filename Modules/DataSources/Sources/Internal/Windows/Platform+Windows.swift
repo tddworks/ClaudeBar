@@ -2,20 +2,19 @@
 import Foundation
 
 extension Platform {
-    /// File paths and CLI discovery are available; execution connections stay
-    /// absent until phase 5. Missing connections fail at their named step.
+    /// File paths, CLI discovery and programs over pipes are available; the
+    /// rest stays absent until its phase 5 slice and fails at its named step.
     static let current = Platform(
         name: "Windows",
         timeZone: WindowsTimeZone(),
-        binaryLocator: PathBinaryLocator(),
+        processes: Processes(WindowsProcesses()),
         applicationData: { home, environment in
             if let path = environment("APPDATA"), !path.isEmpty {
                 return URL(fileURLWithPath: path, isDirectory: true)
             }
             return home.appendingPathComponent("AppData/Roaming", isDirectory: true)
         },
-        pathSeparator: "\\",
-        scriptCommand: windowsScriptCommand
+        pathSeparator: "\\"
     )
 }
 #endif

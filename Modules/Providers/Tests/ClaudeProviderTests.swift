@@ -64,7 +64,7 @@ struct ClaudeProviderTests {
 
     // MARK: - CLI mode
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should show the usage screen when Claude reads from the CLI`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -93,7 +93,7 @@ struct ClaudeProviderTests {
         #expect(provider.defaultAccount.lastError == nil)
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should report the CLI's failure when the CLI and the API both fail`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -105,7 +105,7 @@ struct ClaudeProviderTests {
         #expect(provider.defaultAccount.lastError as? UsageError == .executionFailed("claude is not running"))
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should show the cost screen before trying the API when the account is billed by API`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -126,7 +126,7 @@ struct ClaudeProviderTests {
 
     // MARK: - API mode
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should fall back from the API to the CLI unless the person turns the fallback off`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -209,7 +209,7 @@ struct ClaudeProviderTests {
         #expect(passes.isFetching == false)
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should keep a failed guest pass fetch apart from usage and let it be dismissed`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }

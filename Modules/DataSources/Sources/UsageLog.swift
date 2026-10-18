@@ -7,7 +7,7 @@ import Quotas
 /// provider. Built from a definition's `usageHistory` block, filled with the
 /// login's values: where its tool's logs are, how a record reads, what a
 /// token costs. `days(in:)` reads and prices them into one stat per day
-/// (docs/features/daily-usage/design.md).
+/// (docs/features/usage-history/daily-usage/design.md).
 ///
 /// Every reader yields the same record, so deduplication, days, sessions and
 /// prices never learn which tool wrote the log.

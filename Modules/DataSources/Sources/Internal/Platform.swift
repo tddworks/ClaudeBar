@@ -17,28 +17,22 @@ struct Platform: Sendable {
     var timeZone: any TimeZoneSource
     /// Runs a CLI for a `cli` fetch or a CLI renewal.
     var runCLI: CLIFetcher.MakeExecutor?
-    /// Runs a command or script over pipes: `command`, `script`, `localServer`.
-    var runCommand: CommandFetcher.MakeExecutor?
-    /// Starts a CLI for a `jsonRpc` conversation.
-    var rpcTransport: DataSources.TransportFactory?
+    /// Finds and starts programs: `command`, `script`, `jsonRpc`, a `command`
+    /// log, a login-shell lookup and the programs a `localServer` looks for.
+    var processes: Processes?
     /// Reads a `keychain` item.
     var keychain: KeychainReader.Security?
     var browserCookies: (any BrowserCookieReading)?
     var browserStorage: (any BrowserStorageReading)?
     /// Talks to a server on this machine, for `localServer`.
     var localNetwork: (any NetworkClient)?
-    /// The command lines of the processes running, for `localServer`.
-    var processList: (@Sendable () -> [String])?
     /// Draws a terminal's raw output as the screen a person sees, for a
     /// `cli` fetch whose screen is `rendered`.
     var screenRenderer: (@Sendable (String) -> String)?
-    var binaryLocator: (any BinaryLocating)?
     /// The app-data folder for paths, using the caller's home and environment.
     var applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)?
     /// The separator accepted in this platform's filesystem paths.
     var pathSeparator: String
-    var scriptCommand: ScriptCommand?
-    var loginShellCommand: LoginShellCommand?
     var localServer: LocalServerFactory?
     var localServerCommands: LocalServerCommands?
 
@@ -46,38 +40,28 @@ struct Platform: Sendable {
         name: String,
         timeZone: any TimeZoneSource,
         runCLI: CLIFetcher.MakeExecutor? = nil,
-        runCommand: CommandFetcher.MakeExecutor? = nil,
-        rpcTransport: DataSources.TransportFactory? = nil,
+        processes: Processes? = nil,
         keychain: KeychainReader.Security? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
         localNetwork: (any NetworkClient)? = nil,
-        processList: (@Sendable () -> [String])? = nil,
         screenRenderer: (@Sendable (String) -> String)? = nil,
-        binaryLocator: (any BinaryLocating)? = nil,
         applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)? = nil,
         pathSeparator: String = "/",
-        scriptCommand: ScriptCommand? = nil,
-        loginShellCommand: LoginShellCommand? = nil,
         localServer: LocalServerFactory? = nil,
         localServerCommands: LocalServerCommands? = nil
     ) {
         self.name = name
         self.timeZone = timeZone
         self.runCLI = runCLI
-        self.runCommand = runCommand
-        self.rpcTransport = rpcTransport
+        self.processes = processes
         self.keychain = keychain
         self.browserCookies = browserCookies
         self.browserStorage = browserStorage
         self.localNetwork = localNetwork
-        self.processList = processList
         self.screenRenderer = screenRenderer
-        self.binaryLocator = binaryLocator
         self.applicationData = applicationData
         self.pathSeparator = pathSeparator
-        self.scriptCommand = scriptCommand
-        self.loginShellCommand = loginShellCommand
         self.localServer = localServer
         self.localServerCommands = localServerCommands
     }

@@ -18,7 +18,7 @@ Shows your Cursor plan's included usage for the current billing month as separat
 - **"Authentication required. Please log in."** means the database has no sign-in token (you're signed out of Cursor) or cursor.com returned 403. Sign in to Cursor again.
 - **"Session expired. Re-authenticate in Cursor settings."** means cursor.com rejected the stored token (HTTP 401). Sign out and back in to Cursor, then refresh ClaudeBar.
 - **The numbers are Cursor's own figures, shown as separate cards.** Monthly is `totalPercentUsed` (the same "You've used X%" figure Cursor shows). Auto and API are `autoPercentUsed` and `apiPercentUsed` when the API sends them. ClaudeBar does not derive one from the others. Bonus credits count toward Monthly capacity. Before ClaudeBar 0.4.73, paid plans with bonus credits could show EMPTY.
-- **The menu bar still defaults to Monthly.** To see the combined total and the API figure at the same time, keep Quota on Monthly and set Secondary Quota to API under Settings → [Menu Bar](../../features/menu-bar/README.md).
+- **The menu bar still defaults to Monthly.** To see the combined total and the API figure at the same time, keep Quota on Monthly and set Secondary Quota to API under Settings → [Menu Bar](../../features/app/menu-bar/README.md).
 - **On-demand and team cards only appear when that usage is enabled and has a limit.** Uncapped on-demand spend doesn't get a card.
 - **An unlimited plan shows its plan and no quota.** There is no ceiling to measure against, so ClaudeBar no longer shows a "100%" card for it.
 - **"No usage data found in Cursor response"** means the account reported no plan usage, on-demand limit, team credits or unlimited flag. Some free accounts look like this.

@@ -6,7 +6,7 @@ import Foundation
 /// lists. A path to the CLI, such as the one a provider's CLI location
 /// gives, is taken as it is when the file is there, as the Mac's locator
 /// takes one, and never searched for.
-struct PathBinaryLocator: BinaryLocating {
+struct PathBinaryLocator: Sendable {
     var environment: @Sendable () -> [String: String] = { ProcessInfo.processInfo.environment }
 
     func locate(_ cli: String) -> String? {

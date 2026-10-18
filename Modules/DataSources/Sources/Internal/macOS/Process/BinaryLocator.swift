@@ -25,7 +25,7 @@ import Foundation
 ///     print("Claude CLI found at: \(path)")
 /// }
 /// ```
-public struct BinaryLocator: BinaryLocating, Sendable {
+public struct BinaryLocator: Sendable {
     public init() {}
 
     /// Common paths where CLI tools are installed on macOS.

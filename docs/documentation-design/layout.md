@@ -14,9 +14,9 @@ This is the companion to [the design](README.md). Each file below is described f
 | Deciding whether to update | What changed? Is my bug fixed? | Sparkle's dialog, which shows the `CHANGELOG.md` section |
 | Setting up a provider | What do I install or sign in to, and which mode do I pick? | `docs/providers/<id>/README.md` |
 | Looking at an error in the popover | What does this mean and how do I fix it? | `docs/troubleshooting.md` → the provider's Gotchas |
-| Using a feature | How do I turn on the notch, Notify!, the Touch Bar, or extensions? | `docs/features/<x>/README.md` |
+| Using a feature | How do I turn on the notch, Notify!, the Touch Bar, or extensions? | `docs/features/<context>/<x>/README.md` |
 | Looking for anything | Is it documented, and where? | `docs/README.md` |
-| Writing an extension | What does the manifest look like and what must the script print? | `docs/features/extensions/README.md` |
+| Writing an extension | What does the manifest look like and what must the script print? | `docs/features/providers/extensions/README.md` |
 | Contributing | How do I build, test, and where does code go? | `CONTRIBUTING.md` → `docs/architecture/ARCHITECTURE.md` |
 | Changing a probe | Why does it parse this way, and what already failed? | `docs/providers/<id>/design.md` |
 | An agent working in this repo | What must I always or never do? | `AGENTS.md` |
@@ -115,12 +115,12 @@ Or download the DMG · Build from source → CONTRIBUTING.md
 | Codex | 5-hour and weekly limits | [docs](docs/providers/codex/README.md) |
 | Z.ai | GLM Coding Plan quota | [docs](docs/providers/zai/README.md) |
 …
-| Your own | Any script via `~/.claudebar/extensions/` | [docs](docs/features/extensions/README.md) |
+| Your own | Any script via `~/.claudebar/extensions/` | [docs](docs/features/providers/extensions/README.md) |
 
 ## Features                                        ← one row per feature, each → its doc
-| Menu bar | Up to three providers, % or countdown | [docs](docs/features/menu-bar/README.md) |
-| Notch | Live quota in the MacBook notch | [docs](docs/features/notch/README.md) |
-| Notify! | Quota on your iPhone Lock and Home Screen | [docs](docs/features/notify/README.md) |
+| Menu bar | Up to three providers, % or countdown | [docs](docs/features/app/menu-bar/README.md) |
+| Notch | Live quota in the MacBook notch | [docs](docs/features/activity/notch/README.md) |
+| Notify! | Quota on your iPhone Lock and Home Screen | [docs](docs/features/alerting/notify/README.md) |
 …
 
 ## More                                            ← links, nothing else
@@ -226,7 +226,7 @@ There's no line budget, because it's tier 3 and only read on demand. It still li
 
 ---
 
-## `docs/features/<x>/README.md` and `design.md`
+## `docs/features/<context>/<x>/README.md` and `design.md`
 
 The same shape and budget as a provider, for app features: `menu-bar`, `notch`, `notify`, `touch-bar`, `extensions`, `themes`, `status-colors`, `url-schemes`, `session-hooks`, `daily-usage`, `multi-account`. The Touch Bar README looks like this after the move:
 

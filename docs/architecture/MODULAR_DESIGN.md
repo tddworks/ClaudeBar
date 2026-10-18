@@ -164,9 +164,9 @@ Modules/DataSources/
 │       │              JSONLinesReader · JSONLogReader · CommandLogReader · SQLiteLogReader (a reader per
 │       │              log source, each knowing its own) · LogFileFinder (behind the file
 │       │              readers) · DayAggregator · PriceList · LocalEndpoint
-│       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·
-│       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
-│       │              TerminalRenderer
+│       ├── Process/   PipeCLIExecutor · PipeConversation · SubprocessSupport ·
+│       │              DefaultCLIExecutor · InteractiveRunner · BinaryLocator ·
+│       │              LoginShellEnvironment · RunningProcesses · TerminalRenderer
 │       └── Network/   URLSessionNetworkClient · InsecureLocalhostNetworkClient
 └── Tests/
     ├── Fetch/JSONRPCFetcherTests.swift
@@ -246,16 +246,20 @@ testability" alone.
 no call site changes while files move, and each old target is deleted once
 it is empty.
 
+Until then, each target groups its files by the context they will move to,
+so a folder already names its destination:
+
 | Today | Goes to |
 |---|---|
-| `Domain/Monitor/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
-| `Domain/Notify/`, `Infrastructure/Notifications/`, `Notify/` | `Alerting` |
-| `Domain/Session/`, `Domain/Notch/`, `Infrastructure/Hooks/` | `Activity` (`NSScreen+NotchMetrics` → App) |
-| `Domain/Settings/`, `Infrastructure/Storage/` | `Storage` (`StatusColorPolicy`, `MenuBarProviderSettings` → App) |
-| `Domain/Provider/` page state (`MenuBarLabel`, `MenuBar*Display`, `MenuBarStackedSize`, `CountdownColon`, `PopoverContentHeight`) | the App |
-| `Infrastructure/Claude/ClaudeGuestPassSource` | the App — Claude's alone, a source the composition root hands in behind `GuestPassSource` |
-| `Infrastructure/TerminalImport/` | the App — themes are presentation |
-| `Tests/DomainTests`, `InfrastructureTests` | split per module, following their sources; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests` |
+| `Domain/Monitoring/`, `Infrastructure/Monitoring/` | `Monitoring` (`QuotaAlerter` → `Alerting`) |
+| `Domain/Alerting/`, `Infrastructure/Alerting/`, `App/Alerting/` (its drivers stay in the App) | `Alerting` |
+| `Domain/Activity/`, `Infrastructure/Activity/`, `App/Activity/` (views stay in the App) | `Activity` (`NSScreen+NotchMetrics` → App) |
+| `Domain/InUse/`, `Infrastructure/InUse/` | not decided: beside `InUse` in `Providers`, or a module of its own (§9) |
+| `Domain/Settings/`, `Infrastructure/Settings/` | `Storage` |
+| `Domain/App/` (page state, `StatusColorPolicy`, `MenuBarProviderSettings`, `PopoverTitle`), `Infrastructure/App/` (terminal theme import) | the App |
+| `Domain/Providers/`, `Infrastructure/Providers/` (`ClaudeGuestPassSource`) | deleted (`AccountInfo`, `UsageProbe` are unused); the guest-pass source to the App, the composition root naming its vendor |
+| `Infrastructure/DataSources/` (`ShellEnvironment`, `SimpleCLIExecutor`) | `DataSources` |
+| `Tests/DomainTests`, `InfrastructureTests`, `AppTests` | split per module, following their sources' context folders; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests` |
 
 The kernel still holds a few types that belong elsewhere; each carries a
 `- Note: Interim` naming its final shape, and the canonical model lists them
@@ -265,6 +269,9 @@ under *where the code is still behind*.
 
 - **`Storage` as a module, or each module's settings in its own `Internal/`?**
   `settings.json` is one file many contexts write, so one owner today.
+- **Where In use's app half goes.** `NewSessions` and the shell lines follow
+  refreshes and write the person's shell files; `InUse` itself is in
+  `Providers`. Beside it, or an `InUse` module once a second consumer appears?
 - **One module per heavy SDK.** AWS is the only one today; the next gets its
   own `…Clients` module behind its own port in `DataSources`.
 - **Usage History as its own module, later?** Not now: `Providers` is its
@@ -351,11 +358,59 @@ passing 6 contract suites, with no edit above the line.
 | Port | Takes over today's | Mac adapter | Windows adapter |
 |---|---|---|---|
 | `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
-| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | Darwin processes, the login shell | `CreateProcess`, `PATH` + `PATHEXT` |
+| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `proc_listallpids`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, `EnumProcesses`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers five facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) |
 | `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | the trusted-localhost client, `lsof` / `pgrep` | the same client; the listener table |
 | `Terminal` | `runCLI` · `screenRenderer` | SwiftTerm on a pty | the console's pseudo-terminal (ConPTY) |
 | `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 |
 | `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) |
+
+#### Processes: a program the person has
+
+A data source asks for a program in the person's words: *run the CLI they
+installed*, *talk to it*, *run their own script*, *what does their login
+set*, *is that app running*. Pipes, argv, `PATH` and signals are how, and
+stay below. So the port is split by what each fact answers, and the
+business is one neutral copy above it:
+
+```text
+DOMAIN, neutral, one copy
+  Processes        the programs on this machine, from the five facts below
+    .program(named:)  → Program?      an installed CLI, found
+    .script(at:)      → Program?      the person's script file, when it is there
+    .loginEnvironment → LoginShellEnvironment
+  Program          a program found, started the way this OS starts it
+    .run(args, input, environment, timeout, in:) → what it printed
+        throws the facts: missing · couldn't start · exited n   ◀ the one owner
+    .talk(args, environment, in:)                → a conversation
+TECHNICAL, neutral, one copy
+  PipeCLIExecutor (the timeout race, stdout and stderr as one text)
+  PipeConversation (a line at a time, read on its own thread)
+PORTS, Ports/Processes.swift: what each OS answers, one question each
+  InstalledPrograms   find(name) → path?          login PATH + tool folders │ PATH + PATHEXT
+  ScriptStart         command(path) → argv        sh 'exec "$1"'            │ the file itself
+  LoginShell          command(printing:between:)  $SHELL -l -i              │ PowerShell profile
+  ChildLaunch         environment(for:) · end()   PATH + tool folders,      │ names ignoring case,
+                                                  SIGTERM then SIGKILL      │ TerminateProcess
+  RunningPrograms     paths()                     proc_listallpids          │ EnumProcesses
+```
+
+- **Each piece changes for one reason.** How a CLI is found changes
+  `InstalledPrograms`; a new kind of script changes `ScriptStart`; a login
+  shell changes `LoginShell`; a timeout changes `PipeCLIExecutor`; how a
+  failed run is worded changes `Program`.
+- **A new platform answers the five facts**, in one adapter that conforms to
+  them (`MacProcesses`, `WindowsProcesses`), and passes `ProcessesContract`.
+  Nothing above the ports is edited. A fetch kind that runs a program uses
+  `Program` and edits no adapter.
+- **A worker never sees argv, `PATH` or a pipe.** `CommandFetcher`,
+  `ScriptFetcher` and `JSONRPCFetcher` find a `Program` and tell it to run
+  or talk; `LoginShellEnvironment` owns its markers and hands `LoginShell`
+  them to print between.
+- **A test hands in the running, not the facts.** `Processes.with(pipes:…)`
+  keeps this OS's facts and runs programs on what the test gives, so the
+  factory's stubbed `make` and a provider's test say the same thing.
+- `RunningPrograms` answers a local server's question; it moves to
+  `LocalNetwork` with slice 3.
 
 ### The shape
 
@@ -433,7 +488,10 @@ Modules/DataSources/Sources/
 ├── Ports/                     the porting surface, @Mockable, one file each
 │   ├── TimeZoneSource.swift   the person's zone, and DataSources.timeZone() ·
 │   │                          .calendar(), the one public way to it (#567)
-│   └── Processes · Terminal · Secrets · LocalNetwork · Places   (slices 2–5)
+│   ├── Processes.swift        InstalledPrograms · ScriptStart · LoginShell ·
+│   │                          ChildLaunch · RunningPrograms: what an OS
+│   │                          answers about programs (#579)
+│   └── Terminal · Secrets · LocalNetwork   (slices 3–5)
 └── Internal/
     ├── Platform.swift         ◇ struct Platform — holds the ports, nothing
     │                            else; Platform.bare: the name and zone. Until
@@ -448,24 +506,32 @@ Modules/DataSources/Sources/
     ├── Time/WindowsZones.swift   a Windows zone key to its zone: CLDR's table
     │                             (+Table, generated from Vendor/CLDR) or the OS's
     │                             offset — neutral, so its tests run everywhere
-    ├── Fetch/ Lookup/ Mapping/ Logs/ Network/ Process/   neutral workers
+    ├── Process/               Processes · Program: a program the person has,
+    │                            found, run and talked to, its failures reported;
+    │                            PipeCLIExecutor · PipeConversation ·
+    │                            SubprocessSupport underneath, one copy for every
+    │                            platform (#579)
+    ├── Fetch/ Lookup/ Mapping/ Logs/ Network/   neutral workers
     ├── macOS/                 #if os(macOS), whole file: one adapter per port
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
+    │   ├── Process/MacProcesses.swift   the five facts: BinaryLocator, sh,
+    │   │                               $SHELL -l -i, ChildTeardown,
+    │   │                               RunningProcesses (#579)
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
-    │                                 under their ports in slices 2–5
+    │                                 under their ports in slices 3–5
     └── Windows/               #if os(Windows), whole file: the same ports
         ├── Platform+Windows.swift    static let current = Platform(name: "Windows", …)
         ├── Time/WindowsTimeZone.swift   the zone's registry key and offset (#567)
-        ├── Process/PathBinaryLocator.swift   PATH + PATHEXT
+        ├── Process/WindowsProcesses.swift   the five facts: PathBinaryLocator (PATH +
+        │                                   PATHEXT), the file itself, PowerShell,
+        │                                   TerminateProcess, EnumProcesses (#579)
         └── Logs/                     FileStamp+Windows · ByteSearch+Windows
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
-│                                adapter: TimeZoneContract (#567), the rest with
-│                                their slices
+│                                adapter: TimeZoneContract (#567),
+│                                ProcessesContract (#579), the rest with their slices
 ├── UnavailableTests.swift     the factory with Platform.bare — runs on the Mac too
-├── Support/Capabilities.swift .needsProcesses … — skips a test only until its
-│                                port's Windows adapter exists, saying why
 ├── …                          everything else: every OS, no skips
 └── macOS/ · Windows/          an adapter's own tests, under #if os(…)
 Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own design
@@ -481,7 +547,7 @@ Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own des
   mean "the default", so a test hands in `Platform.bare` (or `.current` with
   one connection removed) and checks on the Mac what Windows does.
 - **A platform worker is reached through a port** declared in the neutral
-  part (`Ports/`, and `BinaryLocating`, `CLIExecutor` … until their slices
+  part (`Ports/`, and `CLIExecutor`, `RPCTransport` … until their slices
   move them, §6). Two types of one name, one per folder, are not allowed:
   nothing makes their APIs agree.
 - **Only the factory reads `Platform`.** It hands each worker the one thing it
@@ -490,10 +556,10 @@ Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own des
   `ErrorFact.unavailable`, so a definition's `errors` may word it and a
   screen can tell "not on Windows yet" from a failure.
 - **Everything above the ports runs on every OS and never skips.** A test
-  that needs a port names it (`.needsProcesses`) and runs wherever
-  `Platform.current` has that port; when a slice brings the Windows adapter,
-  its tests start running there with no edit. A library is never a reason to
-  skip.
+  that needs a port names it (`.needsTerminal`, in Providers'
+  `Tests/Support/Capabilities.swift`) and runs wherever `Platform.current` has
+  that port; when a slice brings the Windows adapter, its tests start running
+  there with no edit. A library is never a reason to skip.
 - **Each port has one contract suite**, in `Tests/Contracts/`, that runs
   against `Platform.current`'s adapter on every OS. It holds the adapter to
   what the OS itself says, as `TimeZoneContract` compares the zone with the
@@ -547,7 +613,7 @@ Phase 5's slices, each its own issue and PR
 |---|---|---|
 | 0 | **`TimeZone` port.** The person's zone, read through the factory; every `.current` calendar default reads it | a KST test runs on any machine — built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
 | 1 | **Vendor QuickJS and SQLite; one engine everywhere.** `QuickJSEngine` replaces JavaScriptCore on the Mac and is the engine on Windows; one `ReadOnlyQuery` on bundled SQLite | Windows no longer skips a test for a script engine or SQLite (−391); the Mac's numbers don't change; release-build timing, the size added to the Mac app, and scripts in definitions people wrote checked — built ([#571](https://github.com/tddworks/ClaudeBar/pull/571)) |
-| 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows |
+| 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows — built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)): `command`, `script` and `jsonRpc` fetches, `command` logs and the login-shell lookup run on Windows |
 | 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows |
 | 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows |
 | 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows |
@@ -556,8 +622,13 @@ Phase 5's slices, each its own issue and PR
 ### Open
 
 - **`Places` has no slice of its own.** Its two fields came with phase 4 and
-  already work on Windows; it becomes a port, with its contract, in slice 2,
-  the first slice that regroups `Platform`.
+  already work on Windows. Slice 2 kept to `Processes`, so they stay fields
+  of `Platform` until a slice needs them as a port.
+- **Extension scripts on Windows.** An extension's script runs as the file
+  itself, so a `.cmd`, `.bat` or `.exe` works and the example's `.sh`
+  doesn't. Running a `.ps1` through PowerShell, or a `.sh` through Git for
+  Windows' `sh` when it is there, are left for an issue that asks
+  ([#579](https://github.com/tddworks/ClaudeBar/issues/579)).
 - ~~**The JavaScript engine on Windows.**~~ QuickJS, vendored, on the Mac too
   ([#570](https://github.com/tddworks/ClaudeBar/issues/570)).
 - ~~**A script's local time on Windows.**~~ A script's `Date` local time is

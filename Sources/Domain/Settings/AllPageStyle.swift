@@ -7,7 +7,7 @@ import Foundation
 ///
 /// It chooses how a provider is printed and nothing else — the login a card
 /// reads, the numbers, the status and the badge are the same either way
-/// (docs/features/all-providers/design.md).
+/// (docs/features/monitoring/all-providers/design.md).
 public enum AllPageStyle: String, Sendable, CaseIterable {
     /// A card per provider, led by the quota that runs out first (today's All).
     case rings

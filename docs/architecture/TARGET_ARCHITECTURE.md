@@ -421,7 +421,7 @@ reproduce its output, quota for quota, before the Swift goes.
   names nothing of the account is left out, and its CLI runs under `accounts.cli`
   ([#577](https://github.com/tddworks/ClaudeBar/issues/577), replacing
   `accounts.patch`). The rest is designed in
-  [features/multi-account/design.md](../features/multi-account/design.md).
+  [features/multi-account/design.md](../features/providers/multi-account/design.md).
 - **A `command` fetch from the UI** — see [CANONICAL_MODEL §9](CANONICAL_MODEL.md#9--open).
 
 ## 9 · In use as a capability

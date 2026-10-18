@@ -8,7 +8,7 @@
 // capture ends the wait and is then parsed as if it were a Usage screen.
 //
 // The rule under test is the real one: this file is compiled together with
-// `Sources/Infrastructure/Shared/CLICompletionRule.swift`, so a change to the
+// `Sources/Infrastructure/DataSources/CLICompletionRule.swift`, so a change to the
 // matcher is measured here rather than re-described in a commit message.
 //
 //   scripts/replay-claude-usage-captures.sh                    # committed corpus

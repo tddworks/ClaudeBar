@@ -4,7 +4,7 @@ import Testing
 import Domain
 
 /// An extension's icon is the SF Symbol its manifest names (#302), now read
-/// through its definition (docs/features/extensions/design.md) — and a symbol that doesn't exist
+/// through its definition (docs/features/providers/extensions/design.md) — and a symbol that doesn't exist
 /// keeps the question mark.
 @MainActor
 @Suite(.serialized)

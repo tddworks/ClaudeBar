@@ -91,6 +91,7 @@ struct CodexAccountsTests {
             #"{"id":1,"result":{}}"#, Self.signedOut,
         ]
         let received = Counter()
+        given(stub.cli).locate(.any).willProduce { @Sendable name in name }
         given(stub.transport).send(.any).willReturn(())
         given(stub.transport).close().willReturn(())
         given(stub.transport).receive().willProduce { @Sendable in Data(answers[received.next() - 1].utf8) }

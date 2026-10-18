@@ -3,7 +3,7 @@ import Domain
 
 /// A theme's runner in its lane above the floor, drawn while the popover is
 /// open. It takes no clicks; the action bar above it keeps them.
-/// Design: docs/features/themes/design.md#the-runner.
+/// Design: docs/features/app/themes/design.md#the-runner.
 struct GroundRunnerView: View {
     let runner: GroundRunner
     let status: QuotaStatus

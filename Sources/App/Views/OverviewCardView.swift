@@ -2,7 +2,7 @@ import SwiftUI
 import Domain
 
 /// The *All* page: a two-column grid of cards, one per provider, with the
-/// counts above it (docs/features/all-providers/design.md).
+/// counts above it (docs/features/monitoring/all-providers/design.md).
 struct OverviewPageView: View {
     let overview: Overview
     let open: (OverviewCard) -> Void
@@ -21,7 +21,7 @@ struct OverviewPageView: View {
 
 /// The *All* page in **Bars**: a row per provider, a line per quota the
 /// person watches, every bar drawn from the same place so two providers can be
-/// read against each other down the column (docs/features/all-providers/design.md).
+/// read against each other down the column (docs/features/monitoring/all-providers/design.md).
 struct OverviewBarsPageView: View {
     let overview: Overview
     let open: (OverviewCard) -> Void

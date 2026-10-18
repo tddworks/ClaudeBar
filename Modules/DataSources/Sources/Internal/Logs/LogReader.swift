@@ -23,8 +23,8 @@ enum LogReader: Sendable {
             case .json: self = .json(JSONLogReader(glob: expand(glob), shapes: shapes))
             }
         case .command(let call):
-            self = .command(CommandLogReader(fetcher: platform.runCommand.map {
-                CommandFetcher(call: call, makeExecutor: $0,
+            self = .command(CommandLogReader(fetcher: platform.processes.map { processes in
+                CommandFetcher(call: call, processes: processes,
                                directory: { call.workingDirectory.map { _ in
                                    DataSources.cliWorkingDirectory(platform: platform, homeDirectory: homeDirectory,
                                                                   environment: environment)

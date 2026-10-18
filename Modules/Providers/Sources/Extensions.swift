@@ -3,7 +3,7 @@ import Diagnostics
 import Foundation
 
 /// *Extensions* — `~/.claudebar/extensions/<id>/manifest.json`, read as
-/// definitions of origin *Extension* (docs/features/extensions/design.md). The person's file
+/// definitions of origin *Extension* (docs/features/providers/extensions/design.md). The person's file
 /// stays as it is: each section a definition can read becomes a data source,
 /// and they answer together, as sections always did.
 ///

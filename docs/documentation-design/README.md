@@ -33,7 +33,7 @@ Agent Skills stay cheap by loading content in three tiers, where each tier only 
 | Skill tier | Loaded | ClaudeBar docs equivalent |
 |---|---|---|
 | **1. Metadata** (`name` + `description`) | Always | `README.md`, `AGENTS.md`, the generated `docs/README.md` index, CHANGELOG lines |
-| **2. Instructions** (`SKILL.md` body) | When needed | `docs/providers/<id>/README.md` and `docs/features/<x>/README.md`: set up or use one thing |
+| **2. Instructions** (`SKILL.md` body) | When needed | `docs/providers/<id>/README.md` and `docs/features/<context>/<x>/README.md`: set up or use one thing |
 | **3. Resources** (`references/`, `scripts/`) | On demand, by link | `design.md` next to each README, `docs/architecture/*`, `docs/troubleshooting.md`, `docs/settings.md` |
 
 Rules:
@@ -65,18 +65,17 @@ docs/
 │   │   └── design.md           tier 3: endpoints, fields, CLI screen quirks, fallbacks, dead ends
 │   └── kiro/
 │       └── README.md           most small providers stop here
-└── features/                   one folder per app feature, same shape
-    ├── notch/
-    ├── notify/
-    ├── touch-bar/
-    ├── extensions/
-    ├── menu-bar/               multiple providers, duration display, countdown colon
-    ├── themes/                 built-in themes, terminal theme import
-    ├── status-colors/
-    ├── url-schemes/
-    ├── session-hooks/
-    ├── daily-usage/
-    └── multi-account/
+└── features/                   one folder per bounded context (CANONICAL_MODEL §7),
+    │                           then one per feature, same shape
+    ├── activity/               notch/ · session-hooks/
+    ├── alerting/               notify/ · quota-alerts/ · touch-bar/
+    ├── app/                    menu-bar/ · popover-title/ · themes/ · url-schemes/
+    ├── in-use/                 a context that is one feature holds its README itself
+    ├── leaderboard/
+    ├── monitoring/             all-providers/
+    ├── providers/              extensions/ · multi-account/
+    ├── quota/                  status-colors/
+    └── usage-history/          daily-usage/
 ```
 
 Outside this design and left alone: the website ([`website/`](../../website/README.md), served at claudebar.tddworks.com; `docs/index.html` only points there), **`docs/appcast.xml`** (Sparkle reads it from that URL; moving it breaks auto-update for every installed copy), `docs/screenshots/` and `docs/sponsors/`. They are pages or assets, not docs, and `check-docs` skips them. HTML mockups and design pages live outside `docs/`, in `design-concept/`.
@@ -115,14 +114,14 @@ Keeps: logo/badges, one-paragraph pitch, screenshot, install (Homebrew, download
 |---|---|
 | Requirements → provider list | Provider table, one row each → `docs/providers/<id>/README.md` |
 | Provider Setup Guides (`<details>`) | `docs/providers/<id>/README.md` |
-| Quota Thresholds & Color Coding | `docs/features/status-colors/README.md` |
-| Touch Bar Integration | `docs/features/touch-bar/README.md` |
-| MacBook Notch Live Activity | `docs/features/notch/README.md` |
-| Notify! Setup | `docs/features/notify/README.md` |
-| URL Schemes | `docs/features/url-schemes/README.md` |
-| Import Terminal Theme | `docs/features/themes/README.md` |
-| User Extensions | `docs/features/extensions/README.md` |
-| Multiple Providers in the Menu Bar | `docs/features/menu-bar/README.md` |
+| Quota Thresholds & Color Coding | `docs/features/quota/status-colors/README.md` |
+| Touch Bar Integration | `docs/features/alerting/touch-bar/README.md` |
+| MacBook Notch Live Activity | `docs/features/activity/notch/README.md` |
+| Notify! Setup | `docs/features/alerting/notify/README.md` |
+| URL Schemes | `docs/features/app/url-schemes/README.md` |
+| Import Terminal Theme | `docs/features/app/themes/README.md` |
+| User Extensions | `docs/features/providers/extensions/README.md` |
+| Multiple Providers in the Menu Bar | `docs/features/app/menu-bar/README.md` |
 | Development, Build & Test, SwiftUI Previews | `CONTRIBUTING.md` |
 | Architecture, Key Design Decisions | `docs/architecture/ARCHITECTURE.md` (already there) |
 | Adding a New AI Provider | `CONTRIBUTING.md` → `add-provider` skill |
@@ -181,7 +180,7 @@ No type lists, no file maps, no test snippets, no settings-key tables (those are
 ## Tier 3: resources
 
 - **`docs/providers/<id>/design.md`**: contributor-facing research for one provider. The endpoints or CLI invocations, the response fields that matter (with the CLI/API version they were seen in), the screen-scraping rules, the fallback chain and why each step exists, what was tried and failed. Today's `docs/plans/2026-01-22-bedrock-provider-design.md` and `2026-02-04-codex-api-probe-design.md` move here; so does future research like the Codex `resetsAt` and Antigravity empty-`pgrep` findings.
-- **`docs/features/<x>/design.md`**: the same for app features (notch, notify, reports). Today's `docs/plans/2026-06-09-daily-usage-dedup-design.md` became `features/daily-usage/dedup.md`, beside the feature's `design.md`.
+- **`docs/features/<context>/<x>/design.md`**: the same for app features (notch, notify, reports). Today's `docs/plans/2026-06-09-daily-usage-dedup-design.md` became `features/usage-history/daily-usage/dedup.md`, beside the feature's `design.md`.
 - **`docs/architecture/`**: the design, as a chain read in order — see [Design docs: an order, not a pile](#design-docs-an-order-not-a-pile).
 - **`docs/troubleshooting.md`**: log files, OSLog filters, what each common probe error means. Provider-specific errors stay in that provider's Gotchas and are linked from here.
 - **`docs/settings.md`**: `settings.json` namespaces and where secrets live (Keychain vs settings file). One home, linked from provider docs.
@@ -213,7 +212,7 @@ The design is five documents, and each answers a question that only exists once 
 | Setting up a provider | README provider table → `docs/providers/<id>/README.md` |
 | Provider shows an error | Popover error → `docs/troubleshooting.md` → provider Gotchas |
 | Upgrading | Sparkle dialog / CHANGELOG line → linked issue or doc |
-| Extension author | `docs/features/extensions/README.md` |
+| Extension author | `docs/features/providers/extensions/README.md` |
 | Contributor | CONTRIBUTING → `docs/architecture/ARCHITECTURE.md` → provider `design.md` → code |
 | Agent fixing a bug | AGENTS.md → `fix-bug` skill → provider `design.md` |
 | Agent adding a provider | AGENTS.md → `add-provider` skill → a similar provider's `design.md` |
@@ -227,7 +226,7 @@ The design is five documents, and each answers a question that only exists once 
 | New provider | `docs/providers/<id>/README.md` with a `description`, one README table row, one CHANGELOG line, `make docs` | |
 | Probe changes (new field, new fallback, CLI output changed) | The provider's `design.md`; its Gotchas if users could hit it | |
 | New setting | `docs/settings.md` if it adds a namespace; the provider or feature README if users must set it | |
-| New feature | `docs/features/<x>/README.md`, one CHANGELOG line, a README feature-table row | |
+| New feature | `docs/features/<context>/<x>/README.md`, one CHANGELOG line, a README feature-table row | |
 | Bug fix | One CHANGELOG line; a Gotchas entry if users could hit it again | |
 | New agent-wide rule | One line in `AGENTS.md`, linking to where it's explained | |
 | A domain or design change | `CANONICAL_MODEL.md` / `TARGET_ARCHITECTURE.md` or the feature's `design.md` **first**, confirmed with the maintainer before code; the build-truth row once built | |
@@ -251,7 +250,7 @@ Skills follow the same rule: `.claude/skills/*` carry agent workflows and link t
 | `CHANGELOG.md` holds only `[Unreleased]` + one minor | fails once a second minor appears (rollover forgotten) |
 | The release scripts keep everything | `scripts/test-changelog-release.sh`: patch and minor releases, with and without entries, nothing lost, links resolve, idempotent |
 | Every provider / feature README has a `description` | required, ≤250 chars |
-| Every provider in `Sources/Domain/Provider/` has `docs/providers/<id>/README.md` | required |
+| Every provider definition in `Modules/Providers/Resources/Providers/` has `docs/providers/<id>/README.md` | required |
 | Relative links resolve (code fences and inline code skipped) | all `.md` files |
 | Generated `docs/README.md` is current | `gen-docs.py`, then `git diff --exit-code` |
 
@@ -262,7 +261,7 @@ When a doc goes over budget, split it. Don't raise the limit.
 Done in one PR (#307), one commit per step, and the docs stayed valid after each one.
 
 1. **Hygiene**: this design; `git mv CLAUDE.md AGENTS.md` and fix its drift (provider count, credential storage, the stale repository table); fix the 7 broken links; README Sponsors in the asc-cli format; `scripts/check-docs.py` in report-only mode.
-2. **Move features**: `git mv` each `docs/features/<x>.md` to `docs/features/<x>/README.md`, `docs/touchbar/` to `docs/features/touch-bar/`, `docs/plans/*` to the owning `design.md`; a script rewrites links and `check-docs.py` proves none broke. Mechanical, no content changes.
+2. **Move features**: `git mv` each `docs/features/<x>.md` to `docs/features/<x>/README.md`, `docs/touchbar/` to `docs/features/alerting/touch-bar/`, `docs/plans/*` to the owning `design.md`; a script rewrites links and `check-docs.py` proves none broke. Mechanical, no content changes.
 3. **Generation**: `scripts/gen-docs.py` builds `docs/README.md`; add `description` to each doc.
 4. **Providers**: one `docs/providers/<id>/README.md` per provider, starting from the README's setup guides; `design.md` where research exists. Parallelisable per provider.
 5. **Tier 1**: slim README; add `CONTRIBUTING.md`, `docs/troubleshooting.md`, `docs/settings.md`; slim `AGENTS.md` to its budget; move walkthroughs into skills.

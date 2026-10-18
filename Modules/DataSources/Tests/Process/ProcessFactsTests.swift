@@ -17,7 +17,7 @@ struct ProcessFactsTests {
     }
 
     @Test
-    func `should never offer a login shell lookup when the platform has no shell connection`() {
+    func `should never offer a login shell lookup when the platform runs no programs`() {
         let platform = Platform(name: "Windows", timeZone: Zones.seoul)
         #expect(DataSources.makeLoginShellEnvironment(platform: platform, cliExecutor: MockCLIExecutor()) == nil)
     }
@@ -30,11 +30,11 @@ struct ProcessFactsTests {
     }
 
     @Test(arguments: [false, true])
-    func `should name a missing script or server connection even when a generic command runner exists`(_ local: Bool) async {
+    func `should name the connection a platform lacks for a script or a local server`(_ local: Bool) async {
         var platform = Platform(name: "Windows", timeZone: Zones.seoul)
-        platform.runCommand = { _ in MockCLIExecutor() }
+        // Programs run, but a local server needs its own connection too.
+        if local { platform.processes = Processes.running { _ in MockCLIExecutor() } }
         platform.localNetwork = MockNetworkClient()
-        platform.processList = { [] }
         let fetch: Fetch = local ? .localServer(localCall) : .script(scriptCall)
         let source = DataSources.make(
             DataSourceDefinition(kind: "acme", fetch: fetch, mapping: .usage(UsageMapping())),
@@ -62,7 +62,7 @@ struct ProcessFactsTests {
     }
 
     #if os(macOS)
-    @Test(.needsProcesses)
+    @Test
     func `should start a CLI in the supplied home's trust directory only when fetched`() async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("cli-home-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: home) }
@@ -93,9 +93,9 @@ struct ProcessFactsTests {
 
     #if os(Windows)
     @Test
-    func `should not offer unavailable Mac shell or local server commands on Windows`() {
-        #expect(DataSources.makeLoginShellEnvironment(cliExecutor: MockCLIExecutor()) == nil)
-        #expect(Fetch.script(scriptCall).connection.commands.isEmpty)
+    func `should run a script as its own file and offer no local server on Windows`() {
+        #expect(DataSources.makeLoginShellEnvironment(cliExecutor: MockCLIExecutor()) != nil)
+        #expect(Fetch.script(scriptCall).connection.commands == [["probe.sh"]])
         #expect(Fetch.localServer(localCall).connection.commands.isEmpty)
     }
     #endif

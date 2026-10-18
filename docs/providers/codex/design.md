@@ -174,7 +174,7 @@ no longer exist.
 ## Files to Create/Modify
 
 ### New Files
-- `Sources/Domain/Provider/Codex/CodexProbeMode.swift`
+- `Sources/Domain/Settings/CodexProbeMode.swift`
 - `Sources/Infrastructure/Adapters/CodexCredentialLoader.swift`
 - `Sources/Infrastructure/CLI/Codex/CodexAPIUsageProbe.swift`
 - `Tests/InfrastructureTests/CLI/Codex/CodexAPIUsageProbeTests.swift`
@@ -183,7 +183,7 @@ no longer exist.
 ### Modified Files
 - `Sources/Domain/Provider/ProviderSettingsRepository.swift` - Add `CodexSettingsRepository` protocol
 - `Sources/Domain/Provider/CodexProvider.swift` - Add dual-probe support (cliProbe + apiProbe)
-- `Sources/Infrastructure/Storage/JSONSettingsRepository.swift` - Implement `CodexSettingsRepository`
+- `Sources/Infrastructure/Settings/Storage/JSONSettingsRepository.swift` - Implement `CodexSettingsRepository`
 - `Sources/App/ClaudeBarApp.swift` - Pass API probe to CodexProvider
 - `Sources/App/Views/SettingsView.swift` - Add Codex probe mode picker
 ## Findings since

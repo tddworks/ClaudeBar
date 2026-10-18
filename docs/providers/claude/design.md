@@ -108,7 +108,7 @@ The Desktop path is a platform fact supplied through `DataSources`: macOS keeps
 
 ## Added accounts
 
-A second Claude login lives in its own config folder, as `CLAUDE_CONFIG_DIR=<folder> claude` makes it. The `accounts` block in `claude.json` says everything; no Swift knows Claude. Design: [features/multi-account/design.md](../../features/multi-account/design.md).
+A second Claude login lives in its own config folder, as `CLAUDE_CONFIG_DIR=<folder> claude` makes it. The `accounts` block in `claude.json` says everything; no Swift knows Claude. Design: [features/multi-account/design.md](../../features/providers/multi-account/design.md).
 
 - **Choosing the folder** (`accounts.folder`). The folder must hold a key (`.credentials.json`, or the Keychain item below) and `.claude.json` with `oauthAccount.emailAddress`. `signedInAs` reads `.claude.json` — the folder's, or `${CLAUDE_CONFIG_DIR:-~}/.claude.json` for the default account, where Claude Code keeps it when no folder is set — for the `id` and `email` (the email), `organization` and `billingType`, once for every data source. The id is saved as `accountId`. A folder with an email but no key is not a login. Neither the default folder nor a login already listed is added again.
 - **Signing in** (`accounts.signIn`). `claude auth login --claudeai` runs with `CLAUDE_CONFIG_DIR` set to a new folder under `~/.claudebar/accounts/claude/`, and with the inherited Anthropic keys unset. Then that folder is checked like a chosen one. *Remove* deletes a folder made this way, and never a folder you chose. Not yet tried against a real login: whether `claude auth login` completes without a terminal attached.

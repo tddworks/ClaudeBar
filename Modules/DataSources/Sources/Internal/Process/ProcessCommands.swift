@@ -1,9 +1,3 @@
-/// The complete argv used to run a person's script.
-typealias ScriptCommand = @Sendable (_ run: String) -> [String]
-
-/// The complete argv used to read a variable through the user's login shell.
-public typealias LoginShellCommand = @Sendable (_ variable: String) -> [String]
-
 /// A platform's worker for discovering and querying an app's local server.
 typealias LocalServerFactory = @Sendable (
     _ call: LocalServerCall,

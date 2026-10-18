@@ -52,9 +52,9 @@ In Console.app, search for `subsystem:com.tddworks.claudebar` and turn on Action
 | `providers` | Provider lifecycle, extension loading |
 | `network` | HTTP requests and responses |
 | `credentials` | Token loading and refresh (values are never logged) |
-| `hooks` | The [session hooks](features/session-hooks/README.md) server |
+| `hooks` | The [session hooks](features/activity/session-hooks/README.md) server |
 | `notifications` | Quota and session notifications |
-| `ui` | Menu bar and window lifecycle, unhandled [URLs](features/url-schemes/README.md) |
+| `ui` | Menu bar and window lifecycle, unhandled [URLs](features/app/url-schemes/README.md) |
 | `updates` | Sparkle update checks |
 
 ## Common errors
@@ -96,7 +96,7 @@ Every provider runs on the same engine, so its log lines have the same shape: `<
 | `http step <name>: failed, going on without it` | An optional request (a project lookup) failed; the rest went ahead |
 | `<namespace> metrics in <region> failed: …` | One cloud region failed (Bedrock); the others still count |
 | `A key was found but its <field> isn't one this provider uses; not using it` | A key found in another tool's config points elsewhere (e.g. a Claude Code key that isn't Z.ai's) |
-| `Hook HTTP server failed: …` | Port 19847 is taken, so session hooks are off ([session hooks](features/session-hooks/README.md)) |
+| `Hook HTTP server failed: …` | Port 19847 is taken, so session hooks are off ([session hooks](features/activity/session-hooks/README.md)) |
 | `Usage history: scanned <n> recent log files (…)` / `… raw records, … after dedup` | *TODAY'S USAGE* read a tool's local logs. Days that have closed are kept in `~/.claudebar/usage-history/`; deleting that folder makes the next read sum them again |
 | `Usage history: price file '<file>' is missing` / `is malformed` | A provider's price list didn't load, so its usage history shows tokens without cost. Report it with the log |
 | `'<tool>' at <path> is Intel-only and will run under Rosetta; macOS may name ClaudeBar in its 'apps for Intel processors' warning` | The only copy of the tool on your Mac is Intel-only, so running it is translated ([below](#support-for-apps-for-intel-processors-macos-warning)) |

@@ -16,7 +16,7 @@ public enum Mapping: Sendable, Equatable {
 }
 
 /// `{ "usage": {} }` — the output format documented for extensions
-/// (docs/features/extensions/manifest.md): `quotas[]` with `type`
+/// (docs/features/providers/extensions/manifest.md): `quotas[]` with `type`
 /// (`session`, `weekly`, `model:<name>`, or a name of its own),
 /// `percentRemaining`, `resetsAt` (ISO 8601), `resetText`, `dollarRemaining`;
 /// and `costUsage` with `totalCost`, `budget`, `apiDuration`, `wallDuration`,

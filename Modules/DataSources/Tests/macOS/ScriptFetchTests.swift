@@ -6,7 +6,7 @@ import Testing
 
 /// `script` — a script run with `/bin/sh` from its own folder, every setting
 /// in its environment and secrets read from the vault: what an extension's
-/// section runs (docs/features/extensions/design.md). Run for real, in a temporary folder.
+/// section runs (docs/features/providers/extensions/design.md). Run for real, in a temporary folder.
 @Suite
 struct ScriptFetchTests {
     private let folder = FileManager.default.temporaryDirectory.appendingPathComponent("script fetch's \(UUID().uuidString)", isDirectory: true)
@@ -33,7 +33,7 @@ struct ScriptFetchTests {
         return DataSources.make(definition, providerId: "ext-acme", secrets: Vault(secrets))
     }
 
-    @Test(.needsProcesses)
+    @Test
     func `should show what a script prints when it runs from its own folder`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", #"cat left.json"#)
@@ -44,7 +44,7 @@ struct ScriptFetchTests {
         #expect(usage.quota(for: .weekly)?.percentRemaining == 62)
     }
 
-    @Test(.needsProcesses)
+    @Test
     func `should hand a script its settings as environment variables and its secrets from the vault`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", #"echo "{\"weekly\":{\"left\":${#CLAUDEBAR_API_KEY}$CLAUDEBAR_REGION}}""#)
@@ -56,7 +56,7 @@ struct ScriptFetchTests {
         #expect(usage.quota(for: .weekly)?.percentRemaining == 60)
     }
 
-    @Test(.needsProcesses)
+    @Test
     func `should fail at the fetch step when the script fails`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", "exit 3")
@@ -66,7 +66,7 @@ struct ScriptFetchTests {
         }
     }
 
-    @Test(.needsProcesses)
+    @Test
     func `should not be ready when the script is not there`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -76,7 +76,7 @@ struct ScriptFetchTests {
         #expect(await missing.isReady() == false)
     }
 
-    @Test(.needsProcesses)
+    @Test
     func `should run a script whose folder comes from an environment path`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", "cat left.json")

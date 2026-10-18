@@ -62,10 +62,10 @@ This plan renames the user-facing vocabulary and gives the card a proper "Monthl
 - (No changes needed to `WrappedStatCard`, `QuotaCardView`, or `ProviderSectionView` — they render `quota.quotaType.displayName` which becomes "Monthly" automatically. They also display `resetTimestampDescription ?? resetText` — once `resetsAt` is set, the timestamp description ("Resets in 12d") takes over and our "X/Y credits" suffix no longer dominates the card body.)
 
 **Tests:**
-- `Tests/DomainTests/Provider/Copilot/MonthlyResetDateTests.swift` — new tests for the reset-date helper.
+- `Tests/DomainTests/Providers/Copilot/MonthlyResetDateTests.swift` — new tests for the reset-date helper.
 - `Tests/InfrastructureTests/Copilot/CopilotInternalAPIProbeTests.swift` — update existing assertions for the new quota type, `resetsAt`, and renamed strings; add coverage for "Resets in Xd" countdown surfacing.
 - `Tests/InfrastructureTests/Copilot/CopilotUsageProbeTests.swift` — same.
-- `Tests/DomainTests/Provider/Copilot/CopilotProviderTests.swift` — update any quota-type assertions.
+- `Tests/DomainTests/Providers/Copilot/CopilotProviderTests.swift` — update any quota-type assertions.
 - `Tests/AcceptanceTests/CopilotConfigSpec.swift` — update any user-facing string assertions and quota-type assertions.
 
 ---
@@ -80,11 +80,11 @@ Tasks are ordered so each one leaves the tree compiling and tests green. Each ta
 
 **Files:**
 - Create: `Sources/Domain/Provider/Copilot/MonthlyResetDate.swift`
-- Create: `Tests/DomainTests/Provider/Copilot/MonthlyResetDateTests.swift`
+- Create: `Tests/DomainTests/Providers/Copilot/MonthlyResetDateTests.swift`
 
 - [ ] **Step 1: Write failing tests**
 
-Create `Tests/DomainTests/Provider/Copilot/MonthlyResetDateTests.swift`:
+Create `Tests/DomainTests/Providers/Copilot/MonthlyResetDateTests.swift`:
 
 ```swift
 import Foundation
@@ -171,7 +171,7 @@ Expected: 4 tests pass.
 
 ```bash
 git add Sources/Domain/Provider/Copilot/MonthlyResetDate.swift \
-        Tests/DomainTests/Provider/Copilot/MonthlyResetDateTests.swift
+        Tests/DomainTests/Providers/Copilot/MonthlyResetDateTests.swift
 git commit -m "feat(copilot): add MonthlyResetDate helper for UTC month rollover"
 ```
 
@@ -386,11 +386,11 @@ git commit -m "feat(copilot): update billing probe to AI credits + Monthly quota
 ### Task 4: Update `CopilotProvider` tests for new quota type
 
 **Files:**
-- Modify: `Tests/DomainTests/Provider/Copilot/CopilotProviderTests.swift`
+- Modify: `Tests/DomainTests/Providers/Copilot/CopilotProviderTests.swift`
 
 - [ ] **Step 1: Read the file to see what quota-type assertions exist**
 
-Open `Tests/DomainTests/Provider/Copilot/CopilotProviderTests.swift` and grep for `.session` or "quota" inside `CopilotProvider` assertions. (The probe tests own the quota-type checks; the provider tests are more about lifecycle and credentials. There's a good chance there are zero changes needed here.)
+Open `Tests/DomainTests/Providers/Copilot/CopilotProviderTests.swift` and grep for `.session` or "quota" inside `CopilotProvider` assertions. (The probe tests own the quota-type checks; the provider tests are more about lifecycle and credentials. There's a good chance there are zero changes needed here.)
 
 - [ ] **Step 2: If any test asserts `quotaType == .session` for a Copilot snapshot, change it to `.timeLimit("Monthly")`**
 
@@ -412,7 +412,7 @@ Expected: green (or skipped if no changes needed).
 - [ ] **Step 4: Commit (only if changed)**
 
 ```bash
-git add Tests/DomainTests/Provider/Copilot/CopilotProviderTests.swift
+git add Tests/DomainTests/Providers/Copilot/CopilotProviderTests.swift
 git commit -m "test(copilot): update provider tests to assert Monthly quota type"
 ```
 

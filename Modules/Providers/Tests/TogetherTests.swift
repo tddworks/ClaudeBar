@@ -6,7 +6,7 @@ import Testing
 /// `"together": true` — a definition's data sources answer together (an
 /// extension's sections): every one runs, the usage is their union in the
 /// definition's order, a failed one is left out of it and shows beside it as
-/// fetch health, and the refresh fails only when all do (docs/features/extensions/design.md).
+/// fetch health, and the refresh fails only when all do (docs/features/providers/extensions/design.md).
 @MainActor
 @Suite
 struct TogetherTests {

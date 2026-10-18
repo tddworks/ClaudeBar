@@ -112,7 +112,7 @@ struct SubprocessSupportTests {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/pwd",
             arguments: [],
-            workingDirectory: "/tmp"
+            workingDirectory: URL(fileURLWithPath: "/tmp", isDirectory: true)
         )
 
         #expect(result.standardOutput.contains("tmp"))

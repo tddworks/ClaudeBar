@@ -28,7 +28,7 @@ struct KiroDefinitionTests {
         var platform = Platform.current
         platform.timeZone = Zones.losAngeles
         platform.runCLI = { _ in cli }
-        platform.runCommand = { @Sendable environment in
+        platform.processes = Processes.running { @Sendable environment in
             if let home = environment.set["HOME"] {
                 #expect(home == workHome)
                 #expect(environment.set["KIRO_HOME"] == home + "/.kiro")
@@ -38,7 +38,6 @@ struct KiroDefinitionTests {
             }
             return cli
         }
-        platform.rpcTransport = { _, _, _, _ in MockRPCTransport() }
         platform.keychain = { _ in (1, "") }
         platform.browserCookies = nil
         platform.browserStorage = nil

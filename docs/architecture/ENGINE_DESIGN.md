@@ -189,7 +189,7 @@ fields would mean nothing in each mode.
 
 | Tag | Meaning | Worker |
 |---|---|---|
-| `command` | run a command over pipes; read its output; its exit code is a fact | `CommandFetcher` (`PipeCLIExecutor`) |
+| `command` | run a command over pipes; read its output; its exit code is a fact | `CommandFetcher` (a `Program`, over `PipeCLIExecutor`) |
 | `cli` | drive a TUI that only draws in a terminal — Claude's `/usage`, Codex's `/status` — and capture its screen | `CLIFetcher` (the PTY executor), unchanged |
 
 - **Nothing that exists moves.** `cli` keeps its meaning, so `claude.json`,
@@ -438,9 +438,14 @@ to the platform too. The factory hands a worker its command or connection;
 the worker never chooses an OS. macOS keeps its existing interactive login
 shell, `/bin/sh` script execution, `pgrep`/`lsof` local-server discovery and
 the trusted `Application Support/ClaudeBar/Probe` folder. Windows derives
-the folder from its app-data root; missing execution connections still fail
-as named `Unavailable`. This phase does not supply a Windows process runner,
-pseudo-terminal, JavaScript engine or SQLite implementation.
+the folder from its app-data root; missing connections still fail as named
+`Unavailable`. Since phase 5's slice 2 (#579) both reach programs through
+`Processes`: a worker finds a `Program` and tells it to run or talk, one
+copy for every platform, while each OS answers only how a CLI is found, how
+a script starts, how its login is read, how a child is launched and ended,
+and what is running (MODULAR_DESIGN §10). Windows runs a script as the file
+itself and reads a login variable through the PowerShell profile. Windows still has no
+pseudo-terminal or local-server discovery (slices 3 and 4).
 
 ```text
 "path": ["{{platform.appData}}/JetBrains/*/options/AIAssistantQuotaManager2.xml",
@@ -652,7 +657,7 @@ credits* quota, `current` of `maximum`, resetting at `nextRefill.next`.
 An added OpenAI account needs no `accounts` block: its `apiKey` is an
 account-scope setting, so the `setting` lookup is its own, and
 `OPENAI_ADMIN_KEY` is this Mac's, read by the default login alone
-([what an account's sign-in reaches](../features/multi-account/design.md#what-an-accounts-sign-in-reaches)).
+([what an account's sign-in reaches](../features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)).
 
 `openai-costs.js` adds `data[].results[].amount.value` into one `cost`, a
 line per `line_item`, for "Last 30 days".

@@ -1,18 +1,17 @@
 import Diagnostics
 import Foundation
 
-/// Resolves environment variables through a supplied login-shell command.
-///
-/// A GUI app may not inherit the variables a shell profile exports. The
-/// factory supplies the shell connection when this platform offers one.
+/// A variable as the person's login sets it. A GUI app may not inherit the
+/// variables a shell profile exports, so it asks the OS's `LoginShell` to
+/// print one between its markers, and reads it back.
 public struct LoginShellEnvironment: Sendable {
     private let cliExecutor: any CLIExecutor
-    private let command: LoginShellCommand
+    private let shell: any LoginShell
     private let timeout: TimeInterval
 
-    public init(cliExecutor: any CLIExecutor, command: @escaping LoginShellCommand, timeout: TimeInterval = 10.0) {
+    init(cliExecutor: any CLIExecutor, shell: any LoginShell, timeout: TimeInterval = 10.0) {
         self.cliExecutor = cliExecutor
-        self.command = command
+        self.shell = shell
         self.timeout = timeout
     }
 
@@ -35,7 +34,7 @@ public struct LoginShellEnvironment: Sendable {
             return nil
         }
 
-        let argv = command(name)
+        let argv = shell.command(printing: name, between: Self.beginMarker, and: Self.endMarker)
         guard let binary = argv.first else { return nil }
 
         do {
