@@ -67,7 +67,10 @@ struct ProcessesContract {
             try await runner.execute(binary: Programs.wait.binary, args: Programs.wait.args, input: nil, timeout: 1,
                                      workingDirectory: nil, autoResponses: [:])
         }
-        #expect(clock.now - start < .seconds(10))
+        // The program runs ten minutes; the run must end long before that,
+        // not wait for it. The margin is wide because a CI runner can stall
+        // every test for half a minute at once.
+        #expect(clock.now - start < .seconds(120))
     }
 
     @Test func `should hold a line-by-line conversation with a program, and end it`() async throws {
@@ -125,7 +128,7 @@ private enum Programs {
         goto next\r
 
         """
-    static let wait = (binary: "ping", args: ["-n", "30", "127.0.0.1"])
+    static let wait = (binary: "ping", args: ["-n", "600", "127.0.0.1"])
     #else
     static let scriptExtension = "sh"
     static let shell = "sh"
@@ -143,7 +146,7 @@ private enum Programs {
         while IFS= read -r LINE; do echo "$LINE"; done
 
         """
-    static let wait = (binary: "sleep", args: ["30"])
+    static let wait = (binary: "sleep", args: ["600"])
     #endif
 
     /// A path as the file system compares it: links followed, and on
