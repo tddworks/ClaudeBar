@@ -3,7 +3,7 @@ import Foundation
 /// The reader for a log's source — one per case of the closed list. Each one
 /// is told what to read and never asked what it holds: a file reader finds
 /// its own files, the command reader runs its command, the database reader
-/// asks the platform's SQLite, and nothing above branches on which kind of
+/// asks the one SQLite, and nothing above branches on which kind of
 /// log it has.
 enum LogReader: Sendable {
     case jsonLines(JSONLinesReader)
@@ -31,7 +31,7 @@ enum LogReader: Sendable {
                                } })
             }, shapes: shapes))
         case .sqlite(let call):
-            self = .sqlite(SQLiteLogReader(call: call, rows: platform.sqlite, shapes: shapes,
+            self = .sqlite(SQLiteLogReader(call: call, shapes: shapes,
                                            homeDirectory: homeDirectory, environment: environment))
         }
     }

@@ -9,7 +9,7 @@ struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Full Response Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the weekly quota and the 5-hour session when Kimi reports both`() throws {
         let json = """
         {
@@ -55,7 +55,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(session!.resetsAt != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Moderato plan when the weekly limit is 2048 requests`() throws {
         let json = """
         {
@@ -76,7 +76,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(snapshot.accountTier == .custom("Moderato"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Andante plan when the weekly limit is 1024 requests`() throws {
         let json = """
         {
@@ -97,7 +97,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(snapshot.accountTier == .custom("Andante"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the Allegretto plan when the weekly limit is 7168 requests`() throws {
         let json = """
         {
@@ -118,7 +118,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(snapshot.accountTier == .custom("Allegretto"))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no plan when the weekly limit matches no known plan`() throws {
         let json = """
         {
@@ -141,7 +141,7 @@ struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Missing Limits Array
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the weekly quota when Kimi reports no rate-limit windows`() throws {
         let json = """
         {
@@ -166,7 +166,7 @@ struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Missing used/remaining Fields
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should work out the plan's requests used from its limit and what remains when Kimi omits the used count`() throws {
         let json = """
         {
@@ -189,7 +189,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(plan.resetText == "250/1000 requests")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should work out what remains of the plan from its limit and requests used when Kimi omits the remaining count`() throws {
         let json = """
         {
@@ -212,7 +212,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(plan.resetText == "300/1000 requests")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no quota when Kimi reports neither requests used nor remaining`() throws {
         let json = """
         {
@@ -234,7 +234,7 @@ struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Reset Time Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the exact reset time when Kimi gives it with fractional seconds`() throws {
         let json = """
         {
@@ -262,7 +262,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(weekly.resetsAt == expected)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a reset time when Kimi gives it without fractional seconds`() throws {
         let json = """
         {
@@ -332,7 +332,7 @@ struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Edge Cases
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no quota when the limit is zero`() throws {
         let json = """
         {
@@ -354,7 +354,7 @@ struct KimiAPIDefinitionParsingTests {
         #expect(snapshot.quotas.isEmpty)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the 5-hour window as the session when Kimi reports several rate-limit windows`() throws {
         let json = """
         {

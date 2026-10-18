@@ -103,8 +103,8 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 7. **Only a platform folder names a platform.** A module's files import
    Foundation (with `FoundationNetworking`, its networking half off Apple
    platforms), `Crypto` (swift-crypto) and their suppliers, and nothing else;
-   a file that imports an Apple framework (`Security`, `OSLog`,
-   `JavaScriptCore`, `IOKit`, `AppKit`, `Darwin`…) or `WinSDK` lives in
+   a file that imports an Apple framework (`Security`, `OSLog`, `IOKit`,
+   `AppKit`, `Darwin`…) or `WinSDK` lives in
    `Internal/macOS/` or `Internal/Windows/`, whole inside `#if os(…)` (§10).
    No other file holds an `#if os(…)`, a platform's name, or a path only one
    platform has (`/bin/sh`, `/usr/bin/security`): it asks the module's
@@ -218,7 +218,7 @@ for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
 | `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `Monitoring/Internal` |
 | `QuotaAlerter` | Alerting | the user's notifications | `Alerting/Internal` |
 | `HookEventReceiver` | Activity | Claude Code's hooks | `Activity/Internal` |
-| `ScriptEngine` | DataSources | a JavaScript engine, for a `script` mapping | `DataSources/Internal/macOS` (JavaScriptCore) · `Internal/Windows` (a bundled engine, §10) |
+| `ScriptEngine` | DataSources | a JavaScript engine, for a `script` mapping | `DataSources/Internal/Mapping` (QuickJS, vendored, both platforms, §10) |
 | `LogSink` | Diagnostics | where a log line goes | `Diagnostics/Internal/macOS` (OSLog) · the file log, both platforms |
 | `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` | Leaderboard | the board's server, where the key is kept, this machine | `Leaderboard/Internal` · `Internal/macOS` (Keychain, IOKit) · `Internal/Windows` (Credential Manager; the label "Windows PC") |
 
@@ -389,7 +389,7 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
 - **`CryptoKit` becomes `Crypto`** (swift-crypto), which re-exports CryptoKit
   on Apple platforms, so the Mac's signatures and hashes don't change.
 - **SQLite and QuickJS are vendored C targets** on both platforms, not the
-  system's `SQLite3` or JavaScriptCore (slice 1).
+  system's `SQLite3` or JavaScriptCore ([#570](https://github.com/tddworks/ClaudeBar/issues/570)).
 - **What a platform lacks is not a stub.** A fetch or lookup case with no
   Windows implementation fails as a `DataSourceError` naming the case and the
   platform; a capability with none is `nil`, as when a definition doesn't
@@ -419,13 +419,13 @@ The folders, as the slices leave them; *(slice N)* marks what is not built
 yet:
 
 ```text
-Package.swift                    + CQuickJS · CSQLite C targets (slice 1)
+Package.swift                    + CQuickJS · CSQLite C targets (#570)
 Vendor/                          pinned, never hand-edited; changed only by
 │                                scripts/bump-vendor.sh
 ├── CLDR/       windowsZones.xml · VERSION · LICENSE (#567)
 ├── CQuickJS/   quickjs-amalgam.c · include/quickjs.h · include/shim.h ·
-│               VERSION · LICENSE (slice 1)
-└── CSQLite/    sqlite3.c · include/sqlite3.h · VERSION · LICENSE (slice 1)
+│               VERSION · LICENSE (#570)
+└── CSQLite/    sqlite3.c · include/sqlite3.h · VERSION · LICENSE (#570)
 Modules/DataSources/Sources/
 ├── DataSources.swift          the factory: make(…, platform: .current) — never #if
 ├── ScriptEngine.swift         a neutral worker's port, @Mockable, so a test can
@@ -441,8 +441,10 @@ Modules/DataSources/Sources/
     │                            stay here
     ├── Unavailable.swift      a case whose connection is nil: fails at its step
     │                            as ErrorFact.unavailable, naming it and platform.name
-    ├── Mapping/QuickJSEngine.swift   the one engine, on CQuickJS (slice 1)
-    ├── Lookup/ReadOnlyQuery.swift    the one SQLite reader, on CSQLite (slice 1)
+    ├── Mapping/QuickJSEngine.swift   the one engine, on CQuickJS (#570)
+    ├── Mapping/LocalDateScript.swift Date's local time is the zone the
+    │                                 engine is given, not the OS's (#570)
+    ├── Lookup/ReadOnlyQuery.swift    the one SQLite reader, on CSQLite (#570)
     ├── Time/WindowsZones.swift   a Windows zone key to its zone: CLDR's table
     │                             (+Table, generated from Vendor/CLDR) or the OS's
     │                             offset — neutral, so its tests run everywhere
@@ -451,9 +453,7 @@ Modules/DataSources/Sources/
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
-    │                                 under their ports in slices 2–5;
-    │                                 JavaScriptCoreEngine and ReadOnlyQuery
-    │                                 deleted (slice 1)
+    │                                 under their ports in slices 2–5
     └── Windows/               #if os(Windows), whole file: the same ports
         ├── Platform+Windows.swift    static let current = Platform(name: "Windows", …)
         ├── Time/WindowsTimeZone.swift   the zone's registry key and offset (#567)
@@ -546,7 +546,7 @@ Phase 5's slices, each its own issue and PR
 | # | Slice | Done when |
 |---|---|---|
 | 0 | **`TimeZone` port.** The person's zone, read through the factory; every `.current` calendar default reads it | a KST test runs on any machine — built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
-| 1 | **Vendor QuickJS and SQLite; one engine everywhere.** `QuickJSEngine` replaces JavaScriptCore on the Mac and is the engine on Windows; one `ReadOnlyQuery` on bundled SQLite | Windows no longer skips a test for a script engine or SQLite (−391); the Mac's numbers don't change; release-build timing, the size added to the Mac app, and scripts in definitions people wrote checked |
+| 1 | **Vendor QuickJS and SQLite; one engine everywhere.** `QuickJSEngine` replaces JavaScriptCore on the Mac and is the engine on Windows; one `ReadOnlyQuery` on bundled SQLite | Windows no longer skips a test for a script engine or SQLite (−391); the Mac's numbers don't change; release-build timing, the size added to the Mac app, and scripts in definitions people wrote checked — built ([#571](https://github.com/tddworks/ClaudeBar/pull/571)) |
 | 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows |
 | 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows |
 | 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows |
@@ -559,13 +559,17 @@ Phase 5's slices, each its own issue and PR
   already work on Windows; it becomes a port, with its contract, in slice 2,
   the first slice that regroups `Platform`.
 - ~~**The JavaScript engine on Windows.**~~ QuickJS, vendored, on the Mac too
-  (slice 1).
-- **A script's local time on Windows.** QuickJS's Windows `getTimezoneOffset`
-  ignores the date it is asked about and applies today's offset to every date
-  (quickjs-ng v0.17.0, `quickjs-amalgam.c`), so a script's `new Date(y, m, d)`
-  is an hour off across a daylight-saving change. Slice 1 decides, with a
-  test in a zone with daylight saving, whether scripts keep local-time calls
-  or read the zone only through `context.timeZone` and `humanDate()`.
+  ([#570](https://github.com/tddworks/ClaudeBar/issues/570)).
+- ~~**A script's local time on Windows.**~~ A script's `Date` local time is
+  the person's zone, on every platform: the engine takes it from the
+  `TimeZone` port. QuickJS asks the OS (libc's zone on the Mac; on Windows,
+  today's offset for every date, quickjs-ng v0.17.0), so `ScriptEngine`'s
+  `evaluate` takes a `localTime` zone and `QuickJSEngine` runs
+  `LocalDateScript` before the scripts, which binds `new Date(y, m, d)`, the
+  local getters and setters, a date-time text with no zone and `toString()` to
+  it. Scripts are plain JavaScript. Its contract test checks five zones
+  against Foundation's calendar, every quarter hour around each clock change
+  ([#570](https://github.com/tddworks/ClaudeBar/issues/570)).
 - **Foundation's differences on Windows** (paths, symlinks, `FileManager`,
   date formats, and APIs it lacks outright, such as `RelativeDateTimeFormatter`)
   are found by running the same tests there, which is why every module's tests

@@ -83,8 +83,7 @@ public enum DataSources {
     /// modules above, run real definitions over stubbed connections. Every
     /// CLI and command runs on `cliExecutor`, whatever environment it asks
     /// for, and `network` also answers for servers on this machine. This
-    /// platform's script engine, screen renderer and SQLite stay; a `nil`
-    /// browser store means none.
+    /// platform's screen renderer stays; a `nil` browser store means none.
     public static func make(
         _ definition: DataSourceDefinition,
         providerId: String,
@@ -263,8 +262,7 @@ public enum DataSources {
         case .directory(let call):
             return DirectoryFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
         case .sqlite(let call):
-            guard let sqlite = platform.sqlite else { return unavailable("Reading a SQLite database") }
-            return SQLiteFetcher(call: call, homeDirectory: homeDirectory, environment: environment, rows: sqlite)
+            return SQLiteFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
         case .script(let call):
             guard let runCommand = platform.runCommand, let command = platform.scriptCommand else { return unavailable("Running a script") }
             return ScriptFetcher(call: call, providerId: providerId, secrets: secrets, makeExecutor: runCommand, command: command,
@@ -280,14 +278,11 @@ public enum DataSources {
         { directory.map { _ in cliWorkingDirectory(platform: platform, homeDirectory: homeDirectory, environment: environment) } }
     }
 
-    /// A `script` mapping runs on the platform's script engine.
+    /// A `script` mapping runs on QuickJS, the one engine (#570).
     private static func scriptMapper(_ mapping: ScriptMapping, source: String?, platform: Platform,
                                      now: @escaping @Sendable () -> Date) -> any Reading {
-        guard let engine = platform.scriptEngine else {
-            return Unavailable(.mapping, "Running a mapping script", on: platform.name)
-        }
-        return ScriptMapper(file: mapping.file, source: source, values: mapping.values, engine: engine,
-                            zone: platform.timeZone, now: now)
+        ScriptMapper(file: mapping.file, source: source, values: mapping.values, engine: QuickJSEngine(),
+                     zone: platform.timeZone, now: now)
     }
 
     private struct Readers {
@@ -313,8 +308,7 @@ public enum DataSources {
             case .refined(let base, let refinement):
                 return RefinedReader(base: reader(for: base), refinement: refinement)
             case .sqlite(let database):
-                guard let sqlite = platform.sqlite else { return unavailable("Reading a SQLite database") }
-                return SQLiteReader(file: database, homeDirectory: homeDirectory, environment: pathEnvironment, rows: sqlite)
+                return SQLiteReader(file: database, homeDirectory: homeDirectory, environment: pathEnvironment)
             case .browserCookies(let query):
                 guard let cookies = platform.browserCookies else { return unavailable("Reading a browser's cookies") }
                 return BrowserCookieReader(query: query, cookies: cookies)

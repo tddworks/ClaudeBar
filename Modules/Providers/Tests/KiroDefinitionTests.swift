@@ -26,6 +26,7 @@ struct KiroDefinitionTests {
         given(work).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: "Credits (40 of 50 covered in plan)"))
         var platform = Platform.current
+        platform.timeZone = Zones.losAngeles
         platform.runCLI = { _ in cli }
         platform.runCommand = { @Sendable environment in
             if let home = environment.set["HOME"] {
@@ -50,7 +51,7 @@ struct KiroDefinitionTests {
     private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).refreshPlain() }
 
     
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the bonus credits and the monthly credits when Kiro reports both`() async throws {
         let output = """
         Estimated Usage | resets on 03/01 | KIRO FREE
@@ -85,7 +86,7 @@ struct KiroDefinitionTests {
         }
     }
     
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the bonus credits when Kiro reports no monthly credits`() async throws {
         let output = """
         🎁 Bonus credits: 250.0/500 credits used, expires in 15 days
@@ -98,7 +99,7 @@ struct KiroDefinitionTests {
         #expect(abs(snapshot.quotas[0].percentRemaining - 50.0) < 0.01)
     }
     
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the monthly credits when Kiro reports no bonus credits`() async throws {
         let output = """
         Credits (25.0 of 50 covered in plan)
@@ -144,7 +145,7 @@ struct KiroDefinitionTests {
         }
     }
     
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no reset when Kiro gives no reset or expiry`() async throws {
         let output = """
         🎁 Bonus credits: 100.0/500 credits used
@@ -162,7 +163,7 @@ struct KiroDefinitionTests {
         }
     }
     
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the credits when kiro-cli colours its output`() async throws {
         let output = """
         \u{001B}[38;5;141mEstimated Usage\u{001B}[0m | resets on 03/01 | \u{001B}[38;5;141mKIRO FREE\u{001B}[0m
@@ -178,7 +179,7 @@ struct KiroDefinitionTests {
         #expect(abs(snapshot.quotas[0].percentRemaining - 75.492) < 0.01)
         #expect(abs(snapshot.quotas[1].percentRemaining - 100.0) < 0.01)
     }
-    @Test(.needsScriptEngine) func `should show each added login's own credits from its own home, and ask to sign in when that home is gone`() async throws {
+    @Test func `should show each added login's own credits from its own home, and ask to sign in when that home is gone`() async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
@@ -198,16 +199,19 @@ struct KiroDefinitionTests {
         await #expect(throws: UsageError.cliNotFound("kiro-cli")) { try await product.refresh(account) }
     }
 
-    @Test(.needsScriptEngine) func `should expire bonus credits in 29 days and reset the monthly credits next year when today is the reset day`() async throws {
-        let now = try #require(Calendar.current.date(from: DateComponents(year:2026,month:3,day:15,hour:12)))
+    @Test func `should expire bonus credits in 29 days and reset the monthly credits next year when today is the reset day`() async throws {
+        let calendar = Zones.losAngelesCalendar
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 15, hour: 12)))
         let snapshot = try await make("Bonus credits: 100/500 used, expires in 29 days\nCredits (10 of 50 covered in plan) resets on 03/15", now:now).refreshPlain()
         let bonus = snapshot.quota(for: .timeLimit("Bonus credits"))
         #expect(bonus?.resetsAt == now.addingTimeInterval(29*86400))
         #expect(bonus?.window?.length == nil) // an expiring grant is not a 7-day window
-        let reset = try #require(Calendar.current.date(from: DateComponents(year:2027,month:3,day:15)))
-        let monthBefore = try #require(Calendar.current.date(from: DateComponents(year:2027,month:2,day:15)))
+        let reset = try #require(calendar.date(from: DateComponents(year: 2027, month: 3, day: 15)))
+        let monthBefore = try #require(calendar.date(from: DateComponents(year: 2027, month: 2, day: 15)))
         #expect(snapshot.quota(for: .timeLimit("Monthly"))?.resetsAt == reset)
-        // The month that ends on the reset date — its real length, not a 30-day guess.
+        // The month that ends on the reset date — its real length, not a 30-day
+        // guess, on the person's clock: Los Angeles moves it on 2027-03-14, so
+        // it is 27 days and 23 hours.
         #expect(snapshot.quota(for: .timeLimit("Monthly"))?.windowDuration == reset.timeIntervalSince(monthBefore))
     }
 

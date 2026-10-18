@@ -6,6 +6,10 @@
 #
 #   scripts/bump-vendor.sh cldr <release-tag>   pin CLDR's windowsZones at that release
 #   scripts/bump-vendor.sh cldr                 regenerate the Swift table from what is pinned
+#   scripts/bump-vendor.sh quickjs <tag>        pin quickjs-ng's amalgamation, e.g. v0.17.0
+#   scripts/bump-vendor.sh sqlite <year> <ver>  pin SQLite's amalgamation, e.g. 2026 3540000
+#
+# A download whose published digest doesn't match is refused, and nothing changes.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -46,7 +50,67 @@ print(f"{out}: {len(zones)} zones from CLDR {version}")
 EOF
 }
 
+# The archive at $1, checked against its published digest $3 with hashlib's $2.
+fetch_checked() {
+    local url=$1 algorithm=$2 digest=$3 out=$4
+    curl -fsSL "$url" -o "$out"
+    python3 - "$out" "$algorithm" "$digest" <<'EOF'
+import hashlib, sys
+path, algorithm, expected = sys.argv[1:]
+actual = hashlib.new(algorithm, open(path, "rb").read()).hexdigest()
+if actual != expected:
+    sys.exit(f"{path}: {algorithm} {actual}, but the release publishes {expected}")
+EOF
+}
+
+# quickjs-ng: the JavaScript engine every platform's mapping scripts run in
+# (CQuickJS, slice 1 of #563). The amalgamation is the engine without its libc,
+# so a script reaches no file, network or process. include/shim.h is ours.
+quickjs() {
+    local tag=${1:?quickjs needs a release tag, e.g. v0.17.0}
+    local dir=Vendor/CQuickJS work
+    work=$(mktemp -d)
+    local digest
+    digest=$(gh api "repos/quickjs-ng/quickjs/releases/tags/$tag" \
+        --jq '.assets[] | select(.name == "quickjs-amalgam.zip") | .digest | ltrimstr("sha256:")')
+    [[ -n $digest ]] || { echo "quickjs-ng $tag publishes no quickjs-amalgam.zip" >&2; exit 1; }
+    fetch_checked "https://github.com/quickjs-ng/quickjs/releases/download/$tag/quickjs-amalgam.zip" sha256 "$digest" "$work/a.zip"
+    unzip -q -o "$work/a.zip" -d "$work"
+    mkdir -p "$dir/include"
+    cp "$work/quickjs-amalgam.c" "$dir/quickjs-amalgam.c"
+    cp "$work/quickjs.h" "$dir/include/quickjs.h"
+    curl -fsSL "https://raw.githubusercontent.com/quickjs-ng/quickjs/$tag/LICENSE" -o "$dir/LICENSE"
+    printf '%s\nquickjs-amalgam.zip sha256 %s\n' "$tag" "$digest" > "$dir/VERSION"
+    rm -rf "$work"
+    echo "$dir: quickjs-ng $tag"
+}
+
+# SQLite: the one database reader on every platform (CSQLite, slice 1 of #563).
+# Public domain: LICENSE is the blessing from sqlite3.h's own header.
+sqlite() {
+    local year=${1:?sqlite needs the release year and version, e.g. 2026 3540000}
+    local version=${2:?sqlite needs the release version, e.g. 3540000}
+    local dir=Vendor/CSQLite name="sqlite-amalgamation-$version" work
+    work=$(mktemp -d)
+    local digest
+    digest=$(curl -fsSL https://sqlite.org/download.html | python3 -c "
+import re, sys
+row = re.search(r'PRODUCT,[^,]*,$year/$name\.zip,\d+,([0-9a-f]{64})', sys.stdin.read())
+sys.exit('sqlite.org lists no $year/$name.zip') if row is None else print(row[1])")
+    fetch_checked "https://sqlite.org/$year/$name.zip" sha3_256 "$digest" "$work/a.zip"
+    unzip -q -o "$work/a.zip" -d "$work"
+    mkdir -p "$dir/include"
+    cp "$work/$name/sqlite3.c" "$dir/sqlite3.c"
+    cp "$work/$name/sqlite3.h" "$dir/include/sqlite3.h"
+    sed -n '2,/^\*\*\*\*/p' "$dir/include/sqlite3.h" | sed '$d' | sed -E 's/^\*\* ?//' > "$dir/LICENSE"
+    printf '%s/%s\n%s.zip sha3-256 %s\n' "$year" "$version" "$name" "$digest" > "$dir/VERSION"
+    rm -rf "$work"
+    echo "$dir: SQLite $version"
+}
+
 case "${1:-}" in
     cldr) shift; cldr "$@" ;;
-    *) echo "usage: $0 cldr [release-tag]" >&2; exit 64 ;;
+    quickjs) shift; quickjs "$@" ;;
+    sqlite) shift; sqlite "$@" ;;
+    *) echo "usage: $0 cldr [release-tag] | quickjs <tag> | sqlite <year> <version>" >&2; exit 64 ;;
 esac

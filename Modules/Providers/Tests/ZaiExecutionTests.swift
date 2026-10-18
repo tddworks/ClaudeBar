@@ -56,7 +56,7 @@ struct ZaiExecutionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://z.ai/subscribe")
     }
 
-    @Test(.needsScriptEngine) func `should show the session, weekly and MCP quotas from api.z.ai when the key is saved in Settings`() async throws {
+    @Test func `should show the session, weekly and MCP quotas from api.z.ai when the key is saved in Settings`() async throws {
         let seen = Seen()
         let quotas = try await make(vault: MemoryVault(["zai.apiKey": "saved"]), seen: seen).refreshPlain().quotas
         #expect(quotas.map(\.quotaType) == [.session, .weekly, .timeLimit("MCP")])
@@ -67,14 +67,14 @@ struct ZaiExecutionTests {
         #expect(seen.key == "Bearer saved")
     }
 
-    @Test(.needsScriptEngine, arguments: [("zhipu", "open.bigmodel.cn"), ("dev", "dev.bigmodel.cn")])
+    @Test(arguments: [("zhipu", "open.bigmodel.cn"), ("dev", "dev.bigmodel.cn")])
     func `should ask the chosen platform's host with the saved key`(_ platform: String, _ host: String) async throws {
         let seen = Seen()
         _ = try await make(platform: platform, vault: MemoryVault(["zai.apiKey": "saved"]), seen: seen).refreshPlain()
         #expect(seen.host == host)
     }
 
-    @Test(.needsScriptEngine) func `should use Claude Code's key and host when Claude Code's settings point at Z.ai`() async throws {
+    @Test func `should use Claude Code's key and host when Claude Code's settings point at Z.ai`() async throws {
         let seen = Seen()
         let config = ["env": ["ANTHROPIC_AUTH_TOKEN": "from-config", "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic"]]
         _ = try await make(config: config, seen: seen).refreshPlain()
@@ -82,7 +82,7 @@ struct ZaiExecutionTests {
         #expect(seen.key == "Bearer from-config")
     }
 
-    @Test(.needsScriptEngine) func `should use a Z.ai provider entry from Claude Code's settings`() async throws {
+    @Test func `should use a Z.ai provider entry from Claude Code's settings`() async throws {
         let seen = Seen()
         let config = ["providers": [["api_key": "from-provider", "base_url": "https://api.z.ai/api/anthropic"]]]
         _ = try await make(config: config, seen: seen).refreshPlain()
@@ -104,26 +104,26 @@ struct ZaiExecutionTests {
         #expect(seen.key == nil)
     }
 
-    @Test(.needsScriptEngine) func `should use the key from the environment variable the person named`() async throws {
+    @Test func `should use the key from the environment variable the person named`() async throws {
         let seen = Seen()
         _ = try await make(envVar: "MY_GLM_KEY", environment: ["MY_GLM_KEY": "from-env"], seen: seen).refreshPlain()
         #expect(seen.key == "Bearer from-env")
         #expect(seen.host == "api.z.ai")
     }
 
-    @Test(.needsScriptEngine) func `should find the key the person exported only in their login shell (#170)`() async throws {
+    @Test func `should find the key the person exported only in their login shell (#170)`() async throws {
         let seen = Seen()
         _ = try await make(envVar: "MY_GLM_KEY", loginShell: ["MY_GLM_KEY": "from-shell"], seen: seen).refreshPlain()
         #expect(seen.key == "Bearer from-shell")
     }
 
-    @Test(.needsScriptEngine) func `should prefer the app's own environment to the login shell`() async throws {
+    @Test func `should prefer the app's own environment to the login shell`() async throws {
         let seen = Seen()
         _ = try await make(environment: ["ZAI_API_KEY": "from-env"], loginShell: ["ZAI_API_KEY": "from-shell"], seen: seen).refreshPlain()
         #expect(seen.key == "Bearer from-env")
     }
 
-    @Test(.needsScriptEngine) func `should use ZAI_API_KEY when the person named no variable`() async throws {
+    @Test func `should use ZAI_API_KEY when the person named no variable`() async throws {
         let seen = Seen()
         _ = try await make(environment: ["ZAI_API_KEY": "from-env"], seen: seen).refreshPlain()
         #expect(seen.key == "Bearer from-env")
@@ -133,7 +133,7 @@ struct ZaiExecutionTests {
         await #expect(throws: UsageError.self) { try await make().refreshPlain() }
     }
 
-    @Test(.needsScriptEngine) func `should use an added login's own key and platform, never the environment`() async throws {
+    @Test func `should use an added login's own key and platform, never the environment`() async throws {
         let seen = Seen()
         let vault = MemoryVault()
         let provider = try make(vault: vault, environment: ["ZAI_API_KEY": "from-env"], seen: seen)

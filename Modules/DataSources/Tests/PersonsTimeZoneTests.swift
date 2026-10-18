@@ -36,14 +36,16 @@ struct PersonsTimeZoneTests {
         #expect(days.filter { $0.totalTokens > 0 }.map(\.date) == [Self.seoulMidnight])
     }
 
-    @Test func `should give a mapping script the person's zone, and read its reset times there`() throws {
+    @Test func `should give a mapping script the person's zone, its Date's local time, and read its reset times there`() throws {
         let engine = MockScriptEngine()
         let seen = Seen()
-        given(engine).evaluate(.any, after: .any, strings: .any, functions: .any).willProduce { _, _, strings, functions in
-            seen.input = strings["__input"]
-            seen.reset = functions["humanDate"]?("Jan 15, 3:30pm")
-            return #"{"quotas":[]}"#
-        }
+        given(engine).evaluate(.any, after: .any, strings: .any, functions: .any, localTime: .any)
+            .willProduce { _, _, strings, functions, localTime in
+                seen.input = strings["__input"]
+                seen.reset = functions["humanDate"]?("Jan 15, 3:30pm")
+                seen.localTime = localTime.identifier
+                return #"{"quotas":[]}"#
+            }
         let now = Date(timeIntervalSince1970: 1_781_524_800) // 2026-06-15 12:00 UTC
         let mapper = ScriptMapper(file: "acme.js", source: "", engine: engine, zone: Zones.seoul, now: { now })
 
@@ -53,6 +55,7 @@ struct PersonsTimeZoneTests {
         let input = try #require(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
         #expect((input["context"] as? [String: Any])?["timeZone"] as? String == "Asia/Seoul")
         #expect(seen.reset == 1_799_994_600) // 2027-01-15 15:30 in Seoul
+        #expect(seen.localTime == "Asia/Seoul")
     }
 
     @Test func `should send the person's zone where a request asks for system.timeZone`() async throws {
@@ -73,4 +76,5 @@ struct PersonsTimeZoneTests {
 private final class Seen: @unchecked Sendable {
     var input: String?
     var reset: Double?
+    var localTime: String?
 }

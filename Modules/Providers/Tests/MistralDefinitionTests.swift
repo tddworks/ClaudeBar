@@ -32,7 +32,7 @@ struct MistralDefinitionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://console.mistral.ai")
     }
 
-    @Test(.needsScriptEngine) func `should be available with no quota, never a made-up one, when Vibe has logs`() async throws {
+    @Test func `should be available with no quota, never a made-up one, when Vibe has logs`() async throws {
         let (provider, cleanUp) = try make(withLogs: true)
         defer { cleanUp() }
         #expect(await provider.isPlainAvailable())

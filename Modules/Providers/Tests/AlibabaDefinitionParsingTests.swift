@@ -103,7 +103,7 @@ struct AlibabaDefinitionParsingTests {
 
     // MARK: - Full Response Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show three quotas when Alibaba reports all three windows`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -112,7 +112,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(snapshot.quotas.count == 3)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the 5-hour window as the session with 92% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -124,7 +124,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(sessionQuota?.percentRemaining == 92.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the week window as weekly with 95% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -136,7 +136,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(weeklyQuota?.percentRemaining == 95.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the billing month as a Monthly quota with 97.5% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -148,7 +148,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(monthlyQuota?.percentRemaining == 97.5)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show when each window resets`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -164,7 +164,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(monthlyQuota?.resetsAt != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the plan's name as how the person signed in`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -173,7 +173,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(snapshot.loginMethod == "Alibaba Coding Plan Pro")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should tag the usage and every quota as Alibaba's`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -185,7 +185,7 @@ struct AlibabaDefinitionParsingTests {
 
     // MARK: - Console RPC (DataV2 envelope) Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the quotas when the console answers inside its envelope`() throws {
         let data = Data(Self.sampleConsoleRPCResponse.utf8)
 
@@ -200,7 +200,7 @@ struct AlibabaDefinitionParsingTests {
 
     // MARK: - Partial Response
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the session when Alibaba reports only the 5-hour window`() throws {
         let data = Data(Self.samplePartialResponse.utf8)
 
@@ -214,7 +214,7 @@ struct AlibabaDefinitionParsingTests {
 
     // MARK: - Edge Cases
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 100% left when nothing is used`() throws {
         let response = """
         {
@@ -240,7 +240,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(snapshot.quota(for: .session)?.percentRemaining == 100.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 0% left when the quota is fully used`() throws {
         let response = """
         {
@@ -266,7 +266,7 @@ struct AlibabaDefinitionParsingTests {
         #expect(snapshot.quota(for: .session)?.percentRemaining == 0.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should say how much of the total is used, as 8 of 100`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
@@ -296,7 +296,7 @@ struct AlibabaDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should say the session expired when the console asks to log in`() throws {
         let response = """
         {
@@ -311,7 +311,7 @@ struct AlibabaDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should ask to sign in when Alibaba answers 401`() throws {
         let response = """
         {
@@ -326,7 +326,7 @@ struct AlibabaDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the active plan, not one that has expired`() throws {
         let response = """
         {

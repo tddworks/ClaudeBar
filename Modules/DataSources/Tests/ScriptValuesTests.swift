@@ -1,4 +1,3 @@
-#if os(macOS)
 import Foundation
 import Quotas
 import Testing
@@ -17,7 +16,7 @@ struct ScriptValuesTests {
     """
 
     private func read(_ values: [String: String]) throws -> UsageQuota {
-        let mapper = ScriptMapper(file: "s.js", source: script, values: values, engine: JavaScriptCoreEngine(),
+        let mapper = ScriptMapper(file: "s.js", source: script, values: values, engine: QuickJSEngine(),
                                   zone: Zones.seoul, now: { Date() })
         return try #require(try mapper.read(Response(text: "{}"), facts: MappingFacts(), providerId: "acme").quotas.first)
     }
@@ -40,4 +39,3 @@ struct ScriptValuesTests {
         #expect(try JSONDecoder().decode(ScriptMapping.self, from: JSONEncoder().encode(mapping)) == mapping)
     }
 }
-#endif

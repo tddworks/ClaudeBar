@@ -60,7 +60,7 @@ struct AmpDefinitionTests {
 
     // MARK: - Parsing Tests
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the free tier as money left of its ceiling, $17.59 of $20`() async throws {
         // Given
         let text = Self.sampleOutput
@@ -75,7 +75,7 @@ struct AmpDefinitionTests {
         #expect(freeQuota!.percentLeft == 87.95)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the email the person is signed in as`() async throws {
         // Given
         let text = Self.sampleOutput
@@ -87,7 +87,7 @@ struct AmpDefinitionTests {
         #expect(snapshot.accountEmail == "user@example.com")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 0% left when the free tier is spent`() async throws {
         // Given
         let text = Self.sampleOutputZeroRemaining
@@ -101,7 +101,7 @@ struct AmpDefinitionTests {
         #expect(freeQuota!.percentLeft == 0.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show free tier and individual credits as separate quotas`() async throws {
         // Given - both lines present with non-zero values
         let text = Self.sampleOutputWithIndividualCredits
@@ -117,7 +117,7 @@ struct AmpDefinitionTests {
         #expect(creditsQuota != nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show individual credits as $50 left, with no percentage`() async throws {
         // Given
         let text = Self.sampleOutputWithIndividualCredits
@@ -131,7 +131,7 @@ struct AmpDefinitionTests {
         #expect(creditsQuota?.percentLeft == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show individual credits as $0 left, with no percentage, when they are spent`() async throws {
         // Given - "$0 remaining" with no denominator
         let text = Self.sampleOutput
@@ -145,14 +145,14 @@ struct AmpDefinitionTests {
         #expect(creditsQuota?.percentLeft == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should keep the free tier's dollars so the card shows them`() async throws {
         let freeQuota = try await parse(Self.sampleOutputZeroRemaining).quotas.first { $0.quotaType == .modelSpecific("Free") }
         #expect(freeQuota?.left == .money(Money(0, currency: "USD"), of: Money(20, currency: "USD")))
         #expect(freeQuota?.dollarRemaining == 0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show individual credits alone when there is no free tier`() async throws {
         // Given - no free tier line, only individual credits
         let text = Self.sampleOutputIndividualCreditsOnly
@@ -167,7 +167,7 @@ struct AmpDefinitionTests {
         #expect(individualQuota?.dollarRemaining == 50)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should name the free tier quota Free`() async throws {
         // Given
         let text = Self.sampleOutput
@@ -184,7 +184,7 @@ struct AmpDefinitionTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should tag the usage and every quota as Amp's`() async throws {
         // Given
         let text = Self.sampleOutput
@@ -231,7 +231,7 @@ struct AmpDefinitionTests {
             try await make(Self.sampleOutput, exitCode: 1).refreshPlain()
         }
     }
-    @Test(.needsScriptEngine) func `should show an added account only by its own key, never the default CLI login`() async throws {
+    @Test func `should show an added account only by its own key, never the default CLI login`() async throws {
         let vault = MemoryVault()
         let provider = try make(Self.sampleOutput, vault: vault)
         let work = try provider.accounts.add(filling: ["apiKey": "work-key"])

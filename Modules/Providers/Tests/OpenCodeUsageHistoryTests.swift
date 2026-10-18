@@ -48,31 +48,12 @@ struct OpenCodeUsageHistoryTests {
         return (folder, setup)
     }
 
-    /// `sql` run against the fixture database, answered as `sqlite3 --json`.
+    /// `sql` run against the fixture database, each column as `sqlite3 -json` gives it.
     static func query(_ sql: String, database: (folder: URL, setup: String), name: String = "opencode.db") throws -> [[String: Any]] {
-        try FileManager.default.createDirectory(at: database.folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: database.folder) }
-        let db = database.folder.appendingPathComponent(name).path
-        for arguments in [[db, database.setup], ["-json", db, sql]] {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-            process.arguments = arguments
-            let pipe = Pipe()
-            let errors = Pipe()
-            process.standardOutput = pipe
-            process.standardError = errors
-            try process.run()
-            process.waitUntilExit()
-            if process.terminationStatus != 0 {
-                let why = String(data: errors.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                Issue.record("sqlite3 \(arguments.dropFirst()) failed: \(why)")
-                return []
-            }
-            if arguments.count == 3 {
-                return try JSONSerialization.jsonObject(with: pipe.fileHandleForReading.readDataToEndOfFile()) as? [[String: Any]] ?? []
-            }
-        }
-        return []
+        let db = database.folder.appendingPathComponent(name)
+        try SQLiteFiles.make(at: db, database.setup)
+        return try SQLiteFiles.rows(at: db, sql)
     }
 
     /// An assistant message as the layout writes it: tokens, cost and time in
@@ -94,7 +75,7 @@ struct OpenCodeUsageHistoryTests {
         Int64(ISO8601DateFormatter().date(from: iso)!.timeIntervalSince1970 * 1000)
     }
 
-    @Test(.needsSQLite, arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
+    @Test(arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
     func `should read every assistant message the database holds, whatever provider it drove`(_ layout: Layout) throws {
         let rows = try rows([
             message(id: "msg_1", at: ms("2026-04-01T10:00:00Z"), provider: "opencode", layout: layout, input: 10, output: 5, cacheRead: 100), // Zen
@@ -110,7 +91,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(rows[1]["at"] as? Int == 1_775_037_600) // the time in seconds, not milliseconds
     }
 
-    @Test(.needsSQLite) func `should leave out a message that is not an assistant's`() throws {
+    @Test func `should leave out a message that is not an assistant's`() throws {
         let user = try rows([
             message(id: "msg_1", at: ms("2026-04-25T10:00:00Z"), provider: "opencode", layout: .v1, input: 10, output: 5),
             message(id: "msg_2", at: ms("2026-04-25T11:00:00Z"), provider: "opencode", layout: .v1, input: 7, output: 0, role: "user"),
@@ -118,7 +99,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(user.map { $0["id"] as? String } == ["msg_1"])
     }
 
-    @Test(.needsSQLite, arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
+    @Test(arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
     func `should answer a day any window of its own would have cut away`(_ layout: Layout) throws {
         // A window in the query would leave this day empty, and the ledger keeps
         // a closed day as read — so the wrong answer would be permanent.
@@ -129,7 +110,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(rows.map { $0["id"] as? String } == ["ancient", "recent"])
     }
 
-    @Test(.needsSQLite, arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
+    @Test(arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
     func `should read a message without a cost, and skip one without a time`(_ layout: Layout) throws {
         let rows = try rows([
             message(id: "msg_2", at: ms("2026-04-20T10:00:00Z"), provider: "opencode", layout: layout, input: 10, output: 5, cost: nil),
@@ -146,21 +127,15 @@ struct OpenCodeUsageHistoryTests {
     private func makeLog(v1: [String], v2: [String]) throws -> UsageLog {
         let definition = try #require(try ProviderFactory.builtIn("opencode-go").usageHistory)
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let folder = home.appendingPathComponent("data/opencode")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let v1Part = Self.build(v1, layout: .v1).setup
         let v2Part = Self.build(v2, layout: .v2).setup
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [folder.appendingPathComponent("opencode.db").path, v1Part + v2Part]
-        try process.run()
-        process.waitUntilExit()
+        try SQLiteFiles.make(at: home.appendingPathComponent("data/opencode/opencode.db"), v1Part + v2Part)
         return DataSources.makeUsageLog(definition, scripts: { _ in nil },
                                         environment: { $0 == "XDG_DATA_HOME" ? home.appendingPathComponent("data").path : nil },
                                         homeDirectory: home)
     }
 
-    @Test(.needsSQLite) func `should read v1's past and v2's present as one log`() async throws {
+    @Test func `should read v1's past and v2's present as one log`() async throws {
         let today = Int64(Date().timeIntervalSince1970 * 1000)
         let yesterday = today - 86_400_000
         let log = try makeLog(
@@ -171,7 +146,7 @@ struct OpenCodeUsageHistoryTests {
         #expect(days[1].totalTokens == 3000) // v2's present, from session_message
     }
 
-    @Test(.needsSQLite, arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
+    @Test(arguments: [OpenCodeUsageHistoryTests.Layout.v1, .v2])
     func `should read a database that only one layout wrote`(_ layout: Layout) async throws {
         let message = message(id: "only_1", at: Int64(Date().timeIntervalSince1970 * 1000), provider: "opencode", layout: layout, input: 1000, output: 500)
         let log = try makeLog(

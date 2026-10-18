@@ -17,13 +17,7 @@ struct SQLiteLogTests {
 
     /// Creates the fixture database with `rows` of usage and returns its path.
     private func makeDatabase(_ rows: String) throws -> String {
-        let folder = home.appendingPathComponent("acme")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [database, rows]
-        try process.run()
-        process.waitUntilExit()
+        try SQLiteFiles.make(at: URL(fileURLWithPath: database), rows)
         return database
     }
 
@@ -39,10 +33,8 @@ struct SQLiteLogTests {
 
     private static let definition = UsageLog.Definition(records: records(query: "SELECT id, at, used, out, cacheRead, cost FROM live"), sessionGap: 1800)
 
-    private func log(_ definition: UsageLog.Definition = Self.definition, sqlite: Bool = true) -> UsageLog {
-        var platform = Platform.current
-        if !sqlite { platform.sqlite = nil }
-        return DataSources.makeUsageLog(definition, platform: platform, scripts: { _ in nil },
+    private func log(_ definition: UsageLog.Definition = Self.definition) -> UsageLog {
+        DataSources.makeUsageLog(definition, platform: Platform.current, scripts: { _ in nil },
                                         environment: { _ in nil }, homeDirectory: home, now: { [now] in now })
     }
 
@@ -52,7 +44,7 @@ struct SQLiteLogTests {
         "INSERT INTO live VALUES ('\(id)', \(at), \(input), \(output), 0, \(cost));"
     }
 
-    @Test(.needsSQLite) func `should read one record a row of the database's answer`() async throws {
+    @Test func `should read one record a row of the database's answer`() async throws {
         try makeDatabase("CREATE TABLE live(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + row(id: "a", at: epoch(), input: 1000, output: 500, cost: 0.01))
         let days = await log().days(last: 1)
@@ -60,14 +52,14 @@ struct SQLiteLogTests {
         #expect(days[0].totalCost == Decimal(string: "0.01"))
     }
 
-    @Test(.needsSQLite) func `should show every day empty when the database has no such table, or is not there`() async throws {
+    @Test func `should show every day empty when the database has no such table, or is not there`() async throws {
         try makeDatabase("CREATE TABLE other(id TEXT);")
         #expect(await log().days(last: 1)[0].isEmpty)
         try FileManager.default.removeItem(atPath: database)
         #expect(await log().days(last: 1)[0].isEmpty)
     }
 
-    @Test(.needsSQLite) func `should read a count the database wrote as text`() async throws {
+    @Test func `should read a count the database wrote as text`() async throws {
         try makeDatabase("CREATE TABLE live(id TEXT, at TEXT, used TEXT, out TEXT, cacheRead TEXT, cost TEXT); "
                          + "INSERT INTO live VALUES ('a', '\(epoch())', '1000', '500', '0', '0.01');")
         let days = await log().days(last: 1)
@@ -75,13 +67,9 @@ struct SQLiteLogTests {
         #expect(days[0].totalCost == Decimal(string: "0.01"))
     }
 
-    @Test func `should show every day empty on a platform with no SQLite`() async {
-        #expect(await log(sqlite: false).days(last: 1)[0].isEmpty)
-    }
-
     // MARK: - `also`: the second place the database writes its records
 
-    @Test(.needsSQLite) func `should read the records of both places the database writes them, each once`() async throws {
+    @Test func `should read the records of both places the database writes them, each once`() async throws {
         try makeDatabase("CREATE TABLE live(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + "CREATE TABLE archive(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + row(id: "a", at: epoch(), input: 1000, output: 500, cost: 0)
@@ -95,7 +83,7 @@ struct SQLiteLogTests {
         #expect(days[0].totalTokens == 3000) // yesterday, from `archive`
     }
 
-    @Test(.needsSQLite) func `should read what answers when one place the database writes is missing`() async throws {
+    @Test func `should read what answers when one place the database writes is missing`() async throws {
         try makeDatabase("CREATE TABLE live(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + row(id: "a", at: epoch(), input: 1000, output: 500, cost: 0))
         let definition = UsageLog.Definition(
@@ -105,7 +93,7 @@ struct SQLiteLogTests {
         #expect(await log(definition).days(last: 1)[0].totalTokens == 1500)
     }
 
-    @Test(.needsSQLite) func `should count a record both places wrote once`() async throws {
+    @Test func `should count a record both places wrote once`() async throws {
         try makeDatabase("CREATE TABLE live(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + "CREATE TABLE archive(id TEXT, at INTEGER, used INTEGER, out INTEGER, cacheRead INTEGER, cost REAL); "
                          + "INSERT INTO live VALUES ('a', \(epoch()), 1000, 500, 0, 0); "
@@ -119,13 +107,13 @@ struct SQLiteLogTests {
 
     // MARK: - The definition
 
-    @Test(.needsSQLite) func `should keep a database log when written out and read back`() throws {
+    @Test func `should keep a database log when written out and read back`() throws {
         let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(Self.definition))
         #expect(again == Self.definition)
         #expect(again.records.source == .sqlite(SQLiteCall(path: "~/acme/acme.db", query: "SELECT id, at, used, out, cacheRead, cost FROM live")))
     }
 
-    @Test(.needsSQLite) func `should fingerprint two queries apart, so days kept under one are not reused for the other`() throws {
+    @Test func `should fingerprint two queries apart, so days kept under one are not reused for the other`() throws {
         let other = UsageLog.Definition(records: Self.records(query: "SELECT id, at, used, out, cacheRead, cost FROM other"), sessionGap: 1800)
         #expect(log(other).fingerprint != log().fingerprint)
         let also = UsageLog.Definition(records: Self.records(query: "SELECT id, at, used, out, cacheRead, cost FROM live",

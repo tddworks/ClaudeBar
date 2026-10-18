@@ -12,7 +12,6 @@ extension Platform {
             try ProcessRPCTransport(executable: executable, arguments: arguments, environment: environment,
                                     workingDirectory: directory)
         },
-        scriptEngine: JavaScriptCoreEngine(),
         keychain: KeychainReader.system,
         browserCookies: SystemBrowserCookies(),
         browserStorage: SystemBrowserStorage(),
@@ -20,7 +19,6 @@ extension Platform {
         processList: RunningProcesses.system,
         screenRenderer: { TerminalRenderer(cols: 160, rows: 50).render($0) },
         binaryLocator: BinaryLocator(),
-        sqlite: { path, query, name in try ReadOnlyQuery.rows(at: path, query: query, name: name) },
         applicationData: { home, _ in home.appendingPathComponent("Library/Application Support", isDirectory: true) },
         scriptCommand: macScriptCommand,
         loginShellCommand: macLoginShellCommand,

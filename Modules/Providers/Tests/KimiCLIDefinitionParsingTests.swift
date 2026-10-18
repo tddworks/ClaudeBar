@@ -73,7 +73,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Full Output Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show two quotas when the CLI prints a weekly and a 5-hour limit`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
 
@@ -81,7 +81,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quotas.count == 2)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the weekly quota full when the CLI prints 100% left`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
         let weekly = snapshot.quota(for: .weekly)
@@ -90,7 +90,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(weekly?.percentRemaining == 100.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session full when the CLI prints 100% left on the 5-hour limit`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
         let session = snapshot.quota(for: .session)
@@ -101,7 +101,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Partial Usage Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 75% of the weekly quota left when the CLI prints 75% left`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.partialUsageOutput)
         let weekly = snapshot.quota(for: .weekly)
@@ -110,7 +110,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(weekly?.percentRemaining == 75.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show 30% of the session left when the CLI prints 30% left`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.partialUsageOutput)
         let session = snapshot.quota(for: .session)
@@ -121,7 +121,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Weekly Only
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show only the weekly quota when the CLI prints no 5-hour limit`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.weeklyOnlyOutput)
 
@@ -132,7 +132,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - No Progress Bar (Real CLI Output)
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show both quotas when the CLI prints no progress bars`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.noProgressBarOutput)
 
@@ -143,7 +143,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Used Format (kimi CLI >= 0.36)
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show what is left when the CLI prints the percent used`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.usedFormatOutput)
 
@@ -152,7 +152,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quota(for: .session)?.percentRemaining == 88.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show when each quota resets when the CLI prints the reset without parentheses`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.usedFormatOutput)
 
@@ -160,7 +160,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quota(for: .session)?.resetText == "Resets in 3h 35m")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset the session in 3h 35m when the CLI prints the percent used and resets in 3h 35m`() throws {
         let now = Date()
         let snapshot = try KimiDefinitionFixtures.cli(Self.usedFormatOutput)
@@ -175,7 +175,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show nothing left when the CLI prints 100% used`() throws {
         let depleted = """
         │   Weekly limit  ████████████████████  100% used  resets in 35m    │
@@ -187,7 +187,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Redrawn Panels
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show each quota once when the CLI redraws the usage panel`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.redrawnOutput)
 
@@ -198,7 +198,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - CLI 2.x Layout (Monthly plan quota)
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session and the monthly quota when CLI 2.x prints its plan usage`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.cli2xOutput)
 
@@ -207,7 +207,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quota(for: .timeLimit("Monthly"))?.percentRemaining == 98.0)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show no quota for the context window or the per-model split when CLI 2.x prints them`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.cli2xOutput)
 
@@ -216,7 +216,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quotas.contains { $0.quotaType == .weekly } == false)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show when the session and the monthly quota reset when CLI 2.x prints them`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.cli2xOutput)
 
@@ -224,7 +224,7 @@ struct KimiCLIDefinitionParsingTests {
         #expect(snapshot.quota(for: .timeLimit("Monthly"))?.resetText == "Resets in 24d 16h 42m")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should treat the monthly quota as a 30-day window when CLI 2.x prints a monthly limit`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.cli2xOutput)
         let monthly = snapshot.quota(for: .timeLimit("Monthly"))
@@ -232,9 +232,33 @@ struct KimiCLIDefinitionParsingTests {
         #expect(monthly?.quotaType.conventionalWindow == .days(30))
     }
 
+    @Test
+    func `should measure the monthly window as the month before its reset on the person's clock`() throws {
+        let calendar = Zones.losAngelesCalendar
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 2, day: 20, hour: 12)))
+        let monthly = try #require(try KimiDefinitionFixtures.cli(Self.cli2xOutput, in: Zones.losAngeles, now: now)
+            .quota(for: .timeLimit("Monthly")))
+        let reset = try #require(monthly.resetsAt)
+        let monthBefore = try #require(calendar.date(byAdding: .month, value: -1, to: reset))
+        // Los Angeles moves its clocks on 2026-03-08, inside that month.
+        #expect(monthly.windowDuration == reset.timeIntervalSince(monthBefore))
+        #expect(monthly.windowDuration == TimeInterval(28 * 86400 - 3600))
+    }
+
+    @Test
+    func `should start the monthly window at the hour the clocks skip, moved forward as the Mac did`() throws {
+        // Resets 2026-04-08 02:30 PDT; a month before, 02:30 on 03-08 never
+        // happened in Los Angeles, so the window starts at 03:30 PDT.
+        let now = Date(timeIntervalSince1970: 1_773_506_880)
+        let monthly = try #require(try KimiDefinitionFixtures.cli(Self.cli2xOutput, in: Zones.losAngeles, now: now)
+            .quota(for: .timeLimit("Monthly")))
+        #expect(monthly.resetsAt == Date(timeIntervalSince1970: 1_775_640_600))
+        #expect(monthly.windowDuration == TimeInterval(31 * 86400 - 3600))
+    }
+
     // MARK: - Reset Time Parsing
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset the weekly quota in 6d 23h 22m when the CLI says so`() throws {
         let now = Date()
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
@@ -249,7 +273,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset the session in 4h 22m when the CLI says so`() throws {
         let now = Date()
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
@@ -264,7 +288,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the weekly reset as the CLI prints it`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
         let weekly = snapshot.quota(for: .weekly)
@@ -274,7 +298,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Reset Duration Helper
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset in days, hours and minutes when the CLI gives all three`() {
         let now = Date()
         let date = KimiDefinitionFixtures.reset("6d 23h 22m")
@@ -287,7 +311,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset in hours and minutes when the CLI gives no days`() {
         let now = Date()
         let date = KimiDefinitionFixtures.reset("4h 22m")
@@ -300,7 +324,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset in minutes when the CLI gives only minutes`() {
         let now = Date()
         let date = KimiDefinitionFixtures.reset("30m")
@@ -312,7 +336,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should reset in seconds when the CLI gives only seconds`() {
         let now = Date()
         let date = KimiDefinitionFixtures.reset("45s")
@@ -324,7 +348,7 @@ struct KimiCLIDefinitionParsingTests {
         }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a reset time when the session resets within seconds`() throws {
         let secondsReset = """
         │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 45s │
@@ -374,7 +398,7 @@ struct KimiCLIDefinitionParsingTests {
 
     // MARK: - Provider ID
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should report the usage as Kimi's`() throws {
         let snapshot = try KimiDefinitionFixtures.cli(Self.fullOutput)
         #expect(snapshot.providerId == "kimi")
@@ -384,7 +408,7 @@ struct KimiCLIDefinitionParsingTests {
 /// What `kimi` prints for /usage when it isn't signed in (captured live).
 @Suite
 struct KimiCLISignedOutTests {
-    @Test(.needsScriptEngine) func `should ask the person to sign in, not show "no quota data", when the CLI is signed out`() {
+    @Test func `should ask the person to sign in, not show "no quota data", when the CLI is signed out`() {
         let screen = """
         hanrenwei@Probe💫 /usage
         Authorization failed. Please check your API key.

@@ -13,7 +13,7 @@ struct DecimalScriptTests {
         return try source.read(Response(text: body))
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show a balance with every digit the answer gave`() throws {
         let usage = try read(#"{"balance": 0.1000000000000000055511151231257827}"#, script: """
         function read(response) {
@@ -24,7 +24,7 @@ struct DecimalScriptTests {
         #expect(usage.quotas.first?.left == .money(Money(Decimal(string: "0.1000000000000000055511151231257827")!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine, arguments: [("12.345", "12.35"), ("12.344", "12.34"), ("-0.004", "0.00"), ("1e2", "100.00"), ("99.995", "100.00")])
+    @Test(arguments: [("12.345", "12.35"), ("12.344", "12.34"), ("-0.004", "0.00"), ("1e2", "100.00"), ("99.995", "100.00")])
     func `should round money to the cent, half up, without losing precision`(_ amount: String, _ cents: String) throws {
         let usage = try read("{}", script: """
         function read() {
@@ -34,7 +34,7 @@ struct DecimalScriptTests {
         #expect(usage.quotas.first?.left == .money(Money(Decimal(string: cents)!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine, arguments: [("1234567", "0.000003", "3.703701"), ("0.1", "0.2", "0.02"), ("-2.5", "4", "-10"), ("1e6", "1.5", "1500000")])
+    @Test(arguments: [("1234567", "0.000003", "3.703701"), ("0.1", "0.2", "0.02"), ("-2.5", "4", "-10"), ("1e6", "1.5", "1500000")])
     func `should multiply money exactly`(_ a: String, _ b: String, _ product: String) throws {
         let usage = try read("{}", script: """
         function read() {
@@ -44,7 +44,7 @@ struct DecimalScriptTests {
         #expect(usage.quotas.first?.left == .money(Money(Decimal(string: product)!, currency: "USD"), of: nil))
     }
 
-    @Test(.needsScriptEngine, arguments: [("0.1", "0.2", "0.3"), ("1.005", "-0.005", "1"), ("12", "0.000001", "12.000001")])
+    @Test(arguments: [("0.1", "0.2", "0.3"), ("1.005", "-0.005", "1"), ("12", "0.000001", "12.000001")])
     func `should add money exactly`(_ a: String, _ b: String, _ sum: String) throws {
         let usage = try read("{}", script: """
         function read() {

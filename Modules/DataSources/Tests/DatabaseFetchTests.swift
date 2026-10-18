@@ -1,4 +1,3 @@
-#if os(macOS)
 import Foundation
 import Mockable
 import Quotas
@@ -11,24 +10,16 @@ import Testing
 @Suite
 struct DatabaseFetchTests {
     private let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    /// The Mac's SQLite, the one these tests check.
-    private let sqlite: SQLiteRows = { try ReadOnlyQuery.rows(at: $0, query: $1, name: $2) }
-
-    /// A database at `relative` under `root`, made with macOS's `sqlite3`.
+    /// A database at `relative` under `root`, made with the one SQLite.
     @discardableResult
     private func database(_ sql: String, at relative: String = "state.vscdb") throws -> URL {
         let file = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [file.path, sql]
-        try process.run()
-        process.waitUntilExit()
+        try SQLiteFiles.make(at: file, sql)
         return file
     }
 
     private func fetcher(path: PathPattern, query: String) -> SQLiteFetcher {
-        SQLiteFetcher(call: SQLiteCall(path: path, query: query), homeDirectory: root, environment: { _ in nil }, rows: sqlite)
+        SQLiteFetcher(call: SQLiteCall(path: path, query: query), homeDirectory: root, environment: { _ in nil })
     }
 
     private func rows(_ response: Response) throws -> [[String: String]] {
@@ -47,6 +38,21 @@ struct DatabaseFetchTests {
         let response = try await fetcher(path: "~/state.vscdb", query: "SELECT value FROM ItemTable WHERE key = 'plan'").fetch(with: nil)
 
         #expect(try rows(response) == [["value": #"{"planName":"Pro"}"#]])
+    }
+
+    /// SQL a definition wrote against the Mac's own SQLite, which takes a
+    /// double-quoted string and has the math functions, reads the same here.
+    @Test(arguments: [
+        (#"SELECT value FROM ItemTable WHERE key = "plan""#, #"{"planName":"Pro"}"#),
+        ("SELECT CAST(floor(pow(2, 3) + 0.5) AS INTEGER) AS value", "8"),
+    ])
+    func `should read a query written for the Mac's SQLite`(_ query: String, _ value: String) async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        try database("CREATE TABLE ItemTable(key TEXT, value TEXT); INSERT INTO ItemTable VALUES ('plan', '{\"planName\":\"Pro\"}');")
+
+        let response = try await fetcher(path: "~/state.vscdb", query: query).fetch(with: nil)
+
+        #expect(try rows(response) == [["value": value]])
     }
 
     @Test(arguments: [true, false])
@@ -120,8 +126,7 @@ struct DatabaseFetchTests {
 
         let reader = SQLiteReader(file: SQLiteCredential(path: "~/state.vscdb", query: "SELECT value AS token FROM items",
                                                          fields: ["token": "$.token"]),
-                                  homeDirectory: root, environment: { _ in nil }, rows: sqlite)
+                                  homeDirectory: root, environment: { _ in nil })
         #expect(try reader.find()?.credential.token == "secret-token")
     }
 }
-#endif

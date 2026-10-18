@@ -5,12 +5,6 @@ import Testing
 /// `Platform.current` has that connection and is skipped elsewhere, saying
 /// why, so the phase that brings a connection starts its tests with no edit.
 extension Trait where Self == ConditionTrait {
-    /// Runs a definition's `script` mapping.
-    static var needsScriptEngine: Self {
-        .enabled(if: Platform.current.scriptEngine != nil,
-                 "runs a mapping script: \(Platform.current.name) has no script engine yet (phase 5)")
-    }
-
     /// Runs a CLI, a command or a script, or reads a CLI's screen.
     static var needsProcesses: Self {
         .enabled(if: Platform.current.runCommand != nil,
@@ -23,11 +17,5 @@ extension Trait where Self == ConditionTrait {
         return .enabled(if: platform.localServer != nil && platform.runCommand != nil &&
                             platform.localNetwork != nil && platform.processList != nil,
                         "reads a local server: \(platform.name) has no local-server connection yet (phase 5)")
-    }
-
-    /// Makes its database with `sqlite3` and reads it with the platform's SQLite.
-    static var needsSQLite: Self {
-        .enabled(if: Platform.current.sqlite != nil,
-                 "uses SQLite: \(Platform.current.name) has none yet (phase 5)")
     }
 }

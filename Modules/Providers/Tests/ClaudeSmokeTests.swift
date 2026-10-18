@@ -4,7 +4,7 @@ import Testing
 
 @Suite
 struct ClaudeSmokeTests {
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the session, weekly and Opus windows with their resets when Claude prints a plain usage screen`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }

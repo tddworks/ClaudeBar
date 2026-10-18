@@ -49,7 +49,7 @@ struct DeepSeekDefinitionTests {
         #expect(provider.definition.accounts?.ways == [.form])
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should show the first balance exactly in its own currency, with the paid and granted parts, and no percentage`() async throws {
         let body = #"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"110.123456789","granted_balance":"10","topped_up_balance":"100"},{"currency":"USD","total_balance":"40"}]}"#
         let usage = try await make(body: body).refreshPlain()
@@ -62,14 +62,14 @@ struct DeepSeekDefinitionTests {
         #expect(quota.window == nil)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should leave out a paid or granted part that is missing or unreadable`() async throws {
         let body = #"{"balance_infos":[{"currency":"USD","total_balance":"40","granted_balance":"bad","topped_up_balance":"30"}]}"#
         let usage = try await make(body: body).refreshPlain()
         #expect(usage.quotas.first?.resetText == "Paid: $30.00")
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should read the default login with the environment key and each added login with its own key`() async throws {
         let vault = MemoryVault(["deepseek.apiKey": "personal"])
         let replies = ["Bearer environment": #"{"balance_infos":[{"currency":"USD","total_balance":"40"}]}"#,
@@ -84,7 +84,7 @@ struct DeepSeekDefinitionTests {
         #expect(workUsage.providerId == work.id)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should read the key from the environment variable the person named`() async throws {
         let settings = InMemoryProviderSettings()
         settings.setValue("MY_DEEPSEEK", "authEnvVar", forProvider: "deepseek")
@@ -93,7 +93,7 @@ struct DeepSeekDefinitionTests {
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should read DEEPSEEK_API_KEY when the person named no variable`() async throws {
         let settings = InMemoryProviderSettings()
         settings.setValue("", "authEnvVar", forProvider: "deepseek")
@@ -102,7 +102,7 @@ struct DeepSeekDefinitionTests {
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should use the saved key when the environment key is empty`() async throws {
         let provider = try make(environment: ["DEEPSEEK_API_KEY": ""], balancesByKey: ["Bearer personal": balance])
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
@@ -116,7 +116,7 @@ struct DeepSeekDefinitionTests {
         await #expect(throws: UsageError.authenticationRequired) { try await product.refresh(account) }
     }
 
-    @Test(.needsScriptEngine, arguments: ["0", "-1.25"])
+    @Test(arguments: ["0", "-1.25"])
     func `should show a zero or negative balance as depleted, with no made-up percentage`(_ amount: String) async throws {
         let body = #"{"balance_infos":[{"currency":"USD","total_balance":"\#(amount)"}]}"#
         let usage = try await make(body: body).refreshPlain()
@@ -139,7 +139,7 @@ struct DeepSeekDefinitionTests {
         await #expect(throws: UsageError.authenticationRequired) { try await product.refresh(account) }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should report no data when DeepSeek lists no balance`() async throws {
         let product = try make(body: #"{"balance_infos":[]}"#)
         let account = product.defaultAccount
@@ -154,14 +154,14 @@ struct DeepSeekDefinitionTests {
         #expect(account.lastFailedStep == .mapping)
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should say the balance is unavailable for API calls rather than show it healthy`() async throws {
         let product = try make(body: #"{"is_available":false,"balance_infos":[{"currency":"USD","total_balance":"5"}]}"#)
         let account = product.defaultAccount
         await #expect(throws: UsageError.executionFailed("DeepSeek reports that this balance is unavailable for API calls.")) { try await product.refresh(account) }
     }
 
-    @Test(.needsScriptEngine)
+    @Test
     func `should keep an added login's key out of settings and never fall back to the default key`() async throws {
         let vault = MemoryVault(["deepseek.apiKey": "personal"])
         let settings = InMemoryProviderSettings()

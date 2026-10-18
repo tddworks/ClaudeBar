@@ -18,6 +18,30 @@ let mockable: Target.Dependency = .product(name: "Mockable", package: "Mockable"
 // so the Mac's hashes and signatures don't change (§10).
 let crypto: Target.Dependency = .product(name: "Crypto", package: "swift-crypto")
 
+// The C libraries, one pinned copy each on every platform (§10 "The porting surface"):
+// what can be a library is a library, not a platform fact. Vendor/ is never edited by
+// hand; scripts/bump-vendor.sh is the one way a version changes.
+let vendored: [Target] = [
+    // QuickJS (quickjs-ng): the one engine every mapping script runs in, without its
+    // libc, so a script reaches no file, network or process.
+    .target(name: "CQuickJS", path: "Vendor/CQuickJS", exclude: ["VERSION", "LICENSE"], sources: ["quickjs-amalgam.c"]),
+    // SQLite: the one reader of another app's own database. Loading an extension is
+    // compiled out; nothing here may run code a database names. A definition's SQL
+    // reads as it did on the Mac's own SQLite: double-quoted strings and the math
+    // functions, as Apple builds it.
+    .target(
+        name: "CSQLite",
+        path: "Vendor/CSQLite",
+        exclude: ["VERSION", "LICENSE"],
+        sources: ["sqlite3.c"],
+        cSettings: [
+            .define("SQLITE_OMIT_LOAD_EXTENSION"),
+            .define("SQLITE_DQS", to: "3"),
+            .define("SQLITE_ENABLE_MATH_FUNCTIONS"),
+        ]
+    ),
+]
+
 #if os(macOS)
 let package = Package(
     name: "ClaudeBarKit",
@@ -39,7 +63,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "6.0.0"),
     ],
-    targets: [
+    targets: vendored + [
         // Quotas — the usage model every module speaks: UsageSnapshot, UsageQuota,
         // UsageError, plans and costs. Depends on nothing.
         .target(name: "Quotas", path: "Modules/Quotas/Sources"),
@@ -57,6 +81,8 @@ let package = Package(
             dependencies: [
                 "Quotas",
                 "Diagnostics",
+                "CQuickJS",
+                "CSQLite",
                 mockable,
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
                 .product(name: "Subprocess", package: "swift-subprocess"),
@@ -68,7 +94,7 @@ let package = Package(
         ),
         .testTarget(
             name: "DataSourcesTests",
-            dependencies: ["DataSources", "Quotas", mockable],
+            dependencies: ["DataSources", "Quotas", "CSQLite", mockable],
             path: "Modules/DataSources/Tests",
             swiftSettings: mocking
         ),
@@ -109,7 +135,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ProvidersTests",
-            dependencies: ["Providers", "DataSources", "Quotas", mockable, crypto],
+            dependencies: ["Providers", "DataSources", "Quotas", "CSQLite", mockable, crypto],
             path: "Modules/Providers/Tests",
             swiftSettings: mocking
         ),
@@ -150,7 +176,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "6.0.0"),
     ],
-    targets: [
+    targets: vendored + [
         .target(name: "Quotas", path: "Modules/Quotas/Sources"),
         .testTarget(name: "QuotasTests", dependencies: ["Quotas"], path: "Modules/Quotas/Tests"),
         .target(name: "Diagnostics", path: "Modules/Diagnostics/Sources"),
@@ -160,6 +186,8 @@ let package = Package(
             dependencies: [
                 "Quotas",
                 "Diagnostics",
+                "CQuickJS",
+                "CSQLite",
                 mockable,
                 .product(name: "Subprocess", package: "swift-subprocess"),
                 crypto,
@@ -169,7 +197,7 @@ let package = Package(
         ),
         .testTarget(
             name: "DataSourcesTests",
-            dependencies: ["DataSources", "Quotas", mockable],
+            dependencies: ["DataSources", "Quotas", "CSQLite", mockable],
             path: "Modules/DataSources/Tests",
             swiftSettings: mocking
         ),
@@ -184,7 +212,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ProvidersTests",
-            dependencies: ["Providers", "DataSources", "Quotas", mockable, crypto],
+            dependencies: ["Providers", "DataSources", "Quotas", "CSQLite", mockable, crypto],
             path: "Modules/Providers/Tests",
             swiftSettings: mocking
         ),

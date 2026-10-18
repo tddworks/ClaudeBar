@@ -15,7 +15,7 @@ plus two mapping scripts beside it (the `/usage` and `/cost` screens), run by th
 | `cliCost` (hidden) | `cli`: `claude /cost`, no ready markers | `claude-cost-screen.js` | falls back to `api` |
 | `api` | `http` `GET …/api/oauth/usage`; key from `~/.claude/.credentials.json`, the Keychain item, then `CLAUDE_CODE_OAUTH_TOKEN`; OAuth refresh with a JSON body 5 minutes before `expiresAt` (written back as a number) | a JSON mapping: windows by path (over the limit stays negative, countdowns in hours), model limits from `limits[]` where `kind` is `weekly_scoped` named by the model's first word (first one wins), the plan from the credential's `subscriptionType`, and money from `spend` in minor units, else legacy `extra_usage` | cached 15 minutes (the background floor); a 429 is remembered; falls back to `cli` unless `claude.cliFallbackEnabled` is off |
 
-The scripts run in JavaScriptCore with no file, network or process access;
+The scripts run in QuickJS with no file, network or process access;
 reset text is parsed by the host's `humanDate()`. Daily usage and guest passes
 are attached to the provider at composition (`ClaudeBarApp`). The rules below
 still hold — they are now lines in `claude.json`, pinned by

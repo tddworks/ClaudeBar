@@ -1,8 +1,9 @@
 import Foundation
 
 /// What this machine offers the module's workers (MODULAR_DESIGN §10, "One
-/// place picks the platform"): a way to run a CLI, a JavaScript engine, a
-/// Keychain. Each platform folder defines `current` once, the only place a
+/// place picks the platform"): a way to run a CLI, a Keychain, the person's
+/// zone. A library is not here: QuickJS and SQLite are the same on every
+/// platform (#570). Each platform folder defines `current` once, the only place a
 /// platform is chosen; neutral code reads the value and never asks which OS
 /// it runs on.
 ///
@@ -20,8 +21,6 @@ struct Platform: Sendable {
     var runCommand: CommandFetcher.MakeExecutor?
     /// Starts a CLI for a `jsonRpc` conversation.
     var rpcTransport: DataSources.TransportFactory?
-    /// Runs a `script` mapping.
-    var scriptEngine: (any ScriptEngine)?
     /// Reads a `keychain` item.
     var keychain: KeychainReader.Security?
     var browserCookies: (any BrowserCookieReading)?
@@ -34,8 +33,6 @@ struct Platform: Sendable {
     /// `cli` fetch whose screen is `rendered`.
     var screenRenderer: (@Sendable (String) -> String)?
     var binaryLocator: (any BinaryLocating)?
-    /// Runs a read-only query against an app's own database: `sqlite`.
-    var sqlite: SQLiteRows?
     /// The app-data folder for paths, using the caller's home and environment.
     var applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)?
     /// The separator accepted in this platform's filesystem paths.
@@ -51,7 +48,6 @@ struct Platform: Sendable {
         runCLI: CLIFetcher.MakeExecutor? = nil,
         runCommand: CommandFetcher.MakeExecutor? = nil,
         rpcTransport: DataSources.TransportFactory? = nil,
-        scriptEngine: (any ScriptEngine)? = nil,
         keychain: KeychainReader.Security? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
@@ -59,7 +55,6 @@ struct Platform: Sendable {
         processList: (@Sendable () -> [String])? = nil,
         screenRenderer: (@Sendable (String) -> String)? = nil,
         binaryLocator: (any BinaryLocating)? = nil,
-        sqlite: SQLiteRows? = nil,
         applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)? = nil,
         pathSeparator: String = "/",
         scriptCommand: ScriptCommand? = nil,
@@ -72,7 +67,6 @@ struct Platform: Sendable {
         self.runCLI = runCLI
         self.runCommand = runCommand
         self.rpcTransport = rpcTransport
-        self.scriptEngine = scriptEngine
         self.keychain = keychain
         self.browserCookies = browserCookies
         self.browserStorage = browserStorage
@@ -80,7 +74,6 @@ struct Platform: Sendable {
         self.processList = processList
         self.screenRenderer = screenRenderer
         self.binaryLocator = binaryLocator
-        self.sqlite = sqlite
         self.applicationData = applicationData
         self.pathSeparator = pathSeparator
         self.scriptCommand = scriptCommand

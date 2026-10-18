@@ -1,10 +1,10 @@
 import Foundation
 import Quotas
 
-/// A fetch, lookup or mapping case whose connection the platform has none of
+/// A fetch or lookup case whose connection the platform has none of
 /// (MODULAR_DESIGN §10: not a stub). It fails at its step, naming the case
 /// and the platform, rather than finding nothing.
-struct Unavailable: Fetching, Reading, CredentialFinding {
+struct Unavailable: Fetching, CredentialFinding {
     let step: DataSourceError.Step
     /// The case, as a person reads it: "Reading a browser's cookies".
     let what: String
@@ -21,8 +21,6 @@ struct Unavailable: Fetching, Reading, CredentialFinding {
     func isReady() -> Bool { true }
 
     func fetch(with credential: Credential?) async throws -> Response { throw error }
-
-    func read(_ response: Response, facts: MappingFacts, providerId: String) throws -> UsageSnapshot { throw error }
 
     func find() throws -> FoundCredential? { throw error }
 

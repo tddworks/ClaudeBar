@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **One script engine and SQLite everywhere**: provider scripts run in a bundled QuickJS instead of JavaScriptCore, and app databases through a bundled SQLite, so Windows runs them too. Mac quotas are unchanged. ([#571](https://github.com/tddworks/ClaudeBar/pull/571), [#570](https://github.com/tddworks/ClaudeBar/issues/570)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
+
+---
+
+## [0.5.16] - 2026-10-16
+
+### Changed
 - **One empty account no longer turns its provider DEPLETED**: a provider's accounts are interchangeable, so its header, its All card and Settings read its healthiest account. Each account still shows its own status and reset. ([#568](https://github.com/tddworks/ClaudeBar/pull/568), [#564](https://github.com/tddworks/ClaudeBar/pull/564)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/README.md)
 
 ### Fixed
@@ -266,7 +273,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.15...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.16...HEAD
+[0.5.16]: https://github.com/tddworks/ClaudeBar/compare/v0.5.15...v0.5.16
 [0.5.15]: https://github.com/tddworks/ClaudeBar/compare/v0.5.14...v0.5.15
 [0.5.14]: https://github.com/tddworks/ClaudeBar/compare/v0.5.13...v0.5.14
 [0.5.13]: https://github.com/tddworks/ClaudeBar/compare/v0.5.12...v0.5.13
