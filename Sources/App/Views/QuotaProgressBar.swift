@@ -1,6 +1,59 @@
 import SwiftUI
 import Domain
 
+// MARK: - Quota Bar
+
+/// A quota's bar with its pace tick under it — the one piece every quota card
+/// draws. `WrappedStatCard`, the *Bars* page's line and `QuotaCardView` all
+/// used to keep a copy of this shape, and the next change to the tick could
+/// drift between them; now there is one.
+///
+/// The bar reads the display mode the person chose, falling back to *used*
+/// when pace is unknown, and its fill follows the status under the person's
+/// policy — the same words the quota's headline number prints.
+struct QuotaBar: View {
+    let quota: UsageQuota
+    var animate: Bool = true
+    var delay: Double = 0
+
+    @Environment(\.appTheme) private var theme
+    @State private var settings = AppSettings.shared
+
+    /// Effective display mode: falls back to `.used` when pace is unknown.
+    private var displayMode: UsageDisplayMode {
+        settings.usageDisplayMode == .pace && quota.pace == .unknown ? .used : settings.usageDisplayMode
+    }
+
+    var body: some View {
+        VStack(spacing: 1) {
+            QuotaProgressBar(
+                percent: quota.displayProgressPercent(mode: displayMode),
+                fill: theme.progressGradient(for: quota.status(under: settings.statusPolicy)),
+                animate: animate,
+                delay: delay
+            )
+
+            // Expected pace tick mark
+            if let expectedPercent = quota.expectedProgressPercent(mode: displayMode) {
+                GeometryReader { geo in
+                    let tickX = geo.size.width * max(0, min(100, expectedPercent)) / 100
+                    Path { path in
+                        path.move(to: CGPoint(x: tickX - 3, y: 4))
+                        path.addLine(to: CGPoint(x: tickX + 3, y: 4))
+                        path.addLine(to: CGPoint(x: tickX, y: 0))
+                        path.closeSubpath()
+                    }
+                    .fill(quota.paceLevel?.displayColor ?? theme.textTertiary)
+                    .opacity(animate ? 1 : 0)
+                    .animation(.easeIn(duration: 0.3).delay(delay + 0.5), value: animate)
+                }
+                .frame(height: 5)
+            }
+        }
+        .help(quota.paceTickHelp(mode: displayMode) ?? "")
+    }
+}
+
 // MARK: - Progress Bar
 
 /// A quota's or a budget's bar. Glass themes draw a thin flat track; an

@@ -104,7 +104,10 @@ struct OverviewBarRowView: View {
                         .popoverFont(10, weight: .semibold)
                         .foregroundStyle(theme.textSecondary)
                 } else {
-                    ForEach(Array(card.lines.enumerated()), id: \.offset) { index, quota in
+                    // Keyed by the quota, not the row's offset: a refresh can
+                    // reorder lines, and identity by position would hand one
+                    // line's view to another quota's content.
+                    ForEach(Array(card.lines.enumerated()), id: \.element.quotaType) { index, quota in
                         OverviewQuotaLineView(quota: quota, delay: Double(index) * 0.05)
                     }
                 }
@@ -168,7 +171,10 @@ private struct OverviewQuotaLineView: View {
                 .popoverFont(10, weight: .semibold)
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
-            if let reset = quota.resetTimestampDescription ?? quota.resetText {
+            // The line's countdown stays in two units — `resetDescription`
+            // caps itself there — so "2d 1h" fits the held column that the
+            // full "Resets in 1d 18h 59m" would spill out of.
+            if let reset = quota.resetDescription ?? quota.resetText {
                 Text(reset)
                     .popoverFont(9, weight: .medium)
                     .foregroundStyle(theme.textTertiary)
@@ -184,33 +190,9 @@ private struct OverviewQuotaLineView: View {
     /// ceiling has no percentage, so it gets no bar rather than a false one.
     @ViewBuilder
     private var bar: some View {
-        if quota.percentLeft != nil {
-            VStack(spacing: 1) {
-                QuotaProgressBar(
-                    percent: quota.displayProgressPercent(mode: displayMode),
-                    fill: theme.progressGradient(for: quota.status(under: settings.statusPolicy)),
-                    delay: delay
-                )
-                if let expectedPercent = quota.expectedProgressPercent(mode: displayMode) {
-                    paceTick(at: expectedPercent)
-                }
-            }
-            .help(quota.paceTickHelp(mode: displayMode) ?? "")
+        if !quota.isBalance {
+            QuotaBar(quota: quota, delay: delay)
         }
-    }
-
-    private func paceTick(at percent: Double) -> some View {
-        GeometryReader { geo in
-            let x = geo.size.width * max(0, min(100, percent)) / 100
-            Path { path in
-                path.move(to: CGPoint(x: x - 3, y: 4))
-                path.addLine(to: CGPoint(x: x + 3, y: 4))
-                path.addLine(to: CGPoint(x: x, y: 0))
-                path.closeSubpath()
-            }
-            .fill(quota.paceLevel?.displayColor ?? theme.textTertiary)
-        }
-        .frame(height: 5)
     }
 
     /// A percentage in the person's display mode; a balance as its amount.
@@ -222,18 +204,9 @@ private struct OverviewQuotaLineView: View {
             .minimumScaleFactor(0.7)
     }
 
-    private var text: String {
-        if quota.percentLeft == nil, let dollars = quota.formattedDollarRemaining { return dollars }
-        return "\(Int(quota.displayPercent(mode: displayMode)))%"
-    }
+    private var text: String { QuotaLineText.value(quota, mode: settings.usageDisplayMode) }
 
-    private var title: String {
-        quota.compactTitle ?? quota.quotaType.displayName
-    }
-
-    private var displayMode: UsageDisplayMode {
-        settings.usageDisplayMode
-    }
+    private var title: String { QuotaLineText.title(quota) }
 }
 
 /// One provider on *All*: its badge, its tightest quota as a ring, the next
@@ -343,13 +316,11 @@ struct OverviewCardView: View {
     }
 
     private func title(_ quota: UsageQuota, login: String?) -> String {
-        let name = quota.compactTitle ?? quota.quotaType.displayName
-        return login.map { "\(settings.shown($0)) · \(name)" } ?? name
+        QuotaLineText.title(quota, login: login, shown: { settings.shown($0) })
     }
 
     /// A percentage in the person's display mode; a balance as its amount.
     private func value(_ quota: UsageQuota) -> String {
-        if quota.percentLeft == nil, let dollars = quota.formattedDollarRemaining { return dollars }
-        return "\(Int(quota.displayPercent(mode: settings.usageDisplayMode)))%"
+        QuotaLineText.value(quota, mode: settings.usageDisplayMode)
     }
 }

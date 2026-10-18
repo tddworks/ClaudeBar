@@ -69,3 +69,20 @@ enum QuotaCardText {
         }
     }
 }
+
+/// The words a quota line prints — the ring card's rows under the ring and
+/// the *Bars* page's lines, which used to keep a copy each.
+enum QuotaLineText {
+    /// The quota's word: its compact title, or its type's name — with the
+    /// login's name first when several logins need telling apart.
+    static func title(_ quota: UsageQuota, login: String? = nil, shown: (String) -> String = { $0 }) -> String {
+        let name = quota.compactTitle ?? quota.quotaType.displayName
+        return login.map { "\(shown($0)) · \(name)" } ?? name
+    }
+
+    /// A percentage in the person's display mode; a balance as its amount.
+    static func value(_ quota: UsageQuota, mode: UsageDisplayMode) -> String {
+        if quota.isBalance, let dollars = quota.formattedDollarRemaining { return dollars }
+        return "\(Int(quota.displayPercent(mode: mode)))%"
+    }
+}

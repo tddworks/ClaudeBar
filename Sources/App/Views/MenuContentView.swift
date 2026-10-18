@@ -1850,33 +1850,7 @@ struct WrappedStatCard: View {
                 }
             }
 
-            // Progress bar with the pace tick under it
-            VStack(spacing: 1) {
-                QuotaProgressBar(
-                    percent: quota.displayProgressPercent(mode: effectiveDisplayMode),
-                    fill: theme.progressGradient(for: quota.status(under: settings.statusPolicy)),
-                    animate: animateProgress,
-                    delay: delay
-                )
-
-                // Expected pace tick mark
-                if let expectedPercent = quota.expectedProgressPercent(mode: effectiveDisplayMode) {
-                    GeometryReader { geo in
-                        let tickX = geo.size.width * max(0, min(100, expectedPercent)) / 100
-                        Path { path in
-                            path.move(to: CGPoint(x: tickX - 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX + 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX, y: 0))
-                            path.closeSubpath()
-                        }
-                        .fill(quota.paceLevel?.displayColor ?? theme.textTertiary)
-                        .opacity(animateProgress ? 1 : 0)
-                        .animation(.easeIn(duration: 0.3).delay(delay + 0.5), value: animateProgress)
-                    }
-                    .frame(height: 5)
-                }
-            }
-            .help(quota.paceTickHelp(mode: effectiveDisplayMode) ?? "")
+            QuotaBar(quota: quota, animate: animateProgress, delay: delay)
 
             // Reset info (hidden when the grid hoisted a shared countdown)
             if showsReset, let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {

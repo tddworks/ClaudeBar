@@ -54,40 +54,7 @@ struct QuotaCardView: View {
                     .foregroundStyle(effectiveDisplayMode == .pace ? quota.pace.displayColor : effectiveStatus.displayColor)
             }
 
-            // Progress bar with pace tick
-            VStack(spacing: 1) {
-                GeometryReader { geometry in
-                    let progressPercent = quota.displayProgressPercent(mode: effectiveDisplayMode)
-                    ZStack(alignment: .leading) {
-                        // Track
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.primary.opacity(0.1))
-                            .frame(height: 4)
-
-                        // Fill (clamp width to 0-100%)
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(effectiveStatus.displayColor)
-                            .frame(width: geometry.size.width * max(0, min(100, progressPercent)) / 100, height: 4)
-                    }
-                }
-                .frame(height: 4)
-
-                // Expected pace tick mark
-                if let expectedPercent = quota.expectedProgressPercent(mode: effectiveDisplayMode) {
-                    GeometryReader { geometry in
-                        let tickX = geometry.size.width * max(0, min(100, expectedPercent)) / 100
-                        Path { path in
-                            path.move(to: CGPoint(x: tickX - 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX + 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX, y: 0))
-                            path.closeSubpath()
-                        }
-                        .fill(quota.paceLevel?.displayColor ?? Color.secondary.opacity(0.6))
-                    }
-                    .frame(height: 5)
-                }
-            }
-            .help(quota.paceTickHelp(mode: effectiveDisplayMode) ?? "")
+            QuotaBar(quota: quota)
         }
         .padding(12)
         .background(Color.primary.opacity(0.05))
