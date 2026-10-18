@@ -11,7 +11,7 @@ import Domain
 /// The bar reads the display mode the person chose, falling back to *used*
 /// when pace is unknown, and its fill follows the status under the person's
 /// policy — the same words the quota's headline number prints.
-struct QuotaBar: View {
+struct QuotaCardBar: View {
     let quota: UsageQuota
     var animate: Bool = true
     var delay: Double = 0

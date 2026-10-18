@@ -68,7 +68,7 @@ today). The divider shows when either of them does.
 | `AllPageStyle` | `Sources/Domain/App/AllPageStyle.swift` | `.rings` (default) or `.bars`. The page's own choice of how to print, like `PopoverOpensOn` — never a flag on `OverviewCard` |
 | `AppSettingsRepository.allPageStyle()` / `setAllPageStyle(_:)` | Domain port, `JSONSettingsRepository` | keeps it at `app.allPageStyle`; unset reads `.rings` |
 | `AppSettings.allPageStyle` | `Sources/App/Settings/AppSettings.swift` | the observed setting; writes through on change |
-| `QuotaBar` | `Sources/App/Views/QuotaProgressBar.swift` | a quota's bar with its pace tick under it — the one piece `WrappedStatCard`, a **Bars** line and `QuotaCardView` all draw. Its fill follows the status, its tick the pace; a bar's ends land where the row puts them, so every bar on a page starts and ends at the same x |
+| `QuotaCardBar` | `Sources/App/Views/QuotaProgressBar.swift` | a quota's bar with its pace tick under it — the one piece `WrappedStatCard`, a **Bars** line and `QuotaCardView` all draw. Its fill follows the status, its tick the pace; a bar's ends land where the row puts them, so every bar on a page starts and ends at the same x |
 | `QuotaLineText` | `Sources/App/Views/QuotaCardText.swift` | the words a quota line prints — its title (login first when needed) and its number (a percentage, or a balance's amount). One copy for the ring card's rows and **Bars**' lines |
 | `OverviewBarsPageView` | `Sources/App/Views/OverviewCardView.swift` | the *Bars* page: a row per card, a `QuotaBar` per line — renders `lines` and never sorts or filters |
 | *All page style* row | `GeneralPane`, beside *Open On* | picks the style |

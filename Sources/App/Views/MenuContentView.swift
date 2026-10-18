@@ -1850,7 +1850,7 @@ struct WrappedStatCard: View {
                 }
             }
 
-            QuotaBar(quota: quota, animate: animateProgress, delay: delay)
+            QuotaCardBar(quota: quota, animate: animateProgress, delay: delay)
 
             // Reset info (hidden when the grid hoisted a shared countdown)
             if showsReset, let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {

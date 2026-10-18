@@ -54,7 +54,7 @@ struct QuotaCardView: View {
                     .foregroundStyle(effectiveDisplayMode == .pace ? quota.pace.displayColor : effectiveStatus.displayColor)
             }
 
-            QuotaBar(quota: quota)
+            QuotaCardBar(quota: quota)
         }
         .padding(12)
         .background(Color.primary.opacity(0.05))

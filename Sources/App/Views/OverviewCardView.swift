@@ -191,7 +191,7 @@ private struct OverviewQuotaLineView: View {
     @ViewBuilder
     private var bar: some View {
         if !quota.isBalance {
-            QuotaBar(quota: quota, delay: delay)
+            QuotaCardBar(quota: quota, delay: delay)
         }
     }
 
