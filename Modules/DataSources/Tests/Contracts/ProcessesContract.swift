@@ -103,11 +103,14 @@ private enum Programs {
     #if os(Windows)
     static let scriptExtension = "cmd"
     static let shell = "cmd"
+    // Delayed expansion (`!CD!`) reads a value after the line is parsed, so
+    // the folder's `&` is printed rather than run as a second command.
     static let answer = """
         @echo off\r
+        setlocal EnableDelayedExpansion\r
         set /p LINE=\r
-        echo var=%CONTRACT_VAR% line=%LINE%\r
-        echo folder=%CD%\r
+        echo var=!CONTRACT_VAR! line=!LINE!\r
+        echo folder=!CD!\r
         echo oops 1>&2\r
         exit /b 3\r
 

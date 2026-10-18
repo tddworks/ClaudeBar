@@ -164,9 +164,9 @@ Modules/DataSources/
 │       │              JSONLinesReader · JSONLogReader · CommandLogReader · SQLiteLogReader (a reader per
 │       │              log source, each knowing its own) · LogFileFinder (behind the file
 │       │              readers) · DayAggregator · PriceList · LocalEndpoint
-│       ├── Process/   DefaultCLIExecutor · ProcessRPCTransport · InteractiveRunner ·
-│       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
-│       │              TerminalRenderer
+│       ├── Process/   PipeCLIExecutor · PipeConversation · SubprocessSupport ·
+│       │              DefaultCLIExecutor · InteractiveRunner · BinaryLocator ·
+│       │              LoginShellEnvironment · RunningProcesses · TerminalRenderer
 │       └── Network/   URLSessionNetworkClient · InsecureLocalhostNetworkClient
 └── Tests/
     ├── Fetch/JSONRPCFetcherTests.swift
@@ -351,7 +351,7 @@ passing 6 contract suites, with no edit above the line.
 | Port | Takes over today's | Mac adapter | Windows adapter |
 |---|---|---|---|
 | `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
-| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | Darwin processes, the login shell | `CreateProcess`, `PATH` + `PATHEXT` |
+| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `proc_listallpids`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, `EnumProcesses`, the PowerShell profile: built ([#579](https://github.com/tddworks/ClaudeBar/issues/579)). The pipe runner and the conversation are one neutral copy |
 | `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | the trusted-localhost client, `lsof` / `pgrep` | the same client; the listener table |
 | `Terminal` | `runCLI` · `screenRenderer` | SwiftTerm on a pty | the console's pseudo-terminal (ConPTY) |
 | `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 |
@@ -433,7 +433,8 @@ Modules/DataSources/Sources/
 ├── Ports/                     the porting surface, @Mockable, one file each
 │   ├── TimeZoneSource.swift   the person's zone, and DataSources.timeZone() ·
 │   │                          .calendar(), the one public way to it (#567)
-│   └── Processes · Terminal · Secrets · LocalNetwork · Places   (slices 2–5)
+│   ├── Processes.swift        finding and starting programs (#579)
+│   └── Terminal · Secrets · LocalNetwork   (slices 3–5)
 └── Internal/
     ├── Platform.swift         ◇ struct Platform — holds the ports, nothing
     │                            else; Platform.bare: the name and zone. Until
@@ -448,24 +449,29 @@ Modules/DataSources/Sources/
     ├── Time/WindowsZones.swift   a Windows zone key to its zone: CLDR's table
     │                             (+Table, generated from Vendor/CLDR) or the OS's
     │                             offset — neutral, so its tests run everywhere
-    ├── Fetch/ Lookup/ Mapping/ Logs/ Network/ Process/   neutral workers
+    ├── Process/               PipeCLIExecutor · PipeConversation · SubprocessSupport:
+    │                            one pipe runner and conversation for every
+    │                            platform; an adapter hands them its facts (#579)
+    ├── Fetch/ Lookup/ Mapping/ Logs/ Network/   neutral workers
     ├── macOS/                 #if os(macOS), whole file: one adapter per port
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
+    │   ├── Process/MacProcesses.swift   Processes: BinaryLocator, ChildTeardown,
+    │   │                               RunningProcesses, the login shell (#579)
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
-    │                                 under their ports in slices 2–5
+    │                                 under their ports in slices 3–5
     └── Windows/               #if os(Windows), whole file: the same ports
         ├── Platform+Windows.swift    static let current = Platform(name: "Windows", …)
         ├── Time/WindowsTimeZone.swift   the zone's registry key and offset (#567)
-        ├── Process/PathBinaryLocator.swift   PATH + PATHEXT
+        ├── Process/WindowsProcesses.swift   Processes: PathBinaryLocator (PATH +
+        │                                   PATHEXT), TerminateProcess, EnumProcesses,
+        │                                   PowerShell (#579)
         └── Logs/                     FileStamp+Windows · ByteSearch+Windows
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
-│                                adapter: TimeZoneContract (#567), the rest with
-│                                their slices
+│                                adapter: TimeZoneContract (#567),
+│                                ProcessesContract (#579), the rest with their slices
 ├── UnavailableTests.swift     the factory with Platform.bare — runs on the Mac too
-├── Support/Capabilities.swift .needsProcesses … — skips a test only until its
-│                                port's Windows adapter exists, saying why
 ├── …                          everything else: every OS, no skips
 └── macOS/ · Windows/          an adapter's own tests, under #if os(…)
 Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own design
@@ -481,7 +487,7 @@ Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own des
   mean "the default", so a test hands in `Platform.bare` (or `.current` with
   one connection removed) and checks on the Mac what Windows does.
 - **A platform worker is reached through a port** declared in the neutral
-  part (`Ports/`, and `BinaryLocating`, `CLIExecutor` … until their slices
+  part (`Ports/`, and `CLIExecutor`, `RPCTransport` … until their slices
   move them, §6). Two types of one name, one per folder, are not allowed:
   nothing makes their APIs agree.
 - **Only the factory reads `Platform`.** It hands each worker the one thing it
@@ -490,10 +496,10 @@ Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own des
   `ErrorFact.unavailable`, so a definition's `errors` may word it and a
   screen can tell "not on Windows yet" from a failure.
 - **Everything above the ports runs on every OS and never skips.** A test
-  that needs a port names it (`.needsProcesses`) and runs wherever
-  `Platform.current` has that port; when a slice brings the Windows adapter,
-  its tests start running there with no edit. A library is never a reason to
-  skip.
+  that needs a port names it (`.needsTerminal`, in Providers'
+  `Tests/Support/Capabilities.swift`) and runs wherever `Platform.current` has
+  that port; when a slice brings the Windows adapter, its tests start running
+  there with no edit. A library is never a reason to skip.
 - **Each port has one contract suite**, in `Tests/Contracts/`, that runs
   against `Platform.current`'s adapter on every OS. It holds the adapter to
   what the OS itself says, as `TimeZoneContract` compares the zone with the
@@ -547,7 +553,7 @@ Phase 5's slices, each its own issue and PR
 |---|---|---|
 | 0 | **`TimeZone` port.** The person's zone, read through the factory; every `.current` calendar default reads it | a KST test runs on any machine — built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
 | 1 | **Vendor QuickJS and SQLite; one engine everywhere.** `QuickJSEngine` replaces JavaScriptCore on the Mac and is the engine on Windows; one `ReadOnlyQuery` on bundled SQLite | Windows no longer skips a test for a script engine or SQLite (−391); the Mac's numbers don't change; release-build timing, the size added to the Mac app, and scripts in definitions people wrote checked — built ([#571](https://github.com/tddworks/ClaudeBar/pull/571)) |
-| 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows |
+| 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows — built ([#579](https://github.com/tddworks/ClaudeBar/issues/579)): `command`, `script` and `jsonRpc` fetches, `command` logs and the login-shell lookup run on Windows |
 | 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows |
 | 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows |
 | 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows |
@@ -556,8 +562,13 @@ Phase 5's slices, each its own issue and PR
 ### Open
 
 - **`Places` has no slice of its own.** Its two fields came with phase 4 and
-  already work on Windows; it becomes a port, with its contract, in slice 2,
-  the first slice that regroups `Platform`.
+  already work on Windows. Slice 2 kept to `Processes`, so they stay fields
+  of `Platform` until a slice needs them as a port.
+- **Extension scripts on Windows.** An extension's script runs as the file
+  itself, so a `.cmd`, `.bat` or `.exe` works and the example's `.sh`
+  doesn't. Running a `.ps1` through PowerShell, or a `.sh` through Git for
+  Windows' `sh` when it is there, are left for an issue that asks
+  ([#579](https://github.com/tddworks/ClaudeBar/issues/579)).
 - ~~**The JavaScript engine on Windows.**~~ QuickJS, vendored, on the Mac too
   ([#570](https://github.com/tddworks/ClaudeBar/issues/570)).
 - ~~**A script's local time on Windows.**~~ A script's `Date` local time is

@@ -12,7 +12,7 @@ An extension is a definition of origin *Extension*, run by the same `Provider` a
 
 1. At launch `Extensions.catalog()` (Providers) reads each `~/.claudebar/extensions/<id>/manifest.json`; one that doesn't read is logged and left out.
 2. `Extensions.definition(manifest:folder:)` makes the definition, id `ext-<id>`, `"together": true`:
-   - `quotaGrid` / `costUsage` → a data source with **`Fetch.script`** (run with `/bin/sh` from the extension's folder; every config field as `CLAUDEBAR_<UPPER_SNAKE>`, secrets read from the vault) and **`Mapping.usage`** (the documented output);
+   - `quotaGrid` / `costUsage` → a data source with **`Fetch.script`** (run from the extension's folder — with `/bin/sh` on the Mac, as the file itself on Windows, the `Processes` port's `script`; every config field as `CLAUDEBAR_<UPPER_SNAKE>`, secrets read from the vault) and **`Mapping.usage`** (the documented output);
    - `healthCheck` → an `http` HEAD request with nothing to map; failing is fetch health;
    - `dailyUsage`, `metricsRow`, `statusBanner` → skipped and logged.
    - config fields → provider-scope settings (`number` a text with a number pattern, `toggle` an On/Off choice).

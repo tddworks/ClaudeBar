@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **One script engine and SQLite everywhere**: provider scripts run in a bundled QuickJS instead of JavaScriptCore, and app databases through a bundled SQLite, so Windows runs them too. Mac quotas are unchanged. ([#571](https://github.com/tddworks/ClaudeBar/pull/571), [#570](https://github.com/tddworks/ClaudeBar/issues/570)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
+- **Commands and scripts on Windows**: providers that run a command, a script or a JSON-RPC CLI now run on Windows, on the Mac's pipe runner. An extension's script must be a `.cmd`, `.bat` or `.exe` there. ([#579](https://github.com/tddworks/ClaudeBar/issues/579)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
 
 ### Fixed
 - **OpenCode Go on OpenCode 2**: without an API key, the estimate and daily cards read opencode's database directly, so OpenCode 1 and 2 both work and spend from before an upgrade still counts. ([#566](https://github.com/tddworks/ClaudeBar/issues/566), [#572](https://github.com/tddworks/ClaudeBar/pull/572))

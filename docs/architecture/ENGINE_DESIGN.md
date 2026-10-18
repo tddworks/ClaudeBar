@@ -437,9 +437,12 @@ to the platform too. The factory hands a worker its command or connection;
 the worker never chooses an OS. macOS keeps its existing interactive login
 shell, `/bin/sh` script execution, `pgrep`/`lsof` local-server discovery and
 the trusted `Application Support/ClaudeBar/Probe` folder. Windows derives
-the folder from its app-data root; missing execution connections still fail
-as named `Unavailable`. This phase does not supply a Windows process runner,
-pseudo-terminal, JavaScript engine or SQLite implementation.
+the folder from its app-data root; missing connections still fail as named
+`Unavailable`. Since phase 5's slice 2 (#579) both reach programs through
+the `Processes` port: one pipe runner and one conversation for every
+platform, with Windows running a script as the file itself and reading a
+login variable through the PowerShell profile. Windows still has no
+pseudo-terminal or local-server discovery (slices 3 and 4).
 
 ```text
 "path": ["{{platform.appData}}/JetBrains/*/options/AIAssistantQuotaManager2.xml",

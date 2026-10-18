@@ -49,7 +49,7 @@ To try the bundled example: `cp -R docs/features/extensions/example-provider ~/.
 
 For each section, on every refresh:
 
-- ClaudeBar runs `command` with `/bin/sh -c`, from the extension's folder. A relative `command` is taken relative to that folder. It must be the path of an executable file (with a `#!` line and `chmod +x`).
+- ClaudeBar runs `command` with `/bin/sh -c`, from the extension's folder. A relative `command` is taken relative to that folder. It must be the path of an executable file (with a `#!` line and `chmod +x`). On Windows it is run as the file itself, so it must be a `.cmd`, `.bat` or `.exe`; a `sh` script doesn't run there.
 - Every config value, or its `default`, is passed as an environment variable: `CLAUDEBAR_` plus the field `id` in upper snake case. `apiKey` becomes `CLAUDEBAR_API_KEY`, and `base-url` becomes `CLAUDEBAR_BASE_URL`.
 - The script must exit `0` and print **one JSON object** with `quotas` or `costUsage`. See [manifest.md](manifest.md#what-a-script-must-print).
 - It's stopped after `timeout` seconds (default 10).
