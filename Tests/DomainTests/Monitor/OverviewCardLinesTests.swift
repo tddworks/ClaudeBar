@@ -12,12 +12,13 @@ struct OverviewCardLinesTests {
         _ type: QuotaType = .session,
         windowHours: Double? = nil
     ) -> UsageQuota {
-        UsageQuota(
+        let window = windowHours.map { $0 * 3600 }
+        return UsageQuota(
             percentRemaining: left,
             quotaType: type,
             providerId: "p",
-            resetsAt: windowHours == nil ? nil : Date().addingTimeInterval(windowHours * 3600),
-            windowDuration: windowHours.map { $0 * 3600 }
+            resetsAt: window.map { Date().addingTimeInterval($0) },
+            windowDuration: window
         )
     }
 
