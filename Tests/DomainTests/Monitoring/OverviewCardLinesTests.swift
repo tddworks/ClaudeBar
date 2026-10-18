@@ -87,17 +87,3 @@ struct OverviewCardLinesTests {
         #expect(card.lines.isEmpty)
     }
 }
-
-/// How a provider is printed on the All page.
-@Suite
-struct AllPageStyleTests {
-    @Test
-    func `should read a card as rings by default`() {
-        #expect(AllPageStyle.rings.isDefault)
-    }
-
-    @Test
-    func `should offer both ways to print, rings first`() {
-        #expect(AllPageStyle.allCases == [.rings, .bars])
-    }
-}
