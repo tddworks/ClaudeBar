@@ -11,7 +11,7 @@ import Testing
     private func redirect(from origin: String, to destination: String, follow: (URLRequest?) -> Void) {
         let task = session.dataTask(with: URL(string: origin)!)
         let response = HTTPURLResponse(url: URL(string: origin)!, statusCode: 302, httpVersion: nil, headerFields: nil)!
-        SameOriginRedirectDelegate().urlSession?(session, task: task,
+        SameOriginRedirectDelegate().urlSession(session, task: task,
             willPerformHTTPRedirection: response,
             newRequest: URLRequest(url: URL(string: destination)!), completionHandler: follow)
     }
