@@ -1,4 +1,5 @@
 import Domain
+import Foundation
 import Testing
 @testable import ClaudeBar
 
