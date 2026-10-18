@@ -67,7 +67,7 @@ public enum DataSources {
             definition,
             providerId: providerId,
             platform: .current,
-            network: URLSession.shared,
+            network: OriginPinnedNetworkClient(),
             cloudWatch: cloudWatch,
             priceCatalog: priceCatalog,
             scripts: scripts,

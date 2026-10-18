@@ -463,6 +463,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | two logins of a provider never share a path setting — the default login's included | `Provider.accounts` |
 | a worker reports a fact (a status, an exit code, a missing CLI) and the definition's `errors` says what it means, in a reason the screen prints — never from the response body or a secret; a 429 stays a rate limit | `DataSource` · `DataSourceError` |
 | a credential is looked up in the order the definition gives; the first that answers wins, and a refreshed token is written back where it was found | `CredentialLookup` |
+| **a credential travels only to the origin its fetch names** — a redirect that leaves it (another host, port or scheme) is not followed, and the 3xx itself becomes the answer; the credential is never re-sent to a server the fetch didn't name | `Fetch` (the network connection) |
 | when the active data source fails, its `fallback` is tried once; what the popover shows says which one answered. A signed-out login (*Authentication required*, *Session expired*) is not tried again on a fallback that reads the same login (`fallback.sameLogin`, #525) | `Provider` |
 | a data source held until checked (`verifyBeforeBackground`, #216) starts nothing in the background until a click succeeds; a signed-out answer holds it back again (#525). It holds the default login: an added login is checked by being added, and never marks or forgets the default's check | `Provider` |
 | a definition is valid before it is saved: a fetch, a mapping that produced at least one quota or a cost on Test, and every required setting filled | `ProviderDefinition` |
@@ -599,6 +600,7 @@ test first. Findings that need a decision first are in §9.
 | Providers · In use | refusals (*already listed*, *another login's folder*) thrown as `UsageError.executionFailed(String)` | a `Refusal` per aggregate, as `QuotaAlerts` has |
 | Providers | guest passes run `settings.cliPath ?? cli`, skipping `Configuration`'s CLI places | the login's `configuration.running.cli` |
 | Vault & Settings | `ClaudeSettingsRepository`, `CodexSettingsRepository`, `DeepSeekSettingsRepository`, `UsageProbe`, `AccountInfo` still declared; two writers of `verifiedAtLeastOnce` | deleted; DeepSeek's when its card retires |
+| Vault & Settings | the secret's absence from a log line is a convention each caller keeps | the vault registers its values; `AppLog` scrubs them from every line before a sink sees it, so the law holds even when a caller forgets |
 | Vault & Settings | `ProviderSettingsRepository` holds the switch, configuration, order and page preferences, and its setters default to doing nothing | one port per role; no silent defaults |
 | In use | the record's folder known by `DiskLoginsInUse` and again, by hand, in `ShellSetup` | the record port answers the file the shell reads |
 | Data Sources | the `{{…}}` grammar parsed in `Template`, `Placeholders`, string replaces and `contains("{{")` guards, in both modules | one `Placeholder` value: parse, fill, names, transforms |
