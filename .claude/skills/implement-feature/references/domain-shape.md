@@ -21,6 +21,21 @@ A plain value when it is data with rules; a class only when it changes over time
 **5. Is what differs between providers data?**
 A definition, or a handle that is `nil` when not declared; never a `switch` on an id or a vendor name in a module. *`account.usageHistory`, `provider.inUse`.*
 
+## Check by context
+
+The five questions look at one type. To find what is wrong across the domain, check each **context** ([CANONICAL_MODEL §7](../../../../docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) as a whole, with six more. Each names a smell you can grep for; each example is one the [October 2026 review](../../../../docs/architecture/CANONICAL_MODEL.md#8--where-the-code-is-still-behind) found.
+
+| # | Ask | The smell | Example |
+|---|---|---|---|
+| 1 | **Does anything cross the fence?** Only a reference (an id, a name, a value of the Quota kernel) may | another context's type inside this one's model; reading its storage or factory | the status alert reads Providers' saved accounts to name a login, instead of taking `lineupName` |
+| 2 | **Does every word mean one thing here?** | one name for two facts, two names for one | `providerId` is the product in one place and the login in the next |
+| 3 | **Does every law have one owner?** | the same rule written twice, drifting apart; a caller reading state to decide | *the login with the most left* is computed in `Accounts.best`, `InUse` and `SwitchWhenLow` |
+| 4 | **Is the business above, and the technique below?** | argv, paths, JSON keys or OS calls handed to a worker to put together; a business rule in an App driver | the Keychain reader builds `security` argv; the menu-bar driver decides which logins refresh in the background |
+| 5 | **Does a new case add data, not an edit?** (SRP, OCP) | a `switch` on an id, a vendor or theme name in shared Swift; one type changing for several reasons | `theme.id == "christmas"` in the popover; `"codex."` in an alert |
+| 6 | **Does the question have a home?** | a context's words and rules scattered over modules, or living in the composition root | Usage History is split over Quotas, Providers, DataSources and the Monitor |
+
+A finding is a row in CANONICAL §8 when a law already says what is right, or a question in §9 when the design must decide first.
+
 ## An example: the chart that came in late ([#536](https://github.com/tddworks/ClaudeBar/pull/536))
 
 The bug: on the first open, *Daily usage — last 30 days* appeared after the rest of the popover, and a fix at the view removed its fade. Asking the five questions of `UsageHistory` finds the cause in the domain instead.

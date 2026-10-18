@@ -64,6 +64,8 @@ connect · Couldn't find the numbers*, *via API*. Those are the words below.
 > **One word, two fences.** *Session* means the 5-hour quota window inside
 > **Quota**, and a running Claude Code process inside **Activity**. Both are on
 > screen and both stay; the fence (§7) is what keeps them from meeting.
+> In use's *new terminal sessions* and Usage History's *working sessions* are
+> two more; §9 asks for one word each.
 
 ## 1 · The tree
 
@@ -513,21 +515,44 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 
 Each is a **fence**: inside it every word has one meaning and one model
 enforces it. Across a fence the same word may mean something else, as long as
-**no type crosses** — a reference does.
+**no type crosses** — a reference does. A reference is an id, a name, or a
+value of the Quota kernel; never another context's aggregate, its storage or
+its factory.
 
-| Context | Subdomain | Owns the question |
-|---|---|---|
-| **Quota** | **shared kernel** | *how much is left, when does it refill, and is that OK?* |
-| **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* |
-| **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker |
-| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, Notify!, live activity, status export |
-| **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch |
-| **Usage History** | supporting | *what did I use, day by day?* |
-| **In use** | supporting | *which login does my next terminal session start with?* |
-| **Leaderboard** | supporting | *how do my days compare with everyone else's?* — membership, devices, a new device's request to be added, the signed upload; [its design](../features/leaderboard/design.md) |
-| **Vault & Settings** | generic | *where is it kept?* — `settings.json`, secrets |
-| SDK clients | — (anti-corruption layers) | *what does this SDK say?* — a client that needs a heavy SDK gets its own module, behind a port, so only it links the SDK |
+| Context | Subdomain | Owns the question | Its root | Reaches others only by |
+|---|---|---|---|---|
+| **Quota** | **shared kernel** | *how much is left, when does it refill, and is that OK?* | values: `Quota`, `Left`, `Window`, `Status`, `StatusPolicy`, `Pace` | — it imports nothing |
+| **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
+| **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
+| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, Notify!, live activity, status export | ◆ `QuotaAlerts`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
+| **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
+| **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
+| **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |
+| **Leaderboard** | supporting | *how do my days compare with everyone else's?* — membership, devices, a new device's request to be added, the signed upload; [its design](../features/leaderboard/design.md) | ◆ `LeaderboardMembership` | its `TokenLogs` port, which the App fills from Usage History |
+| **Vault & Settings** | generic | *where is it kept?* — `settings.json`, secrets | the repositories | ports each context declares for itself |
+| SDK clients | — (anti-corruption layers) | *what does this SDK say?* — a client that needs a heavy SDK gets its own module, behind a port, so only it links the SDK | — | the port it implements |
+
+```text
+                     Quota   (shared kernel: every context may hold its values)
+
+ SDK clients ──implement a port of──▶ Data Sources ──DataSource──▶ Providers ──▶ Monitoring
+ (AWSClients)                              │                           │             │
+                         "is this my run?" │       account.usageHistory│             │ onRefreshed
+                                           ▼                           ▼             ▼
+                                       Activity                 Usage History   Alerting · In use
+                                                                       │
+                                                         TokenLogs, filled by the App
+                                                                       ▼
+                                                                  Leaderboard
+
+ Vault & Settings ──implements the storage ports each context declares──▶ (any of them)
+```
+
+Arrows point from the context that is used to the one that uses it; nothing
+points back. The App only wires them: it holds no rule of any context, and a
+surface that shows two contexts (the notch shows Activity and a quota) reads
+each through its own root.
 
 ## 8 · Where the code is still behind
 
@@ -546,6 +571,51 @@ is built is not listed — the code is its record. What isn't yet:
 | `Days` — a range of days | `days(in:)` returns a bare array; the chart decides what is offered, the totals, the models' order and each one's colour | a `Days` value answering the page's questions — its models in order, a day's lines largest first, its total in a unit — so the view renders and never decides |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
 | In use | folder logins only | an environment-variable record for API-key providers |
+
+### Found by checking each context (October 2026)
+
+Each context was checked with [the six questions](../../.claude/skills/implement-feature/references/domain-shape.md#check-by-context).
+These are the findings a law above already answers; each is its own change,
+test first. Findings that need a decision first are in §9.
+
+| Context | The code today | Moves to |
+|---|---|---|
+| Quota | pace-aware `QuotaStatus.from` returns *critical* at 60% left and *warning* at 15%, breaking the absolute floor; the person's burn-rate threshold is never read | `StatusPolicy` owns status: the absolute bands first, pace decides only between 20% and 50%, against the threshold |
+| Quota | pace graded three ways (`UsagePace` ±5 points, `PaceLevel`'s six levels, the status's 0.7/0.9), so one quota can read *Room to spare*, a warm tick and WARNING at once | one `Pace` from the `Window`; the words and the tick are views of it |
+| Quota | the share left of a money quota computed twice, once across currencies (`QuotaAlerts.lowestShare`); `<` compares `percentRemaining`, where a balance is 100 | `Left.share`, `nil` for a balance or mixed currencies, read by every comparison |
+| Quota · Providers | a login's status has two owners: `Account.status` / `Accounts.status` ignore the policy and hidden quotas, `QuotaMonitor.status(of:)` and `Overview` apply both | `accounts.status(under:)`; the Monitor and the overview delegate |
+| Monitoring | the menu-bar quota reads `snapshot` directly, so a hidden quota still colours the menu bar | read through the watched usage |
+| Monitoring | the Monitor sends status alerts itself (`previousStatuses`, `alerter`); "alert only when worse" sits in `NotificationAlerter` | `StatusAlerts` in Alerting, beside `QuotaAlerts`, following `onRefreshed` |
+| Monitoring | which logins the background refresh fetches, and starting the loop, live in `StatusItemLabelDriver` | the Monitor, from what each surface asks to keep fresh; the driver renders |
+| Monitoring | `selectedProviderId = "claude"`; `ObservationRenderSync` (a SwiftUI workaround) in `Domain`; `MonitoringEvent.error` never sent | the first in the lineup; the App; removed |
+| Alerting | the status alert names a login by `"codex."` prefix, Providers' saved accounts and `ProviderFactory` | it is handed the login's `lineupName`, as `QuotaAlerts` is |
+| Alerting | Notify!'s publishing laws (a tile's backoff never silences a widget, the 6-hour pause, forget only the refused handle) in `NotifyPublishDriver` | a `NotifyPublication` in Alerting, told each offer and failure; the driver keeps the timer |
+| Alerting | status export recomputes status and *no data*, and turns off with the Touch Bar; Notify!'s tint is hard-coded in `Domain`; `QuotaAlerts` repeats the policy's 20 and 0 | every destination reads the status under the policy; colours come from the App's theme; the policy names its boundaries |
+| Providers | `Provider` and `Account` write storage keys (`plainLoginKey`, `isEnabled(forProvider: loginId)`, `verifiedAtLeastOnce`) and migrate old ones | a pause/switch port; compatibility in `JSONSettingsRepository`'s tables |
+| Providers | `providerId` is the product in `Account`, the login in a `Usage` and its quotas, either in settings | a login's id under its own name; `ProviderAccount` the one parser of lineup ids |
+| Providers | `ProviderFactory.customDefinitions`, a global registry read by views and alerts | `Providers.provider(of:)`; the factory only makes |
+| Providers · In use | *the login with the most left* in `Accounts.best`, `InUse.worthSwitchingTo` and `SwitchWhenLow.next`, each slightly different | `Accounts.best`, given what may be picked |
+| Providers | *signed out* decided in `Provider.isSignedOut`, `Account.fail` (by tag string) and `Account.needsSetup` | the error answers `isSignedOut` itself |
+| Providers · In use | refusals (*already listed*, *another login's folder*) thrown as `UsageError.executionFailed(String)` | a `Refusal` per aggregate, as `QuotaAlerts` has |
+| Providers | guest passes run `settings.cliPath ?? cli`, skipping `Configuration`'s CLI places | the login's `configuration.running.cli` |
+| Vault & Settings | `ClaudeSettingsRepository`, `CodexSettingsRepository`, `DeepSeekSettingsRepository`, `UsageProbe`, `AccountInfo` still declared; two writers of `verifiedAtLeastOnce` | deleted; DeepSeek's when its card retires |
+| Vault & Settings | `ProviderSettingsRepository` holds the switch, configuration, order and page preferences, and its setters default to doing nothing | one port per role; no silent defaults |
+| In use | the record's folder known by `DiskLoginsInUse` and again, by hand, in `ShellSetup` | the record port answers the file the shell reads |
+| Data Sources | the `{{…}}` grammar parsed in `Template`, `Placeholders`, string replaces and `contains("{{")` guards, in both modules | one `Placeholder` value: parse, fill, names, transforms |
+| Data Sources | the Keychain reader builds `security` argv and decodes its hex in neutral code; the public test factory takes that argv | a `Secrets` port (`password(service:account:)`); the Mac adapter owns the tool |
+| Data Sources | a fetch or lookup case answers for itself in only some places: five switches, and Providers' own `if case .cloudWatch` | `Connection` grows the questions (`readsCloud`, `keyNames`, …) |
+| Data Sources | `Connection` means a payload's disclosures and a platform port; `[*]` ends a path in `JSONPath` and fans out in `LocalEndpoint` | one word each; one path dialect |
+| Data Sources | failures worded by workers (*No file at*, *Network error*, OAuth's *Token refresh failed*), retry decided by `tag == "executionFailed"`, `Unavailable` returns text, a missing CloudWatch client words its own | wider `ErrorFact` (`network`, `fileMissing`, `unavailable`, …), one table of failure names |
+| Data Sources | `DataSource` reads the refresher's state to decide renewal; the secret field names are a set on the aggregate | the refresher is told and answers a renewal; `Credential` knows its secrets |
+| Data Sources | a local server's flow (find the app, try ports and paths, word failures) inside the Mac adapter, between `pgrep` and `lsof` parsing | a neutral worker over a `LocalNetwork` port (phase 5, slice 3) |
+| SDK clients | Bedrock's prices and model names in `AWSClients`' Swift | a price file in the definition |
+| Activity | the hooks installed are a list beside `SessionEvent.EventName`, without `Notification`, so *Needs you* never comes | the installer registers every `EventName` |
+| Activity | "ClaudeBar's own CLI run" decided in four places; `CLAUDEBAR_PROBE` written by hand in `claude.json` and the guest-pass runner | Data Sources marks every child it starts and answers "is this one of my runs" |
+| Activity | the notch judges quotas without the policy, ranks by `percentRemaining`, and prints its own phase words and colours | the quota's status under the policy; `Phase.label` and its colour |
+| Activity | following Claude Code (hooks file, setting, event loop, sweep, notification text) in `HooksPane` and `ClaudeBarApp` | an Activity root told `turnOn()` / `turnOff()`; the App constructs it |
+| Leaderboard | "upload now" after each command, the copied-key retry and the off-notice choice in `AppLeaderboard`; the privacy preview rebuilds the wire format; a member's mix counted in two views | the membership's commands; the encoder's preview; `Board.Member.mix` |
+| Leaderboard | its model holds `DailyUsageStat`; the providers with token logs are a sentence in two views | `TokenLogs` answers Leaderboard's own token counts; the names from the catalog |
+| App | `provider.id == "antigravity"` in the Touch Bar, `theme.id == "christmas"` / `"cli"` in the popover, eight provider ids as Settings search words | the lineup name; theme capabilities on `AppThemeProvider`; the catalog's names |
 
 ## 9 · Open
 
@@ -574,3 +644,36 @@ is built is not listed — the code is its record. What isn't yet:
   *Import* shows its command and asks before anything is saved or run.
 - **Status in the kernel or the policy.** Is `Quota.status` a read that takes
   the policy, or does the Monitor apply it? §4 assumes the first.
+
+Raised by checking each context (October 2026); each needs a decision here
+before its §8 rows can move:
+
+- **Who owns hidden quotas?** The Monitor keeps them per product and refuses
+  to hide the last, and the kernel repeats that rule; the tree has no node for
+  them, so `Account` can't see them and a login's status has two answers.
+  Proposed: `Provider.hiddenQuotas`, saved through its form, with
+  `hide(_:)` that can say no.
+- **Does an added login that is signed out keep its last usage?** §5 says what
+  we saw is never erased; `Account.fail` erases it for an added login, so it
+  doesn't read as current. Either the law gains that exception, owned by
+  `Account`, or the usage stays and reads as stale.
+- **Where do the OS's ports live?** `TimeZone`, the network and, after
+  [#580](https://github.com/tddworks/ClaudeBar/pull/580), `Processes` are
+  declared in Data Sources, so Leaderboard imports Data Sources for a calendar
+  and a `NetworkClient`. A small Platform module would let any context hold a
+  port without depending on *how do we find out*.
+- **Where does Usage History live?** Its words are in the Quota kernel, its
+  aggregate and store in Providers, its readers and day totals in Data
+  Sources, and the Monitor triggers its reads. A home of its own (module or
+  folder), with the popover asking it directly, would make the fence real.
+- **What is the notch?** It shows Activity and a quota, and its snooze rules
+  are in an App driver. Proposed: a destination that reads `SessionMonitor`'s
+  one ordering and a quota's status, with a pure notch policy for snooze and
+  the recent window.
+- **Where does sign-in live?** `AccountSignIn`, `LoginFolders` and their own
+  `Process` runner sit in Data Sources; §2.1 lists sign-in under the
+  provider's capabilities. Proposed: Providers, running the CLI as a `Program`.
+- **Session means four things.** A quota window (Quota), a Claude Code process
+  (Activity), the next terminal (In use) and a working session in a day's
+  count (Usage History). §0.1 names only the first two; the glossary should
+  name all four and the reference between Activity and In use, if any.
