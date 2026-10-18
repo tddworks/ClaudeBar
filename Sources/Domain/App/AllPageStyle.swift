@@ -17,9 +17,6 @@ public enum AllPageStyle: String, Sendable, CaseIterable {
     /// What someone who never chose gets.
     public static let `default`: AllPageStyle = .rings
 
-    /// Whether this is the default, so the page can answer without a stored value.
-    public var isDefault: Bool { self == .default }
-
     /// The word the settings row and the page both use.
     public var displayLabel: String {
         switch self {
