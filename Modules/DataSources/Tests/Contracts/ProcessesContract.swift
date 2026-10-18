@@ -12,7 +12,7 @@ struct ProcessesContract {
     private let folder = FileManager.default.temporaryDirectory
         .appendingPathComponent("processes (x86) & \(UUID().uuidString.prefix(8))", isDirectory: true)
 
-    private func processes() throws -> any Processes {
+    private func processes() throws -> Processes {
         try #require(Platform.current.processes, "\(Platform.current.name) has no Processes adapter")
     }
 
@@ -27,45 +27,47 @@ struct ProcessesContract {
 
     @Test func `should find a program on the PATH by name, a script by its path, and nothing for a name that isn't there`() throws {
         defer { try? FileManager.default.removeItem(at: folder) }
-        let processes = try processes()
-        let shell = try #require(processes.locate(Programs.shell))
+        let installed = try processes().installed
+        let shell = try #require(installed.find(Programs.shell))
         #expect(FileManager.default.isExecutableFile(atPath: shell))
         let path = try script("answer", Programs.answer)
-        #expect(processes.locate(path).map(Programs.same) == Programs.same(path))
-        #expect(processes.locate("claudebar-no-such-cli") == nil)
+        #expect(installed.find(path).map(Programs.same) == Programs.same(path))
+        #expect(installed.find("claudebar-no-such-cli") == nil)
     }
 
-    @Test func `should run a script from its folder with its variables and input, answering what it printed and its exit code`() async throws {
+    @Test func `should run a script from its folder with its variables and input, answering what it printed`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
-        let processes = try processes()
-        let argv = processes.script(try script("answer", Programs.answer))
-        let runner = processes.runner(ProcessEnvironment(set: ["CONTRACT_VAR": "x y"]))
+        let script = try #require(try processes().script(at: try script("answer", Programs.answer)))
 
-        let result = try await runner.execute(binary: argv[0], args: Array(argv.dropFirst()), input: "hello\n",
-                                              timeout: 30, workingDirectory: folder, autoResponses: [:])
+        let output = try await script.run(input: "hello\n", environment: ProcessEnvironment(set: ["CONTRACT_VAR": "x y"]),
+                                          timeout: 30, in: folder)
 
-        #expect(result.exitCode == 3)
-        #expect(result.output.contains("var=x y line=hello"))
-        #expect(result.output.contains("oops"), "what it printed on stderr is part of the answer")
-        let printed = result.output.split(whereSeparator: \.isNewline).first { $0.hasPrefix("folder=") }
+        #expect(output.contains("var=x y line=hello"))
+        #expect(output.contains("oops"), "what it printed on stderr is part of the answer")
+        let printed = output.split(whereSeparator: \.isNewline).first { $0.hasPrefix("folder=") }
         #expect(printed.map { Programs.same(String($0.dropFirst("folder=".count))) } == Programs.same(folder.path))
     }
 
-    @Test func `should report a program it can't find`() async throws {
-        let runner = try processes().runner(ProcessEnvironment())
-        await #expect(throws: UsageError.cliNotFound("claudebar-no-such-cli")) {
-            try await runner.execute(binary: "claudebar-no-such-cli", args: [], input: nil, timeout: 5,
-                                     workingDirectory: nil, autoResponses: [:])
-        }
+    @Test func `should report the code a script exited with`() async throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let script = try #require(try processes().script(at: try script("fail", Programs.fail)))
+        await #expect {
+            try await script.run(timeout: 30, in: folder)
+        } throws: { ($0 as? CLIExitError)?.exitCode == 3 }
+    }
+
+    @Test func `should find no program or script that isn't there`() throws {
+        let processes = try processes()
+        #expect(processes.program(named: "claudebar-no-such-cli") == nil)
+        #expect(processes.script(at: folder.appendingPathComponent("missing").path) == nil)
     }
 
     @Test func `should stop a program that runs past its timeout`() async throws {
-        let runner = try processes().runner(ProcessEnvironment())
+        let program = try #require(try processes().program(named: Programs.wait.binary))
         let clock = ContinuousClock()
         let start = clock.now
         await #expect(throws: UsageError.timeout) {
-            try await runner.execute(binary: Programs.wait.binary, args: Programs.wait.args, input: nil, timeout: 1,
-                                     workingDirectory: nil, autoResponses: [:])
+            try await program.run(Programs.wait.args, timeout: 1, in: nil)
         }
         // The program runs ten minutes; the run must end long before that,
         // not wait for it. The margin is wide because a CI runner can stall
@@ -75,9 +77,8 @@ struct ProcessesContract {
 
     @Test func `should hold a line-by-line conversation with a program, and end it`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
-        let processes = try processes()
-        let argv = processes.script(try script("echo", Programs.echo))
-        let transport = try processes.converse(argv[0], Array(argv.dropFirst()), nil, folder)
+        let script = try #require(try processes().script(at: try script("echo", Programs.echo)))
+        let transport = try script.talk([], in: folder)
 
         for message in [#"{"id":1}"#, #"{"id":2}"#] {
             try transport.send(Data(message.utf8))
@@ -89,14 +90,14 @@ struct ProcessesContract {
 
     @Test func `should list the program this test runs in among those running`() throws {
         let own = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().lastPathComponent
-        let names = try processes().running().map { URL(fileURLWithPath: $0).lastPathComponent.lowercased() }
+        let names = try processes().running.paths().map { URL(fileURLWithPath: $0).lastPathComponent.lowercased() }
         #expect(names.contains(own.lowercased()))
     }
 
     @Test func `should read a variable as the person's login sets it`() async throws {
         let processes = try processes()
-        let login = LoginShellEnvironment(cliExecutor: processes.runner(ProcessEnvironment(set: ["CLAUDEBAR_CONTRACT": "a b"])),
-                                          command: { processes.loginVariable($0) }, timeout: 30)
+        let login = processes.loginEnvironment(runner: processes.pipes(ProcessEnvironment(set: ["CLAUDEBAR_CONTRACT": "a b"])),
+                                               timeout: 30)
         #expect(await login.value(ofEnvVar: "CLAUDEBAR_CONTRACT") == "a b")
     }
 }
@@ -115,6 +116,11 @@ private enum Programs {
         echo var=!CONTRACT_VAR! line=!LINE!\r
         echo folder=!CD!\r
         echo oops 1>&2\r
+        exit /b 0\r
+
+        """
+    static let fail = """
+        @echo off\r
         exit /b 3\r
 
         """
@@ -138,6 +144,10 @@ private enum Programs {
         echo "var=$CONTRACT_VAR line=$LINE"
         echo "folder=$(pwd)"
         echo oops >&2
+
+        """
+    static let fail = """
+        #!/bin/sh
         exit 3
 
         """

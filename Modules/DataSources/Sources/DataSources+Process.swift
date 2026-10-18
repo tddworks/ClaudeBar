@@ -15,13 +15,11 @@ extension DataSources {
         cliExecutor: (any CLIExecutor)? = nil,
         timeout: TimeInterval = 10
     ) -> LoginShellEnvironment? {
-        guard let processes = platform.processes else { return nil }
-        return LoginShellEnvironment(cliExecutor: cliExecutor ?? processes.runner(ProcessEnvironment()),
-                                     command: { processes.loginVariable($0) }, timeout: timeout)
+        platform.processes?.loginEnvironment(runner: cliExecutor, timeout: timeout)
     }
 
     static func scriptCommands(for call: ScriptCall, platform: Platform = .current) -> [[String]] {
-        platform.processes.map { [$0.script(call.run)] } ?? []
+        platform.processes.map { [$0.scripts.command(call.run)] } ?? []
     }
 
     static func localServerCommands(for call: LocalServerCall, platform: Platform = .current) -> [[String]] {

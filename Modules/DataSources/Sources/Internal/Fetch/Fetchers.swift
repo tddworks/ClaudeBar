@@ -132,18 +132,18 @@ struct HTTPFetcher: Fetching {
 /// answers with the call's whole message as the response body.
 struct JSONRPCFetcher: Fetching {
     let call: JSONRPCCall
-    let cliExecutor: any CLIExecutor
-    let makeTransport: DataSources.TransportFactory
+    let processes: Processes
     let directory: @Sendable () -> URL?
 
     func isReady() -> Bool {
-        if cliExecutor.locate(call.cli) != nil { return true }
+        if processes.program(named: call.cli) != nil { return true }
         AppLog.probes.error("'\(call.cli)' not found in PATH")
         return false
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        let transport = try makeTransport(call.cli, call.args, Self.environment(call.environment), directory())
+        guard let program = processes.program(named: call.cli) else { throw UsageError.cliNotFound(call.cli) }
+        let transport = try program.talk(call.args, environment: call.environment, in: directory())
         defer { transport.close() }
 
         // A CLI can stall without answering or exiting (#517). A read from
@@ -193,16 +193,6 @@ struct JSONRPCFetcher: Fetching {
         }
         AppLog.probes.debug("\(call.cli) \(call.call) answered")
         return Response(body: try JSONSerialization.data(withJSONObject: message))
-    }
-
-    /// The app's environment changed as the call asks, or `nil` to inherit it
-    /// untouched. Each process gets its own; the app's is never mutated.
-    static func environment(_ change: ProcessEnvironment) -> [String: String]? {
-        guard !change.unset.isEmpty || !change.set.isEmpty else { return nil }
-        var environment = ProcessInfo.processInfo.environment
-        for name in change.unset { environment.removeValue(forKey: name) }
-        environment.merge(change.set) { _, new in new }
-        return environment
     }
 }
 
@@ -258,59 +248,31 @@ final class RPCSession: @unchecked Sendable {
 /// missing CLI, a non-zero exit and a failed launch are reported as facts the
 /// definition's `errors` may word.
 struct CommandFetcher: Fetching {
-    /// The executor for a command with this environment.
-    typealias MakeExecutor = @Sendable (ProcessEnvironment) -> any CLIExecutor
-
     let call: CommandCall
-    let makeExecutor: MakeExecutor
+    let processes: Processes
     let directory: @Sendable () -> URL?
 
     func isReady() -> Bool {
-        makeExecutor(call.environment).locate(call.cli) != nil
+        processes.program(named: call.cli) != nil
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
         let environment = try call.environment.filled(with: credential)
-        let executor = makeExecutor(environment)
-        guard executor.locate(call.cli) != nil else { throw CLIMissingError(cli: call.cli) }
-        let result: CLIResult
-        do {
-            result = try await executor.execute(
-                binary: call.cli,
-                args: call.args,
-                input: call.input,
-                timeout: call.timeout,
-                workingDirectory: directory(),
-                autoResponses: [:]
-            )
-        } catch UsageError.cliNotFound {
-            // Gone between the check and the run.
-            throw CLIMissingError(cli: call.cli)
-        } catch let error as UsageError {
-            throw error
-        } catch {
-            AppLog.probes.error("\(call.cli) could not start")
-            throw CLILaunchError(cli: call.cli)
-        }
-        guard result.exitCode == 0 else {
-            AppLog.probes.error("\(call.cli) exited with \(result.exitCode)")
-            throw CLIExitError(cli: call.cli, exitCode: result.exitCode)
-        }
-        AppLog.probes.debug("\(call.cli) answered (\(result.output.count) chars)")
-        return Response(text: result.output)
+        guard let program = processes.program(named: call.cli) else { throw CLIMissingError(cli: call.cli) }
+        return Response(text: try await program.run(call.args, input: call.input, environment: environment,
+                                                    timeout: call.timeout, in: directory()))
     }
 }
 
-/// `script` — the person's own script, run with the supplied shell from its folder,
-/// its environment the definition's values and the secrets it names, read
-/// from the login's vault. Answers with what it printed; a non-zero exit is
-/// a fact, as for `command`.
+/// `script` — the person's own script, started the way this OS starts one,
+/// from its folder, its environment the definition's values and the secrets
+/// it names, read from the login's vault. Answers with what it printed; a
+/// non-zero exit is a fact, as for `command`.
 struct ScriptFetcher: Fetching {
     let call: ScriptCall
     let providerId: String
     let secrets: (any SecretStore)?
-    let makeExecutor: CommandFetcher.MakeExecutor
-    let command: ScriptCommand
+    let processes: Processes
     let directory: URL
 
     private var path: String {
@@ -328,28 +290,11 @@ struct ScriptFetcher: Fetching {
         for (variable, setting) in call.secrets {
             if let value = secrets?.secret(setting, provider: providerId) { set[variable] = value }
         }
-        let executor = makeExecutor(ProcessEnvironment(set: set))
-        let name = (call.run as NSString).lastPathComponent
-        guard isReady() else { throw CLIMissingError(cli: name) }
-        let argv = command(path)
-        guard let binary = argv.first else { throw CLILaunchError(cli: name) }
-        let result: CLIResult
-        do {
-            result = try await executor.execute(
-                binary: binary, args: Array(argv.dropFirst()), input: nil, timeout: call.timeout,
-                workingDirectory: directory, autoResponses: [:]
-            )
-        } catch let error as UsageError {
-            throw error
-        } catch {
-            AppLog.probes.error("\(name) could not start")
-            throw CLILaunchError(cli: name)
+        guard let script = processes.script(at: path) else {
+            throw CLIMissingError(cli: (call.run as NSString).lastPathComponent)
         }
-        guard result.exitCode == 0 else {
-            AppLog.probes.error("\(name) exited with \(result.exitCode)")
-            throw CLIExitError(cli: name, exitCode: result.exitCode)
-        }
-        return Response(text: result.output)
+        return Response(text: try await script.run(environment: ProcessEnvironment(set: set), timeout: call.timeout,
+                                                   in: directory))
     }
 }
 

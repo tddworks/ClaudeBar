@@ -1,27 +1,17 @@
 import Quotas
 import Foundation
 
-/// What a platform's `Processes` adapter tells the pipe runner and the
-/// conversation: how it finds a CLI, the environment a child starts with,
-/// and how it ends a child a conversation started.
-struct PipeFacts: Sendable {
-    /// A CLI's full path, as `Processes.locate`.
-    let locate: @Sendable (String) -> String?
-    /// The environment a child at `path` starts with: the app's, with `change` applied.
-    let environment: @Sendable (_ path: String, _ change: ProcessEnvironment) -> [String: String]
-    /// Ends a child a conversation started, within a bound.
-    let end: @Sendable (Process) -> Void
-}
-
 /// Runs a command over plain pipes, without a terminal — for a CLI that
 /// prints machine-readable output and needs no screen, and for a person's
-/// script. The same on every platform; a TUI goes through the terminal runner.
+/// script. The same on every platform: it finds a CLI and starts it as the
+/// OS says. A TUI goes through the terminal runner.
 struct PipeCLIExecutor: CLIExecutor {
     let change: ProcessEnvironment
-    let facts: PipeFacts
+    let installed: any InstalledPrograms
+    let launch: any ChildLaunch
 
     func locate(_ binary: String) -> String? {
-        facts.locate(binary)
+        installed.find(binary)
     }
 
     func execute(
@@ -33,7 +23,7 @@ struct PipeCLIExecutor: CLIExecutor {
         autoResponses: [String: String]
     ) async throws -> CLIResult {
         guard let path = locate(binary) else { throw UsageError.cliNotFound(binary) }
-        let environment = SubprocessSupport.environment(facts.environment(path, change))
+        let environment = SubprocessSupport.environment(launch.environment(for: path, change))
         let output = try await withThrowingTaskGroup(of: SubprocessSupport.Output.self) { group in
             // Cancelled, swift-subprocess ends the program.
             group.addTask {

@@ -1,33 +1,47 @@
 import Foundation
 import Mockable
 
-/// What the OS owns about starting a program (MODULAR_DESIGN §10): finding a
-/// CLI, running one over pipes, holding a conversation with one, the programs
-/// running, and how the person's script and login variables are reached. The
-/// pipe runner and the conversation are the same code on every platform
-/// (`PipeCLIExecutor`, `PipeConversation`); an adapter hands them its facts.
+// What an OS answers about programs (MODULAR_DESIGN §10), one question each.
+// A platform's adapter answers all five; `Processes` and `Program` above them
+// find, run, talk and report the same way on every platform.
+
+/// Finds a program the person installed, as their terminal finds it.
 @Mockable
-protocol Processes: Sendable {
-    /// A CLI's full path, found as the person's terminal finds it, or `nil`
-    /// when it isn't installed. A path to a file that is there is taken as it is.
-    func locate(_ cli: String) -> String?
+protocol InstalledPrograms: Sendable {
+    /// The program's full path, or `nil` when it isn't installed. A path to a
+    /// file that is there is taken as it is.
+    func find(_ name: String) -> String?
+}
 
-    /// Runs a program over pipes, in the app's environment with `change` applied.
-    func runner(_ change: ProcessEnvironment) -> any CLIExecutor
+/// How this OS starts the person's script file.
+@Mockable
+protocol ScriptStart: Sendable {
+    /// The argv that runs the script at `path`, before its arguments.
+    func command(_ path: String) -> [String]
+}
 
-    /// Starts `executable` for a newline-delimited conversation on its input
-    /// and output, in `environment` (the app's when `nil`) and `directory`.
-    func converse(_ executable: String, _ arguments: [String], _ environment: [String: String]?,
-                  _ directory: URL?) throws -> any RPCTransport
+/// How this OS reads a variable as the person's login sets it.
+@Mockable
+protocol LoginShell: Sendable {
+    /// The argv that prints `variable`'s value between `begin` and `end`.
+    /// `variable` is a valid name (`LoginShellEnvironment.isValidName`).
+    func command(printing variable: String, between begin: String, and end: String) -> [String]
+}
 
-    /// The executable paths of the programs running now.
-    func running() -> [String]
+/// How this OS launches a child and ends one.
+@Mockable
+protocol ChildLaunch: Sendable {
+    /// The environment the program at `path` starts with: the app's, with
+    /// `change` applied.
+    func environment(for path: String, _ change: ProcessEnvironment) -> [String: String]
 
-    /// The argv that runs the person's script file at `path`.
-    func script(_ path: String) -> [String]
+    /// Ends a child a conversation started, within a bound.
+    func end(_ child: Process)
+}
 
-    /// The argv that prints `variable` as the person's login sets it, between
-    /// `LoginShellEnvironment`'s markers. `variable` is a valid name
-    /// (`LoginShellEnvironment.isValidName`).
-    func loginVariable(_ variable: String) -> [String]
+/// The programs running now.
+@Mockable
+protocol RunningPrograms: Sendable {
+    /// Their executable paths.
+    func paths() -> [String]
 }

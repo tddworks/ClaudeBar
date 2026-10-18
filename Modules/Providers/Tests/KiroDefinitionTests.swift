@@ -28,7 +28,7 @@ struct KiroDefinitionTests {
         var platform = Platform.current
         platform.timeZone = Zones.losAngeles
         platform.runCLI = { _ in cli }
-        platform.processes = MockProcesses.running { @Sendable environment in
+        platform.processes = Processes.running { @Sendable environment in
             if let home = environment.set["HOME"] {
                 #expect(home == workHome)
                 #expect(environment.set["KIRO_HOME"] == home + "/.kiro")

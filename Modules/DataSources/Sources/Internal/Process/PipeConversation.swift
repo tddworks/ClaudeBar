@@ -7,7 +7,7 @@ import Synchronization
 /// as a `jsonRpc` fetch holds with `codex app-server`. The same on every
 /// platform: `Foundation.Process` starts the program, and its output is read
 /// on a thread of its own, since `FileHandle.bytes` is Apple's Foundation
-/// only. The adapter's `end` stops the program.
+/// only. The OS's `ChildLaunch.end` stops the program.
 ///
 /// Still on `Foundation.Process`, not Subprocess: Subprocess's `run` is
 /// scoped to a closure, so a long-lived conversation built on it would need

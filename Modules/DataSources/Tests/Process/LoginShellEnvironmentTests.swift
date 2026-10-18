@@ -23,7 +23,7 @@ struct LoginShellEnvironmentTests {
     }
 
     private func makeShell(_ executor: any CLIExecutor) -> LoginShellEnvironment {
-        LoginShellEnvironment(cliExecutor: executor, command: { ["fixture-shell", $0] })
+        LoginShellEnvironment(cliExecutor: executor, shell: FixtureShell(command: ["fixture-shell"]))
     }
 
     // MARK: - Name Validation
@@ -124,10 +124,18 @@ struct LoginShellEnvironmentTests {
     @Test
     func `should not start a shell when no command was supplied`() async {
         let executor = makeExecutor(output: markerWrapped("shell-token"))
-        let shell = LoginShellEnvironment(cliExecutor: executor, command: { _ in [] })
+        let shell = LoginShellEnvironment(cliExecutor: executor, shell: FixtureShell(command: []))
         #expect(await shell.value(ofEnvVar: "GLM_TOKEN") == nil)
         verify(executor).execute(binary: .any, args: .any, input: .any, timeout: .any,
                                  workingDirectory: .any, autoResponses: .any).called(0)
     }
 
+}
+
+/// A login shell whose command is `command`, then the variable's name.
+private struct FixtureShell: LoginShell {
+    let command: [String]
+    func command(printing variable: String, between begin: String, and end: String) -> [String] {
+        command.isEmpty ? [] : command + [variable]
+    }
 }

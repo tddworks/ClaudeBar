@@ -48,7 +48,7 @@ public enum DataSources {
     /// Where this platform finds a CLI by name: its full path, or `nil` when
     /// it isn't installed or the platform can't look (§10).
     public static func locate(_ cli: String) -> String? {
-        Platform.current.processes?.locate(cli)
+        Platform.current.processes?.installed.find(cli)
     }
 
     /// A data source on this machine: the real network and this platform's
@@ -105,9 +105,8 @@ public enum DataSources {
     ) -> DataSource {
         var platform = Platform.current
         platform.runCLI = { _ in cliExecutor }
-        platform.processes = platform.processes.map {
-            HandedProcesses(platform: $0, executor: cliExecutor, transport: makeTransport, paths: processPaths)
-        }
+        platform.processes = platform.processes?.with(pipes: { _ in cliExecutor }, conversation: makeTransport,
+                                                      paths: processPaths)
         platform.keychain = security
         platform.browserCookies = browserCookies
         platform.browserStorage = browserStorage
@@ -226,8 +225,7 @@ public enum DataSources {
             return HTTPStepsFetcher(steps: steps, network: network, zone: platform.timeZone, now: now)
         case .jsonRpc(let call):
             guard let processes = platform.processes else { return unavailable("Running \(call.cli)") }
-            return JSONRPCFetcher(call: call, cliExecutor: processes.runner(ProcessEnvironment()),
-                                  makeTransport: { try processes.converse($0, $1, $2, $3) },
+            return JSONRPCFetcher(call: call, processes: processes,
                                   directory: workingDirectory(call.workingDirectory, platform: platform,
                                                               homeDirectory: homeDirectory, environment: environment))
         case .cli(let call):
@@ -245,7 +243,7 @@ public enum DataSources {
             }
         case .command(let call):
             guard let processes = platform.processes else { return unavailable("Running \(call.cli)") }
-            return CommandFetcher(call: call, makeExecutor: { processes.runner($0) },
+            return CommandFetcher(call: call, processes: processes,
                                   directory: workingDirectory(call.workingDirectory, platform: platform,
                                                               homeDirectory: homeDirectory, environment: environment))
         case .file(let call):
@@ -255,7 +253,7 @@ public enum DataSources {
                   let localServer = platform.localServer else {
                 return unavailable("Reading a local server")
             }
-            return localServer(call, processes.runner(ProcessEnvironment()), localNetwork, { processes.running() })
+            return localServer(call, processes.pipes(ProcessEnvironment()), localNetwork, { processes.running.paths() })
         case .cloudWatch(let call):
             return CloudWatchFetcher(call: call, client: cloudWatch, catalog: priceCatalog, zone: platform.timeZone, now: now)
         case .directory(let call):
@@ -264,8 +262,7 @@ public enum DataSources {
             return SQLiteFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
         case .script(let call):
             guard let processes = platform.processes else { return unavailable("Running a script") }
-            return ScriptFetcher(call: call, providerId: providerId, secrets: secrets,
-                                 makeExecutor: { processes.runner($0) }, command: { processes.script($0) },
+            return ScriptFetcher(call: call, providerId: providerId, secrets: secrets, processes: processes,
                                  directory: URL(fileURLWithPath: Paths.expand(call.folder, homeDirectory: homeDirectory, environment: environment),
                                                 isDirectory: true))
         }
@@ -379,25 +376,4 @@ struct JSONFilePatch: Recovering {
         copy[key] = updated
         return copy
     }
-}
-
-/// This platform's processes with the programs handed in, for the factory's
-/// stubbed `make`: every program runs on `executor`, a conversation is
-/// `transport`'s and the programs running are `paths`', while the
-/// platform's own rules for scripts and login variables stay.
-private struct HandedProcesses: Processes {
-    let platform: any Processes
-    let executor: any CLIExecutor
-    let transport: DataSources.TransportFactory
-    let paths: @Sendable () -> [String]
-
-    func locate(_ cli: String) -> String? { executor.locate(cli) }
-    func runner(_ change: ProcessEnvironment) -> any CLIExecutor { executor }
-    func converse(_ executable: String, _ arguments: [String], _ environment: [String: String]?,
-                  _ directory: URL?) throws -> any RPCTransport {
-        try transport(executable, arguments, environment, directory)
-    }
-    func running() -> [String] { paths() }
-    func script(_ path: String) -> [String] { platform.script(path) }
-    func loginVariable(_ variable: String) -> [String] { platform.loginVariable(variable) }
 }

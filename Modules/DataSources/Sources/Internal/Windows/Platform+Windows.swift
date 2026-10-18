@@ -7,7 +7,7 @@ extension Platform {
     static let current = Platform(
         name: "Windows",
         timeZone: WindowsTimeZone(),
-        processes: WindowsProcesses(),
+        processes: Processes(WindowsProcesses()),
         applicationData: { home, environment in
             if let path = environment("APPDATA"), !path.isEmpty {
                 return URL(fileURLWithPath: path, isDirectory: true)

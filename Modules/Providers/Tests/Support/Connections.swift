@@ -92,10 +92,11 @@ struct StubbedProvider {
 
     // MARK: - Stubbing helpers
 
-    /// Answers each JSON-RPC request with its own id: `initialize` with
-    /// nothing, `account/read` with `account`, anything else with `answer` —
-    /// however many times the provider starts the CLI.
+    /// The CLI is installed and answers each JSON-RPC request with its own
+    /// id: `initialize` with nothing, `account/read` with `account`, anything
+    /// else with `answer` — however many times the provider starts the CLI.
     nonisolated func answerRPC(_ answer: String, account: String = #"{"id":3,"result":{"account":null}}"#) {
+        given(cli).locate(.any).willProduce { $0 }
         let lastRequest = LastRequest()
         given(transport).send(.any).willProduce { @Sendable data in
             lastRequest.set(data)

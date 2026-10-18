@@ -23,6 +23,13 @@ struct DataSourceTests {
         )
     }
 
+    /// A runner that finds every CLI it is asked for.
+    private func installed() -> MockCLIExecutor {
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willProduce { $0 }
+        return cli
+    }
+
     private func http(_ body: String, status: Int = 200, headers: [String: String] = [:]) -> MockNetworkClient {
         let network = MockNetworkClient()
         let response = HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: status, httpVersion: nil, headerFields: headers)!
@@ -201,7 +208,7 @@ struct DataSourceTests {
         let source = DataSources.make(
             definition,
             providerId: "test",
-            cliExecutor: MockCLIExecutor(),
+            cliExecutor: installed(),
             network: MockNetworkClient(),
             makeTransport: { _, _, _, _ in SilentRPCTransport() },
             environment: { _ in nil },
@@ -221,7 +228,7 @@ struct DataSourceTests {
         let source = DataSources.make(
             definition,
             providerId: "test",
-            cliExecutor: MockCLIExecutor(),
+            cliExecutor: installed(),
             network: MockNetworkClient(),
             makeTransport: { _, _, _, _ in SilentRPCTransport() },
             environment: { _ in nil },
@@ -255,7 +262,7 @@ struct DataSourceTests {
         let source = DataSources.make(
             definition,
             providerId: "test",
-            cliExecutor: MockCLIExecutor(),
+            cliExecutor: installed(),
             network: MockNetworkClient(),
             makeTransport: { _, _, _, _ in transport },
             environment: { _ in nil },

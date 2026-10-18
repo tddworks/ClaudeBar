@@ -37,11 +37,7 @@ struct CommandLogTests {
     /// login's log is built, so a test needs no seam of its own.
     private func platform(running executor: (any CLIExecutor)?) -> Platform {
         var platform = Platform.current
-        platform.processes = executor.map { executor in
-            let processes = MockProcesses()
-            given(processes).runner(.any).willReturn(executor)
-            return processes
-        }
+        platform.processes = executor.map { executor in Processes.running { _ in executor } }
         return platform
     }
 

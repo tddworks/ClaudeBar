@@ -149,6 +149,7 @@ struct CodexDefinitionTests {
             #"{"id":2,"error":{"message":"rate limits are unavailable"}}"#,
         ]
         let received = Counter()
+        given(stub.cli).locate(.any).willProduce { @Sendable name in name }
         given(stub.transport).send(.any).willReturn(())
         given(stub.transport).close().willReturn(())
         given(stub.transport).receive().willProduce { @Sendable in Data(answers[received.next() - 1].utf8) }

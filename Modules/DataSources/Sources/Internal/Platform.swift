@@ -19,7 +19,7 @@ struct Platform: Sendable {
     var runCLI: CLIFetcher.MakeExecutor?
     /// Finds and starts programs: `command`, `script`, `jsonRpc`, a `command`
     /// log, a login-shell lookup and the programs a `localServer` looks for.
-    var processes: (any Processes)?
+    var processes: Processes?
     /// Reads a `keychain` item.
     var keychain: KeychainReader.Security?
     var browserCookies: (any BrowserCookieReading)?
@@ -40,7 +40,7 @@ struct Platform: Sendable {
         name: String,
         timeZone: any TimeZoneSource,
         runCLI: CLIFetcher.MakeExecutor? = nil,
-        processes: (any Processes)? = nil,
+        processes: Processes? = nil,
         keychain: KeychainReader.Security? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,

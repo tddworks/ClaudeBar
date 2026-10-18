@@ -7,7 +7,7 @@ extension Platform {
         name: "macOS",
         timeZone: SystemTimeZone(),
         runCLI: CLIFetcher.system,
-        processes: MacProcesses(),
+        processes: Processes(MacProcesses()),
         keychain: KeychainReader.system,
         browserCookies: SystemBrowserCookies(),
         browserStorage: SystemBrowserStorage(),

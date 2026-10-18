@@ -33,7 +33,7 @@ struct ProcessFactsTests {
     func `should name the connection a platform lacks for a script or a local server`(_ local: Bool) async {
         var platform = Platform(name: "Windows", timeZone: Zones.seoul)
         // Programs run, but a local server needs its own connection too.
-        if local { platform.processes = MockProcesses() }
+        if local { platform.processes = Processes.running { _ in MockCLIExecutor() } }
         platform.localNetwork = MockNetworkClient()
         let fetch: Fetch = local ? .localServer(localCall) : .script(scriptCall)
         let source = DataSources.make(

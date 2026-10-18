@@ -55,7 +55,7 @@ struct KimiExecutionTests {
         let definition = try! ProviderFactory.builtIn("kimi")
         var platform = Platform.current
         platform.runCLI = { @Sendable call in seen.calls.append(call); return cli }
-        platform.processes = MockProcesses.running { _ in cli }
+        platform.processes = Processes.running { _ in cli }
         platform.keychain = { _ in (1, "") }
         platform.browserCookies = browser
         platform.browserStorage = nil
