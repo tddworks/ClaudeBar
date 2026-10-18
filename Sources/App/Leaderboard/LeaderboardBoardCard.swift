@@ -237,6 +237,10 @@ struct FilterChip: View {
         Button(action: action) {
             Text(title)
                 .font(theme.font(size: 9.5, weight: .heavy))
+                // One line, however long the provider's name is: a chip that
+                // wraps stops reading as a filter ("OpenCo / de Go").
+                .lineLimit(1)
+                .fixedSize()
                 // The period picker's colours: ink fill, card-paper label — legible in every theme.
                 .foregroundStyle(isOn ? theme.cardGradient : LinearGradient(colors: [theme.textSecondary], startPoint: .leading, endPoint: .trailing))
                 .padding(.horizontal, 9)
