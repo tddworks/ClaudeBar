@@ -53,7 +53,9 @@ Rings answer *which provider can I keep working with?* Bars answer *how much roo
 
 In **Bars** each row is a provider, in your pill order, and each line is one of its quotas:
 
-- Lines are ordered by the window the provider states, **shortest first**, so every session lines up in one column and every weekly in the next. A quota with no stated window goes last, with the tightest first.
+- Lines are ordered by the window the provider states, **shortest first**. Most
+  providers don't state windows, so their lines simply read tightest first;
+  the ones that do (a session against a weekly, say) line up in one column.
 - Every bar starts and ends in the same place on the page, so two percentages can be compared directly.
 - A line shows the quota's name, its reset countdown, its percentage in your **Quota Display** mode, and a pace tick where that applies.
 - Only the quotas you watch appear — hide one in **Settings → Providers** and it disappears here too.

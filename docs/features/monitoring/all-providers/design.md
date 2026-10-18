@@ -65,10 +65,12 @@ today). The divider shows when either of them does.
 | Pill row, *All* page, header | `MenuContentView`, `OverviewCardView` | render `Overview` and `PopoverPage`: never count, compare or pick a quota |
 | *Open on* row | `GeneralPane` | replaces the *Overview Mode* switch |
 | `OverviewCard.lines` | same file as `OverviewCard` | every quota of the login the card already reads, in window order — what **Bars** draws. An extension of `tightestOf`, not a second way to choose a login |
-| `AllPageStyle` | `Sources/Domain/Settings/AllPageStyle.swift` | `.rings` (default) or `.bars`. The page's own choice of how to print, like `PopoverOpensOn` — never a flag on `OverviewCard` |
+| `AllPageStyle` | `Sources/Domain/App/AllPageStyle.swift` | `.rings` (default) or `.bars`. The page's own choice of how to print, like `PopoverOpensOn` — never a flag on `OverviewCard` |
 | `AppSettingsRepository.allPageStyle()` / `setAllPageStyle(_:)` | Domain port, `JSONSettingsRepository` | keeps it at `app.allPageStyle`; unset reads `.rings` |
 | `AppSettings.allPageStyle` | `Sources/App/Settings/AppSettings.swift` | the observed setting; writes through on change |
-| `OverviewBarsPageView` | `Sources/App/Views/OverviewCardView.swift` | the *Bars* page: a `row` per card, `QuotaProgressBar` per line — renders `lines` and never sorts or filters |
+| `QuotaBar` | `Sources/App/Views/QuotaProgressBar.swift` | a quota's bar with its pace tick under it — the one piece `WrappedStatCard`, a **Bars** line and `QuotaCardView` all draw. Its fill follows the status, its tick the pace; a bar's ends land where the row puts them, so every bar on a page starts and ends at the same x |
+| `QuotaLineText` | `Sources/App/Views/QuotaCardText.swift` | the words a quota line prints — its title (login first when needed) and its number (a percentage, or a balance's amount). One copy for the ring card's rows and **Bars**' lines |
+| `OverviewBarsPageView` | `Sources/App/Views/OverviewCardView.swift` | the *Bars* page: a row per card, a `QuotaBar` per line — renders `lines` and never sorts or filters |
 | *All page style* row | `GeneralPane`, beside *Open On* | picks the style |
 
 ```
@@ -94,10 +96,9 @@ today). The divider shows when either of them does.
 | the menu bar keeps showing the selected provider; All does not change it | unchanged |
 | the style is the page's: it chooses how a provider is printed and nothing else — the login a card reads, the numbers, the status and the badge are the same either way | `AllPageStyle` |
 | unset means Rings, so nobody's All page changes after updating | `JSONSettingsRepository` |
-| in **Bars**, rows follow the pill order as cards do, and each row reads the same login the card reads | `OverviewCard.lines` |
+| in **Bars**, each row prints the card it sits under: the row sits where the pill order put the card (`Overview.cards`), and it reads the same login the card reads | `OverviewCard.lines` |
 | lines are ordered by their **stated** window, shortest first, so like sits beside like across rows; a quota whose window the provider never stated sorts last, tightest first. Never a window guessed from a name ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | `OverviewCard.lines` |
-| a line's bar starts and ends where every other bar does, so two providers can be compared down the column; a label that sizes itself to its text would break that | `OverviewBarsPageView` |
-| a provider with no numbers still gets a row, saying *Unavailable*, *Not set up* or *Syncing*, and still opens its page | `OverviewBarsPageView` · `OverviewCard.badge` |
+| a provider with no numbers still gets a row, saying *Unavailable*, *Not set up* or *Syncing*, and still opens its page | `OverviewCard.badge` |
 | a tap opens that provider's page in either style; **Bars** never replaces the ring cards, it is one more way to ask | `MenuContentView` → `PopoverPage.provider` |
 
 ## What goes
@@ -113,15 +114,15 @@ today). The divider shows when either of them does.
 - Domain: `OverviewTests` — offered with two products, not one; cards in pill
   order; tightest quota and the next; the best login across several; a card
   without numbers says why; counts and header badge.
-- Domain: `OverviewCardLinesTests` — `should show every quota of the login the
-  card reads, with hidden ones already gone`; `should order lines by their
-  stated window, shortest first`; `should put a quota with no stated window
-  last, tightest first`; `should read the same login the ring reads`.
+- Domain: `OverviewCardLinesTests` — every quota the card reads, not just the
+  tightest two; lines by their stated window, shortest first; a quota with no
+  stated window last, tightest first; the same login the ring reads; nothing
+  for a provider with no numbers. (Hidden quotas are the Monitor's law, kept
+  in `QuotaMonitorHiddenQuotasTests`.)
 - Domain: `PopoverOpensOnTests` — an open lands on All, or keeps the page.
-- Domain: `AllPageStyleTests` — `.rings` when never set.
 - Infrastructure: `JSONSettingsRepositoryAppTests` — `.whereILeftIt` when unset,
   round-trips, and the old Overview Mode on reads `.all`; `.rings` when unset,
   and `allPageStyle` round-trips.
-- App: `OverviewBarsPageTests` — a row per card in pill order; one line per
-  quota; a provider with no numbers keeps its row and its word; every bar uses
-  the same track width; the percentage follows the display mode.
+- App: `QuotaLineTextTests` — the words a line prints: the quota's title, the
+  login first when several need telling apart, a percentage in the display
+  mode, a balance as its amount.

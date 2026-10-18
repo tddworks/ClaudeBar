@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenCode Go on OpenCode 2**: without an API key, the estimate and daily cards read opencode's database directly, so OpenCode 1 and 2 both work and spend from before an upgrade still counts. ([#566](https://github.com/tddworks/ClaudeBar/issues/566), [#572](https://github.com/tddworks/ClaudeBar/pull/572))
 
 ### Added
-- **Bars on the All page**: Settings → General → All Page Style prints each provider as a row with a bar per quota, shortest window first, so you can read two providers' sessions against each other. Rings stay the default. ([#575](https://github.com/tddworks/ClaudeBar/issues/575)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/all-providers/README.md)
+- **Bars on the All page**: Settings → General → All Page Style prints each provider as a row with a bar per quota, ordered by the windows a provider states — most state none and read tightest first. Rings stay the default. ([#575](https://github.com/tddworks/ClaudeBar/issues/575)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/all-providers/README.md)
 
 ---
 
