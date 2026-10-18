@@ -111,6 +111,10 @@ public protocol AppSettingsRepository: Sendable {
     func popoverOpensOn() -> PopoverOpensOn
     func setPopoverOpensOn(_ opensOn: PopoverOpensOn)
 
+    /// How each provider reads on the All page (default: the ring cards).
+    func allPageStyle() -> AllPageStyle
+    func setAllPageStyle(_ style: AllPageStyle)
+
     // MARK: - Background Sync
 
     func backgroundSyncEnabled() -> Bool

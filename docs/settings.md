@@ -56,6 +56,7 @@ A few `app.*` keys worth knowing:
 | `app.hideAccountEmail` | `false` (default) shows account emails; `true` masks them as `s•••@g•••.com` in the menu bar, its tooltip and the popover. The eye beside the account toggles it ([#375](https://github.com/tddworks/ClaudeBar/issues/375)) |
 | `app.popoverTitle` | `""` (default) shows **ClaudeBar** at the top of the popover; any other text shows there instead, on one line, at most 24 characters ([popover title](features/popover-title/README.md)) |
 | `app.popoverOpensOn` | `whereILeftIt` (default) keeps the page the popover was on; `all` opens it on the All page every time. Unset with the old `app.overviewModeEnabled` on reads `all` ([all providers](features/all-providers/README.md)) |
+| `app.allPageStyle` | `rings` (default) reads each provider as a card led by its tightest quota; `bars` gives each provider a row with a bar per quota, shortest window first ([all providers](features/all-providers/README.md)) |
 | `app.popoverTextSize` | `medium` (default), `large`, `extraLarge` — scales the popover's text up to 1.4× and widens the window to fit. No smaller step is offered: the popover's smallest labels are already 8pt |
 | `app.menuBarProviderSettings` | Per-provider menu bar choices: `{ "codex": { "primaryQuotaKey": "session", "secondaryQuotaKey": "weekly", "stacked": false, "stackedSize": "small" } }` |
 | `app.nativeMenuBarIconsEnabled` | `false` (default) keeps brand colors; `true` uses monochrome provider marks for every menu bar account, adapting to the bar’s appearance |

@@ -312,6 +312,14 @@ public final class AppSettings {
         }
     }
 
+    /// *All page style* — how each provider reads on the All page
+    /// (Settings → General).
+    public var allPageStyle: AllPageStyle {
+        didSet {
+            repository.setAllPageStyle(allPageStyle)
+        }
+    }
+
     // MARK: - Background Sync Settings
 
     /// Whether background sync is enabled (default: false)
@@ -492,6 +500,7 @@ public final class AppSettings {
         self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
         self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
         self.popoverOpensOn = repository.popoverOpensOn()
+        self.allPageStyle = repository.allPageStyle()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.menuBarPercentageEnabled = repository.menuBarPercentageEnabled()

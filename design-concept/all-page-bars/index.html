@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar · Bars on the All page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens and base pieces copied from ../all-providers/index.html so this page reads as the same theme. */
+:root{
+  --cream:#FDF5EA; --paper:#FFFFFF; --ink:#1B1613;
+  --mint:#8EE3B0; --mint-deep:#5CCB8C; --purple:#8B5CF6; --purple-soft:#E9DEFF;
+  --coral:#FF7A66; --coral-soft:#FFE1DA; --butter:#FFD966; --sky:#8FD3FF; --pink:#FFB5D8;
+  --muted:#6B625B; --dash:#e4d8ca;
+  --b:2.5px solid var(--ink); --sh:4px 4px 0 var(--ink);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,sans-serif;
+  background-image:radial-gradient(#e9dccb 1.2px,transparent 1.2px);background-size:22px 22px;min-height:100vh}
+.display{font-family:"Lilita One",sans-serif;letter-spacing:.3px;font-weight:400}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 16px 80px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#F3EADD;border:1.5px solid var(--ink);border-radius:6px;padding:0 5px}
+
+/* ---------- intro ---------- */
+.hero{background:var(--sky);border:var(--b);border-radius:28px;box-shadow:8px 8px 0 var(--ink);padding:30px 34px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:999px;padding:7px 16px;font-weight:800;font-size:13px}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+.hero h1{font-family:"Lilita One";font-weight:400;font-size:clamp(32px,4.6vw,52px);line-height:1.05;margin-top:16px;color:#fff;
+  -webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink)}
+.hero h1 span{display:inline-block;background:var(--ink);color:#fff;-webkit-text-stroke:0;text-shadow:none;border-radius:14px;padding:2px 16px 6px;margin-top:6px}
+.hero p{max-width:760px;margin-top:14px;font-weight:600;color:#12324a;line-height:1.55}
+.tag{display:inline-block;background:var(--coral);border:2px dashed var(--ink);border-radius:8px;padding:5px 10px;font-weight:800;transform:rotate(-5deg);box-shadow:3px 3px 0 var(--ink);font-size:13px}
+.section-title{font-family:"Lilita One";font-weight:400;font-size:30px;margin:40px 0 4px}
+.section-sub{color:var(--muted);font-weight:600;max-width:880px;line-height:1.5}
+.label{font-weight:800;background:var(--paper);border:var(--b);border-radius:999px;padding:5px 14px;box-shadow:3px 3px 0 var(--ink);font-size:13px;display:inline-block}
+
+/* ---------- the moment ---------- */
+.moment{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:20px}
+.pane{background:var(--paper);border:var(--b);border-radius:22px;box-shadow:var(--sh);padding:14px}
+.pane > header{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.pane h3{font-family:"Lilita One";font-weight:400;font-size:20px;line-height:1.1}
+.pane header em{font-style:normal;font-size:11px;font-weight:800;color:var(--muted);margin-left:auto}
+.pane.new{background:#F3FFF7;border-width:3px;box-shadow:6px 6px 0 var(--ink)}
+.pane.new header em{color:var(--mint-deep)}
+
+/* ---------- popover ---------- */
+.popover{width:100%;background:var(--cream);border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding:14px;position:relative;
+  background-image:radial-gradient(#ecdfcd 1.1px,transparent 1.1px);background-size:18px 18px}
+.popover::before{content:"";position:absolute;top:-11px;right:70px;width:18px;height:18px;background:var(--cream);border-left:3px solid var(--ink);border-top:3px solid var(--ink);transform:rotate(45deg)}
+.p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.p-brand{display:flex;align-items:center;gap:9px}
+.logo{width:32px;height:32px;border:var(--b);border-radius:10px;background:var(--coral);display:grid;place-items:center;font-size:16px;box-shadow:2px 2px 0 var(--ink)}
+.p-brand .display{font-size:22px}
+.p-brand small{display:block;font-size:10px;font-weight:700;color:var(--muted);margin-top:-2px}
+.status-chip{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:800;background:var(--mint);box-shadow:2px 2px 0 var(--ink);display:flex;align-items:center;gap:5px}
+.status-chip i{width:7px;height:7px;border-radius:50%;background:var(--ink)}
+.status-chip.warn{background:var(--butter)}.status-chip.crit{background:var(--coral)}
+
+.pills{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.pill{flex:none;display:flex;align-items:center;gap:6px;border:var(--b);border-radius:999px;padding:5px 11px 5px 6px;font-weight:800;font-size:12px;background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+.pill.on{background:var(--ink);color:#fff}
+.pill .pi{width:20px;height:20px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--ink)}
+.pill.on .pi{border-color:#fff}
+.pill.all{background:var(--butter)}.pill.all.on{background:var(--ink)}
+.pill.all .pi{background:var(--paper);font-size:11px}
+.pill.lb .pi{background:var(--mint)}
+.pills .sep{flex:none;width:2.5px;border-radius:2px;background:var(--ink);margin:3px 2px}
+
+.ov-sum{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;margin-bottom:9px}
+.ov-sum span{border:2px solid var(--ink);border-radius:999px;padding:2px 9px;background:var(--paper)}
+.ov-sum .w{background:var(--butter)}.ov-sum .c{background:var(--coral)}
+
+/* ---- today's ring cards (unchanged) ---- */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini{background:var(--paper);border:var(--b);border-radius:var(--r);box-shadow:var(--sh);padding:10px 10px 8px;display:flex;flex-direction:column;gap:6px}
+.m-top{display:flex;align-items:center;gap:6px}
+.m-top .pi{width:22px;height:22px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.m-top b{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-status{font-size:8.5px;font-weight:800;border:1.5px solid var(--ink);border-radius:999px;padding:1px 6px;margin-left:auto}
+.q-status.ok{background:var(--mint)}.q-status.warn{background:var(--butter)}.q-status.crit{background:var(--coral)}.q-status.off{background:var(--dash)}
+.m-body{display:flex;align-items:center;gap:8px}
+.m-rows{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.m-row{font-size:9.5px;font-weight:700;color:var(--muted);line-height:1.2}
+.m-row b{display:flex;justify-content:space-between;color:var(--ink);font-size:10.5px;font-weight:800}
+.ring{width:56px;height:56px;flex:none;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:"Lilita One";font-weight:400;font-size:15px}
+.m-foot{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-weight:800;color:var(--muted);border-top:2px dashed var(--dash);padding-top:5px}
+
+/* ---- the new bars list ---- */
+.list{display:flex;flex-direction:column;gap:8px}
+.prow{background:var(--paper);border:var(--b);border-radius:14px;box-shadow:var(--sh);padding:9px 11px 10px;cursor:pointer;
+  transition:transform .1s,box-shadow .1s;position:relative}
+.prow:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+.pw-head{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.pw-head .pi{width:20px;height:20px;border:2px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none}
+.pw-head b{font-size:12px;font-weight:800}
+.pw-head .acct{font-size:9px;font-weight:800;color:var(--muted);border:1.5px solid var(--dash);border-radius:999px;padding:0 6px}
+.qline{display:grid;grid-template-columns:88px 1fr 42px;align-items:center;gap:8px;height:21px}
+.qline + .qline{margin-top:2px}
+.qlab{font-size:10px;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qlab em{display:block;font-style:normal;font-size:8.5px;font-weight:700;color:var(--muted)}
+.qlab.tight em{color:var(--coral)}
+.track{height:11px;border:2px solid var(--ink);border-radius:999px;background:repeating-linear-gradient(135deg,#F6EEE3 0 4px,#EDE2D4 4px 6px);overflow:hidden;position:relative}
+.track i{display:block;height:100%;border-right:2px solid var(--ink);border-radius:999px 0 0 999px;background:var(--c,var(--mint))}
+.track .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.qpct{font-family:"Lilita One";font-size:14px;text-align:right;color:#fff;-webkit-text-stroke:1.8px var(--ink);paint-order:stroke fill}
+.qpct.solid{color:var(--ink);-webkit-text-stroke:0}
+.pw-none{font-size:10px;font-weight:800;color:var(--muted);text-transform:capitalize;padding:2px 0 1px}
+.fade{opacity:.55}
+
+/* ---------- anatomy ---------- */
+.anat{display:grid;grid-template-columns:400px 1fr;gap:26px;margin-top:20px;align-items:start}
+.anat ol{display:flex;flex-direction:column;gap:9px;list-style:none;counter-reset:a}
+.anat li{counter-increment:a;background:var(--paper);border:var(--b);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:9px 12px;font-size:12.5px;font-weight:600;line-height:1.45}
+.anat li::before{content:counter(a);display:inline-grid;place-items:center;width:20px;height:20px;border:2px solid var(--ink);border-radius:7px;background:var(--butter);font-family:"Lilita One";font-size:13px;margin-right:8px;vertical-align:-4px}
+.anat li b{font-weight:800}
+
+/* ---------- order variants ---------- */
+.orders{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:18px}
+.order-card{background:var(--paper);border:var(--b);border-radius:20px;box-shadow:var(--sh);padding:14px;display:flex;flex-direction:column;gap:10px}
+.order-card.pick{background:#F3FFF7;border-width:3px;box-shadow:6px 6px 0 var(--ink);padding-top:26px}
+.order-card .pick-tag{position:absolute;top:-13px;right:12px;font-size:10px;font-weight:800;padding:4px 10px;background:var(--mint);border:2px solid var(--ink);border-radius:999px}
+.order-card h4{font-family:"Lilita One";font-weight:400;font-size:18px;line-height:1.15}
+.order-card p{font-size:11.5px;font-weight:600;color:var(--muted);line-height:1.45}
+.order-card ul{list-style:none;display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;line-height:1.4}
+.order-card li::before{content:attr(data-m);font-weight:800;margin-right:5px}
+.order-card li[data-m="✗"]{color:#7a3b30}
+.col-sample{display:grid;grid-template-columns:78px 1fr 40px;gap:7px;font-size:9.5px;font-weight:800}
+.col-sample b{background:var(--butter);border:1.5px solid var(--ink);border-radius:5px;padding:1px 5px;text-align:center;font-size:9px}
+.col-sample u{text-decoration:none;border-top:2px dashed var(--purple);padding-top:3px;height:30px;display:flex;align-items:center}
+.col-sample u.full{border-top-style:solid}
+.col-sample u.off{opacity:.25}
+
+/* ---------- settings ---------- */
+.setting{display:flex;align-items:center;gap:14px;background:var(--paper);border:var(--b);border-radius:16px;box-shadow:var(--sh);padding:14px 16px;margin-top:18px;max-width:620px}
+.setting .txt{flex:1}
+.setting .txt b{display:block;font-size:13px;font-weight:800}
+.setting .txt small{font-size:11px;font-weight:600;color:var(--muted)}
+.seg{display:flex;gap:6px;flex:none}
+.seg b{border:var(--b);border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:800;background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+.seg b.on{background:var(--ink);color:#fff}
+
+/* ---------- storyboard ---------- */
+.journey{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:20px}
+.step{background:var(--paper);border:var(--b);border-radius:20px;box-shadow:var(--sh);padding:14px;display:flex;flex-direction:column;gap:10px;position:relative}
+.step .n{position:absolute;top:-14px;left:14px;width:30px;height:30px;border:var(--b);border-radius:10px;background:var(--butter);display:grid;place-items:center;font-family:"Lilita One";font-size:16px;box-shadow:2px 2px 0 var(--ink)}
+.step h3{font-family:"Lilita One";font-weight:400;font-size:18px;margin-top:8px;line-height:1.15}
+.step p{font-size:12px;font-weight:600;color:var(--muted);line-height:1.45}
+.step .feel{font-size:11px;font-weight:800;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;background:var(--coral-soft);margin-top:auto}
+.step .feel.good{background:#DDF6E7}
+.step:not(:last-child)::after{content:"→";position:absolute;right:-15px;top:46%;font-family:"Lilita One";font-size:22px;z-index:2}
+.thumb{border:2px solid var(--ink);border-radius:12px;background:var(--cream);padding:7px;display:flex;flex-direction:column;gap:5px;min-height:118px}
+.t-pills{display:flex;gap:3px}
+.t-pills b{height:10px;flex:1;border:1.5px solid var(--ink);border-radius:99px;background:var(--paper)}
+.t-pills b.on{background:var(--ink)}
+.t-pills b.all{flex:.7;background:var(--butter)}
+.t-pills b.lb{flex:.9;background:var(--mint)}
+.t-pills i.sep{width:2px;background:var(--ink);border-radius:2px;margin:0 2px}
+.t-card{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:20px}
+.t-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.t-grid i{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:28px;position:relative}
+.t-grid i::after{content:"";position:absolute;right:4px;top:5px;width:14px;height:14px;border-radius:50%;border:3px solid var(--c,var(--mint))}
+.t-list i{border:1.5px solid var(--ink);border-radius:6px;background:var(--paper);height:26px;margin-bottom:4px;position:relative}
+.t-list i::after{content:"";position:absolute;left:5px;right:5px;top:11px;height:5px;border:1.5px solid var(--ink);border-radius:99px;background:var(--c,var(--mint))}
+.hl{outline:2.5px solid var(--purple);outline-offset:1px}
+
+/* ---------- notes ---------- */
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+.note{background:var(--paper);border:var(--b);border-radius:16px;box-shadow:var(--sh);padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.5}
+.note h4{font-family:"Lilita One";font-weight:400;font-size:17px;margin-bottom:3px}
+.note.alt{background:var(--purple-soft)}
+.note code{font-size:11px}
+.kbd{display:inline-block;border:2px solid var(--ink);border-bottom-width:3.5px;border-radius:6px;padding:0 5px;font:800 11px ui-monospace,Menlo,monospace;background:#fff}
+
+@media (max-width:1000px){.moment,.orders,.anat,.notes{grid-template-columns:1fr}.journey{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============================ intro ============================ -->
+<div class="hero">
+  <div class="badge"><i></i> Issue #575 · All page, second lens</div>
+  <h1>Every quota as a bar,<span>one provider per row</span></h1>
+  <p><b>Today</b> the All page answers one question: <i>which provider can I keep working with?</i> — a ring for the quota that runs out first,
+  two rows of small text beside it. It shows <b>at most two quotas per provider</b>, and its rings compare different windows side by side:
+  a session on one card against a weekly on another.</p>
+  <p style="margin-top:10px"><b>This</b> adds the second question people actually ask: <i>how much room do I have on each window, lined up?</i>
+  Same page, same pills, same counts — chosen in <b>Settings → General → All Page Style</b>. Rings stay the default.</p>
+  <div style="margin-top:16px"><span class="tag">#575</span></div>
+</div>
+
+<!-- ============================ the moment ============================ -->
+<h2 class="section-title">The moment</h2>
+<p class="section-sub">Between tasks, with Claude at 9% on the session and Codex at 18% on its own: which do I top up, and is the weekly safe?
+Rings answer it at a squint. Bars answer <i>and</i> show every window under them.</p>
+
+<div class="moment">
+
+  <!-- today -->
+  <div class="pane">
+    <header>
+      <h3>Rings <span style="font-family:'Plus Jakarta Sans';font-size:12px;font-weight:700;color:var(--muted)">(today, default)</span></h3>
+      <em>2 quotas per card</em>
+    </header>
+    <div class="popover">
+      <div class="p-head">
+        <div class="p-brand"><div class="logo">✳</div><div><div class="display">ClaudeBar</div><small>5 providers</small></div></div>
+        <div class="status-chip crit"><i></i> LOW</div>
+      </div>
+      <div class="pills">
+        <span class="pill all on"><span class="pi">▦</span>All</span>
+        <span class="pill lb"><span class="pi">🏆</span>Leaderboard</span>
+        <i class="sep"></i>
+        <span class="pill"><span class="pi">AI</span>Claude</span>
+        <span class="pill"><span class="pi">◎</span>Codex</span>
+      </div>
+      <div class="ov-sum"><span class="c">1 critical</span><span class="w">1 warning</span><span>2 healthy</span></div>
+      <div class="grid">
+        <div class="mini">
+          <div class="m-top"><span class="pi">AI</span><b>Claude</b><span class="q-status crit">LOW</span></div>
+          <div class="m-body">
+            <div class="ring">
+              <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="#E4D8CA" stroke-width="6"/><circle cx="28" cy="28" r="23" fill="none" stroke="#FF7A66" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="131.5"/></svg>
+              <b>9%</b>
+            </div>
+            <div class="m-rows">
+              <div class="m-row"><b><span>Session</span><span>9%</span></b>Resets in 2h 59m</div>
+              <div class="m-row"><b><span>Weekly</span><span>35%</span></b>Resets in 2d 1h</div>
+            </div>
+          </div>
+          <div class="m-foot"><span> </span></div>
+        </div>
+        <div class="mini">
+          <div class="m-top"><span class="pi">◎</span><b>Codex</b><span class="q-status crit">LOW</span></div>
+          <div class="m-body">
+            <div class="ring">
+              <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="#E4D8CA" stroke-width="6"/><circle cx="28" cy="28" r="23" fill="none" stroke="#FF7A66" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="117.5"/></svg>
+              <b>18%</b>
+            </div>
+            <div class="m-rows">
+              <div class="m-row"><b><span>work · Spark</span><span>18%</span></b>Resets in 2h 59m</div>
+              <div class="m-row"><b><span>Weekly</span><span>41%</span></b>Resets in 3d 17h</div>
+            </div>
+          </div>
+          <div class="m-foot"><span>2 accounts</span></div>
+        </div>
+        <div class="mini fade">
+          <div class="m-top"><span class="pi">✦</span><b>Gemini</b><span class="q-status ok">HEALTHY</span></div>
+          <div class="m-body">
+            <div class="ring">
+              <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="#E4D8CA" stroke-width="6"/><circle cx="28" cy="28" r="23" fill="none" stroke="#8EE3B0" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="41.8"/></svg>
+              <b>71%</b>
+            </div>
+            <div class="m-rows">
+              <div class="m-row"><b><span>Pro</span><span>71%</span></b>Resets in 8h 59m</div>
+              <div class="m-row"><b><span>Flash</span><span>88%</span></b>Resets in 8h 59m</div>
+            </div>
+          </div>
+          <div class="m-foot"><span> </span></div>
+        </div>
+        <div class="mini fade">
+          <div class="m-top"><span class="pi">ⓘ</span><b>Kimi</b></div>
+          <div class="m-body">
+            <div class="ring">
+              <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="#E4D8CA" stroke-width="6"/></svg>
+              <b>—</b>
+            </div>
+            <div class="m-rows"><div class="m-row"><b><span>Not Set Up</span></b></div></div>
+          </div>
+          <div class="m-foot"><span> </span></div>
+        </div>
+      </div>
+      <div class="ov-sum" style="margin:9px 0 0;justify-content:center;color:var(--muted);font-size:10px;font-weight:700">Opus (34%), Sonnet (52%) and 2 more quotas are not on this page</div>
+    </div>
+  </div>
+
+  <!-- new -->
+  <div class="pane new">
+    <header>
+      <h3>Bars <span style="font-family:'Plus Jakarta Sans';font-size:12px;font-weight:700;color:var(--muted)">(new)</span></h3>
+      <em>every quota, one row each</em>
+    </header>
+    <div class="popover">
+      <div class="p-head">
+        <div class="p-brand"><div class="logo">✳</div><div><div class="display">ClaudeBar</div><small>5 providers</small></div></div>
+        <div class="status-chip crit"><i></i> LOW</div>
+      </div>
+      <div class="pills">
+        <span class="pill all on"><span class="pi">▦</span>All</span>
+        <span class="pill lb"><span class="pi">🏆</span>Leaderboard</span>
+        <i class="sep"></i>
+        <span class="pill"><span class="pi">AI</span>Claude</span>
+        <span class="pill"><span class="pi">◎</span>Codex</span>
+      </div>
+      <div class="ov-sum"><span class="c">1 critical</span><span class="w">1 warning</span><span>2 healthy</span></div>
+      <div class="list">
+        <div class="prow">
+          <div class="pw-head"><span class="pi">AI</span><b>Claude</b><span class="acct">Pro account</span><span class="q-status crit">LOW</span></div>
+          <div class="qline"><div class="qlab tight">Session<em>in 2h 59m</em></div><div class="track" style="--c:#FF7A66"><i style="width:9%"></i><span class="pace" style="left:38%"></span></div><div class="qpct">9%</div></div>
+          <div class="qline"><div class="qlab">Weekly<em>in 2d 1h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:35%"></i><span class="pace" style="left:48%"></span></div><div class="qpct">35%</div></div>
+          <div class="qline"><div class="qlab">Opus<em>in 2d 1h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:34%"></i></div><div class="qpct">34%</div></div>
+          <div class="qline"><div class="qlab">Sonnet<em>in 2d 1h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:52%"></i></div><div class="qpct">52%</div></div>
+        </div>
+        <div class="prow">
+          <div class="pw-head"><span class="pi">◎</span><b>Codex</b><span class="acct">2 accounts</span><span class="q-status crit">LOW</span></div>
+          <div class="qline"><div class="qlab tight">Session<em>in 2h 59m</em></div><div class="track" style="--c:#FF7A66"><i style="width:18%"></i><span class="pace" style="left:34%"></span></div><div class="qpct">18%</div></div>
+          <div class="qline"><div class="qlab">Weekly<em>in 3d 17h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:41%"></i><span class="pace" style="left:52%"></span></div><div class="qpct">41%</div></div>
+          <div class="qline"><div class="qlab">Spark<em>in 3d 17h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:63%"></i></div><div class="qpct">63%</div></div>
+        </div>
+        <div class="prow">
+          <div class="pw-head"><span class="pi">✦</span><b>Gemini</b><span class="q-status ok">HEALTHY</span></div>
+          <div class="qline"><div class="qlab tight">Session<em>in 8h 59m</em></div><div class="track" style="--c:#8EE3B0"><i style="width:71%"></i><span class="pace" style="left:24%"></span></div><div class="qpct">71%</div></div>
+          <div class="qline"><div class="qlab">Weekly<em>in 4d 3h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:88%"></i></div><div class="qpct">88%</div></div>
+        </div>
+        <div class="prow">
+          <div class="pw-head"><span class="pi">K</span><b>Kimi</b></div>
+          <div class="pw-none">Not set up</div>
+        </div>
+      </div>
+      <div class="ov-sum" style="margin:9px 0 0;justify-content:center;color:var(--muted);font-size:10px;font-weight:700">Scrolls when the lineup is long — the same region that scrolls today</div>
+    </div>
+  </div>
+</div>
+
+<p class="section-sub" style="margin-top:14px">What to notice on the right: the bar <b>starts at the same x and ends at the same x on every line</b>, so 35% of Claude's weekly and 41% of Codex's weekly can be read against each other down the column — which the rings can't do, because a ring on Claude is a session and a ring on Codex is a different window again.</p>
+
+<!-- ============================ anatomy ============================ -->
+<h2 class="section-title">How one row is drawn</h2>
+<p class="section-sub">The row is the whole design. Nothing on it is new machinery — it is the page's own words, drawn wider.</p>
+<div class="anat">
+  <div class="popover" style="max-width:430px">
+    <div class="list">
+      <div class="prow" style="box-shadow:none">
+        <div class="pw-head"><span class="pi">AI</span><b>Claude</b><span class="acct">Pro account</span><span class="q-status crit">LOW</span></div>
+        <div class="qline"><div class="qlab tight">Session<em>in 2h 59m</em></div><div class="track" style="--c:#FF7A66"><i style="width:9%"></i><span class="pace" style="left:38%"></span></div><div class="qpct">9%</div></div>
+        <div class="qline"><div class="qlab">Weekly<em>in 2d 1h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:35%"></i><span class="pace" style="left:48%"></span></div><div class="qpct">35%</div></div>
+        <div class="qline"><div class="qlab">Opus<em>in 2d 1h</em></div><div class="track" style="--c:#8EE3B0"><i style="width:34%"></i></div><div class="qpct">34%</div></div>
+      </div>
+    </div>
+  </div>
+  <ol>
+    <li><b>One row per provider, in pill order</b> — never re-sorted as quotas change. Same law the cards already keep.</li>
+    <li><b>The account, when there are several.</b> The bars read one login, the same one the ring reads today, named in the header.</li>
+    <li><b>One line per quota the person watches</b> — hidden quotas stay hidden, exactly as on the provider's own page.</li>
+    <li><b>Fixed label column, fixed number column, bar fills the rest.</b> That is what makes two providers' bars comparable; a bar that sizes itself to its label breaks the comparison.</li>
+    <li><b>The percentage in the display mode already chosen</b> (remaining / used / pace), with the pace tick where the page draws it today.</li>
+    <li><b>The reset countdown under the label</b>, so the tight line's number and its deadline sit together.</li>
+    <li><b>The status colour is the fill's colour</b>, and the badge stays the word for the whole provider.</li>
+    <li><b>A tap still opens that provider's page.</b> Nothing about the ring page changes; this is the same card, printed wider.</li>
+  </ol>
+</div>
+
+<!-- ============================ row order ============================ -->
+<h2 class="section-title">One decision still open: what order the lines are in</h2>
+<p class="section-sub">This is the difference between a list you can compare and a list you can only read. Both keep the same bars.</p>
+<div class="orders">
+  <div class="order-card pick" style="position:relative">
+    <span class="pick-tag">recommended</span>
+    <h4>By window, shortest first</h4>
+    <p>Session, then Weekly, then the rest — using the length the provider itself stated, never a guess from the name.</p>
+    <div class="col-sample"><b>session</b><u class="full" style="border-top-color:var(--purple)">Claude 9%</u><u class="off"> </u></div>
+    <div class="col-sample"><b>session</b><u class="full" style="border-top-color:var(--purple)">Codex 18%</u><u class="off"> </u></div>
+    <div class="col-sample"><b>session</b><u class="full" style="border-top-color:var(--purple)">Gemini 71%</u><u class="off"> </u></div>
+    <ul>
+      <li data-m="✓">Three session bars line up in one column; three weeklies line up in the next. You compare like with like.</li>
+      <li data-m="✓">The label column reads as a table down the page.</li>
+      <li data-m="✗">The risky quota is not always the top line — the colour and the badge carry that instead.</li>
+    </ul>
+  </div>
+  <div class="order-card">
+    <h4>Tightest first (today's law)</h4>
+    <p>The rule the ring card already follows: each row leads with the quota that runs out first.</p>
+    <div class="col-sample"><b>9%</b><u class="full" style="border-top-color:var(--coral)">Claude Opus</u><u class="off"> </u></div>
+    <div class="col-sample"><b>18%</b><u class="full" style="border-top-color:var(--coral)">Codex work · Spark</u><u class="off"> </u></div>
+    <div class="col-sample"><b>71%</b><u class="full" style="border-top-color:var(--mint)">Gemini Pro</u><u class="off"> </u></div>
+    <ul>
+      <li data-m="✓">Consistent with the ring page; the thing to worry about is always first.</li>
+      <li data-m="✗">Top line across providers means something different on every row — a session here, a weekly there. The comparison the mode exists for doesn't happen.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ settings ============================ -->
+<h2 class="section-title">Where the person picks it</h2>
+<p class="section-sub">Beside <b>Open On</b>, in the pane that already decides what the popover shows. One row, two choices, no new window.</p>
+<div class="setting">
+  <div class="txt"><b>All Page Style</b><small>How each provider reads on the All page. Rings answer “which one runs out first”; bars show every quota, lined up.</small></div>
+  <div class="seg"><b class="on">Rings</b><b>Bars</b></div>
+</div>
+<div class="setting" style="opacity:.75">
+  <div class="txt"><b>Open On</b><small>Where the popover lands each time it opens.</small></div>
+  <div class="seg"><b>Where I Left It</b><b>All</b></div>
+</div>
+<p class="section-sub" style="margin-top:12px">Stored as <code>app.allPageStyle</code> in <code>settings.json</code>; unset means <b>Rings</b>, so nobody's All page changes after updating.</p>
+
+<!-- ============================ storyboard ============================ -->
+<h2 class="section-title">The moment, start to finish</h2>
+<div class="journey">
+  <div class="step"><span class="n">1</span>
+    <div class="thumb"><div class="t-pills"><b class="all"></b><b class="lb"></b><i class="sep"></i><b></b><b></b><b></b><b></b></div><div class="t-grid"><i class="hl"></i><i class="hl"></i><i></i><i></i></div></div>
+    <h3>Open, hit <span class="kbd">⌘0</span></h3><p>Five providers, two of them close to their limit. Rings would show one number each.</p>
+    <div class="feel">“Which one do I top up?”</div>
+  </div>
+  <div class="step"><span class="n">2</span>
+    <div class="thumb"><div class="t-pills"><b class="all on"></b><b class="lb"></b><i class="sep"></i><b></b><b></b></div><div class="t-list"><i class="hl" style="--c:var(--coral)"></i><i class="hl"></i><i></i></div></div>
+    <h3>Read it as Bars</h3><p>One row per provider; every quota it watches, with its countdown.</p>
+    <div class="feel">“All three sessions are on one column.”</div>
+  </div>
+  <div class="step"><span class="n">3</span>
+    <div class="thumb"><div class="t-list"><i></i><i class="hl" style="--c:var(--coral)"></i><i></i></div></div>
+    <h3>Scan down the column</h3><p>Claude's session at 9%, its weekly at 35%: the week is fine, the next two hours are not.</p>
+    <div class="feel good">“Session's the problem, not the week.”</div>
+  </div>
+  <div class="step"><span class="n">4</span>
+    <div class="thumb"><div class="t-list"><i class="hl"></i><i></i></div><div class="t-pills"><b></b><b class="on"></b><b></b></div></div>
+    <h3>Tap the row</h3><p>Same as a card today: that provider's own page, with cost, today's usage and the chart.</p>
+    <div class="feel good">“The tap still works.”</div>
+  </div>
+  <div class="step"><span class="n">5</span>
+    <div class="thumb"><div class="t-pills"><b class="all on"></b><b class="lb"></b><i class="sep"></i><b></b></div><div class="t-list"><i></i><i></i></div></div>
+    <h3>Nothing else moved</h3><p>Pills, ⌘0, the counts, the header badge, the menu bar, each provider's page.</p>
+    <div class="feel good">“It's the All page, printed wider.”</div>
+  </div>
+</div>
+
+<!-- ============================ variants ============================ -->
+<h2 class="section-title">The awkward cases, drawn</h2>
+<div class="notes">
+  <div class="note"><h4>One provider, several accounts</h4>
+    The bars read the login the ring reads today — the healthiest one, then the one with the most left — and the header names it. Nothing new to learn.</div>
+  <div class="note"><h4>No numbers yet</h4>
+    A balance or a not-signed-in provider keeps its row and its word (<code>Not set up</code>, <code>Syncing</code>, <code>Unavailable</code>), as on the ring page. A provider never disappears because it has nothing to draw.</div>
+  <div class="note"><h4>A balance instead of a percentage</h4>
+    A prepaid balance has no ceiling, so it gets no bar and a false <code>100%</code> — the same rule the menu bar and the provider page already keep. The line still appears, with the amount.</div>
+  <div class="note alt"><h4>Themes draw their own bar</h4>
+    The bar is the page's existing one: blocks under Platformer, a capsule under Outlined. Bars mode adds no drawing code of its own — it asks for a different width.</div>
+  <div class="note"><h4>A long lineup</h4>
+    More rows means more scrolling in the same scroll region, capped as it is today. That's the one real cost of this mode, and it is why rings stay the default.</div>
+  <div class="note"><h4>Hidden quotas</h4>
+    Quotas hidden in <b>Settings → Providers</b> stay hidden here. The bars show what the person watches, no more — which is what makes “every quota” safe to offer.</div>
+</div>
+
+</div>
+</body>
+</html>

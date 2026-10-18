@@ -258,6 +258,17 @@ public final class JSONSettingsRepository:
         store.write(value: opensOn.rawValue, key: "app.popoverOpensOn")
     }
 
+    public func allPageStyle() -> AllPageStyle {
+        // Unset, or a style from a newer build this one doesn't know: the ring
+        // cards, so nobody's All page changes after updating.
+        guard let saved: String = store.read(key: "app.allPageStyle") else { return AllPageStyle.default }
+        return AllPageStyle(rawValue: saved) ?? AllPageStyle.default
+    }
+
+    public func setAllPageStyle(_ style: AllPageStyle) {
+        store.write(value: style.rawValue, key: "app.allPageStyle")
+    }
+
     public func backgroundSyncEnabled() -> Bool {
         store.read(key: "app.backgroundSyncEnabled") ?? false
     }

@@ -56,7 +56,8 @@ public struct Overview: Sendable {
     public var healthy: Int { cards.filter { $0.status == .healthy }.count }
 }
 
-/// One product on *All*: its word, its tightest quota and the next.
+/// One product on *All*: its word, its tightest quota and the next — or, in
+/// **Bars**, every quota it watches as one **line** each.
 public struct OverviewCard: Identifiable, Sendable {
     /// What a card reads of one login.
     public struct Login: Sendable {
@@ -114,6 +115,35 @@ public struct OverviewCard: Identifiable, Sendable {
     /// The name of the login the ring reads — only when there are several to tell apart.
     public var tightestLogin: String? {
         logins.count > 1 ? tightestOf?.login.name : nil
+    }
+
+    /// Every quota of the login this card reads — the **lines** the *Bars*
+    /// page draws, instead of a card's two rows. Ordered by the window the
+    /// provider **stated**, shortest first, so like sits beside like when the
+    /// rows are read down the page: every session in one column, every weekly
+    /// in the next. A quota whose window was never stated sorts last, tightest
+    /// first; a window is never guessed from a name (CANONICAL §5).
+    ///
+    /// Quotas the person hides never reach here: `QuotaMonitor` hands over a
+    /// snapshot with them already gone.
+    public var lines: [UsageQuota] {
+        guard let quotas = tightestOf?.login.snapshot?.quotas else { return [] }
+        return quotas.sorted(by: readsBefore)
+    }
+
+    /// Quotas in line order: a stated window first and shorter, ties and
+    /// windowless quotas by what runs out first.
+    private func readsBefore(_ a: UsageQuota, _ b: UsageQuota) -> Bool {
+        switch (a.window?.length, b.window?.length) {
+        case let (aLength?, bLength?):
+            aLength == bLength ? a.percentRemaining < b.percentRemaining : aLength < bLength
+        case (_?, nil):
+            true
+        case (nil, _?):
+            false
+        case (nil, nil):
+            a.percentRemaining < b.percentRemaining
+        }
     }
 
     public var loginCount: Int { logins.count }

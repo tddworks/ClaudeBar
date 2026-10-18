@@ -401,6 +401,36 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
+    func `should read the ring cards on All until the person asks for bars`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.allPageStyle() == .rings)
+    }
+
+    @Test
+    func `should remember the bars rows on All`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setAllPageStyle(.bars)
+        #expect(repo.allPageStyle() == .bars)
+    }
+
+    @Test
+    func `should fall back to the ring cards when the stored style is unknown`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"allPageStyle":"columns"}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        #expect(repo.allPageStyle() == .rings)
+    }
+
+    @Test
     func `should remember opening on All`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }

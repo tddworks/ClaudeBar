@@ -36,6 +36,19 @@ struct GeneralPane: View {
                 SettingsRowDivider()
 
                 SettingsRow(
+                    title: "All Page Style",
+                    subtitle: "How each provider reads on the All page. Rings answer \"which one runs out first\"; bars show every quota, lined up."
+                ) {
+                    SettingsSegmentedControl(
+                        options: AllPageStyle.allCases,
+                        label: \.displayLabel,
+                        selection: $settings.allPageStyle
+                    )
+                }
+
+                SettingsRowDivider()
+
+                SettingsRow(
                     title: "Daily Usage Cards",
                     subtitle: "Show per-day usage summaries in the popover."
                 ) {
