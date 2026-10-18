@@ -76,7 +76,7 @@ struct ExtensionDefinitionTests {
         #expect(definition.dataSources[0].mapping == .usage(UsageMapping()))
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsPOSIXShell)
     func `should show the example extension's session and weekly quotas`() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let provider = ProviderFactory.make(try read(try example()), settings: InMemoryProviderSettings())

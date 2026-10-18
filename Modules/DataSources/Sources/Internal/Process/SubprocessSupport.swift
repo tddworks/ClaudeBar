@@ -1,8 +1,6 @@
-#if os(macOS)
 import Quotas
 import Foundation
 import Subprocess
-import System
 
 /// Shared plumbing for fetches that shell out through `Subprocess`.
 ///
@@ -37,8 +35,9 @@ public enum SubprocessSupport {
         .custom(
             Dictionary(
                 variables.map { (Environment.Key(stringLiteral: $0.key), $0.value) },
-                // Keys are case-sensitive on Darwin, so collisions are not
-                // expected — resolve deterministically rather than trapping.
+                // Darwin's keys are case-sensitive and Windows' callers fold
+                // case first, so a collision is unexpected — resolve it
+                // deterministically rather than trapping.
                 uniquingKeysWith: { _, last in last }
             )
         )
@@ -51,24 +50,27 @@ public enum SubprocessSupport {
     ///
     /// - Parameter qualityOfService: Defaults to the ambient fetch QoS so
     ///   background refreshes keep spawning throttled process trees (issue #204).
+    ///   Only the Mac has one; elsewhere a child runs at the app's priority.
     public static func run(
         executablePath: String,
         arguments: [String],
         environment: Environment = .inherit,
-        workingDirectory: FilePath? = nil,
+        workingDirectory: URL? = nil,
         input: String? = nil,
         outputLimit: Int = defaultOutputLimit,
         qualityOfService: QualityOfService = FetchContext.qualityOfService
     ) async throws -> Output {
         var platformOptions = PlatformOptions()
+        #if os(macOS)
         // Both enums use Darwin QoS class values, but they are distinct Swift types.
         platformOptions.qualityOfService = PlatformOptions.QualityOfService(rawValue: qualityOfService.rawValue) ?? .default
+        #endif
 
         let result = try await Subprocess.run(
-            .path(FilePath(executablePath)),
+            .path(.init(executablePath)),
             arguments: Arguments(arguments),
             environment: environment,
-            workingDirectory: workingDirectory,
+            workingDirectory: workingDirectory.map { .init($0.path) },
             platformOptions: platformOptions,
             // An empty string still closes stdin immediately, matching the
             // previous behaviour of writing nothing and closing the pipe.
@@ -90,14 +92,20 @@ extension TerminationStatus {
     ///
     /// `Process.terminationStatus` reports the signal number when a child is
     /// killed by a signal, so mirroring that keeps `CLIResult.exitCode` meaning
-    /// exactly what it did before the migration.
+    /// exactly what it did before the migration. Windows has no signals; its
+    /// exit code is a `DWORD`, and an NTSTATUS such as `0xC0000005` keeps its
+    /// bits, as `Foundation.Process` reports it there.
     var foundationExitCode: Int32 {
         switch self {
+        #if os(Windows)
+        case let .exited(code):
+            Int32(bitPattern: code)
+        #else
         case let .exited(code):
             Int32(code)
         case let .signaled(signal):
             Int32(signal)
+        #endif
         }
     }
 }
-#endif

@@ -1,6 +1,5 @@
 import Domain
 import Foundation
-import System
 
 /// Simple CLI executor that runs commands over plain pipes, without a PTY.
 ///
@@ -36,7 +35,7 @@ public struct SimpleCLIExecutor: CLIExecutor {
                         environment: SubprocessSupport.environment(
                             Self.augmentedEnvironment(binaryPath: binaryPath)
                         ),
-                        workingDirectory: workingDirectory.map { FilePath($0.path) },
+                        workingDirectory: workingDirectory,
                         input: input
                     )
                 }

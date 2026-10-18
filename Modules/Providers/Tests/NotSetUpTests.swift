@@ -17,7 +17,7 @@ struct NotSetUpTests {
             .willThrow(UsageError.cliNotFound("claude"))
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should wait to be set up when Claude Code is not installed and never signed in (#198)`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }

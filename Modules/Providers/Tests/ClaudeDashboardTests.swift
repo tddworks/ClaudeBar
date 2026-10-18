@@ -27,21 +27,21 @@ struct ClaudeDashboardTests {
         return provider
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should open claude.ai usage settings from the dashboard for a Max account (#328)`() async throws {
         let provider = try await claude(afterReading: "Opus 4.7 · Claude Max\nCurrent session\n████ 65% left")
         #expect(provider.defaultAccount.snapshot?.accountTier == .claudeMax)
         #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should open claude.ai usage settings from the dashboard for a Pro account (#328)`() async throws {
         let provider = try await claude(afterReading: "Sonnet 4.6 · Claude Pro\nCurrent session\n████ 65% left")
         #expect(provider.defaultAccount.snapshot?.accountTier == .claudePro)
         #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
-    @Test(.needsProcesses)
+    @Test(.needsTerminal)
     func `should open Console billing from the dashboard for an API account (#328)`() async throws {
         let provider = try await claude(
             afterReading: "/usage is only available for subscription plans.",

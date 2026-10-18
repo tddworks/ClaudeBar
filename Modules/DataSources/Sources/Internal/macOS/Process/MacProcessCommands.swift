@@ -2,18 +2,6 @@
 import Foundation
 
 extension Platform {
-    // A script is a path, not shell source; positional argv preserves spaces,
-    // quotes and metacharacters in the resolved filename.
-    static let macScriptCommand: ScriptCommand = { run in ["/bin/sh", "-c", "exec \"$1\"", "claudebar-script", run] }
-
-    static let macLoginShellCommand: LoginShellCommand = { variable in
-        let preferred = ProcessInfo.processInfo.environment["SHELL"] ?? ""
-        let binary = preferred.isEmpty ? "/bin/zsh" : preferred
-        // Interactive login shell sources both rc and profile files.
-        let command = "printf '\(LoginShellEnvironment.beginMarker)%s\(LoginShellEnvironment.endMarker)\\n' \"$\(variable)\""
-        return [binary, "-l", "-i", "-c", command]
-    }
-
     static let macLocalServer: LocalServerFactory = { call, commands, network, processPaths in
         LocalServerFetcher(call: call, commands: commands, network: network, processPaths: processPaths)
     }
