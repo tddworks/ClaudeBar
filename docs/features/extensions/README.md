@@ -49,7 +49,7 @@ To try the bundled example: `cp -R docs/features/extensions/example-provider ~/.
 
 For each section, on every refresh:
 
-- ClaudeBar runs `command` with `/bin/sh -c`, from the extension's folder. A relative `command` is taken relative to that folder. It must be the path of an executable file (with a `#!` line and `chmod +x`). On Windows it is run as the file itself, so it must be a `.cmd`, `.bat` or `.exe`; a `sh` script doesn't run there.
+- ClaudeBar runs `command` from the extension's folder. A relative `command` is taken relative to that folder. On the Mac it runs with `/bin/sh -c`, so it must be an executable file (with a `#!` line and `chmod +x`). On Windows it is run as the file itself, so it must be a `.cmd`, `.bat` or `.exe`; a `sh` script doesn't run there.
 - Every config value, or its `default`, is passed as an environment variable: `CLAUDEBAR_` plus the field `id` in upper snake case. `apiKey` becomes `CLAUDEBAR_API_KEY`, and `base-url` becomes `CLAUDEBAR_BASE_URL`.
 - The script must exit `0` and print **one JSON object** with `quotas` or `costUsage`. See [manifest.md](manifest.md#what-a-script-must-print).
 - It's stopped after `timeout` seconds (default 10).
@@ -61,7 +61,6 @@ Sections run in parallel. The provider shows everything the successful sections 
 - **Changed the manifest? Restart ClaudeBar.** Script changes are picked up on the next refresh, but manifests are read only at launch.
 - **An invalid manifest is skipped silently.** If the provider doesn't appear, check the JSON parses (`jq . manifest.json`) and that `id`, `name`, `version` and at least one section are present, and at least one section is a `quotaGrid`, `costUsage` or `healthCheck` ([manifest.md](manifest.md#sections)). The log (**Settings → Logs → Open Log File**) records `Skipping extension <folder>` with the reason.
 - **`command` is a path, not a command line.** `./probe.sh` and `/usr/local/bin/my-probe` work. `python3 probe.py` and `./probe.sh --flag` don't: ClaudeBar checks that a file with that exact name exists, and skips the refresh when no section's file does. Use a wrapper script with a `#!` line instead.
-- **No spaces in the path.** The command path isn't quoted, so a folder name like `My Provider` breaks it. Use `my-provider`.
 - **Print only JSON, and print it all at once.** The script's stderr is captured together with stdout, so progress output (for example `curl` without `-s`) makes the JSON invalid. And once the script has printed something, ClaudeBar stops reading if it then prints nothing for 3 seconds. Build the result first, then print it.
 - **`probe.interval` is ignored.** Every section runs on each refresh, whatever its `interval` says.
 - **`dailyUsage`, `metricsRow` and `statusBanner` sections are no longer read** (since the release after 0.5.3). The log names each one skipped. For daily usage, write JSON-lines records that a provider's `usageHistory` reads, as every provider does.
