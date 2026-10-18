@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Bars on the All page**: Settings → General → All Page Style prints each provider as a row with a bar per quota, shortest window first, so you can read two providers' sessions against each other. Rings stay the default. ([#575](https://github.com/tddworks/ClaudeBar/issues/575)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
-
 ### Changed
 - **Each added account shows only its own sign-in**: a second account never reads this Mac's keys, logs or database, and an added Codex account now falls back to its own terminal too. ([#577](https://github.com/tddworks/ClaudeBar/issues/577)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/multi-account/design.md#what-an-accounts-sign-in-reaches)
 - **One script engine and SQLite everywhere**: provider scripts run in a bundled QuickJS instead of JavaScriptCore, and app databases through a bundled SQLite, so Windows runs them too. Mac quotas are unchanged. ([#571](https://github.com/tddworks/ClaudeBar/pull/571), [#570](https://github.com/tddworks/ClaudeBar/issues/570)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-two-platforms)
@@ -18,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An added Mistral account showed this Mac's Vibe sessions as its own**: it now shows only its own web usage. ([#578](https://github.com/tddworks/ClaudeBar/issues/578), [#577](https://github.com/tddworks/ClaudeBar/issues/577))
 - **Claude's default account honours `CLAUDE_CONFIG_DIR` for its credentials file**, as it already did for its account file. ([#577](https://github.com/tddworks/ClaudeBar/issues/577))
 - **OpenCode Go on OpenCode 2**: without an API key, the estimate and daily cards read opencode's database directly, so OpenCode 1 and 2 both work and spend from before an upgrade still counts. ([#566](https://github.com/tddworks/ClaudeBar/issues/566), [#572](https://github.com/tddworks/ClaudeBar/pull/572))
+
+### Added
+- **Bars on the All page**: Settings → General → All Page Style prints each provider as a row with a bar per quota, shortest window first, so you can read two providers' sessions against each other. Rings stay the default. ([#575](https://github.com/tddworks/ClaudeBar/issues/575)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/all-providers/README.md)
 
 ---
 
