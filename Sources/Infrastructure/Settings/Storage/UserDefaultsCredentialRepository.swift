@@ -1,4 +1,5 @@
 import Foundation
+import Diagnostics
 import Domain
 
 /// A credential repository that uses UserDefaults for persistence.
@@ -25,11 +26,14 @@ public final class UserDefaultsCredentialRepository: CredentialRepository, @unch
     // MARK: - CredentialRepository
 
     public func save(_ value: String, forKey key: String) {
+        SecretRedactor.register(value)
         defaults.set(value, forKey: prefixedKey(key))
     }
 
     public func get(forKey key: String) -> String? {
-        defaults.string(forKey: prefixedKey(key))
+        guard let value = defaults.string(forKey: prefixedKey(key)) else { return nil }
+        SecretRedactor.register(value)
+        return value
     }
 
     @discardableResult

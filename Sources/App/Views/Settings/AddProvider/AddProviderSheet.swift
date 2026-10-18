@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import DataSources
+import Diagnostics
 import Domain
 import Infrastructure
 import Providers
@@ -550,10 +551,14 @@ struct AddProviderSheet: View {
 }
 
 /// The key typed in *Connect*, for *Test Connection* before anything is saved.
+/// It registers with the log's scrubber, so a failed test can't write it into
+/// the file log.
 private struct TypedKey: SecretStore {
     let value: String
 
     func secret(_ name: String, provider: String) -> String? {
-        value.isEmpty ? nil : value
+        guard !value.isEmpty else { return nil }
+        SecretRedactor.register(value)
+        return value
     }
 }

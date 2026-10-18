@@ -80,9 +80,10 @@ public enum AppLog {
 
 /// A category's logger: each line goes to every sink of the platform.
 ///
-/// **Privacy Note**: All messages are logged publicly (no redaction).
-/// Callers must manually redact sensitive data before logging.
-/// Do NOT log tokens, API keys, passwords, or other secrets.
+/// Registered secrets are scrubbed before a sink sees the line — the law
+/// (a secret never appears in a log line) holds even when a caller forgets.
+/// Callers still redact what they can: a line that never held a secret
+/// needs no scrubbing.
 public struct CategoryLogger: Sendable {
     private let category: String
     private let sinks: [any LogSink]
@@ -93,38 +94,39 @@ public struct CategoryLogger: Sendable {
     }
 
     /// Log a debug message (OSLog only, not written to file).
-    /// - Note: Message is logged publicly. Caller must redact sensitive data.
+    /// - Note: Registered secrets are scrubbed before the line is written.
     public func debug(_ message: String) {
         write(.debug, message)
     }
 
     /// Log an info message (written to both OSLog and file).
-    /// - Note: Message is logged publicly. Caller must redact sensitive data.
+    /// - Note: Registered secrets are scrubbed before the line is written.
     public func info(_ message: String) {
         write(.info, message)
     }
 
     /// Log a notice message (written to both OSLog and file as INFO level).
-    /// - Note: Message is logged publicly. Caller must redact sensitive data.
+    /// - Note: Registered secrets are scrubbed before the line is written.
     public func notice(_ message: String) {
         write(.notice, message)
     }
 
     /// Log a warning message (written to both OSLog and file).
-    /// - Note: Message is logged publicly. Caller must redact sensitive data.
+    /// - Note: Registered secrets are scrubbed before the line is written.
     public func warning(_ message: String) {
         write(.warning, message)
     }
 
     /// Log an error message (written to both OSLog and file).
-    /// - Note: Message is logged publicly. Caller must redact sensitive data.
+    /// - Note: Registered secrets are scrubbed before the line is written.
     public func error(_ message: String) {
         write(.error, message)
     }
 
     private func write(_ level: LogLevel, _ message: String) {
+        let scrubbed = SecretRedactor.scrub(message)
         for sink in sinks {
-            sink.write(level, category: category, message: message)
+            sink.write(level, category: category, message: scrubbed)
         }
     }
 }

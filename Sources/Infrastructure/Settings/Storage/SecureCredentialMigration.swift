@@ -1,4 +1,5 @@
 import Foundation
+import Diagnostics
 import Domain
 
 /// Bridges a legacy UserDefaults credential to its secure credential-store replacement.
@@ -14,7 +15,9 @@ struct SecureCredentialMigration {
     var legacySecureKey: String? = nil
 
     /// Saves a credential securely and removes its legacy copy after verification.
+    /// The value registers with the log's scrubber, so no line can carry it.
     func save(_ value: String) {
+        SecretRedactor.register(value)
         secureStore.save(value, forKey: secureKey)
         if secureStore.get(forKey: secureKey) == value {
             if let legacySecureKey, legacySecureKey != secureKey { _ = secureStore.delete(forKey: legacySecureKey) }
