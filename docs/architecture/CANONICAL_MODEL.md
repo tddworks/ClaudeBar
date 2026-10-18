@@ -600,7 +600,6 @@ test first. Findings that need a decision first are in §9.
 | Providers · In use | refusals (*already listed*, *another login's folder*) thrown as `UsageError.executionFailed(String)` | a `Refusal` per aggregate, as `QuotaAlerts` has |
 | Providers | guest passes run `settings.cliPath ?? cli`, skipping `Configuration`'s CLI places | the login's `configuration.running.cli` |
 | Vault & Settings | `ClaudeSettingsRepository`, `CodexSettingsRepository`, `DeepSeekSettingsRepository`, `UsageProbe`, `AccountInfo` still declared; two writers of `verifiedAtLeastOnce` | deleted; DeepSeek's when its card retires |
-| Vault & Settings | the secret's absence from a log line is a convention each caller keeps | the vault registers its values; `AppLog` scrubs them from every line before a sink sees it, so the law holds even when a caller forgets |
 | Vault & Settings | `ProviderSettingsRepository` holds the switch, configuration, order and page preferences, and its setters default to doing nothing | one port per role; no silent defaults |
 | In use | the record's folder known by `DiskLoginsInUse` and again, by hand, in `ShellSetup` | the record port answers the file the shell reads |
 | Data Sources | the `{{…}}` grammar parsed in `Template`, `Placeholders`, string replaces and `contains("{{")` guards, in both modules | one `Placeholder` value: parse, fill, names, transforms |
