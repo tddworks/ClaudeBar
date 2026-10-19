@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import Testing
 @testable import DataSources
 
@@ -8,7 +11,7 @@ import Testing
 @Suite struct OriginRedirectTests {
     private let session = URLSession(configuration: .ephemeral)
 
-    private func redirect(from origin: String, to destination: String, follow: (URLRequest?) -> Void) {
+    private func redirect(from origin: String, to destination: String, follow: @escaping (URLRequest?) -> Void) {
         let task = session.dataTask(with: URL(string: origin)!)
         let response = HTTPURLResponse(url: URL(string: origin)!, statusCode: 302, httpVersion: nil, headerFields: nil)!
         SameOriginRedirectDelegate().urlSession(session, task: task,
