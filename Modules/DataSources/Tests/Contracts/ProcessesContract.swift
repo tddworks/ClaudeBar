@@ -2,6 +2,9 @@ import Foundation
 import Quotas
 import Testing
 @testable import DataSources
+#if os(Windows)
+import WinSDK
+#endif
 
 /// The `Processes` port's contract (MODULAR_DESIGN §10), run against this
 /// platform's adapter. Its programs are scripts the suite writes in this
@@ -88,6 +91,25 @@ struct ProcessesContract {
         await #expect(throws: (any Error).self) { try await transport.receive() }
     }
 
+    /// A file the app is writing stays the app's: a program it starts talking
+    /// to meanwhile mustn't get a copy of the file's handle. Windows hands a
+    /// child every handle the app may pass on unless the launch names the ones
+    /// it gets, and a copy left in the program kept an atomic write from
+    /// moving its temporary file into place (Win32 error 32) for as long as
+    /// the program ran.
+    @Test func `should not hand a program it talks to a file the app has open`() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let script = try #require(try processes().script(at: try script("echo", Programs.echo)))
+        let file = folder.appendingPathComponent("being written.tmp")
+        let close = try Programs.openAsAnAtomicWriteDoes(file)
+        let transport = try script.talk([], in: folder)
+        defer { transport.close() }
+
+        close()
+
+        #expect(throws: Never.self) { try FileManager.default.removeItem(at: file) }
+    }
+
     @Test func `should list the program this test runs in among those running`() throws {
         let own = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().lastPathComponent
         let names = try processes().running.paths().map { URL(fileURLWithPath: $0).lastPathComponent.lowercased() }
@@ -167,6 +189,24 @@ private enum Programs {
         return resolved.replacingOccurrences(of: "\\", with: "/").lowercased()
         #else
         return resolved
+        #endif
+    }
+
+    /// Opens `file` as Foundation's atomic write opens its temporary file: a
+    /// C runtime descriptor a child started meanwhile may inherit, which on
+    /// Windows doesn't share deleting. Answers how to close it.
+    static func openAsAnAtomicWriteDoes(_ file: URL) throws -> () -> Void {
+        #if os(Windows)
+        var descriptor: Int32 = -1
+        _ = file.path.withCString(encodedAs: UTF16.self) {
+            _wsopen_s(&descriptor, $0, _O_RDWR | _O_CREAT, _SH_DENYNO, _S_IREAD | _S_IWRITE)
+        }
+        guard descriptor >= 0 else { throw CocoaError(.fileWriteUnknown) }
+        return { _ = _close(descriptor) }
+        #else
+        let descriptor = open(file.path, O_RDWR | O_CREAT, 0o644)
+        guard descriptor >= 0 else { throw CocoaError(.fileWriteUnknown) }
+        return { _ = close(descriptor) }
         #endif
     }
 }
