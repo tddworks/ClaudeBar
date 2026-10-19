@@ -97,13 +97,16 @@ struct ProcessesContract {
     /// it gets, and a copy left in the program kept an atomic write from
     /// moving its temporary file into place (Win32 error 32) for as long as
     /// the program ran.
-    @Test func `should not hand a program it talks to a file the app has open`() throws {
+    @Test func `should not hand a program it talks to a file the app has open`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         let script = try #require(try processes().script(at: try script("echo", Programs.echo)))
         let file = folder.appendingPathComponent("being written.tmp")
         let close = try Programs.openAsAnAtomicWriteDoes(file)
         let transport = try script.talk([], in: folder)
         defer { transport.close() }
+        // An answer means the program started while the file was open.
+        try transport.send(Data("ready".utf8))
+        #expect(String(decoding: try await transport.receive(), as: UTF8.self) == "ready")
 
         close()
 

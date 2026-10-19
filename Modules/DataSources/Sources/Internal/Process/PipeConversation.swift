@@ -55,7 +55,11 @@ final class PipeConversation: RPCTransport, @unchecked Sendable {
                                 do {
                                     _ = try await execution.standardInputWriter.write(Array(message))
                                 } catch {
+                                    // `send` only queued the line: the request
+                                    // waiting on its answer hears it here.
                                     AppLog.probes.error("RPC transport: Failed to write to stdin: \(error.localizedDescription)")
+                                    outgoing.finish()
+                                    received.finish(throwing: UsageError.executionFailed("RPC transport write failed: \(error.localizedDescription)"))
                                     break
                                 }
                             }
