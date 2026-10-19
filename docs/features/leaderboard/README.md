@@ -29,7 +29,7 @@ Providers whose logs ClaudeBar reads for daily usage can be shared:
 | Codex | `~/.codex/sessions` (or each added account's `CODEX_HOME`) |
 | Mistral | `~/.vibe/logs` |
 | Oh My Pi | `~/.omp/agent/sessions` (or `$PI_CODING_AGENT_DIR/sessions`): every account omp drives, as one total |
-| OpenCode | opencode's own database, through one read-only `opencode db` query: every assistant message of the last 30 days, whatever provider opencode drove, as one total |
+| OpenCode Go | opencode's own database, read directly: every assistant message, whatever provider opencode drove (the Go plan, Zen or a custom one), as one total |
 
 Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, not tokens, so they can't be ranked. If you have several accounts for one provider, their tokens are added together.
 

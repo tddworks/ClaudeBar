@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Board provider filter</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--sky:#A9D8FF;--sun:#FFD84D;--bad:#E5484D;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#17151F;--dot:#2A2735;--ink:#F3EEFF;--muted:#B9B2D0;--card:#221F2E;--sky:#2C5A80;--sun:#8A6D10}}
+:root[data-theme="dark"]{--paper:#17151F;--dot:#2A2735;--ink:#F3EEFF;--muted:#B9B2D0;--card:#221F2E;--sky:#2C5A80;--sun:#8A6D10}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:34px;font-weight:800;letter-spacing:-.02em}
+h2{margin:0;font-size:20px;font-weight:800}
+.sub,.why{margin:4px 0 0;color:var(--muted)}
+.why{font-size:13px}
+.n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);font:800 12px "Bricolage Grotesque",sans-serif;color:#1E1B2E;margin-right:6px}
+.pair{display:flex;flex-wrap:wrap;gap:22px}
+.col{flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.tag{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* The board card, at the popover's width */
+.board{width:100%;max-width:368px;background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;gap:8px}
+.head{display:flex;justify-content:space-between;align-items:center}
+.head b{font-size:13px;font-weight:800}
+.seg{display:flex;border:2px solid var(--ink);border-radius:8px;overflow:hidden;font-size:10px;font-weight:800}
+.seg span{padding:2px 7px}.seg .on{background:var(--ink);color:var(--card)}
+
+.chips{display:flex;gap:4px;padding:1px}
+.chips.wraps .chip{white-space:normal;max-width:52px;text-align:center}
+.chips.scrolls{overflow-x:auto;scrollbar-width:none}
+.chips.scrolls::-webkit-scrollbar{display:none}
+.chip{flex:none;white-space:nowrap;font-size:9.5px;font-weight:800;line-height:1.25;padding:3px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--ink) 35%,transparent);color:var(--muted);background:none;font-family:inherit;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.chips.wraps .chip{flex:1 1 auto}
+.bad{outline:2px dashed var(--bad);outline-offset:2px}
+
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.rows li{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border:2px solid var(--ink);border-radius:10px;font-size:12px;position:relative;overflow:hidden}
+.rows .fill{position:absolute;inset:0 auto 0 0;background:var(--sky);opacity:.5}
+.rows li>*:not(.fill){position:relative}
+.rows .num{font:700 11px "JetBrains Mono",monospace}
+
+.facts{margin:0;padding-left:18px;font-size:14px}
+.facts li{margin:3px 0}
+code{font-family:"JetBrains Mono",monospace;font-size:.9em}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Board provider filter</h1>
+    <p class="sub">The chips that filter the Leaderboard tab's board by provider (#576). Sample data. Names unchanged: the share entry stays <b>OpenCode Go</b>, as its provider is named everywhere else.</p>
+  </header>
+
+  <h2><span class="n">1</span>A chip never wraps; the row scrolls</h2>
+  <p class="why">Five shared providers and All don't fit the card's width. Today the chips squeeze and the longest name breaks inside its capsule ("OpenCo / de Go"). After: every chip keeps its name on one line, the row scrolls sideways with no scroll bar (like the join form's pills), and every filter stays reachable. Drag or scroll the row on the right.</p>
+
+  <section class="pair">
+    <div class="col">
+      <span class="tag">Now</span>
+      <div class="board">
+        <div class="head"><b>Board</b><div class="seg"><span>Today</span><span class="on">7 days</span><span>30 days</span></div></div>
+        <div class="chips wraps">
+          <span class="chip on">All</span><span class="chip">Claude</span><span class="chip">Codex</span><span class="chip">Mistral</span><span class="chip">Oh My Pi</span><span class="chip bad">OpenCode Go</span>
+        </div>
+        <ul class="rows" data-rows></ul>
+      </div>
+    </div>
+    <div class="col">
+      <span class="tag">After</span>
+      <div class="board">
+        <div class="head"><b>Board</b><div class="seg"><span>Today</span><span class="on">7 days</span><span>30 days</span></div></div>
+        <div class="chips scrolls" id="after"></div>
+        <ul class="rows" data-rows></ul>
+      </div>
+    </div>
+  </section>
+
+  <h2><span class="n">2</span>What changes, and what doesn't</h2>
+  <ul class="facts">
+    <li><code>FilterChip</code>: its title is one line at its own width (<code>lineLimit(1)</code>, <code>fixedSize()</code>). It never shrinks, wraps or truncates.</li>
+    <li><code>providerFilter</code>: the chips sit in a horizontal <code>ScrollView</code> without indicators. With fewer chips than the width, it looks exactly as today.</li>
+    <li>Names: unchanged. The chip reads the provider's name, as the join form, Settings → Leaderboard and the rank card do. No new field, no domain change.</li>
+    <li>Docs: the Leaderboard README's OpenCode row already says it counts every provider opencode drove as one total; its stale "<code>opencode db</code> query" becomes "opencode's database, read directly" (#572).</li>
+  </ul>
+</main>
+<script>
+const people=[["kai","4.1M",92],["mira","3.6M",80],["you","2.9M",64],["tomo","2.2M",49],["lena","1.4M",31]];
+document.querySelectorAll("[data-rows]").forEach(ul=>{ul.innerHTML=people.map((p,i)=>`<li><span class="fill" style="width:${p[2]}%"></span><span class="num">${i+1}</span><span>${p[0]}</span><span class="num">${p[1]}</span></li>`).join("")});
+const names=["All","Claude","Codex","Mistral","Oh My Pi","OpenCode Go"];
+const row=document.getElementById("after");
+names.forEach((n,i)=>{const b=document.createElement("button");b.className="chip"+(i===0?" on":"");b.textContent=n;b.onclick=()=>{row.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));b.classList.add("on")};row.appendChild(b)});
+</script>
+</body>
+</html>

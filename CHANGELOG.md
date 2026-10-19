@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An added Mistral account showed this Mac's Vibe sessions as its own**: it now shows only its own web usage. ([#578](https://github.com/tddworks/ClaudeBar/issues/578), [#577](https://github.com/tddworks/ClaudeBar/issues/577))
 - **Claude's default account honours `CLAUDE_CONFIG_DIR` for its credentials file**, as it already did for its account file. ([#577](https://github.com/tddworks/ClaudeBar/issues/577))
 - **OpenCode Go on OpenCode 2**: without an API key, the estimate and daily cards read opencode's database directly, so OpenCode 1 and 2 both work and spend from before an upgrade still counts. ([#566](https://github.com/tddworks/ClaudeBar/issues/566), [#572](https://github.com/tddworks/ClaudeBar/pull/572))
+- **Leaderboard provider filter**: a long provider name no longer wraps inside its chip ("OpenCo / de Go"); chips stay on one line and the row scrolls, so every filter stays reachable. ([#576](https://github.com/tddworks/ClaudeBar/pull/576))
 
 ### Added
 - **Bars on the All page**: Settings → General → All Page Style prints each provider as a row with a bar per quota, ordered by the windows a provider states — most state none and read tightest first. Rings stay the default. ([#575](https://github.com/tddworks/ClaudeBar/issues/575)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/all-providers/README.md)
