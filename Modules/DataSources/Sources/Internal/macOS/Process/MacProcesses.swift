@@ -1,5 +1,6 @@
 #if os(macOS)
 import Foundation
+import Subprocess
 
 /// What the Mac answers about programs: a CLI found through the login shell's
 /// `PATH`, a script started by `sh`, a variable read from the person's login
@@ -40,8 +41,9 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, Ru
         return environment
     }
 
-    func end(_ child: Process) {
-        ChildTeardown.end(child, named: child.executableURL?.lastPathComponent ?? "RPC child")
+    // Asked to stop (`SIGTERM`), then killed after two seconds (#550).
+    var teardown: [TeardownStep] {
+        [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
     }
 
     func paths() -> [String] {

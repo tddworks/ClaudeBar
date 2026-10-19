@@ -384,13 +384,14 @@ DOMAIN, neutral, one copy
     .talk(args, environment, in:)                → a conversation
 TECHNICAL, neutral, one copy
   PipeCLIExecutor (the timeout race, stdout and stderr as one text)
-  PipeConversation (a line at a time, read on its own thread)
+  PipeConversation (a line at a time; Subprocess starts it, as the pipe runner does,
+                    so the program gets its pipes and none of the app's other handles)
 PORTS, Ports/Processes.swift: what each OS answers, one question each
   InstalledPrograms   find(name) → path?          login PATH + tool folders │ PATH + PATHEXT
   ScriptStart         command(path) → argv        sh 'exec "$1"'            │ the file itself
   LoginShell          command(printing:between:)  $SHELL -l -i              │ PowerShell profile
-  ChildLaunch         environment(for:) · end()   PATH + tool folders,      │ names ignoring case,
-                                                  SIGTERM then SIGKILL      │ TerminateProcess
+  ChildLaunch         environment(for:) ·         PATH + tool folders,      │ names ignoring case,
+                      teardown                    SIGTERM, kill after 2s    │ TerminateProcess
   RunningPrograms     paths()                     proc_listallpids          │ EnumProcesses
 ```
 
@@ -516,7 +517,7 @@ Modules/DataSources/Sources/
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
     │   ├── Process/MacProcesses.swift   the five facts: BinaryLocator, sh,
-    │   │                               $SHELL -l -i, ChildTeardown,
+    │   │                               $SHELL -l -i, SIGTERM then kill,
     │   │                               RunningProcesses (#579)
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
     │                                 under their ports in slices 3–5

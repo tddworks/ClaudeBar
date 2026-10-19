@@ -1,5 +1,6 @@
 #if os(Windows)
 import Foundation
+import Subprocess
 import WinSDK
 
 /// What Windows answers about programs: a CLI found on `PATH` with
@@ -27,10 +28,10 @@ struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch
         Self.environment(change)
     }
 
-    // `terminate()` is `TerminateProcess`: the child ends at once.
-    func end(_ child: Process) {
-        if child.isRunning { child.terminate() }
-    }
+    // No step before the last kill, `TerminateProcess`: the child ends at
+    // once. Windows' graceful step attaches to the child's console, which a
+    // GUI app shouldn't do.
+    var teardown: [TeardownStep] { [] }
 
     /// The executable paths of the processes running now. A process this user
     /// can't open (a service, the system) is left out.

@@ -77,9 +77,9 @@ struct Processes: Sendable {
         self.init(installed: installed, scripts: scripts, loginShell: loginShell, launch: launch, running: running,
                   pipes: { PipeCLIExecutor(change: $0, installed: installed, launch: launch) },
                   conversation: { path, arguments, environment, directory in
-                      try PipeConversation(executablePath: path, arguments: arguments,
-                                           environment: environment ?? launch.environment(for: path, ProcessEnvironment()),
-                                           directory: directory, end: launch.end)
+                      PipeConversation(executablePath: path, arguments: arguments,
+                                       environment: environment ?? launch.environment(for: path, ProcessEnvironment()),
+                                       directory: directory, teardown: launch.teardown)
                   })
     }
 
