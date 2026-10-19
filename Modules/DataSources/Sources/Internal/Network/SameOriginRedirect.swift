@@ -4,7 +4,7 @@ import FoundationNetworking
 #endif
 
 /// The network's one law: **a credential travels only to the origin its fetch
-/// names** ([CANONICAL_MODEL §5](../../../../docs/architecture/CANONICAL_MODEL.md)).
+/// names** ([CANONICAL_MODEL §5](../../../../../docs/architecture/CANONICAL_MODEL.md)).
 /// A redirect that leaves it — another host, port or scheme — is refused, so
 /// an `Authorization` header or a token-carving URL is never re-sent to a
 /// server the fetch didn't name. Refusing (not erroring) hands the 3xx back,

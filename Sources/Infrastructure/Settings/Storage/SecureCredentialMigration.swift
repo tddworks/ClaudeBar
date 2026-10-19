@@ -17,7 +17,7 @@ struct SecureCredentialMigration {
     /// Saves a credential securely and removes its legacy copy after verification.
     /// The value registers with the log's scrubber, so no line can carry it.
     func save(_ value: String) {
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         secureStore.save(value, forKey: secureKey)
         if secureStore.get(forKey: secureKey) == value {
             if let legacySecureKey, legacySecureKey != secureKey { _ = secureStore.delete(forKey: legacySecureKey) }

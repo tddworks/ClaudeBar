@@ -9,9 +9,18 @@ public enum SecretRedactor {
     private static let registry = Registry()
 
     /// Registers a secret and the form it takes in a URL. Cheap to repeat:
-    /// a value already known registers nothing.
+    /// a value already known registers nothing. A value too short to be a
+    /// secret — one a line could hold by chance — stays unregistered, so
+    /// scrubbing never redacts ordinary words.
     public static func register(_ secret: String) {
-        registry.register(secret)
+        registry.register(secret, droppingShorterThan: Registry.minimumSecretLength)
+    }
+
+    /// Registers a credential the stores keep, whatever its length: the law
+    /// has no length qualifier, and a short key deserves the same scrubbing
+    /// as a long one. Every credential boundary calls this, never `register`.
+    public static func registerCredential(_ credential: String) {
+        registry.register(credential, droppingShorterThan: 1)
     }
 
     /// The line as a sink may print it: every registered secret `[redacted]`.
@@ -23,14 +32,15 @@ public enum SecretRedactor {
     /// a line reads the set and replaces outside it, so a log call never
     /// holds the lock against another logger.
     private final class Registry: @unchecked Sendable {
+        /// A generic value shorter than this could turn up in a line by
+        /// chance; keeping it out spares the reader redacted words instead
+        /// of secrets.
+        static let minimumSecretLength = 8
         private let lock = NSLock()
         private var forms: [String] = []
-        /// A value this short could turn up in a line by chance; keeping it
-        /// out spares the reader redacted words instead of secrets.
-        private let minimumLength = 8
 
-        func register(_ secret: String) {
-            guard secret.count >= minimumLength else { return }
+        func register(_ secret: String, droppingShorterThan cutoff: Int) {
+            guard secret.count >= cutoff else { return }
             var fresh = [secret]
             if let encoded = secret.addingPercentEncoding(
                 withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&=+?#"))

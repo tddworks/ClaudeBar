@@ -558,7 +558,7 @@ private struct TypedKey: SecretStore {
 
     func secret(_ name: String, provider: String) -> String? {
         guard !value.isEmpty else { return nil }
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         return value
     }
 }

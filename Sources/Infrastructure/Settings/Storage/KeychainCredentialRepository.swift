@@ -19,7 +19,7 @@ public final class KeychainCredentialRepository: CredentialRepository, @unchecke
     /// Saves or replaces a credential without logging its value. The value
     /// registers with the log's scrubber, so no line can carry it.
     public func save(_ value: String, forKey key: String) {
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         let data = Data(value.utf8)
         let query = baseQuery(forKey: key)
         let update: [CFString: Any] = [kSecValueData: data]
@@ -62,7 +62,7 @@ public final class KeychainCredentialRepository: CredentialRepository, @unchecke
             return nil
         }
         guard let value = String(data: data, encoding: .utf8) else { return nil }
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         return value
     }
 

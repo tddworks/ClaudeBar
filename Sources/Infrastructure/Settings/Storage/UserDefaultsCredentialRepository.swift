@@ -26,13 +26,13 @@ public final class UserDefaultsCredentialRepository: CredentialRepository, @unch
     // MARK: - CredentialRepository
 
     public func save(_ value: String, forKey key: String) {
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         defaults.set(value, forKey: prefixedKey(key))
     }
 
     public func get(forKey key: String) -> String? {
         guard let value = defaults.string(forKey: prefixedKey(key)) else { return nil }
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         return value
     }
 

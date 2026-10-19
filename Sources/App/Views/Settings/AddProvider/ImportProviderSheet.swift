@@ -179,7 +179,7 @@ private struct TypedKeys: SecretStore {
 
     func secret(_ name: String, provider: String) -> String? {
         guard let value = values[name], !value.isEmpty else { return nil }
-        SecretRedactor.register(value)
+        SecretRedactor.registerCredential(value)
         return value
     }
 }

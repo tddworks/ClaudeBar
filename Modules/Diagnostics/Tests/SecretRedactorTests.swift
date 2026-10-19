@@ -29,6 +29,11 @@ import Testing
         #expect(SecretRedactor.scrub("the abc of logging") == "the abc of logging")
     }
 
+    @Test func `should scrub a registered credential however short`() {
+        SecretRedactor.registerCredential("abc1234")
+        #expect(SecretRedactor.scrub("the key abc1234 was refused") == "the key [redacted] was refused")
+    }
+
     @Test func `should scrub what a logger writes through its sinks`() {
         let sink = CapturingSink()
         let logger = CategoryLogger(category: "probes", sinks: [sink])
