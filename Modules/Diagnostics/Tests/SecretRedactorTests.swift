@@ -6,30 +6,39 @@ import Testing
 /// `DataSource` registers every credential it touches; every line is scrubbed
 /// before a sink sees it — so the law holds even when a caller forgets.
 ///
-/// Each test mints its own credential (a UUID): the registry is global and
-/// suites run in parallel, so a shared literal could answer another suite's
-/// scrub.
+/// Each test mints its own credential (a UUID) and reads it once: the registry
+/// is global and suites run in parallel — and since `DataSource` registers
+/// every fetch's credential, it also holds other suites' dummy values, whose
+/// forms may redact parts of a line no test here named. So a test pins what
+/// the law promises — the secret it registered never survives a scrub — not a
+/// pristine line.
 @Suite struct SecretRedactorTests {
-    private var credential: String { UUID().uuidString }
-
     @Test func `should scrub a registered credential from the line`() {
-        let key = credential
+        let key = UUID().uuidString
         SecretRedactor.register(key)
-        #expect(SecretRedactor.scrub("HTTP fetch failed for https://api.x.com/?key=\(key)")
-            == "HTTP fetch failed for https://api.x.com/?key=[redacted]")
+        let scrubbed = SecretRedactor.scrub("HTTP fetch failed for https://api.x.com/?key=\(key)")
+        #expect(!scrubbed.contains(key))
+        #expect(scrubbed.contains("[redacted]"))
     }
 
     @Test func `should scrub the percent-encoded form of a credential`() {
-        let key = "team & org/token+== \(credential)"
+        let key = "team & org/token+== \(UUID().uuidString)"
         SecretRedactor.register(key)
-        #expect(SecretRedactor.scrub("refresh went to https://x.com/?id=team%20%26%20org/token%2B%3D%3D%20\(credential)")
-            == "refresh went to https://x.com/?id=[redacted]")
+        // The form the credential rides in a URL, built the way a URL builds it.
+        let encoded = key.addingPercentEncoding(
+            withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&=+?#"))
+        ) ?? key
+        let scrubbed = SecretRedactor.scrub("refresh went to https://x.com/?id=\(encoded)")
+        #expect(!scrubbed.contains(encoded))
+        #expect(scrubbed.contains("[redacted]"))
     }
 
     @Test func `should scrub a credential however short`() {
-        let key = String(credential.prefix(4))
+        let key = String(UUID().uuidString.prefix(4))
         SecretRedactor.register(key)
-        #expect(SecretRedactor.scrub("the key \(key) was refused") == "the key [redacted] was refused")
+        let scrubbed = SecretRedactor.scrub("the key \(key) was refused")
+        #expect(!scrubbed.contains(key))
+        #expect(scrubbed.contains("[redacted]"))
     }
 
     @Test func `should keep a line that names no credential`() {
@@ -46,10 +55,13 @@ import Testing
     @Test func `should scrub what a logger writes through its sinks`() {
         let sink = CapturingSink()
         let logger = CategoryLogger(category: "probes", sinks: [sink])
-        let key = credential
+        let key = UUID().uuidString
         SecretRedactor.register(key)
         logger.error("Network error: token \(key) rejected")
-        #expect(sink.messages.map(\.message) == ["Network error: token [redacted] rejected"])
+        let written = sink.messages
+        #expect(written.count == 1)
+        #expect(!written[0].message.contains(key))
+        #expect(written[0].message.contains("[redacted]"))
     }
 }
 

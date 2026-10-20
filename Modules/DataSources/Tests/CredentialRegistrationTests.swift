@@ -11,7 +11,9 @@ import FoundationNetworking
 /// `DataSource` is its one holder — every credential a fetch touches,
 /// whatever lookup found it and whatever refresh renewed it, registers with
 /// the scrubber here. The token in these tests is a UUID: the registry is
-/// global and suites run in parallel.
+/// global and suites run in parallel — it also holds other suites' dummy
+/// values — so an assertion pins what the law promises, that the secret this
+/// fetch registered never survives a scrub, not a pristine line.
 @Suite
 struct CredentialRegistrationTests {
     /// A vault in memory, keyed by provider and setting name.
@@ -45,8 +47,9 @@ struct CredentialRegistrationTests {
         let source = try make(vault: Vault(["acme.apiKey": key]))
         _ = try await source.fetchResponse()
 
-        #expect(SecretRedactor.scrub("fetch went to https://example.com/?key=\(key)")
-            == "fetch went to https://example.com/?key=[redacted]")
+        let scrubbed = SecretRedactor.scrub("fetch went to https://example.com/?key=\(key)")
+        #expect(!scrubbed.contains(key))
+        #expect(scrubbed.contains("[redacted]"))
     }
 
     @Test
@@ -58,7 +61,10 @@ struct CredentialRegistrationTests {
         _ = try await source.fetchResponse()
 
         logger.error("Network error: token \(key) rejected")
-        #expect(sink.messages == ["Network error: token [redacted] rejected"])
+        let written = sink.messages
+        #expect(written.count == 1)
+        #expect(!written[0].contains(key))
+        #expect(written[0].contains("[redacted]"))
     }
 }
 
