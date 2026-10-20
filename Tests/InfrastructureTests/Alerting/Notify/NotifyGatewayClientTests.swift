@@ -85,7 +85,15 @@ struct NotifyGatewayClientTests {
         unit: String? = nil,
         tintHex: String? = nil
     ) throws -> NotifyMetric {
-        try #require(NotifyMetric(label: label, value: value, unit: unit, tintHex: tintHex))
+        try #require(
+            NotifyMetric(
+                slot: NotifySlot(providerId: "claude", quotaKey: "session", windowLabel: label),
+                label: label,
+                value: value,
+                unit: unit,
+                tintHex: tintHex
+            )
+        )
     }
 
     /// A tile with every field ClaudeBar drives populated, and a second metric left bare, so one

@@ -409,6 +409,40 @@ struct NotifyPane: View {
 
             }
 
+            // The row's arrangement belongs to the tile, which the Live
+            // Activity and the Home Screen widget share, so it sits with them
+            // and not with the gauge below: the gauge shows one quota and has
+            // no row to arrange.
+            SettingsRowDivider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                SettingsFieldLabel(text: "TILE ORDER")
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        MenuBarChoiceButton(
+                            iconName: "arrow.down.right.circle",
+                            label: "Lowest first",
+                            isSelected: settings.notifyTileOrder == .worstFirst
+                        ) {
+                            settings.notifyTileOrder = .worstFirst
+                        }
+
+                        MenuBarChoiceButton(
+                            iconName: "square.grid.2x2",
+                            label: "Fixed positions",
+                            isSelected: settings.notifyTileOrder == .fixed
+                        ) {
+                            settings.notifyTileOrder = .fixed
+                        }
+                    }
+                }
+
+                Text(tileOrderExplanation)
+                    .font(theme.font(size: 10, weight: .medium))
+                    .foregroundStyle(theme.textTertiary)
+            }
+
             // The gauge shows one window at a time, so which one only matters
             // while the widget is actually being published. It stays visible
             // when the link cannot draw a gauge, because the switch above it
@@ -616,6 +650,18 @@ struct NotifyPane: View {
 
     private var gaugeProviders: [Account] {
         monitor.lineup
+    }
+
+    /// What the chosen arrangement means for the person reading the Lock
+    /// Screen, in one sentence. The tile's colour and bar follow the lowest
+    /// quota either way, so the difference is only about where the windows sit.
+    private var tileOrderExplanation: String {
+        switch settings.notifyTileOrder {
+        case .worstFirst:
+            return "The lowest quota comes first, and the row moves as the numbers move."
+        case .fixed:
+            return "Each provider's windows sit together and stay where they are. The lowest quota still colours the tile."
+        }
     }
 
     private var isGaugeAutomatic: Bool {

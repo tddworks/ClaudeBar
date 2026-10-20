@@ -47,6 +47,14 @@ final class NotifyPublishDriver {
     /// received a write. The gate needs both to decide anything.
     private var record: NotifyPublishRecord?
 
+    /// The cells the tile's row was made of last time.
+    ///
+    /// A window that stops reporting keeps its cell in a fixed row, and this
+    /// is what says which cell it was: the builder decides which of them are
+    /// still worth keeping, because only it knows the rule, and this driver
+    /// only remembers what the row was.
+    private var tileSlots: [NotifySlot] = []
+
     /// While set, tile writes are skipped: the gateway is in push to start
     /// backoff and every attempt inside the wait lengthens it.
     private var tileSuppressedUntil: Date?
@@ -258,14 +266,23 @@ final class NotifyPublishDriver {
             quotaKey: settings.notifyGaugeQuotaKey
         )
 
-        return builder.payload(
+        let payload = builder.payload(
             readings: readings,
             gaugeSelection: selection,
             includesTile: includesTile,
             includesGauge: includesGauge,
             includesScreenTile: includesScreenTile,
-            statusPolicy: monitor.statusPolicy
+            statusPolicy: monitor.statusPolicy,
+            tileOrder: settings.notifyTileOrder,
+            previousSlots: tileSlots
         )
+
+        // The row is remembered as it was built rather than as it was sent,
+        // because a cell that keeps its place has to be known even when the
+        // write it belongs to is held back by the gate.
+        tileSlots = payload.tile?.metrics.map(\.slot) ?? []
+
+        return payload
     }
 
     /// Asks the gate whether this payload is worth a request, and if so starts

@@ -303,6 +303,15 @@ public final class AppSettings {
         }
     }
 
+    /// How the tile's row of quota windows is arranged: a ranking of the worst
+    /// quotas, or a fixed arrangement where each provider's windows sit
+    /// together and stay where they are.
+    public var notifyTileOrder: NotifyTileOrder {
+        didSet {
+            repository.setNotifyTileOrder(notifyTileOrder)
+        }
+    }
+
     // MARK: - Popover
 
     /// *Open on* — where the popover lands each time it opens (Settings → General).
@@ -499,6 +508,7 @@ public final class AppSettings {
         self.notifyScreenWidgetEnabled = repository.isNotifyScreenWidgetEnabled()
         self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
         self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
+        self.notifyTileOrder = repository.notifyTileOrder()
         self.popoverOpensOn = repository.popoverOpensOn()
         self.allPageStyle = repository.allPageStyle()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()

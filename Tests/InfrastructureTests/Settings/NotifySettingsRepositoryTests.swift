@@ -225,6 +225,35 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
+    func `should arrange the tile's row worst first until the reader says otherwise`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        #expect(fixture.repository.notifyTileOrder() == .worstFirst)
+    }
+
+    @Test
+    func `should remember a fixed arrangement of the tile's row`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        fixture.repository.setNotifyTileOrder(.fixed)
+        #expect(fixture.repository.notifyTileOrder() == .fixed)
+    }
+
+    @Test
+    func `should fall back to the default arrangement for a word it does not know`() throws {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        // A settings file written by a newer ClaudeBar still arranges its row.
+        let raw = try JSONSerialization.data(withJSONObject: ["notify": ["tileOrder": "someNewArrangement"]])
+        try raw.write(to: fixture.settingsURL)
+
+        #expect(fixture.repository.notifyTileOrder() == .worstFirst)
+    }
+
+    @Test
     func `should remember the Lock Screen tile it started`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }

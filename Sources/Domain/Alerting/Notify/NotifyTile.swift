@@ -9,6 +9,13 @@ import Foundation
 /// line would otherwise go, which is what makes a metrics tile the right shape
 /// for several quota windows at once.
 public struct NotifyMetric: Sendable, Equatable, Hashable {
+    /// Which provider and window this cell stands for.
+    ///
+    /// ClaudeBar's own record of the row rather than part of the content: the
+    /// gateway is never told about it, and it is what lets a window that stops
+    /// reporting keep its place.
+    public let slot: NotifySlot
+
     public let label: String
     public let value: String
     public let unit: String?
@@ -16,11 +23,18 @@ public struct NotifyMetric: Sendable, Equatable, Hashable {
 
     /// Fails only when the label or value is empty after cleaning, because the
     /// gateway requires both. Everything else shortens or drops.
-    public init?(label: String, value: String, unit: String? = nil, tintHex: String? = nil) {
+    public init?(
+        slot: NotifySlot,
+        label: String,
+        value: String,
+        unit: String? = nil,
+        tintHex: String? = nil
+    ) {
         guard let label = NotifyLimits.text(label, maximum: NotifyLimits.metricLabelLength),
               let value = NotifyLimits.text(value, maximum: NotifyLimits.metricValueLength) else {
             return nil
         }
+        self.slot = slot
         self.label = label
         self.value = value
         self.unit = NotifyLimits.text(unit, maximum: NotifyLimits.metricUnitLength)

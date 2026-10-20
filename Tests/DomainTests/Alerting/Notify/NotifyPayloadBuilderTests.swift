@@ -35,6 +35,15 @@ struct NotifyPayloadBuilderTests {
         )
     }
 
+    /// The cells the tile showed last time, as the driver remembers them.
+    private func slot(
+        _ provider: String,
+        _ quotaKey: String,
+        _ windowLabel: String
+    ) -> NotifySlot {
+        NotifySlot(providerId: provider, quotaKey: quotaKey, windowLabel: windowLabel)
+    }
+
     // MARK: - Nothing to say
 
     @Test
@@ -166,6 +175,28 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
+    func `should keep naming the provider when only one of them fits on the row`() {
+        // Six Claude windows and a Codex window with more left than any of
+        // them, so the row holds the six Claude ones. The name still belongs
+        // on every cell, because the row is not the only thing ClaudeBar knows
+        // about.
+        let readings = [
+            reading(70, provider: "claude", name: "Claude", quotaType: .session),
+            reading(69, provider: "claude", name: "Claude", quotaType: .weekly),
+            reading(68, provider: "claude", name: "Claude", quotaType: .modelSpecific("opus")),
+            reading(67, provider: "claude", name: "Claude", quotaType: .modelSpecific("sonnet")),
+            reading(66, provider: "claude", name: "Claude", quotaType: .timeLimit("Monthly")),
+            reading(65, provider: "claude", name: "Claude", quotaType: .timeLimit("Weekly")),
+            reading(90, provider: "codex", name: "Codex", quotaType: .session),
+        ]
+
+        let payload = builder.payload(readings: readings)
+
+        #expect(payload.tile?.metrics.count == 6)
+        #expect(payload.tile?.metrics.allSatisfy { $0.label.hasPrefix("Claude ") } == true)
+    }
+
+    @Test
     func `should label a window with its quota's own short title over 7d`() {
         // A probe that already named the window better than "7d" knows more
         // about it than the quota type does.
@@ -174,6 +205,170 @@ struct NotifyPayloadBuilderTests {
         ])
 
         #expect(payload.tile?.metrics.first?.label == "Spark 7d")
+    }
+
+    // MARK: - The row's arrangement
+
+    @Test
+    func `should leave the row a ranking until the reader asks for fixed positions`() {
+        // The default row is a ranking, and the ranking is the old behaviour.
+        let payload = builder.payload(readings: [
+            reading(80, provider: "codex", name: "Codex", quotaType: .weekly),
+            reading(8, provider: "claude", name: "Claude", quotaType: .session),
+        ])
+
+        #expect(payload.tile?.metrics.map(\.label) == ["Claude 5h", "Codex 7d"])
+    }
+
+    @Test
+    func `should keep a quota where it is when the numbers change`() {
+        // Given a fixed row
+        let before = builder.payload(
+            readings: [
+                reading(80, provider: "claude", name: "Claude", quotaType: .session),
+                reading(40, provider: "claude", name: "Claude", quotaType: .weekly),
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+                reading(30, provider: "codex", name: "Codex", quotaType: .weekly),
+            ],
+            tileOrder: .fixed
+        )
+
+        // When one of them falls a long way
+        let after = builder.payload(
+            readings: [
+                reading(3, provider: "claude", name: "Claude", quotaType: .session),
+                reading(40, provider: "claude", name: "Claude", quotaType: .weekly),
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+                reading(30, provider: "codex", name: "Codex", quotaType: .weekly),
+            ],
+            tileOrder: .fixed
+        )
+
+        // Then the row did not move, and the worst quota still leads the tile
+        #expect(before.tile?.metrics.map(\.label) == [
+            "Claude 5h", "Claude 7d", "Codex 5h", "Codex 7d",
+        ])
+        #expect(after.tile?.metrics.map(\.label) == before.tile?.metrics.map(\.label))
+        #expect(after.tile?.tintHex == criticalTint)
+        #expect(after.tile?.progress == 3)
+    }
+
+    @Test
+    func `should put a provider's short-term window before its weekly one`() {
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "claude", name: "Claude", quotaType: .weekly),
+                reading(70, provider: "claude", name: "Claude", quotaType: .session),
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+            ],
+            tileOrder: .fixed
+        )
+
+        #expect(payload.tile?.metrics.map(\.label) == ["Claude 5h", "Claude 7d", "Codex 5h"])
+    }
+
+    @Test
+    func `should keep each provider's windows together`() {
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "claude", name: "Claude", quotaType: .session),
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+                reading(70, provider: "claude", name: "Claude", quotaType: .weekly),
+                reading(70, provider: "codex", name: "Codex", quotaType: .weekly),
+            ],
+            tileOrder: .fixed
+        )
+
+        #expect(payload.tile?.metrics.map(\.label) == [
+            "Claude 5h", "Claude 7d", "Codex 5h", "Codex 7d",
+        ])
+    }
+
+    @Test
+    func `should show the first six cells of a fixed row`() {
+        let readings = (0..<4).flatMap { index in
+            [
+                reading(70, provider: "p\(index)", name: "P\(index)", quotaType: .session),
+                reading(70, provider: "p\(index)", name: "P\(index)", quotaType: .weekly),
+            ]
+        }
+
+        let payload = builder.payload(readings: readings, tileOrder: .fixed)
+
+        #expect(payload.tile?.metrics.count == 6)
+        #expect(payload.tile?.metrics.map(\.label) == [
+            "P0 5h", "P0 7d", "P1 5h", "P1 7d", "P2 5h", "P2 7d",
+        ])
+    }
+
+    @Test
+    func `should leave an empty cell where a window stopped reporting`() {
+        // Given a row that showed a weekly window last time
+        let previous = [slot("claude", "session", "5h"), slot("claude", "weekly", "7d")]
+
+        // When the weekly window stops reporting
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "claude", name: "Claude", quotaType: .session),
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+            ],
+            tileOrder: .fixed,
+            previousSlots: previous
+        )
+
+        // Then the cell keeps its place, empty
+        #expect(payload.tile?.metrics.map(\.label) == ["Claude 5h", "Claude 7d", "Codex 5h"])
+        #expect(payload.tile?.metrics.map(\.value) == ["70", "—", "70"])
+    }
+
+    @Test
+    func `should drop the empty cell when its provider stops reporting`() {
+        // Given a row that showed a weekly window last time
+        let previous = [slot("claude", "weekly", "7d")]
+
+        // When that provider stops reporting altogether
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "codex", name: "Codex", quotaType: .session),
+                reading(70, provider: "gemini", name: "Gemini", quotaType: .session),
+            ],
+            tileOrder: .fixed,
+            previousSlots: previous
+        )
+
+        // Then the cell goes with it rather than standing empty forever
+        #expect(payload.tile?.metrics.map(\.label) == ["Codex 5h", "Gemini 5h"])
+    }
+
+    @Test
+    func `should fill the empty cell again when the window comes back`() {
+        let previous = [slot("claude", "session", "5h"), slot("claude", "weekly", "7d")]
+
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "claude", name: "Claude", quotaType: .session),
+                reading(40, provider: "claude", name: "Claude", quotaType: .weekly),
+            ],
+            tileOrder: .fixed,
+            previousSlots: previous
+        )
+
+        #expect(payload.tile?.metrics.map(\.value) == ["70", "40"])
+    }
+
+    @Test
+    func `should not let an empty cell take the place of a reading`() {
+        // Given a full row and a window of one of its providers that went away
+        let previous = [slot("p0", "weekly", "7d")]
+        let readings = (0..<6).map { index in
+            reading(70, provider: "p\(index)", name: "P\(index)", quotaType: .session)
+        }
+
+        let payload = builder.payload(readings: readings, tileOrder: .fixed, previousSlots: previous)
+
+        // Then every cell is still a reading
+        #expect(payload.tile?.metrics.count == 6)
+        #expect(payload.tile?.metrics.allSatisfy { $0.value == "70" } == true)
     }
 
     // MARK: - The bar

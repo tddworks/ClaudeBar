@@ -81,6 +81,10 @@ public protocol NotifySettingsRepository: Sendable {
     func notifyGaugeQuotaKey() -> String
     func setNotifyGaugeQuotaKey(_ quotaKey: String)
 
+    /// How the tile's row of quota windows is arranged.
+    func notifyTileOrder() -> NotifyTileOrder
+    func setNotifyTileOrder(_ order: NotifyTileOrder)
+
     /// The handle of the Live Activity ClaudeBar started, so later updates
     /// address that exact tile and never one the user started elsewhere.
     func notifyActivityId() -> String?

@@ -43,14 +43,29 @@ The Home Screen widget is also the newest surface on Notify!'s side, and that sh
 
 **The Lock Screen widget** is the glanceable one, and the only surface with a shape of its own. Its gauge is a single chosen quota: a headline value, a unit, a quieter second line naming the provider and the window, and a `progress` the gateway draws as a bar on the rectangular widget and as a ring on the circular one. The gauge shows whichever quota needs attention most until the user picks a specific one.
 
-Four rules shape what all of that actually says, and all four live in `NotifyPayloadBuilder`:
+Five rules shape what all of that actually says, and all five live in `NotifyPayloadBuilder`:
 
 - **Percentages are remaining, not used.** A 42% quota publishes `progress: 42`. Every other ClaudeBar surface reads that way, and a full ring meaning a full quota is the only intuitive mapping a gauge has.
 - **The worst quota leads.** Readings sort by status severity, then by how little is left. The headline is the first one, and the tile takes its tint, its bar and its countdown from it.
+- **The row's arrangement is the reader's choice.** Worst first is the default, and a fixed arrangement is one setting away. Both arrangements keep the same headline.
 - **Labels drop the provider name when they can.** A tile covering one provider reads `5h 7d`, not `Claude 5h Claude 7d`. The name comes back as soon as a second provider is on show.
 - **Ordering is fully deterministic**, down to a name and quota-key tiebreak. Two payloads built from the same readings must compare equal, or the driver would republish forever.
 
 Money based quotas have no percentage to draw. Their value is the formatted balance with no unit, and the tile's bar falls through to the worst quota that *does* have a percentage, rather than vanishing whenever a credit balance happens to be the headline.
+
+### The row's arrangement
+
+The row of six windows is one flat strip. The gateway draws `metrics` side by side where the body line would go, and it has no notion of a row, a column or a grid, so there is no way to ask it for one provider per line with a short-term quota on the left and a weekly one on the right. What can be arranged is the *order* of the six cells, and that is what `notify.tileOrder` chooses between.
+
+**Worst first** is the default and stays there. The row sorts by status severity and then by how little is left, so the quota that needs attention is the first thing the eye lands on and the row is a ranking. The price is that the row is a ranking of *now* and not a map of *where things usually are*: a quota that falls below its neighbour moves past it, so a person who has learned "Codex 7d is third from the left" has to learn it again every time the numbers move.
+
+**Fixed** arranges the row the other way round: providers in name order, and within a provider the short-term window before the weekly one, so a provider's two quotas sit together and the eye can pair them without reading every label. Nothing in the arrangement depends on a percentage, so a quota moving moves nothing else.
+
+The headline does not change with the arrangement. The tile's tint, its bar and its countdown still come from the worst quota in both, so the number that needs attention is still the one the tile is about, even when it sits in the middle of the row. That matters more than it sounds in a fixed row of more than six windows, where the row has no room for every window: the cell that fell off the end is still the one the tile is coloured and barred for.
+
+A window that stops reporting keeps its cell in a fixed row, as an empty one, so that the cells after it do not slide over. The cell is kept for as long as its provider reports something: a provider that stops reporting altogether has gone, and its cells go with it rather than standing empty forever. `NotifySlot` is what makes this possible. A cell is identified by its provider and its window rather than by its label, so a window that comes back with a different label is still the same cell, and the name the cell wore is remembered so an empty cell can still say which window it stands for. The driver remembers the slots of the tile it last built and hands them to the builder as the cells to keep; the builder decides which of them are still worth keeping, because only it knows the rule.
+
+The row holds six cells, the gateway's ceiling, so a fixed arrangement of more than six windows shows the first six of the arrangement and the rest never appear. A live reading never loses its cell to an empty one: the empty cells take what is left over.
 
 ### Publish cadence
 
@@ -216,6 +231,8 @@ Notify! is a **destination**, not a provider. `QuotaMonitor` remains the single 
 
 Domain holds every decision as pure value types: the device link and its kind, the field limits, the tile and gauge content, the payload builder, the publish gate and the error cases, plus the `@Mockable` `NotifyPublishing` port. Infrastructure has one implementation, `NotifyGatewayClient`. The App layer owns `NotifyPublishDriver`, `QuotaMonitor+NotifyReadings` and `NotifyPane`.
 
+The tile's arrangement is two of those value types: `NotifyTileOrder` is the choice between the two orders, and `NotifySlot` is a cell's identity. The slot rides on `NotifyMetric`, which is what lets the driver read back what the last tile was made of. The gateway is never told about either: `metrics` carries a label, a value, a unit and a colour, and the slot is ClaudeBar's own record of the row rather than part of the content.
+
 The dependency direction is the usual one. Domain declares `NotifyPublishing` and knows nothing about URLs; `NotifyGatewayClient` in Infrastructure is the implementation and the only place `URLRequest` appears; the App layer owns the driver, because that is where `QuotaMonitor` and `AppSettings` both are.
 
 `QuotaMonitor+NotifyReadings.swift` is the seam worth naming. `Account` is main actor isolated and `NotifyPayloadBuilder` takes `Sendable` values, so something has to flatten one into the other, and it has to happen inside the driver's observation read closure. It reads `enabledProviders`, each provider's `snapshot`, and the quotas hanging off it, unconditionally and without caching or filtering, because a property this function skips is a property observation never registers, and a quota that changed afterwards would never reach the phone.
@@ -230,6 +247,7 @@ Settings keys, all under `notify.*` in `~/.claudebar/settings.json`:
 | `notify.widgetEnabled` | Whether the gauge is published. Default `true`. |
 | `notify.screenWidgetEnabled` | Whether the Home Screen tile is published. Default `true`, because a 503 is handled as "not yet" rather than as an error, and shipping it off would mean nobody saw the surface on the day Notify! switched it on. |
 | `notify.gauge.providerId`, `notify.gauge.quotaKey` | Which quota the gauge shows. Both empty means automatic. |
+| `notify.tileOrder` | How the tile's row is arranged: `worstFirst` (the default) or `fixed`. |
 | `notify.activityId`, `notify.widgetId`, `notify.screenWidgetId` | The handles of the Live Activity, the Lock Screen widget and the Home Screen widget ClaudeBar created. |
 
 The device token is the exception and never appears here. It goes to the secure credential store under `CredentialKey.notifyDeviceToken`.
@@ -255,6 +273,8 @@ The Domain tests (`Tests/DomainTests/Alerting/Notify/`) and `NotifyGatewayClient
 Ships behind `notify.enabled`, default off, in Settings under its own Notify! pane. The pane is where the device is linked, any of the three surfaces is switched off, the gauge's quota is chosen, and a publish can be forced. It posts `.notifySettingsChanged` on save, because credentials and the surface handles live outside observable state and the driver has no other way to notice them.
 
 ## Considered and rejected
+
+**One provider per row.** The natural shape for this tile is one line per provider, a short-term quota on the left and a weekly one on the right, and the gateway cannot draw it: `metrics` is a single flat array of at most six cells rendered side by side where the body line goes, and there is no row, column or grid field to send. A fixed *order* is the most of that wish the contract allows, and it is why the setting is an arrangement rather than a layout.
 
 **Send `endsIn` for a live countdown to the reset.** The gateway will happily tick a countdown locally on the device, which sounds strictly better than the static `trailing` text ClaudeBar sends. It was cut because the countdown claims the tile's progress rendering, and the quota needs that bar: a tile cannot show both how much is left and how long until it refills, and the percentage is the thing the app exists for. Two smaller reasons agree. A countdown 30 minutes past its finish is reaped as `overdue`, so every window roll would need an end call and a fresh start, and a fresh start is the one operation subject to push-to-start backoff.
 

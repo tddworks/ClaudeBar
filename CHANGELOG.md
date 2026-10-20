@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The Notify! tile's quota windows can stay where they are**: Settings → Notify! → Tile Order → Fixed positions keeps each provider's windows together and in the same place, instead of reordering the row as the percentages change. The lowest quota still colours the tile. ([#589](https://github.com/tddworks/ClaudeBar/issues/589)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/notify/README.md)
+
 ---
 
 ## [0.5.17] - 2026-10-19

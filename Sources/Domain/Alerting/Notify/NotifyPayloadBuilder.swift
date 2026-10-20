@@ -14,20 +14,30 @@ import Foundation
 /// 1. The worst quota leads. Readings sort by status severity, then by how
 ///    little is left, so the number that needs attention is the headline and
 ///    the tile takes its color and progress bar from it.
-/// 2. The tile carries up to six windows as a metrics row, because six is the
+/// 2. The row's arrangement is the reader's choice: a ranking of the worst
+///    quotas, or a fixed arrangement where each provider's windows sit
+///    together and stay where they are. The headline is the same either way.
+/// 3. The tile carries up to six windows as a metrics row, because six is the
 ///    gateway's ceiling and more than six is unreadable on a Lock Screen.
-/// 3. Labels drop the provider name when every reading comes from the same
+/// 4. Labels drop the provider name when every reading comes from the same
 ///    provider, so a single provider tile reads "5h  7d" rather than
 ///    "Claude 5h  Claude 7d".
-/// 4. Percentages are remaining, not used. Every ClaudeBar surface reads that
+/// 5. Percentages are remaining, not used. Every ClaudeBar surface reads that
 ///    way, and a full bar meaning a full quota is the only intuitive mapping
-///    for a gauge.
+///    a gauge has.
 public struct NotifyPayloadBuilder: Sendable {
     /// The tile and widget title. Both name the sending app rather than the
     /// current quota: the gateway treats a title as an identity, and a widget
     /// that renamed itself whenever the user switched provider would be
     /// unrecognizable in the phone's widget picker.
     public static let defaultTitle = "ClaudeBar"
+
+    /// What a cell shows while the window it stands for is not reporting.
+    ///
+    /// A dash rather than a number, because the gateway requires a value and
+    /// because an empty cell should still read as a cell rather than as a
+    /// gap in the row.
+    static let emptyValue = "—"
 
     private let title: String
 
@@ -41,17 +51,33 @@ public struct NotifyPayloadBuilder: Sendable {
         includesTile: Bool = true,
         includesGauge: Bool = true,
         includesScreenTile: Bool = true,
-        statusPolicy: StatusPolicy = .absolute
+        statusPolicy: StatusPolicy = .absolute,
+        tileOrder: NotifyTileOrder = .worstFirst,
+        previousSlots: [NotifySlot] = []
     ) -> NotifyPayload {
         let ordered = Self.ordered(readings, under: statusPolicy)
         guard let headline = ordered.first else { return .empty }
+
+        let cells = Self.cells(ordered: ordered, order: tileOrder, keeping: previousSlots)
+
+        // The name is dropped when everything ClaudeBar knows about comes from
+        // one provider, not when the cells that fit happen to be one
+        // provider's: a row that names its provider stays a row that names it,
+        // whether the row is a ranking or a fixed arrangement.
+        let omitsProviderName = Set(ordered.map(\.providerId)).count == 1
 
         // The Live Activity and the Home Screen tile are built once and shared.
         // The gateway takes the same body on both routes, so building them twice
         // could only produce two things that were supposed to be identical and
         // one day were not.
         let tile = (includesTile || includesScreenTile)
-            ? self.tile(ordered: ordered, headline: headline, policy: statusPolicy)
+            ? self.tile(
+                cells: cells,
+                omitsProviderName: omitsProviderName,
+                ordered: ordered,
+                headline: headline,
+                policy: statusPolicy
+            )
             : nil
 
         return NotifyPayload(
@@ -87,20 +113,171 @@ public struct NotifyPayloadBuilder: Sendable {
         }
     }
 
+    // MARK: - The row's cells
+
+    /// One cell of the tile's metrics row.
+    private enum Cell {
+        /// A window that is reporting.
+        case reading(NotifyQuotaReading, slot: NotifySlot)
+
+        /// A window that stopped reporting. The cell keeps its place, so the
+        /// cells after it do not slide over.
+        case empty(NotifySlot, providerName: String)
+
+        var slot: NotifySlot {
+            switch self {
+            case .reading(_, let slot): slot
+            case .empty(let slot, _): slot
+            }
+        }
+
+        var providerId: String { slot.providerId }
+    }
+
+    /// The cells of the row, in the order they appear.
+    ///
+    /// `previousSlots` are the cells the tile showed last time, and they are
+    /// what lets a window that stopped reporting keep its place.
+    private static func cells(
+        ordered: [NotifyQuotaReading],
+        order: NotifyTileOrder,
+        keeping previousSlots: [NotifySlot]
+    ) -> [Cell] {
+        switch order {
+        case .worstFirst:
+            return ordered.prefix(NotifyLimits.metricCount).map { .reading($0, slot: Self.slot(for: $0)) }
+        case .fixed:
+            return fixedCells(ordered: ordered, keeping: previousSlots)
+        }
+    }
+
+    /// The cells of a fixed row: providers in name order, and within a
+    /// provider the short-term window before the weekly one.
+    private static func fixedCells(
+        ordered: [NotifyQuotaReading],
+        keeping previousSlots: [NotifySlot]
+    ) -> [Cell] {
+        let names = Dictionary(
+            ordered.map { ($0.providerId, $0.providerName) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        let live = ordered.map { reading in
+            Cell.reading(reading, slot: Self.slot(for: reading))
+        }
+
+        // A cell whose window stopped reporting keeps its place, for as long as
+        // its provider reports something at all. A provider that stopped
+        // reporting has gone, and its cells go with it rather than standing
+        // empty forever.
+        let empty = previousSlots
+            .filter { previous in
+                !live.contains(where: { $0.slot.standsFor(previous) })
+                    && live.contains(where: { $0.providerId == previous.providerId })
+            }
+            .map { previous in
+                Cell.empty(previous, providerName: names[previous.providerId] ?? previous.providerId)
+            }
+
+        let all = (live + empty)
+            .map { (key: arrangementKey(for: $0, names: names), cell: $0) }
+            .sorted { $0.key < $1.key }
+            .map(\.cell)
+
+        // The row holds six cells, the gateway's ceiling. A reading never loses
+        // its cell to an empty one: the empty cells take what is left over.
+        let room = max(0, NotifyLimits.metricCount - live.count)
+        var empties = 0
+        let kept = all.filter { cell in
+            guard case .empty = cell else { return true }
+            defer { empties += 1 }
+            return empties < room
+        }
+
+        return Array(kept.prefix(NotifyLimits.metricCount))
+    }
+
+    /// The cell a reading stands for.
+    private static func slot(for reading: NotifyQuotaReading) -> NotifySlot {
+        NotifySlot(
+            providerId: reading.providerId,
+            quotaKey: reading.quota.quotaType.quotaKey,
+            windowLabel: Self.windowLabel(for: reading.quota)
+        )
+    }
+
+    /// What a fixed row is arranged by.
+    ///
+    /// The provider's name, then where the window sits among its provider's
+    /// windows, then the window's own key, and last the value the cell shows.
+    /// The last one is there so that two cells which would look the same come
+    /// back in the same order every time, which is what keeps two payloads
+    /// built from the same readings equal.
+    private static func arrangementKey(
+        for cell: Cell,
+        names: [String: String]
+    ) -> (String, Int, String, String, String, String) {
+        let slot = cell.slot
+        let value: String
+        switch cell {
+        case .reading(let reading, _): value = Self.headlineValue(for: reading.quota)
+        case .empty: value = emptyValue
+        }
+        return (
+            names[slot.providerId] ?? "",
+            windowRank(quotaKey: slot.quotaKey),
+            slot.quotaKey,
+            slot.providerId,
+            slot.windowLabel,
+            value
+        )
+    }
+
+    /// Where a window sits among its provider's windows: the short-term one
+    /// before the weekly one, and anything else after both.
+    ///
+    /// The rank comes from the window's key rather than from its quota type,
+    /// because a cell whose window stopped reporting has a key and no type.
+    private static func windowRank(quotaKey: String) -> Int {
+        if quotaKey == QuotaType.session.quotaKey { return 0 }
+        if quotaKey == QuotaType.weekly.quotaKey { return 1 }
+        if quotaKey.hasPrefix("model:") { return 2 }
+        return 3
+    }
+
     // MARK: - Tile
 
-    private func tile(ordered: [NotifyQuotaReading], headline: NotifyQuotaReading, policy: StatusPolicy) -> NotifyTile? {
-        let omitsProviderName = Set(ordered.map(\.providerId)).count == 1
-        let metrics = ordered
-            .prefix(NotifyLimits.metricCount)
-            .compactMap { reading in
-                NotifyMetric(
+    private func tile(
+        cells: [Cell],
+        omitsProviderName: Bool,
+        ordered: [NotifyQuotaReading],
+        headline: NotifyQuotaReading,
+        policy: StatusPolicy
+    ) -> NotifyTile? {
+        let metrics = cells.compactMap { cell -> NotifyMetric? in
+            switch cell {
+            case .reading(let reading, let slot):
+                return NotifyMetric(
+                    slot: slot,
                     label: Self.label(for: reading, omittingProviderName: omitsProviderName),
                     value: Self.headlineValue(for: reading.quota),
                     unit: Self.unit(for: reading.quota),
                     tintHex: reading.quota.status(under: policy).notifyTintHex
                 )
+            case .empty(let slot, let providerName):
+                return NotifyMetric(
+                    slot: slot,
+                    label: Self.label(
+                        for: slot,
+                        providerName: providerName,
+                        omittingProviderName: omitsProviderName
+                    ),
+                    value: Self.emptyValue,
+                    unit: nil,
+                    tintHex: nil
+                )
             }
+        }
 
         return NotifyTile(
             title: title,
@@ -154,6 +331,13 @@ public struct NotifyPayloadBuilder: Sendable {
         let window = Self.windowLabel(for: reading.quota)
         guard !omittingProviderName else { return window }
         return "\(reading.providerName) \(window)"
+    }
+
+    /// The label of a cell whose window stopped reporting: the same words the
+    /// cell wore while the window was reporting.
+    static func label(for slot: NotifySlot, providerName: String, omittingProviderName: Bool) -> String {
+        guard !omittingProviderName else { return slot.windowLabel }
+        return "\(providerName) \(slot.windowLabel)"
     }
 
     /// The quota's own short title when its probe set one, otherwise the

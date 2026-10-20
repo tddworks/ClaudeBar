@@ -672,6 +672,18 @@ public final class JSONSettingsRepository:
         store.write(value: quotaKey, key: "notify.gauge.quotaKey")
     }
 
+    /// A word this version does not know falls back to the default rather than
+    /// to nothing, so a settings file written by a newer ClaudeBar still
+    /// arranges its row.
+    public func notifyTileOrder() -> NotifyTileOrder {
+        guard let raw: String = store.read(key: "notify.tileOrder") else { return .worstFirst }
+        return NotifyTileOrder(rawValue: raw) ?? .worstFirst
+    }
+
+    public func setNotifyTileOrder(_ order: NotifyTileOrder) {
+        store.write(value: order.rawValue, key: "notify.tileOrder")
+    }
+
     public func notifyActivityId() -> String? {
         store.read(key: "notify.activityId")
     }

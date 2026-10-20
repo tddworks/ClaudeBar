@@ -14,7 +14,14 @@ There are three surfaces, and each can be switched off on its own:
 | **Lock Screen widget** | One quota as a gauge: a bar on the rectangular widget, a ring on the circular one | When iOS redraws widgets, about every 15 minutes |
 | **Home Screen widget** | The same content as the Live Activity, but it stays where you put it | When iOS redraws widgets, about every 15 minutes |
 
-Percentages are **remaining**, so a full ring means a full quota. The worst quota leads. Credit-based quotas show their balance instead of a percentage.
+Percentages are **remaining**, so a full ring means a full quota. The worst quota leads: it is the one the tile is coloured and barred for. Credit-based quotas show their balance instead of a percentage.
+
+The windows themselves can be arranged two ways, under **Tile order** in Settings → Notify!:
+
+| Order | What it does |
+|---|---|
+| **Lowest first** (the default) | The quota with the least left comes first, and the row moves as the numbers move. |
+| **Fixed positions** | Each provider's windows sit together and stay where they are, so you learn where to look once. A window that stops reporting keeps its place as an empty one. |
 
 ## Setup
 
@@ -31,6 +38,7 @@ Then set up the surfaces:
 
 - **Live Activity**, **Lock Screen widget** and **Home Screen widget** are on by default once publishing is on. Turn off any you don't want.
 - **Gauge provider** / **Gauge quota** choose what the Lock Screen widget shows. **Automatic** shows whichever quota needs attention most.
+- **Tile order** chooses how the quota windows are arranged on the Live Activity and the Home Screen widget. **Lowest first** ranks them; **Fixed positions** keeps each provider's windows together and in the same place.
 - **Home Screen widget**: needs a recent Notify! version. In Notify!, turn it on under **Settings → Home Screen Widgets**. Creating it puts nothing on screen by itself. Add it from iOS's own widget picker, as you would any widget.
 - Add the Lock Screen widget from iOS's Lock Screen editor.
 
