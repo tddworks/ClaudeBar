@@ -32,7 +32,7 @@ function read(response) {
             if (object(b) && typeof b.bucketId === 'string' && !(b.bucketId in byId)) byId[b.bucketId] = b;
         }
         const specs = [['gemini-5h', {type: 'session', windowSeconds: 18000}], ['gemini-weekly', {type: 'weekly', windowSeconds: 604800}],
-                       ['3p-5h', {type: 'model', name: 'Claude', windowSeconds: 18000}], ['3p-weekly', {type: 'model', name: 'Claude Weekly', windowSeconds: 604800}]];
+                       ['3p-5h', {type: 'model', name: 'Claude 5h', windowSeconds: 18000}], ['3p-weekly', {type: 'model', name: 'Claude 7d', windowSeconds: 604800}]];
         for (const [id, fields] of specs) {
             const b = byId[id];
             if (!b || typeof b.remainingFraction !== 'number' || !Number.isFinite(b.remainingFraction)) continue;

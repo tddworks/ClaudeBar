@@ -46,16 +46,16 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 `RetrieveUserQuotaSummary` is the only endpoint that reports both pools with both windows. It accepts the language-server envelope `{"response":{"groups":…}}` and the bare Cloud Code `{"groups":…}`. Buckets are matched by exact `bucketId`:
 
-| bucketId | Quota type | Group | Card title | Menu bar |
-|---|---|---|---|---|
-| `gemini-5h` | session | Gemini | 5h | Gemini |
-| `gemini-weekly` | weekly | Gemini | 7d | Gemini Weekly |
-| `3p-5h` | model "Claude" | Claude & others | 5h | Claude |
-| `3p-weekly` | model "Claude Weekly" | Claude & others | 7d | Claude Weekly |
+| bucketId | Quota type | Card title | Menu bar |
+|---|---|---|---|
+| `gemini-5h` | session | Session | 5h |
+| `gemini-weekly` | weekly | Weekly | 7d |
+| `3p-5h` | model "Claude 5h" | Claude 5h | Claude 5h |
+| `3p-weekly` | model "Claude 7d" | Claude 7d | Claude 7d |
 
 - Buckets without a usable `remainingFraction` are dropped rather than reported as 0%. The legacy per-model parsers do the opposite: a missing `remainingFraction` there means the quota is used up.
 - If the result isn't a summary at all, fall back to the legacy endpoints. A parsed summary, even an empty one, is final.
-- `menuBarTitle` was added so the Gemini pool reads "Gemini / Gemini Weekly" in the menu bar like the Claude pool, instead of `5h` / `7d` (#278). The quota types and saved keys didn't change.
+- **The third-party pool's names carry their window** — "Claude 5h" and "Claude 7d", not "Claude" and "Claude Weekly". A window's name is the only thing that says which window it is when several of them sit side by side, which is what the Notify! tile does (#589): "Antigravity Claude" beside "Antigravity 7d" is a name that cannot be told from the weekly one at a glance. The window is in the name because the name is what every surface shows.
 
 ## Known limits
 
