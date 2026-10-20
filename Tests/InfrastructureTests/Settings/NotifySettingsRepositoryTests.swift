@@ -247,6 +247,10 @@ struct NotifySettingsRepositoryTests {
         defer { cleanup(fixture) }
 
         // A settings file written by a newer ClaudeBar still arranges its row.
+        try FileManager.default.createDirectory(
+            at: fixture.settingsURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         let raw = try JSONSerialization.data(withJSONObject: ["notify": ["tileOrder": "someNewArrangement"]])
         try raw.write(to: fixture.settingsURL)
 
