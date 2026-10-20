@@ -28,15 +28,16 @@ public struct InsecureLocalhostNetworkClient: NetworkClient {
 
 }
 
-/// URLSession delegate that accepts self-signed certificates for localhost.
+/// URLSession delegate that accepts self-signed certificates for localhost,
+/// and follows a redirect only within the same local server — the loopback
+/// pinning of the one same-origin rule (`SameOriginRedirectDelegate`).
 final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
                     completionHandler: @escaping (URLRequest?) -> Void) {
         guard let original = task.originalRequest?.url, let target = request.url,
               InsecureLocalhostNetworkClient.isLoopback(target),
-              target.scheme?.lowercased() == original.scheme?.lowercased(),
-              target.host?.lowercased() == original.host?.lowercased(), target.port == original.port else {
+              SameOriginRedirectDelegate.sameOrigin(from: original, to: target) else {
             completionHandler(nil)
             return
         }
