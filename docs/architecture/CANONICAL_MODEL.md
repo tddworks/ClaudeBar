@@ -442,7 +442,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | at most one refresh per account is in flight | `Provider` |
 | exactly one data source is active per provider; switching never loses settings the other one needs | `Provider.dataSources` |
 | a data source reads settings only through its form; it never writes settings and never reads another provider's | `DataSource` · `SettingsForm` |
-| a secret never appears in `settings.json`, a log line, an error message or a test fixture — the form holds a reference, the vault the value, and the vault falls back when the Keychain refuses an ad-hoc build | `Setting` · `SecretVault` |
+| a secret never appears in `settings.json`, a log line, an error message or a test fixture — the form holds a reference, the vault the value, and the vault falls back when the Keychain refuses an ad-hoc build; the log holds no credential however it arrived: `DataSource` registers every credential it touches, `AppLog` scrubs every line before a sink sees it | `Setting` · `SecretVault` · `DataSource` · `AppLog` |
 | **`left` is ONE OF TWO**: a share, or money. A balance with no ceiling has NO percentage — writing 100% is a lie the status then believes | `Quota.left` |
 | money keeps its currency; two currencies are never added or compared | `Money` |
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
@@ -463,7 +463,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | two logins of a provider never share a path setting — the default login's included | `Provider.accounts` |
 | a worker reports a fact (a status, an exit code, a missing CLI) and the definition's `errors` says what it means, in a reason the screen prints — never from the response body or a secret; a 429 stays a rate limit | `DataSource` · `DataSourceError` |
 | a credential is looked up in the order the definition gives; the first that answers wins, and a refreshed token is written back where it was found | `CredentialLookup` |
-| **a credential travels only to the origin its fetch names** — a redirect that leaves it (another host, port or scheme) is not followed, and the 3xx itself becomes the answer; the credential is never re-sent to a server the fetch didn't name | `Fetch` (the network connection) |
+| **a fetch keeps to the origin it named** — a redirect that leaves it (another host, port or scheme) is not followed, key or no key, and the 3xx itself becomes the answer; a credential is never re-sent to a server the fetch didn't name | `NetworkClient` |
 | when the active data source fails, its `fallback` is tried once; what the popover shows says which one answered. A signed-out login (*Authentication required*, *Session expired*) is not tried again on a fallback that reads the same login (`fallback.sameLogin`, #525) | `Provider` |
 | a data source held until checked (`verifyBeforeBackground`, #216) starts nothing in the background until a click succeeds; a signed-out answer holds it back again (#525). It holds the default login: an added login is checked by being added, and never marks or forgets the default's check | `Provider` |
 | a definition is valid before it is saved: a fetch, a mapping that produced at least one quota or a cost on Test, and every required setting filled | `ProviderDefinition` |

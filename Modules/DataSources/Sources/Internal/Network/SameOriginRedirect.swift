@@ -3,12 +3,12 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// The network's one law: **a credential travels only to the origin its fetch
-/// names** ([CANONICAL_MODEL §5](../../../../../docs/architecture/CANONICAL_MODEL.md)).
+/// The network's one law: **a fetch keeps to the origin it named**
+/// ([CANONICAL_MODEL §5](../../../../../docs/architecture/CANONICAL_MODEL.md)).
 /// A redirect that leaves it — another host, port or scheme — is refused, so
 /// an `Authorization` header or a token-carving URL is never re-sent to a
-/// server the fetch didn't name. Refusing (not erroring) hands the 3xx back,
-/// and the fetcher words it as any other status.
+/// server the fetch didn't name, key or no key. Refusing (not erroring)
+/// hands the 3xx back, and the fetcher words it as any other status.
 final class SameOriginRedirectDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
@@ -35,13 +35,19 @@ final class SameOriginRedirectDelegate: NSObject, URLSessionTaskDelegate {
     }
 }
 
-/// The remote network every fetch shares: `URLSession` with the one law above.
-/// Local-server fetches keep their own client (`InsecureLocalhostNetworkClient`),
-/// whose redirect rule is this one, pinned to the loopback.
-struct OriginPinnedNetworkClient: NetworkClient {
+/// The remote network every fetch shares: one `URLSession`, built once, whose
+/// redirects never leave the origin (the law above). Local-server fetches
+/// keep their own client (`InsecureLocalhostNetworkClient`), whose redirect
+/// rule is this one, pinned to the loopback.
+struct SameOriginRedirectClient: NetworkClient {
+    /// Shared, like the `URLSession.shared` it replaced: a session holds its
+    /// delegate strongly, and a fetch is made per login and per test, so a
+    /// client built on each `make` would only pile sessions up.
+    static let shared = SameOriginRedirectClient()
+
     private let session: URLSession
 
-    init() {
+    private init() {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60

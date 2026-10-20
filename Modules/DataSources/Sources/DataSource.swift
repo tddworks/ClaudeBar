@@ -157,8 +157,20 @@ public struct DataSource: Sendable {
     }
 
     private static func withoutSecrets(_ values: [String: String]) -> [String: String] {
-        let secret: Set = ["token", "refreshToken", "idToken"]
-        return values.filter { !secret.contains($0.key) }
+        values.filter { !secretFields.contains($0.key) }
+    }
+
+    /// The fields a credential keeps to itself.
+    private static let secretFields: Set = ["token", "refreshToken", "idToken"]
+
+    /// Every credential the fetch touches registers its secret fields with
+    /// the log's scrubber — the one place the law is held, whatever lookup
+    /// found it and whatever refresh renewed it ([CANONICAL_MODEL §5]).
+    private func registering(_ credential: Credential) -> Credential {
+        for (name, value) in credential.values where Self.secretFields.contains(name) {
+            SecretRedactor.register(value)
+        }
+        return credential
     }
 
     private func read(_ field: IdentityField, credential: Credential?) -> String? {
@@ -248,17 +260,19 @@ public struct DataSource: Sendable {
         } catch {
             throw DataSourceError.wrap(error, as: .lookup)
         }
-        guard let found else {
+        guard var found else {
             throw DataSourceError(.lookup, .authenticationRequired)
         }
+        found.credential = registering(found.credential)
         return found
     }
 
     /// The credential looked up again, when its token is no longer `current`'s.
     private func rotated(since current: FoundCredential) -> FoundCredential? {
-        guard let fresh = try? credentials?.find(),
+        guard var fresh = try? credentials?.find(),
               fresh.credential.token != current.credential.token else { return nil }
         AppLog.probes.info("\(providerId) \(kind): the credential changed on disk; using the new one")
+        fresh.credential = registering(fresh.credential)
         return fresh
     }
 
@@ -267,12 +281,13 @@ public struct DataSource: Sendable {
     private func refreshed(_ found: FoundCredential, by refresher: any CredentialRefreshing) async throws -> FoundCredential {
         var renewed = found
         do {
-            renewed.credential = try await refresher.refresh(found.credential)
+            renewed.credential = registering(try await refresher.refresh(found.credential))
         } catch {
             throw DataSourceError.wrap(error, as: .lookup)
         }
         guard refresher.writesBack else {
-            guard let reread = try? credentials?.find() else { throw DataSourceError(.lookup, .authenticationRequired) }
+            guard var reread = try? credentials?.find() else { throw DataSourceError(.lookup, .authenticationRequired) }
+            reread.credential = registering(reread.credential)
             return reread
         }
         renewed.save?(renewed.credential)

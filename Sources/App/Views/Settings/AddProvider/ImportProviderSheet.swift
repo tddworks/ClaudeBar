@@ -1,6 +1,5 @@
 import SwiftUI
 import DataSources
-import Diagnostics
 import Domain
 import Infrastructure
 import Providers
@@ -171,15 +170,11 @@ struct ImportProviderSheet: View {
     }
 }
 
-/// The keys typed while reviewing, for *Test Connection* before anything is
-/// saved. Each one registers with the log's scrubber, so a failed test can't
-/// write it into the file log.
+/// The keys typed while reviewing, for *Test Connection* before anything is saved.
 private struct TypedKeys: SecretStore {
     let values: [String: String]
 
     func secret(_ name: String, provider: String) -> String? {
-        guard let value = values[name], !value.isEmpty else { return nil }
-        SecretRedactor.registerCredential(value)
-        return value
+        values[name].flatMap { $0.isEmpty ? nil : $0 }
     }
 }

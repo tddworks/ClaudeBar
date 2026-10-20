@@ -1,6 +1,5 @@
 import Foundation
 import Security
-import Diagnostics
 import Domain
 
 /// Stores sensitive credentials as generic-password items in the user's Keychain.
@@ -16,10 +15,8 @@ public final class KeychainCredentialRepository: CredentialRepository, @unchecke
         self.service = service
     }
 
-    /// Saves or replaces a credential without logging its value. The value
-    /// registers with the log's scrubber, so no line can carry it.
+    /// Saves or replaces a credential without logging its value.
     public func save(_ value: String, forKey key: String) {
-        SecretRedactor.registerCredential(value)
         let data = Data(value.utf8)
         let query = baseQuery(forKey: key)
         let update: [CFString: Any] = [kSecValueData: data]
@@ -61,9 +58,7 @@ public final class KeychainCredentialRepository: CredentialRepository, @unchecke
         guard let data = result as? Data else {
             return nil
         }
-        guard let value = String(data: data, encoding: .utf8) else { return nil }
-        SecretRedactor.registerCredential(value)
-        return value
+        return String(data: data, encoding: .utf8)
     }
 
     /// Deletes a credential from Keychain and reports whether it is absent.
