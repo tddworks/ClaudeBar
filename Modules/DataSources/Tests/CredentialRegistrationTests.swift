@@ -28,7 +28,7 @@ struct CredentialRegistrationTests {
           "mapping": { "json": { "quotas": [] } } }
         """.utf8))
         let network = MockNetworkClient()
-        given(network).request(.matching { @Sendable in true })
+        given(network).request(.matching { @Sendable _ in true })
             .willReturn((Data("{}".utf8), HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
         return DataSources.make(
             definition, providerId: "acme",
@@ -58,7 +58,7 @@ struct CredentialRegistrationTests {
         _ = try await source.fetchResponse()
 
         logger.error("Network error: token \(key) rejected")
-        #expect(sink.messages.map(\.message) == ["Network error: token [redacted] rejected"])
+        #expect(sink.messages == ["Network error: token [redacted] rejected"])
     }
 }
 
