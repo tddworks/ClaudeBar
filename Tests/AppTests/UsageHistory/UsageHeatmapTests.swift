@@ -85,7 +85,7 @@ struct UsageHeatmapTests {
         let heatmap = UsageHeatmap(days, calendar: calendar)
         let october = calendar.date(from: DateComponents(year: 2024, month: 10))!
 
-        #expect(!heatmap.monthMarks.contains(october))
+        #expect(!heatmap.monthMarks.contains { $0.month == october })
         #expect(heatmap.monthMarks.contains { calendar.component(.month, from: $0.month) == 11 })
     }
 
@@ -99,7 +99,7 @@ struct UsageHeatmapTests {
         let heatmap = UsageHeatmap(days, calendar: calendar)
         let october = calendar.date(from: DateComponents(year: 2024, month: 10))!
 
-        #expect(heatmap.monthMarks.contains(october))
+        #expect(heatmap.monthMarks.contains { $0.month == october })
     }
 
     @Test @MainActor func `should fit a year's heatmap inside the popover at every text size`() throws {
