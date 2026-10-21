@@ -77,6 +77,12 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
             return
         }
 
+        // The Keychain can hold an older URL and still refuse this write, and
+        // `webhookURL(forRule:)` reads the secure store first — so the stale
+        // value would shadow the new one in the fallback and the rule would
+        // keep POSTing to the endpoint the person replaced. Clear it, then keep
+        // the URL the person just gave.
+        _ = secureCredentials.delete(forKey: key)
         AppLog.credentials.warning(
             "A rule's webhook URL could not be stored in the Keychain, keeping it in the app credential store instead"
         )
