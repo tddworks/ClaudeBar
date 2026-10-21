@@ -41,7 +41,7 @@ Streak(of: days, under: .atMost(20))                   // days under a ceiling
 | a **day's shade** | how full a day is against the range's busiest — the heatmap's cell |
 | the **mix** | one line per model over the range, largest first, the unnamed line among them so the mix adds up |
 | a **streak** | the most recent days of a range, each under a ceiling the person set |
-| a **breach** | a day at or above the ceiling; an empty day is never one |
+| a **breach** | a day above the ceiling; an empty day is never one |
 
 The unnamed line is the records a log writes with no model. It is not a model
 (`Days.models` leaves it out), but it is part of the mix and part of a day, so
