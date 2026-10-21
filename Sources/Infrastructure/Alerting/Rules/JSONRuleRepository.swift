@@ -22,7 +22,7 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
     public init(
         fileURL: URL? = nil,
         secureCredentials: any CredentialRepository = KeychainCredentialRepository.shared,
-        fallbackCredentials: any CredentialRepository? = nil
+        fallbackCredentials: (any CredentialRepository)? = nil
     ) {
         self.fileURL = fileURL ?? Self.defaultFileURL()
         self.secureCredentials = secureCredentials
