@@ -40,6 +40,15 @@ enum QuotaCardText {
         }
     }
 
+    /// The forecast sentence under a quota's *Resets in…* line: when this
+    /// window runs out at the average pace it has been spent, against when it
+    /// refills — *Runs out in 38m — 34m before it resets*, or *Lasts until it
+    /// resets*. *No forecast yet* when there is nothing honest to project
+    /// (CANONICAL_MODEL §5).
+    static func forecastLine(for quota: UsageQuota) -> String {
+        quota.forecast?.summary ?? Forecast.noForecast
+    }
+
     /// A budget's status as a phrase under its amount ("On track"), not a badge.
     static func budgetPhrase(_ status: BudgetStatus) -> String {
         let words = status.badgeText.lowercased()

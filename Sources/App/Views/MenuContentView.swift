@@ -1879,6 +1879,14 @@ struct WrappedStatCard: View {
             } else if showsPaceBadge {
                 HStack { Spacer(); PaceBadge(pace: quota.pace) }
             }
+
+            // The forecast, under the reset countdown: when this window runs
+            // out at its average pace, against when it refills. A quota with
+            // no window (a prepaid balance) has nothing to project and keeps
+            // its card as it was.
+            if showsReset, quota.window != nil {
+                forecastLine(QuotaCardText.forecastLine(for: quota))
+            }
         }
         .padding(12)
         .background(
@@ -1934,6 +1942,23 @@ struct WrappedStatCard: View {
                 .foregroundStyle(theme.textTertiary)
             resetLine(line)
         }
+    }
+
+    /// The forecast sentence under the reset line — "Runs out in 38m — 34m
+    /// before it resets". Muted, one row, and it carries *at this pace* as its
+    /// tooltip: the number is the window's average, never a promise.
+    private func forecastLine(_ text: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "hourglass")
+                .popoverFont(7)
+                .foregroundStyle(theme.textTertiary)
+
+            Text(text)
+                .font(theme.font(size: 8, weight: .medium))
+                .foregroundStyle(theme.textTertiary)
+        }
+        .lineLimit(1)
+        .help(Forecast.paceQualifier)
     }
 
     /// The reset time and, on the right, the pace badge, on one row.
