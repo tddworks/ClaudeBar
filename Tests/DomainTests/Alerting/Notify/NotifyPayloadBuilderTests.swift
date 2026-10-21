@@ -285,6 +285,26 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
+    func `should keep each provider's windows together when two providers share a name`() {
+        let payload = builder.payload(
+            readings: [
+                reading(70, provider: "codex-work", name: "Codex", quotaType: .session),
+                reading(70, provider: "codex-home", name: "Codex", quotaType: .session),
+                reading(70, provider: "codex-work", name: "Codex", quotaType: .weekly),
+                reading(70, provider: "codex-home", name: "Codex", quotaType: .weekly),
+            ],
+            tileOrder: .fixed
+        )
+
+        #expect(payload.tile?.metrics.map(\.slot.providerId) == [
+            "codex-home", "codex-home", "codex-work", "codex-work",
+        ])
+        #expect(payload.tile?.metrics.map(\.label) == [
+            "Codex 5h", "Codex 7d", "Codex 5h", "Codex 7d",
+        ])
+    }
+
+    @Test
     func `should show the first six cells of a fixed row`() {
         let readings = (0..<4).flatMap { index in
             [

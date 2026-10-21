@@ -208,15 +208,17 @@ public struct NotifyPayloadBuilder: Sendable {
 
     /// What a fixed row is arranged by.
     ///
-    /// The provider's name, then where the window sits among its provider's
-    /// windows, then the window's own key, and last the value the cell shows.
+    /// The provider's name, then the provider itself, so two providers that
+    /// share a name don't interleave their windows; then where the window sits
+    /// among its provider's windows, the window's own key, and last the value
+    /// the cell shows.
     /// The last one is there so that two cells which would look the same come
     /// back in the same order every time, which is what keeps two payloads
     /// built from the same readings equal.
     private static func arrangementKey(
         for cell: Cell,
         names: [String: String]
-    ) -> (String, Int, String, String, String, String) {
+    ) -> (String, String, Int, String, String, String) {
         let slot = cell.slot
         let value: String
         switch cell {
@@ -225,9 +227,9 @@ public struct NotifyPayloadBuilder: Sendable {
         }
         return (
             names[slot.providerId] ?? "",
+            slot.providerId,
             windowRank(quotaKey: slot.quotaKey),
             slot.quotaKey,
-            slot.providerId,
             slot.windowLabel,
             value
         )

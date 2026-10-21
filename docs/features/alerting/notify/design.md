@@ -59,7 +59,7 @@ The row of six windows is one flat strip. The gateway draws `metrics` side by si
 
 **Worst first** is the default and stays there. The row sorts by status severity and then by how little is left, so the quota that needs attention is the first thing the eye lands on and the row is a ranking. The price is that the row is a ranking of *now* and not a map of *where things usually are*: a quota that falls below its neighbour moves past it, so a person who has learned "Codex 7d is third from the left" has to learn it again every time the numbers move.
 
-**Fixed** arranges the row the other way round: providers in name order, and within a provider the short-term window before the weekly one, so a provider's two quotas sit together and the eye can pair them without reading every label. Nothing in the arrangement depends on a percentage, so a quota moving moves nothing else.
+**Fixed** arranges the row the other way round: providers in name order (two that share a name, such as two logins, still each keep their windows together), and within a provider the short-term window before the weekly one, so a provider's two quotas sit together and the eye can pair them without reading every label. Nothing in the arrangement depends on a percentage, so a quota moving moves nothing else.
 
 The headline does not change with the arrangement. The tile's tint, its bar and its countdown still come from the worst quota in both, so the number that needs attention is still the one the tile is about, even when it sits in the middle of the row. That matters more than it sounds in a fixed row of more than six windows, where the row has no room for every window: the cell that fell off the end is still the one the tile is coloured and barred for.
 
