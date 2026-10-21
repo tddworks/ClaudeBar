@@ -29,6 +29,14 @@ struct ClaudeBarApp: App {
     /// *Quota alerts* — the person's own percentages (#68).
     @State private var quotaAlerts: QuotaAlerts
 
+    /// *Rules* — the person's own condition on a quota status and their own
+    /// webhook, kept apart from the providers' settings.
+    @State private var ruleSet: RuleSet
+
+    /// Carries a rule's action out. The pane's *Try it* goes through it, so a
+    /// press and a background crossing share one path.
+    private let ruleEngine: RuleEngine
+
     /// Monitors Claude Code sessions via hook events
     @State private var sessionMonitor: SessionMonitor
 
@@ -150,6 +158,17 @@ struct ClaudeBarApp: App {
         monitor.onRefreshed { [weak monitor] refreshed in
             guard let monitor else { return }
             await quotaAlerts.review(refreshed.id, named: monitor.lineupName(of: refreshed), usage: monitor.usage(of: refreshed))
+        }
+        // *Rules* follow every refresh too: the person's own condition and their
+        // own webhook, in their own file — never a provider's settings.
+        let ruleRepository = JSONRuleRepository.shared
+        let ruleSet = RuleSet(repository: ruleRepository)
+        self.ruleSet = ruleSet
+        let ruleEngine = RuleEngine(set: ruleSet, sender: WebhookClient(repository: ruleRepository))
+        self.ruleEngine = ruleEngine
+        monitor.onRefreshed { [weak monitor] refreshed in
+            guard let monitor else { return }
+            await ruleEngine.review(monitor.ruleLogin(refreshed), under: monitor.statusPolicy)
         }
         AppLog.monitor.info("QuotaMonitor initialized")
 
@@ -394,13 +413,13 @@ struct ClaudeBarApp: App {
         Window("ClaudeBar Settings", id: "settings") {
             Group {
                 #if ENABLE_SPARKLE
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard, ruleSet: ruleSet, ruleEngine: ruleEngine) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard, ruleSet: ruleSet, ruleEngine: ruleEngine) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
