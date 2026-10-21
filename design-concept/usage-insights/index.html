@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage Insights — Mockup</title>
+<style>
+:root{--paper:#F6F3FB;--ink:#1E1B2E;--muted:#6B6580;--faint:#9A93AE;--card:#fff;--hair:#E4DEEF;--healthy:#2E9E62;--low:#D64545;--cost:#E0A800;--tokens:#2E9E62;--time:#8E5BD6;--heat:#2E9E62}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+h2{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sub{margin:6px 0 0;color:var(--muted);max-width:820px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:12px;color:var(--muted);max-width:420px}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;background:#DFF3E7;color:var(--healthy)}
+
+/* The popover, drawn in the app's light theme. --s is the Popover Text Size
+   scale (1, 1.2, 1.4); the width grows with it, as in the app (400 × scale). */
+.pop{--s:1;width:calc(400px * var(--s));background:linear-gradient(180deg,#FBF8FF,#F3EEFA);border:1px solid var(--hair);border-radius:16px;padding:calc(14px * var(--s));display:flex;flex-direction:column;gap:calc(10px * var(--s));box-shadow:0 18px 36px rgba(30,27,46,.12)}
+.pop.xl{--s:1.4}
+.card{background:rgba(255,255,255,.75);border:1px solid var(--hair);border-radius:12px;padding:calc(12px * var(--s));display:flex;flex-direction:column;gap:calc(6px * var(--s));min-width:0}
+.cardhead{display:flex;align-items:baseline;gap:6px}
+.cardhead .t{font-size:calc(8px * var(--s));font-weight:500;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:5px}
+.cardhead .t .dot{width:calc(9px * var(--s));height:calc(9px * var(--s));border-radius:50%;background:var(--heat)}
+.cardhead .n{margin-left:auto;text-align:right}
+.cardhead .n b{display:block;font:700 calc(13px * var(--s))/1.1 "SF Pro Rounded",-apple-system,system-ui}
+.cardhead .n span{font-size:calc(8px * var(--s));font-weight:500;color:var(--faint)}
+.section{display:flex;align-items:center;gap:6px;font-size:calc(9px * var(--s));font-weight:600;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:calc(10px * var(--s))}
+.quota{font-size:calc(11px * var(--s))}
+.bar{height:calc(5px * var(--s));border-radius:3px;background:#ECE6F5;overflow:hidden}
+.bar div{height:100%;border-radius:3px}
+/* The heatmap: a column a week, seven rows a week, the year at a glance. */
+.heat{display:flex;flex-direction:column;gap:calc(3px * var(--s))}
+.heat .months{display:grid;font-size:calc(7px * var(--s));color:var(--faint);height:calc(9px * var(--s))}
+.heat .body{display:flex;gap:calc(1.5px * var(--s))}
+.heat .col{display:flex;flex-direction:column;gap:calc(1.5px * var(--s))}
+.heat .cell{width:calc(5px * var(--s));height:calc(5px * var(--s));border-radius:calc(1.5px * var(--s));background:#ECE6F5}
+.heat .l1{background:color-mix(in srgb,var(--heat) 25%,#ECE6F5)}
+.heat .l2{background:color-mix(in srgb,var(--heat) 45%,#ECE6F5)}
+.heat .l3{background:color-mix(in srgb,var(--heat) 70%,#ECE6F5)}
+.heat .l4{background:var(--heat)}
+.legend{display:flex;align-items:center;gap:4px;font-size:calc(8px * var(--s));color:var(--faint);margin-left:auto}
+.legend .cell{width:calc(5px * var(--s));height:calc(5px * var(--s));border-radius:2px}
+/* The model mix: a stacked bar and a row a model. */
+.mixbar{display:flex;height:calc(8px * var(--s));border-radius:4px;overflow:hidden;background:#ECE6F5}
+.mixbar div{height:100%}
+.mixrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:6px;font-size:calc(9px * var(--s))}
+.mixrow .m{display:flex;align-items:center;gap:4px;color:var(--muted);min-width:0}
+.mixrow .m i{width:calc(6px * var(--s));height:calc(6px * var(--s));border-radius:50%;flex:none}
+.mixrow .v{font-weight:600}
+.mixrow .p{color:var(--faint);min-width:calc(30px * var(--s));text-align:right}
+.note{font-size:calc(8px * var(--s));color:var(--faint)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#16141F;--ink:#ECE9F5;--muted:#A49DB8;--card:#211E2E;--hair:#34304A}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Usage insights</h1>
+    <p class="sub">Beyond <i>day by day</i>: the year at a glance, which models you lean on, and what the cache saved. Every number is read from the range of days <code>Days</code> already answers — the cards' two, the chart's thirty, and here a year. Mock numbers only.</p>
+  </header>
+
+  <section>
+    <h2>(a) The year at a glance, and the mix</h2>
+    <div class="row">
+      <figure>
+        <div class="pop">
+          <div class="section">Claude</div>
+          <div class="grid">
+            <div class="card quota">5h · 72% left<div class="bar"><div style="width:72%;background:var(--healthy)"></div></div></div>
+            <div class="card quota">7d · 55% left<div class="bar"><div style="width:55%;background:var(--healthy)"></div></div></div>
+          </div>
+          <div class="section">Today's usage</div>
+          <div class="grid">
+            <div class="card"><div class="cardhead"><span class="t"><span class="dot" style="background:var(--cost)"></span>Cost Usage</span></div><div class="bar"><div style="width:70%;background:var(--cost)"></div></div></div>
+            <div class="card"><div class="cardhead"><span class="t"><span class="dot" style="background:var(--tokens)"></span>Token Usage</span></div><div class="bar"><div style="width:60%;background:var(--tokens)"></div></div></div>
+          </div>
+
+          <div class="card">
+            <div class="cardhead">
+              <span class="t"><span class="dot"></span>Usage — Last Year</span>
+              <span class="n"><b>$4,182.60</b><span>Saved $1,240.15 by caching</span></span>
+            </div>
+            <div class="heat">
+              <div class="months" id="months"></div>
+              <div class="body" id="heat"></div>
+            </div>
+            <div class="legend">less<span class="cell" style="background:#ECE6F5"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span>more</div>
+          </div>
+
+          <div class="card">
+            <div class="cardhead">
+              <span class="t"><span class="dot" style="background:var(--heat)"></span>Model Mix — Last Year</span>
+              <span class="n"><b>96.4M</b><span>tokens</span></span>
+            </div>
+            <div class="mixbar">
+              <div style="width:46%;background:#8E5BD6"></div>
+              <div style="width:28%;background:#2E9E62"></div>
+              <div style="width:15%;background:#3B82F6"></div>
+              <div style="width:7%;background:#F97316"></div>
+              <div style="width:4%;background:#9CA3AF"></div>
+            </div>
+            <div class="mixrow"><span class="m"><i style="background:#8E5BD6"></i>opus-4-6</span><span class="v">44.3M</span><span class="p">46%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#2E9E62"></i>sonnet-5</span><span class="v">27.0M</span><span class="p">28%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#3B82F6"></i>haiku-4-5</span><span class="v">14.5M</span><span class="p">15%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#F97316"></i>gpt-5</span><span class="v">6.7M</span><span class="p">7%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#9CA3AF"></i>—</span><span class="v">3.9M</span><span class="p">4%</span></div>
+          </div>
+          <div class="note">A dash is the unnamed line — records the log writes with no model. It is part of the mix, so the parts add up to the year.</div>
+        </div>
+        <figcaption><span class="tag">after · Default</span>The heatmap is a cell a day, shaded by how full the day is against the busiest in the range; an empty day is an empty cell, never a gap. The mix is the same range's models, largest first, each keeping the colour the chart gives it.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="pop xl">
+          <div class="section">Today's usage</div>
+          <div class="grid">
+            <div class="card"><div class="cardhead"><span class="t"><span class="dot" style="background:var(--cost)"></span>Cost Usage</span></div><div class="bar"><div style="width:70%;background:var(--cost)"></div></div></div>
+            <div class="card"><div class="cardhead"><span class="t"><span class="dot" style="background:var(--tokens)"></span>Token Usage</span></div><div class="bar"><div style="width:60%;background:var(--tokens)"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="cardhead">
+              <span class="t"><span class="dot"></span>Usage — Last Year</span>
+              <span class="n"><b>$4,182.60</b><span>Saved $1,240.15 by caching</span></span>
+            </div>
+            <div class="heat">
+              <div class="months" id="months2"></div>
+              <div class="body" id="heat2"></div>
+            </div>
+            <div class="legend">less<span class="cell" style="background:#ECE6F5"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span>more</div>
+          </div>
+          <div class="card">
+            <div class="cardhead">
+              <span class="t"><span class="dot" style="background:var(--heat)"></span>Model Mix — Last Year</span>
+              <span class="n"><b>96.4M</b><span>tokens</span></span>
+            </div>
+            <div class="mixbar">
+              <div style="width:46%;background:#8E5BD6"></div>
+              <div style="width:28%;background:#2E9E62"></div>
+              <div style="width:15%;background:#3B82F6"></div>
+              <div style="width:7%;background:#F97316"></div>
+              <div style="width:4%;background:#9CA3AF"></div>
+            </div>
+            <div class="mixrow"><span class="m"><i style="background:#8E5BD6"></i>opus-4-6</span><span class="v">44.3M</span><span class="p">46%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#2E9E62"></i>sonnet-5</span><span class="v">27.0M</span><span class="p">28%</span></div>
+            <div class="mixrow"><span class="m"><i style="background:#3B82F6"></i>haiku-4-5</span><span class="v">14.5M</span><span class="p">15%</span></div>
+          </div>
+        </div>
+        <figcaption><span class="tag">after · Extra Large</span>Cells and type grow with the popover, so a year still fits one row of weeks at every text size.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>(b) What the shade means</h2>
+    <p class="sub">A day's shade is how full it is against the busiest day <i>of the range on screen</i> — four steps. It is a fact the days answer (<code>DayValue.level</code>), never the heatmap's own maximum, so two ranges never disagree about the same day. A day with nothing is level 0.</p>
+  </section>
+</div>
+
+<script>
+// A year of cells, drawn as a column a week and seven rows a week, the way
+// UsageHeatmap lays Days.byDay out. Mock shape: quiet weekends, busy autumn.
+function draw(hostId, monthsId, seed) {
+  const host = document.getElementById(hostId);
+  const months = document.getElementById(monthsId);
+  const today = new Date(2026, 9, 21);                 // Oct 21 2026, a Wednesday
+  const start = new Date(today); start.setDate(start.getDate() - 364);
+  const days = [];
+  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  const value = (d) => {
+    const wd = d.getDay();
+    if (wd === 0 || wd === 6) return Math.random() < 0.5 ? 0 : 0.15;
+    const seasonal = d.getMonth() >= 8 ? 1 : d.getMonth() >= 5 ? 0.6 : 0.35;
+    return Math.random() < 0.08 ? 0 : Math.min(1, seasonal * (0.35 + Math.random() * 0.65));
+  };
+  const level = (v) => v <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil(v * 4)));
+  const leading = start.getDay();
+  const slots = Array(leading).fill(null).concat(days.map((d) => ({ d, v: value(d) })));
+  while (slots.length % 7 !== 0) slots.push(null);
+  const weeks = [];
+  for (let i = 0; i < slots.length; i += 7) weeks.push(slots.slice(i, i + 7));
+  const gap = 1.5, cell = 5;
+  host.innerHTML = weeks.map((w) => '<div class="col">' + w.map((s) =>
+    s ? '<div class="cell l' + level(s.v) + '" title="' + s.d.toDateString() + '"></div>'
+      : '<div class="cell" style="visibility:hidden"></div>').join('') + '</div>').join('');
+  months.style.gridTemplateColumns = 'repeat(' + weeks.length + ',' + cell + 'px)';
+  months.style.columnGap = gap + 'px';
+  const labels = Array(weeks.length).fill('');
+  let last = -1;
+  weeks.forEach((w, i) => {
+    const first = w.find(Boolean);
+    if (first && first.d.getMonth() !== last) { labels[i] = first.d.toLocaleString('en', { month: 'short' }); last = first.d.getMonth(); }
+  });
+  months.innerHTML = labels.map((l) => '<span>' + l + '</span>').join('');
+}
+draw('heat', 'months', 1);
+draw('heat2', 'months2', 2);
+</script>
+</body>
+</html>

@@ -482,7 +482,9 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | the range asked for is cut by `days(in:)`, NEVER by the log: a log answers from `since` on, and a query that bounds itself below the range asked would have its older days read as empty and kept that way for good | `UsageLog.days(in:)` |
 | a day closes a fixed while after it ends; a closed day is summed once, kept, and never read from the logs again. Today, and the day before until it closes, are read every time | `DayLedger` |
 | a day is THE SUM OF ITS LINES: one line per model, a line holding what the day holds — the model's tokens by kind and its cost. The log's own cost wins; otherwise cost is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission. Records with no model form one unnamed line, so the lines always add up to the day | `Day.lines` · `PriceList` |
-| a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit — so a view renders and tells | `Days` |
+| a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit; the mix, largest first; a day's value and its shade; what the cache saved — so a view renders and tells | `Days` |
+| a day's shade is how full it is against its range's busiest; a day with nothing is level 0 — a cell, never a gap | `DayValue` |
+| a streak is a range's most recent days, each under the ceiling the person set, and stops at the first breach; an empty day is not a breach | `Streak` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
 | a capability is declared by the definition — even one only a single product has (guest passes), whose runner the engine supplies — never chosen by a provider's name, never a vendor name in a module. Either way it is reached through the login's handle (`account.usageHistory`, `account.guestPasses`), `nil` when not offered | `Account` |
 | usage history is read when the popover opens, never in the background, and never carried on `Usage` | `UsageHistory` |
@@ -569,7 +571,6 @@ is built is not listed — the code is its record. What isn't yet:
 | `StatusPolicy` | `menuBarLabel(…)` takes the two burn-rate values; `StatusColorPolicy` is in `Domain` | the label takes the policy; colours move to the App |
 | page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`; `menuBarLabel(…)` on `QuotaMonitor` | the App |
 | `Day` | `DailyUsageReport` / `DailyUsageStat` (with `lines`) | `Day` — the sum of its lines, one per model; records with no model, one unnamed line |
-| `Days` — a range of days | `days(in:)` returns a bare array; the chart decides what is offered, the totals, the models' order and each one's colour | a `Days` value answering the page's questions — its models in order, a day's lines largest first, its total in a unit — so the view renders and never decides |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
 | In use | folder logins only | an environment-variable record for API-key providers |
 
