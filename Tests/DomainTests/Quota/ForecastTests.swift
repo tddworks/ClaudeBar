@@ -43,6 +43,17 @@ struct ForecastTests {
     }
 
     @Test
+    func `should report no lead over reset when the quota is already overspent`() {
+        // `UsageQuota` allows a negative remaining percentage (over quota);
+        // the run-out is already behind us, so it is zero — never a negative
+        // time that would push `beforeReset` past `untilReset`.
+        let forecast = Forecast.of(leftPercent: -10, usedPercent: 110, elapsed: 9_120, untilReset: 4_320)
+
+        #expect(seconds(forecast?.runsOutIn) == 0)
+        #expect(seconds(forecast?.beforeReset) == 4_320)
+    }
+
+    @Test
     func `should forecast a run-out from a quota whose window the vendor stated`() {
         // 5h window, 1h 12m to the reset, 90% spent: it runs out before it resets.
         let quota = window(left: 10, hours: 5, resetsInMinutes: 72)

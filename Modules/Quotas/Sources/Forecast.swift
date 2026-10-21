@@ -65,7 +65,9 @@ public struct Forecast: Sendable, Equatable, Hashable {
             return Forecast(runsOutIn: .seconds(untilReset), beforeReset: nil, outlastsReset: true)
         }
 
-        let runsOutIn = leftPercent * elapsed / usedPercent
+        // An over-quota card (`leftPercent` negative) has already run out: the
+        // time to zero is nothing, never a negative lead over the reset.
+        let runsOutIn = max(0, leftPercent * elapsed / usedPercent)
         guard runsOutIn < untilReset else {
             return Forecast(runsOutIn: .seconds(runsOutIn), beforeReset: nil, outlastsReset: true)
         }
