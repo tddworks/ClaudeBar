@@ -7,6 +7,10 @@ import Domain
 /// holds a URL — the same fence `NotifyGatewayClient` keeps. The URL is a secret
 /// and is read from the rule's repository at send time, never carried on the
 /// body or written to a log.
+///
+/// It sends over `SameOriginRedirectClient`: a redirect that leaves the origin
+/// the URL named is refused and its 3xx becomes the answer, so a token-carrying
+/// URL is never re-sent to a host the person did not name (CANONICAL §5).
 public struct WebhookClient: WebhookSending, Sendable {
     private let repository: any RuleRepository
     private let networkClient: any NetworkClient
@@ -14,7 +18,7 @@ public struct WebhookClient: WebhookSending, Sendable {
 
     public init(
         repository: any RuleRepository,
-        networkClient: any NetworkClient = URLSession.shared,
+        networkClient: any NetworkClient = SameOriginRedirectClient.shared,
         timeout: TimeInterval = 15
     ) {
         self.repository = repository

@@ -39,11 +39,15 @@ final class SameOriginRedirectDelegate: NSObject, URLSessionTaskDelegate {
 /// redirects never leave the origin (the law above). Local-server fetches
 /// keep their own client (`InsecureLocalhostNetworkClient`), whose redirect
 /// rule is this one, pinned to the loopback.
-struct SameOriginRedirectClient: NetworkClient {
+///
+/// Public, so a client outside `DataSources` — the Rules webhook's POST —
+/// sends under the same law rather than following a redirect off the origin
+/// with a URL that carries a token.
+public struct SameOriginRedirectClient: NetworkClient {
     /// Shared, like the `URLSession.shared` it replaced: a session holds its
     /// delegate strongly, and a fetch is made per login and per test, so a
     /// client built on each `make` would only pile sessions up.
-    static let shared = SameOriginRedirectClient()
+    public static let shared = SameOriginRedirectClient()
 
     private let session: URLSession
 
@@ -54,7 +58,7 @@ struct SameOriginRedirectClient: NetworkClient {
         self.session = URLSession(configuration: configuration, delegate: SameOriginRedirectDelegate(), delegateQueue: nil)
     }
 
-    func request(_ request: URLRequest) async throws -> (Data, URLResponse) {
+    public func request(_ request: URLRequest) async throws -> (Data, URLResponse) {
         try await session.data(for: request)
     }
 }
