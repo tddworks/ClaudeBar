@@ -23,6 +23,15 @@ public struct DateRange: Sendable, Equatable {
         return DateRange(first: first, last: last, calendar: calendar)
     }
 
+    /// The same run of days, one run earlier — the range before this one, for
+    /// a comparison. Its length is this range's own.
+    public func before(calendar: Calendar) -> DateRange {
+        let count = (calendar.dateComponents([.day], from: first, to: last).day ?? 0) + 1
+        guard let previousFirst = calendar.date(byAdding: .day, value: -count, to: first),
+              let previousLast = calendar.date(byAdding: .day, value: -count, to: last) else { return self }
+        return DateRange(first: previousFirst, last: previousLast, calendar: calendar)
+    }
+
     /// The start of every day in the range, in order.
     public func days(in calendar: Calendar) -> [Date] {
         var days: [Date] = []
