@@ -105,7 +105,7 @@ recap is a value in the kernel and a read the App makes.
 | `Recap` (`Quotas/Sources/Recap.swift`) | the value: adds the spans up, names the providers, finds the top model and the biggest day, sums the savings, answers the comparison and the formatted strings | — (new) |
 | `RecapBuilder` (`App/UsageHistory/RecapBuilder.swift`) | **pure**: picks each range out of each login's already-read days and builds the `Recap`; it spans the logins the Monitor holds, and decides nothing about where they came from | — (new) |
 | `RecapCardView` (`App/UsageHistory/RecapCardView.swift`) | the popover card: a range choice (*This week* / *Last week*), the highlights, and both weeks, so the choice stays reachable; it renders what `Recap` says and never counts | — (new) |
-| `RecapRange` (`App/UsageHistory/`) | the page's own choice of range: *this week* / *last week*, and the `DateRange` each names in the person's calendar | — (new) |
+| `RecapRange` (`App/UsageHistory/`) | the page's own choice of range: *this week* / *last week*, the `DateRange` each names in the person's calendar, and what each is compared with | — (new) |
 | the All page (`MenuContentView`) | hosts the card, under the provider overview — the one page that is already about every provider at once | `OverviewPageView` |
 | `DateRange` (`Quotas`) | extended: `before(calendar:)` names the same run of days one period earlier, so *last week* and the comparison are one arithmetic; the range itself is still the caller's cut | — |
 
