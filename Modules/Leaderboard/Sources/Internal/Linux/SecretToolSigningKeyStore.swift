@@ -37,26 +37,35 @@ struct SecretToolSigningKeyStore: SigningKeyStore {
     /// Runs `secret-tool` with both pipes drained, as the Mac's keychain store
     /// runs `security`. `/usr/bin/env` finds the tool on the person's `PATH`;
     /// when it isn't there, `env` exits 127 and nothing is kept.
+    ///
+    /// The secret is put in the pipe *before* the tool starts, never after:
+    /// writing to a tool that has already gone — `env` exiting 127 when
+    /// `secret-tool` isn't installed — is a write to a pipe with no reader, and
+    /// `SIGPIPE`'s default action ends the whole app, not just this call. A
+    /// pipe holds the secret until the tool reads it, and closing the write end
+    /// first is what tells it there is no more.
     private func run(_ arguments: [String], input: Data?) -> (status: Int32, output: String, errors: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["secret-tool"] + arguments
         let output = Pipe()
         let errors = Pipe()
-        let inputPipe = Pipe()
         process.standardOutput = output
         process.standardError = errors
-        process.standardInput = inputPipe
+        if let input {
+            let inputPipe = Pipe()
+            inputPipe.fileHandleForWriting.write(input)
+            try? inputPipe.fileHandleForWriting.close()
+            process.standardInput = inputPipe
+        } else {
+            process.standardInput = FileHandle.nullDevice
+        }
         do {
             try process.run()
         } catch {
             AppLog.credentials.error("secret-tool could not start")
             return (-1, "", "")
         }
-        if let input {
-            inputPipe.fileHandleForWriting.write(input)
-        }
-        try? inputPipe.fileHandleForWriting.close()
         let data = output.fileHandleForReading.readDataToEndOfFile()
         let errorData = errors.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
