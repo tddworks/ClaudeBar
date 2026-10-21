@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Quota cards forecast the run-out**: under *Resets in…*, a card says when the window will run out at the pace it has been spent — *Runs out in 38m — 34m before it resets*, or *Lasts until it resets* — so you know whether it lasts until it refills. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
+- **Quota cards forecast the run-out**: under *Resets in…*, a card says when the window will run out at the pace it has been spent — *Runs out in 38m — 34m before it resets*, or *Lasts until it resets* — so you know whether it lasts until it refills. ([#596](https://github.com/tddworks/ClaudeBar/pull/596)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
 
 ---
 
