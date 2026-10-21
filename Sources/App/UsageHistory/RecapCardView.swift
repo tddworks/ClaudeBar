@@ -4,42 +4,51 @@ import Domain
 /// *WEEKLY RECAP* — the week's story across every provider: the total, the
 /// split by provider, the top model, the biggest day, what caching saved, and
 /// the week before it. A range choice picks the week. It renders what `Recap`
-/// says and never counts; a range that holds nothing draws nothing.
+/// says and never counts; a week that holds nothing says so, and the choice
+/// stays reachable as long as either week has something.
 struct RecapCardView: View {
     let monitor: QuotaMonitor
     var calendar: Calendar = DataSources.calendar()
 
     @Environment(\.appTheme) private var theme
     @State private var range: RecapRange = .thisWeek
-    @State private var recap: Recap?
 
     var body: some View {
-        Group {
-            if let recap, !recap.isEmpty {
-                card(recap)
-            }
+        let thisWeek = recap(of: .thisWeek)
+        let lastWeek = recap(of: .lastWeek)
+        if !thisWeek.isEmpty || !lastWeek.isEmpty {
+            card(range == .thisWeek ? thisWeek : lastWeek)
         }
-        .task(id: taskKey) { await load() }
     }
 
-    /// Re-read when the range or the set of logins changes.
-    private var taskKey: String {
-        "\(range.rawValue)-\(monitor.lineup.map(\.id).joined(separator: ","))"
+    /// The recap of a range, built from every login's days as they were read.
+    private func recap(of range: RecapRange) -> Recap {
+        RecapBuilder.build(logins, in: range.range(containing: Date(), calendar: calendar), calendar: calendar)
     }
 
-    private func load() async {
-        let week = range.range(containing: Date(), calendar: calendar)
-        recap = await RecapBuilder.read(monitor.lineup, in: week, calendar: calendar)
+    /// Every login's days, already read — the thirty days the login keeps. A
+    /// login with none is left out; the days themselves are the record.
+    private var logins: [RecapLogin] {
+        monitor.lineup.compactMap { login in
+            login.usageHistory?.lastThirtyDays.map { RecapLogin(providerId: login.providerId, days: $0) }
+        }
     }
 
     // MARK: - The card
 
+    @ViewBuilder
     private func card(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             header
-            lead(recap)
-            split(recap)
-            highlights(recap)
+            if recap.isEmpty {
+                Text(range.emptyNote)
+                    .popoverFont(9, weight: .medium)
+                    .foregroundStyle(theme.textTertiary)
+            } else {
+                lead(recap)
+                split(recap)
+                highlights(recap)
+            }
         }
         .padding(12)
         .background(
@@ -127,7 +136,7 @@ struct RecapCardView: View {
             Text(change)
                 .popoverFont(11, weight: .bold)
                 .foregroundStyle(up ? .orange : .green)
-            Text("vs last week")
+            Text(range.comparedWith)
                 .popoverFont(7, weight: .medium)
                 .foregroundStyle(theme.textTertiary)
         }

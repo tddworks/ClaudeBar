@@ -704,7 +704,7 @@ struct MenuContentView: View {
             }
             // The week's story, across every provider at once — the one read
             // that adds logins up, so it lives on the one page that is about
-            // them all. It reads the same logs as the daily usage cards.
+            // them all. It reads the same days as the daily usage cards.
             if settings.showDailyUsageCards {
                 RecapCardView(monitor: monitor)
             }

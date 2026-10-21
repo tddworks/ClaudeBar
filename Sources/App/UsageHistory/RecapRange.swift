@@ -16,6 +16,19 @@ enum RecapRange: String, CaseIterable, Identifiable {
         return self == .thisWeek ? week : week.before(calendar: calendar)
     }
 
+    /// What the range before this one is called — the comparison the card
+    /// draws under its change. *This week* is compared with last week, and
+    /// *last week* with the week before it.
+    var comparedWith: String {
+        switch self {
+        case .thisWeek: "vs last week"
+        case .lastWeek: "vs the week before"
+        }
+    }
+
+    /// What the card says when this range holds nothing — never zeros.
+    var emptyNote: String { "Nothing \(rawValue.lowercased())." }
+
     private static func week(containing now: Date, calendar: Calendar) -> DateRange {
         let start = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
         let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start
