@@ -20,16 +20,20 @@ prompt caching saved, and whether it was more or less than the week before.
 
 A recap is **a read of a range, told as a few highlights**. It is not a new
 source of truth: the days are already there, each login's own
-`account.usageHistory?.days(in:)` (CANONICAL §5, `UsageHistory.days(in:)`).
-What the recap adds is the *week* as the range, and the one read that adds the
-logins up.
+`account.usageHistory` (CANONICAL §5, `UsageHistory`). What the recap adds is
+the *week* as the range, and the one read that adds the logins up.
 
 ```
-account.usageHistory?.days(in: .last(2))       → TODAY'S USAGE
-account.usageHistory?.days(in: .last(30))      → the chart
-account.usageHistory?.days(in: thisWeek)       ┐
-account.usageHistory?.days(in: lastWeek)       ┘ → the recap (every login, added up)
+account.usageHistory?.days(in: .last(2))    → TODAY'S USAGE
+account.usageHistory?.days(in: .last(30))   → the chart, kept as lastThirtyDays
+                                                └─ this week's days ┐
+                                                └─ last week's days ┘ → the recap
 ```
+
+The recap reads the days a login has **already read** — the thirty days it
+keeps as `lastThirtyDays`, the same days the chart draws — and picks each week
+out of them. It asks the logs nothing of its own, so it is drawn with the
+daily usage cards, and refreshes when they do.
 
 ## 2 · The words
 
@@ -80,7 +84,7 @@ every cost in the feature is.
 |---|---|
 | a recap may sum across logins for the person's own total, and **says which providers it spans**; it never puts two logins' days into one login's chart — the per-login `UsageHistory.days(in:)` law is unchanged | `Recap` (its `providers`) |
 | a recap is a **read of a range, never stored** — closing the popover loses it; the days are the record | `Recap` |
-| a recap with nothing in its range is **not shown**, never shown as zeros | `Recap` (`isEmpty`) |
+| a recap with nothing in its range is **said, never shown as zeros**, and the range choice stays reachable while the other week holds anything | `Recap` (`isEmpty`) · the card |
 | a day with nothing is an empty day, not a missing one: every date of the range is asked of every login | `UsageHistory.days(in:)` (unchanged) |
 | **repo names leave the Mac only when the person says so** — the recap is read and drawn on this Mac, and nothing it holds is sent anywhere | `Recap` · the share view (deferred, §8) |
 | cost is the unit when a login is priced, tokens when it is not | `Recap.knowsCost`, from `Days.knowsCost` |
@@ -99,47 +103,52 @@ recap is a value in the kernel and a read the App makes.
 | Piece | Job | From |
 |---|---|---|
 | `Recap` (`Quotas/Sources/Recap.swift`) | the value: adds the spans up, names the providers, finds the top model and the biggest day, sums the savings, answers the comparison and the formatted strings | — (new) |
-| `RecapBuilder` (`App/UsageHistory/RecapBuilder.swift`) | **pure**: turns each login's days into the spans and builds the `Recap`; it spans logins the Monitor holds, and decides nothing about where they came from | — (new) |
-| `RecapCardView` (`App/UsageHistory/RecapCardView.swift`) | the popover card: a range choice (*This week* / *Last week*), the highlights, and the read that fills them; it renders what `Recap` says and never counts | — (new) |
+| `RecapBuilder` (`App/UsageHistory/RecapBuilder.swift`) | **pure**: picks each range out of each login's already-read days and builds the `Recap`; it spans the logins the Monitor holds, and decides nothing about where they came from | — (new) |
+| `RecapCardView` (`App/UsageHistory/RecapCardView.swift`) | the popover card: a range choice (*This week* / *Last week*), the highlights, and both weeks, so the choice stays reachable; it renders what `Recap` says and never counts | — (new) |
 | `RecapRange` (`App/UsageHistory/`) | the page's own choice of range: *this week* / *last week*, and the `DateRange` each names in the person's calendar | — (new) |
 | the All page (`MenuContentView`) | hosts the card, under the provider overview — the one page that is already about every provider at once | `OverviewPageView` |
 | `DateRange` (`Quotas`) | extended: `before(calendar:)` names the same run of days one period earlier, so *last week* and the comparison are one arithmetic; the range itself is still the caller's cut | — |
 
 `Recap` imports nothing but `Foundation`, like `Days`. `RecapBuilder` is in the
 App because it is the one read that **spans logins**, and a login is the
-Providers context's — the kernel never learns the word. The App gathers each
-login's days through `account.usageHistory?.days(in:)`, exactly as *TODAY'S
-USAGE* does, and hands them to the builder.
+Providers context's — the kernel never learns the word. The App takes each
+login's days as `UsageHistory` already read them — `lastThirtyDays`, the
+thirty days the chart draws — and hands them to the builder.
 
 ```
  MenuContentView (All page)
    └─ RecapCardView(monitor: monitor, calendar:)
-        │  .task(range)  ──▶  each login: account.usageHistory?.days(in: range)
-        │                     each login: account.usageHistory?.days(in: range before it)
+        │  each login: account.usageHistory?.lastThirtyDays  ← already read, with the page
+        │  each week: RecapRange → DateRange (this week, last week)
         ▼
-     RecapBuilder.build(logins, previous:, knowsCost:)   ← pure
+     RecapBuilder.build(logins, in: range, calendar:)   ← pure
         ▼
-     Recap(spans:previous:knowsCost:)                    ← adds up, names, finds
+     Recap(spans:previous:knowsCost:)                   ← adds up, names, finds
         ▼
      the card renders totals · split · top model · biggest day · savings · change
 ```
 
+The card builds **both weeks** it offers, not only the chosen one, so the
+range choice is always there to switch with; the chosen week's highlights are
+the ones drawn, and an empty one says so.
+
 The card is shown only while **Daily Usage Cards** is on (Settings → General):
-the recap reads the same local logs as the cards, on the same cadence — when
-the popover opens, never in the background (CANONICAL §5, `UsageHistory`).
+it draws the same days as the cards, read on the same cadence — when the
+popover opens, never in the background (CANONICAL §5, `UsageHistory`).
 
 ## 6 · The flows
 
 ```
  A person opens the popover on All
-   └─ the card asks this week's days of every login, and last week's
-        └─ days come from each login's ledger and logs (daily-usage §3)
-   └─ the recap adds the logins up, names the providers, finds the top model
-      and the biggest day, and compares the week with the one before
-   └─ the card draws the highlights, or nothing at all when the range is empty
+   └─ the page reads every login's usage history (CANONICAL §5, `UsageHistory.read()`)
+        └─ the thirty days each login keeps are the recap's days (daily-usage §3)
+   └─ the card picks this week and last week out of them, and adds the logins up
+   └─ the card draws the highlights; a week that holds nothing says so, and the
+      choice stays, because the other week is drawn too
 
  A person picks Last week
-   └─ the card asks last week's days, and the week before that, and draws again
+   └─ the card draws last week, compared with the week before it — no read at
+      all: the days are already here
 ```
 
 ## 7 · Is it easy to change? The checks
@@ -148,7 +157,7 @@ the popover opens, never in the background (CANONICAL §5, `UsageHistory`).
 |---|---|
 | a *month* recap, a *today* recap | `RecapRange`: another case and the `DateRange` it names |
 | a different highlight (cost per session, a per-login split) | `Recap` (the value) and the card's one row — the days are already there |
-| the recap for one provider only | the card: read that provider's logins instead of `monitor.lineup` |
+| the recap for one provider only | the card: take that provider's logins instead of `monitor.lineup` |
 | another tool to appear in the recap | its definition's `usageHistory` — the recap reads whatever the days hold |
 | the week to start on another day | the person's calendar (`Calendar.firstWeekday`) — no code |
 
@@ -162,6 +171,8 @@ the popover opens, never in the background (CANONICAL §5, `UsageHistory`).
 | a recap for every provider, on its own page | the person's question is about *all of it*; a provider's week is its own *TODAY'S USAGE* and chart |
 | a range choice of *today / 7 days / 30 days* | the Leaderboard's periods; the recap's question is the week, and the chart already covers 30 days |
 | a `RecapViewModel` that reads the logins | no ViewModel layer: the card reads the domain directly, and the arithmetic is `Recap`'s |
+| a card that asks the logs for its own week | the days are already read with the page, and kept as the login's `lastThirtyDays`; a second read would read the same logs twice and would not follow the cards when the page refreshes |
+| a card that draws only the chosen week | the choice would vanish with an empty week, and *Last week* would be unreachable whenever *This week* held nothing |
 
 ## 9 · Deferred, and open
 

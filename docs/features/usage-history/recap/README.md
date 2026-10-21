@@ -15,11 +15,13 @@ local logs as the daily usage cards, but as a week:
 | **Top model** | The model that spent the most in the range |
 | **Biggest day** | The day that added up to the most |
 | **Cache savings** | What prompt caching saved over the range, in dollars |
-| **Vs last week** | How the range compares with the one before it |
+| **Vs the week before** | How the range compares with the one before it — *vs last week*, or *vs the week before* when *Last week* is chosen |
 
 A range choice at the top switches between **This week** and **Last week**.
 *This week* runs from your week's first day (your calendar's, usually Monday)
-through today.
+through today. The card appears as soon as **either** week has usage, and a
+week with nothing says *Nothing this week* (or *Nothing last week*) instead of
+vanishing — so the choice is always there to switch with.
 
 ## Where it is
 
@@ -46,14 +48,14 @@ when you open the popover, never in the background.
   be priced.
 - **Working time** adds up the stretches between your first and last message,
   a new stretch after a gap of more than 30 minutes.
-- **Vs last week** compares the same unit — cost when anything was priced,
-  tokens otherwise.
+- **Vs the week before** compares the same unit — cost when anything was
+  priced, tokens otherwise.
 
 ## Gotchas
 
-- **No card at all**: the range holds nothing (no sessions this week, and none
-  last week either), Daily Usage Cards is off, or you have only one provider
-  and so no All page.
+- **No card at all**: nothing in *either* week (no sessions this week and none
+  last week), Daily Usage Cards is off, or you have only one provider and so
+  no All page. One empty week on its own still shows the card.
 - **The week looks low early on**: *This week* is a week in progress. Compare
   it with *Last week* for a fair picture.
 - **Cost is $0 while you were on a local model**: expected — nothing bills you
