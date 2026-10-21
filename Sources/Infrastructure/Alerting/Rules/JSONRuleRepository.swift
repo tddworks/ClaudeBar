@@ -51,12 +51,16 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
 
     public func webhookURL(forRule ruleId: String) -> String? {
         let key = CredentialKey.ruleWebhookURL(ruleId)
-        // The fallback first, not the vault: it holds a value only when the
-        // Keychain refused the latest one, so it is the newest. A Keychain ACL
-        // can allow reads while refusing updates and deletes, leaving an older
-        // URL readable in the vault — reading it first would send the webhook
-        // to the endpoint the person replaced.
-        return fallbackCredentials.get(forKey: key) ?? secureCredentials.get(forKey: key)
+        // The fallback first, not the vault: it holds the newest answer — the
+        // URL when the Keychain refused to store it, or an empty tombstone when
+        // the Keychain refused to forget it. A Keychain ACL can allow reads
+        // while refusing updates and deletes, leaving an older URL readable in
+        // the vault; reading the vault first would keep POSTing to an endpoint
+        // the person replaced or removed.
+        if let fallback = fallbackCredentials.get(forKey: key) {
+            return fallback.isEmpty ? nil : fallback
+        }
+        return secureCredentials.get(forKey: key)
     }
 
     public func setWebhookURL(_ url: String?, forRule ruleId: String) {
@@ -66,9 +70,14 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
         let trimmed = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty else {
             // Both stores, unconditionally: leaving a copy in whichever store
-            // this build does not read from would resurrect it later.
-            _ = secureCredentials.delete(forKey: key)
-            _ = fallbackCredentials.delete(forKey: key)
+            // this build does not read from would resurrect it later. When the
+            // Keychain refuses the delete, an empty fallback stands as a
+            // tombstone, so the removed URL cannot resurface from the vault.
+            let secureDeleted = secureCredentials.delete(forKey: key)
+            let fallbackDeleted = fallbackCredentials.delete(forKey: key)
+            if !secureDeleted || !fallbackDeleted {
+                fallbackCredentials.save("", forKey: key)
+            }
             return
         }
 

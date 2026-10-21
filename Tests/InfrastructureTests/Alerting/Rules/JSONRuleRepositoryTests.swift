@@ -58,4 +58,13 @@ struct JSONRuleRepositoryTests {
 
         #expect(repository.webhookURL(forRule: "rule-1") == "https://new.test/hook")
     }
+
+    @Test func `should forget a URL the Keychain refuses to forget when the person removes it`() {
+        let secure = StaleSecure(holding: "https://old.test/hook")
+        let repository = repository(secure: secure, fallback: RecordingFallback())
+
+        repository.setWebhookURL(nil, forRule: "rule-1")
+
+        #expect(repository.webhookURL(forRule: "rule-1") == nil)
+    }
 }

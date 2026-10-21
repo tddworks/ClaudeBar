@@ -91,7 +91,7 @@ out, so a rule never judges a quota nobody watches.
 | a paused login is never judged | the Monitor never refreshes one, so `onRefreshed` never runs for it |
 | a rule that is off does nothing and keeps its place | turning one off is not deleting it |
 | the URL is a secret | the vault, never `rules.json`, never a log |
-| the fallback is read before the vault | it holds a value only when the Keychain refused the newest one, and a Keychain ACL can allow reads while refusing updates and deletes, leaving an older URL readable in the vault |
+| the fallback is read before the vault, and an empty fallback means *removed* | it holds the newest answer — the URL when the Keychain refused to store it, an empty tombstone when it refused to forget it; a Keychain ACL can allow reads while refusing updates and deletes, leaving an older URL readable in the vault |
 | the membership is recorded before the POST is awaited | `review` is re-entrant at the await: two logins refreshed at once must each hear once, and a write that straddled the await would lose one and tell it twice |
 | the POST keeps to the origin its URL named; a redirect that leaves it is not followed and its 3xx is the answer | the URL can carry a token, and the law is `NetworkClient`'s (CANONICAL §5) |
 
