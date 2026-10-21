@@ -360,6 +360,32 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         return base + " — " + insight.prefix(1).lowercased() + insight.dropFirst() + "."
     }
 
+    // MARK: - Forecast
+
+    /// WHEN THIS WINDOW RUNS OUT — the projection `Pace` does not make.
+    ///
+    /// At the average pace this window has been spent, when does the quota
+    /// reach zero, and does that beat the reset. `nil` without a window, for a
+    /// balance with no ceiling, and while the rate is still noise — never a
+    /// number invented from nothing (CANONICAL_MODEL §5).
+    ///
+    /// It is a READ: nothing is stored, and a reset starts a new window, so the
+    /// average always spans exactly the current cycle.
+    public var forecast: Forecast? {
+        guard let leftPercent = percentLeft,
+              let elapsedPercent = percentTimeElapsed,
+              let windowDuration,
+              let untilReset = timeUntilReset
+        else { return nil }
+
+        return Forecast.of(
+            leftPercent: leftPercent,
+            usedPercent: percentUsed,
+            elapsed: windowDuration * elapsedPercent / 100,
+            untilReset: untilReset
+        )
+    }
+
     /// Time until this quota resets (if known)
     public var timeUntilReset: TimeInterval? {
         guard let resetsAt else { return nil }
