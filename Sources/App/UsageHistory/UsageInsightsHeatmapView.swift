@@ -31,7 +31,7 @@ struct UsageInsightsHeatmapView: View {
         // heatmap for each of them.
         let heatmap = UsageHeatmap(days.byDay)
         let cell = cellSide(for: heatmap)
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             header
             monthRow(heatmap, cell: cell)
             grid(heatmap, cell: cell)
