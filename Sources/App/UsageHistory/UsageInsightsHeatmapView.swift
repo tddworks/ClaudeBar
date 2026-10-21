@@ -17,21 +17,24 @@ struct UsageInsightsHeatmapView: View {
     /// The page's and this card's own horizontal padding, which the grid gives up.
     private let horizontalInsets: CGFloat = 16 * 2 + 12 * 2
 
-    private var heatmap: UsageHeatmap { UsageHeatmap(days.byDay) }
-
-    /// The cell's side: a year of columns shares the width the card has, so
-    /// the heatmap never runs past the popover and never scrolls.
-    private var cell: CGFloat {
+    /// The cell's side for a laid-out heatmap: a year of columns shares the
+    /// width the card has, so the heatmap never runs past the popover and
+    /// never scrolls.
+    private func cellSide(for heatmap: UsageHeatmap) -> CGFloat {
         let columns = max(heatmap.weeks.count, 1)
         let room = popoverTextSize.popoverWidth - horizontalInsets - gap * CGFloat(columns - 1)
         return max(3.5, min(12, room / CGFloat(columns)))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // Laid out and sized once, so a year's cells never rebuild the
+        // heatmap for each of them.
+        let heatmap = UsageHeatmap(days.byDay)
+        let cell = cellSide(for: heatmap)
+        return VStack(alignment: .leading, spacing: 8) {
             header
-            monthRow
-            grid
+            monthRow(heatmap, cell: cell)
+            grid(heatmap, cell: cell)
             legend
         }
         .padding(12)
@@ -76,7 +79,7 @@ struct UsageInsightsHeatmapView: View {
     // MARK: - The grid
 
     /// The month each column starts, above it.
-    private var monthRow: some View {
+    private func monthRow(_ heatmap: UsageHeatmap, cell: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
             Color.clear.frame(width: gridWidth, height: 10)
             ForEach(heatmap.monthMarks, id: \.month) { mark in
@@ -90,20 +93,22 @@ struct UsageInsightsHeatmapView: View {
         .frame(width: gridWidth, height: 10, alignment: .topLeading)
     }
 
-    private var grid: some View {
+    private func grid(_ heatmap: UsageHeatmap, cell: CGFloat) -> some View {
         HStack(alignment: .top, spacing: gap) {
             ForEach(Array(heatmap.weeks.enumerated()), id: \.offset) { _, week in
                 VStack(spacing: gap) {
                     ForEach(Array(week.enumerated()), id: \.offset) { _, day in
-                        cellView(day)
+                        cellView(day, cell: cell)
                     }
                 }
             }
         }
     }
 
+    /// One day's cell: its shade, sized `cell`; a day with nothing an empty
+    /// cell, never a gap.
     @ViewBuilder
-    private func cellView(_ day: DayValue?) -> some View {
+    private func cellView(_ day: DayValue?, cell: CGFloat) -> some View {
         if let day {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(shade(day.level))
