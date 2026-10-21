@@ -696,10 +696,18 @@ struct MenuContentView: View {
     /// bars (docs/features/monitoring/all-providers/design.md).
     @ViewBuilder
     private var allPage: some View {
-        if settings.allPageStyle == .bars {
-            OverviewBarsPageView(overview: overview, open: openCard)
-        } else {
-            OverviewPageView(overview: overview, open: openCard)
+        VStack(spacing: 12) {
+            if settings.allPageStyle == .bars {
+                OverviewBarsPageView(overview: overview, open: openCard)
+            } else {
+                OverviewPageView(overview: overview, open: openCard)
+            }
+            // The week's story, across every provider at once — the one read
+            // that adds logins up, so it lives on the one page that is about
+            // them all. It reads the same logs as the daily usage cards.
+            if settings.showDailyUsageCards {
+                RecapCardView(monitor: monitor)
+            }
         }
     }
 
