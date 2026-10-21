@@ -235,6 +235,10 @@ Usage  ◇                                    "Fetching usage data…" — WHAT 
 │       │                                     money(Money, of: Money?)  "$12.40 remaining", "of $50"
 │       ├── window: Window?                 WHEN IT REFILLS — length + resetsAt. "Resets in 2h 5m".
 │       │                                   A prepaid balance has none
+│       ├── forecast: Forecast?  DERIVED    "Runs out in 38m — 34m before it resets": at the average
+│       │                                   pace this window has been spent, when it reaches zero,
+│       │                                   against when it refills. nil without a window, and nil
+│       │                                   for a balance with no ceiling (no share to project)
 │       ├── status                          DERIVED — Left × StatusPolicy (× Window, when pace-aware)
 │       └── pace                            DERIVED — needs a Window; otherwise unknown
 ├── cost: Cost?  ◇                          MONEY GONE — "API COST" or "EXTRA USAGE", over a period.
@@ -398,6 +402,8 @@ usage.quota(named:)                  → Quota?
 usage.isStale                        → Bool         older than 5 minutes
 quota.status(under: StatusPolicy)    → Status
 quota.pace                           → Pace         unknown without a window
+quota.forecast                       → Forecast?    at the current window's average pace: when it
+                                                    runs out, and whether that beats the reset
 quota.window?.timeUntilReset         → Duration?    "Resets in 2h 5m"
 account.budgetStatus                 → BudgetStatus? ON TRACK · NEAR LIMIT · OVER BUDGET —
                                                     usage.cost judged by account.budget
@@ -447,6 +453,11 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | money keeps its currency; two currencies are never added or compared | `Money` |
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
 | pace exists only inside a window with a reset; outside it is `unknown`, never `onPace` | `Quota.pace` |
+| a forecast is a READ — never stored on `Usage`, never a second meter; it is derived from the quota's own window and the usage the vendor already gave | `Quota.forecast` |
+| a forecast exists only inside a window: without a `Window`, or for a balance with no ceiling, it is `nil` — *No forecast yet* — never a number invented from nothing | `Forecast` |
+| **a forecast is the average pace of the CURRENT window** — a reset starts a new window, so the average never spans two cycles and nothing needs cutting | `Quota.forecast` · `Window` |
+| a quota that outlasts its reset reads *Lasts until it resets*, never a run-out: the forecast never contradicts the vendor's window | `Forecast` |
+| a forecast says *at this pace*: it is the window's average, not a prediction of the next burst, and the words never claim more | `Forecast` |
 | depleted at 0, critical under 20 — ABSOLUTE, whatever the policy; pace-aware only decides WARNING vs HEALTHY between 20% and 50% left | `StatusPolicy` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
