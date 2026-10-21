@@ -3,10 +3,8 @@ import Diagnostics
 import Foundation
 
 /// The key in the person's secret store through libsecret's `secret-tool`: a
-/// generic secret under a service and an account, its value the key as base64.
-/// The service and account are the ones the app's credential store used, so a
-/// member's key from before the `Leaderboard` module is the same secret and
-/// still loads.
+/// generic secret under a service and an account, its value the key as base64,
+/// named as the Mac's Keychain item is.
 ///
 /// When `secret-tool` isn't installed, or no secret service is running —
 /// a container, a bare session — nothing is kept and nothing is lost:
