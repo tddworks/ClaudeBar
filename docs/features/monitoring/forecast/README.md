@@ -38,7 +38,8 @@ Nothing is stored and nothing extra is fetched — the line is derived from the 
 - **A bursty spender** hides a spike inside the average. That is the point of *at this pace* — and Pace already names the *Running hot* case beside it.
 - **An idle window** lowers the average, so the line reads *Lasts until it resets* — true at that moment, and it moves as soon as work resumes.
 - **A balance with no ceiling** (a prepaid credit balance) has no share to project, so it shows no forecast line.
-- **A window spent at nothing**, or one less than a minute old, is noise rather than a rate: the line reads *No forecast yet* instead of inventing a number.
+- **A window spent at nothing** has no rate to project: the line reads *Lasts until it resets*.
+- **A window less than a minute old** is noise rather than a rate: the line reads *No forecast yet* instead of inventing a number.
 - A **hidden quota** and a **paused login** are out of every judgement, so they show no forecast line.
 
 ## See also
