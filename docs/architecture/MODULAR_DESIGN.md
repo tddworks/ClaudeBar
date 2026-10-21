@@ -650,7 +650,10 @@ Phase 5's slices, each its own issue and PR
   slices 3–5). What Linux answers in its own words: a `secret-tool` key store
   with the app's own store behind it, `/proc` for the programs running,
   `~/.local/share` for `{{platform.appData}}`, and the zone Foundation reads
-  from `/etc/localtime`.
+  from `/etc/localtime`. The key goes into the tool's pipe *before* the tool
+  starts: a write to a tool that has already gone — `env` exiting 127 when
+  `secret-tool` isn't installed — is a write to a pipe with no reader, and
+  `SIGPIPE`'s default action ends the whole app, not just that call.
 - **No Linux client.** The modules carry no UI: the Mac's is the Mac's, and
   the Windows client is its own repo. A Linux one would be a third, and would
   start where the Windows one started.
