@@ -202,6 +202,7 @@ struct UsageHistoryChartView: View {
         selectedDay?.formattedDate ?? "30-day total"
     }
 
+    /// The value in the unit on show — money when cost, tokens otherwise.
     private func unit(_ value: Double) -> String {
         shownCount == .cost ? UsageFormat.money(Decimal(value)) : UsageFormat.count(Int(value))
     }

@@ -98,6 +98,7 @@ struct ModelMixView: View {
         }
     }
 
+    /// The value in the unit the range is read in — money, or tokens.
     private func unit(_ value: Double) -> String {
         days.unit == .cost ? UsageFormat.money(Decimal(value)) : UsageFormat.count(Int(value))
     }

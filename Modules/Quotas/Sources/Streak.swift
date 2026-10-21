@@ -23,6 +23,8 @@ public struct Streak: Sendable, Equatable {
     /// Whether the run is the whole range — every day of it held.
     public var isWholeRange: Bool { daysInRange > 0 && length == daysInRange }
 
+    /// The run of the range's most recent days each under `threshold` —
+    /// counted back from its last day, stopped at the first breach.
     public init(of days: Days, under threshold: Threshold) {
         self.threshold = threshold
         self.daysInRange = days.stats.count

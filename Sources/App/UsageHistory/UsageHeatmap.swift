@@ -24,6 +24,8 @@ struct UsageHeatmap {
     /// The calendar's weekday order (1 = Sunday), so the rows can be labelled.
     let firstWeekday: Int
 
+    /// Lays `days` out a column a week, oldest first, in `calendar`'s
+    /// weekday order — the slots outside the range empty, never a day.
     init(_ days: [DayValue], calendar: Calendar = .current) {
         firstWeekday = calendar.firstWeekday
         let leading = days.first.map {

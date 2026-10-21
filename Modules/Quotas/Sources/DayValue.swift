@@ -12,6 +12,8 @@ public struct DayValue: Sendable, Equatable {
     /// holds nothing.
     public let share: Double
 
+    /// A day's value in its range's unit, and how full it is against that
+    /// range's busiest, 0…1 — 0 when the range holds nothing.
     public init(date: Date, value: Double, share: Double) {
         self.date = date
         self.value = value

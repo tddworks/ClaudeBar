@@ -12,6 +12,7 @@ public struct Days: Sendable, Equatable {
     /// tokens when not.
     public let knowsCost: Bool
 
+    /// A range over `stats`, read in cost when `knowsCost`, tokens when not.
     public init(_ stats: [DailyUsageStat], knowsCost: Bool) {
         self.stats = stats
         self.knowsCost = knowsCost
