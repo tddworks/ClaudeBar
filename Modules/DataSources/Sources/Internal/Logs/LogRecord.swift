@@ -100,21 +100,24 @@ struct RecordShape: Sendable {
             model = name
         }
         let tokens = shape.tokens
-        let read = [tokens.input, tokens.output, tokens.cacheWrite, tokens.cacheRead, tokens.total, tokens.cacheWrite1h]
+        let read = [tokens.input, tokens.output, tokens.cacheWrite, tokens.cacheRead, tokens.total, tokens.cacheWrite1h,
+                    tokens.reasoningOutput]
             .map { path in path.flatMap { scope.number($0) } }
         // A count is a whole number of tokens: a negative or a fraction is a
         // log that changed shape, not usage.
         guard read.allSatisfy({ $0.map { $0 >= 0 && $0.rounded() == $0 } ?? true }) else { return nil }
         let counts = read.map { $0.map { Int($0) } }
         let cost = shape.cost.flatMap { Self.decimal(scope.value($0)) }
-        // A record that says nothing about usage isn't usage.
+        // A record that says nothing about usage isn't usage. Reasoning output
+        // is part of a record's output, so on its own it says nothing, as
+        // `cacheWrite1h` does beside `cacheWrite`.
         guard counts.prefix(5).contains(where: { $0 != nil }) || cost != nil else { return nil }
         let parts = shape.id.map { scope.string($0) }
         let id = parts.isEmpty || parts.contains(nil) ? nil : parts.compactMap { $0 }.joined(separator: "\u{1F}")
         var input = counts[0] ?? 0
         if tokens.inputIncludesCacheRead == true { input = max(0, input - (counts[3] ?? 0)) }
         return LogRecord(at: at, id: id, model: model,
-                         input: input, output: counts[1] ?? 0, cacheWrite: counts[2] ?? 0,
+                         input: input, output: (counts[1] ?? 0) + (counts[6] ?? 0), cacheWrite: counts[2] ?? 0,
                          cacheWrite1h: counts[5] ?? 0, cacheRead: counts[3] ?? 0, total: counts[4], cost: cost)
     }
 

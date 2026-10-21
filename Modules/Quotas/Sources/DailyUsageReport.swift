@@ -121,6 +121,11 @@ public struct DailyUsageReport: Sendable, Equatable {
     /// Whether working time is worth a card: either day has some.
     public var hasWorkingTime: Bool { today.workingTime > 0 || previous.workingTime > 0 }
 
+    /// Whether cost is worth a card: either day holds one. A log that writes
+    /// a cost of zero everywhere — free models, OpenCode's `cost: 0` — has
+    /// nothing to say in dollars, so its card would read `$0.00` forever.
+    public var hasCost: Bool { today.totalCost > 0 || previous.totalCost > 0 }
+
     /// Time progress as ratio of today vs (today + previous), clamped to 0-1
     public var timeProgress: Double {
         let total = today.workingTime + previous.workingTime

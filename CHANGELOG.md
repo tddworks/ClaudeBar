@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The daily chart's chip decides all it shows** — the 30-day total, the hovered day and each model; a login that prices nothing (OpenCode Go) drops Cost for tokens. ([#566](https://github.com/tddworks/ClaudeBar/issues/566)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
+
+### Fixed
+- **OpenCode daily usage showed no output and a 30-day total of 0**: reasoning tokens now count as output, and the Tokens chip totals tokens rather than the (zero) cost. ([#566](https://github.com/tddworks/ClaudeBar/issues/566))
+
 ---
 
 ## [0.5.18] - 2026-10-21
