@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Claude's token refresh no longer narrows your login**: a renewed token is now asked for with the scopes your login already has, instead of a fixed three, so a refreshed token never loses a capability the old one had (e.g. `user:mcp_servers`). ([#593](https://github.com/tddworks/ClaudeBar/issues/593)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/claude/design.md)
+
 ---
 
 ## [0.5.18] - 2026-10-21
