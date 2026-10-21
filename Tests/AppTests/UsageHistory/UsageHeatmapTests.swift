@@ -75,6 +75,33 @@ struct UsageHeatmapTests {
         #expect(heatmap.monthMarks.allSatisfy { (0..<heatmap.weeks.count).contains($0.column) })
     }
 
+    @Test func `should leave the first month unlabelled when the next starts within two columns`() {
+        // A range starting Oct 25: November begins one column later, too
+        // close for two 7 pt labels, so October's mark goes.
+        let start = calendar.date(from: DateComponents(year: 2024, month: 10, day: 25))!
+        let days = (0..<60).map { offset in
+            DayValue(date: calendar.date(byAdding: .day, value: offset, to: start)!, value: 0, share: 0)
+        }
+        let heatmap = UsageHeatmap(days, calendar: calendar)
+        let october = calendar.date(from: DateComponents(year: 2024, month: 10))!
+
+        #expect(!heatmap.monthMarks.contains(october))
+        #expect(heatmap.monthMarks.contains { calendar.component(.month, from: $0.month) == 11 })
+    }
+
+    @Test func `should keep the first month's mark when the next starts three columns away`() {
+        // A range starting Oct 7: November begins three columns later, room
+        // enough for both labels.
+        let start = calendar.date(from: DateComponents(year: 2024, month: 10, day: 7))!
+        let days = (0..<60).map { offset in
+            DayValue(date: calendar.date(byAdding: .day, value: offset, to: start)!, value: 0, share: 0)
+        }
+        let heatmap = UsageHeatmap(days, calendar: calendar)
+        let october = calendar.date(from: DateComponents(year: 2024, month: 10))!
+
+        #expect(heatmap.monthMarks.contains(october))
+    }
+
     @Test @MainActor func `should fit a year's heatmap inside the popover at every text size`() throws {
         let year = Days(range(365).map { value in
             DailyUsageStat(date: value.date, totalCost: Decimal(value.value), totalTokens: 0,

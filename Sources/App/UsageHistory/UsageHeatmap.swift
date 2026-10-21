@@ -40,6 +40,12 @@ struct UsageHeatmap {
                   seen.insert(month).inserted else { continue }
             marks.append(MonthMark(column: (leading + position) / 7, month: month))
         }
+        // A range that starts late in a month leaves the next month only a
+        // column or two away, and two 7 pt labels would overlap; the crowded
+        // first month goes unlabelled.
+        if marks.count > 1, marks[1].column - marks[0].column < 3 {
+            marks.removeFirst()
+        }
         monthMarks = marks
     }
 }
