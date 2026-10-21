@@ -589,7 +589,7 @@ The server's own threat model (rate limits, caching, moderation, logging) is in 
 
 A destination, not a provider, so it sits beside Notify! (AGENTS.md: destinations get standalone repositories, never under `ProviderSettingsRepository`).
 
-Its code is the `Leaderboard` module of the package that also builds on Windows, so ClaudeBar for Windows counts and signs a day with the same code as the Mac ([MODULAR_DESIGN §10](../../architecture/MODULAR_DESIGN.md#10--one-package-two-platforms)).
+Its code is the `Leaderboard` module of the package that also builds on Windows, so ClaudeBar for Windows counts and signs a day with the same code as the Mac ([MODULAR_DESIGN §10](../../architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)).
 
 ```
 ┌──────────────────────────────────────────── THIS MAC (Swift) ─────────────────────────────────────────────┐
