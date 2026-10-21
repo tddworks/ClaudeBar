@@ -11,6 +11,8 @@ public struct DateRange: Sendable, Equatable {
     /// The start of the last day.
     public let last: Date
 
+    /// The run from `first` to `last`, both trimmed to the day's start in
+    /// `calendar`.
     public init(first: Date, last: Date, calendar: Calendar) {
         self.first = calendar.startOfDay(for: first)
         self.last = calendar.startOfDay(for: last)

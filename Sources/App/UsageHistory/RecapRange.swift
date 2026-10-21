@@ -29,6 +29,8 @@ enum RecapRange: String, CaseIterable, Identifiable {
     /// What the card says when this range holds nothing — never zeros.
     var emptyNote: String { "Nothing \(rawValue.lowercased())." }
 
+    /// The calendar week that holds `now`, its own first weekday to the
+    /// seventh day.
     private static func week(containing now: Date, calendar: Calendar) -> DateRange {
         let start = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
         let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start

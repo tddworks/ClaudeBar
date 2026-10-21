@@ -17,6 +17,8 @@ public struct Recap: Sendable, Equatable {
         public let provider: String
         public let days: [DailyUsageStat]
 
+        /// A provider's days as one span — two logins of it are two spans,
+        /// added into one share.
         public init(provider: String, days: [DailyUsageStat]) {
             self.provider = provider
             self.days = days
@@ -30,6 +32,7 @@ public struct Recap: Sendable, Equatable {
         public let workingTime: TimeInterval
         public let sessions: Int
 
+        /// The sums as read — a recap adds days up, it never invents a total.
         public init(cost: Decimal, tokens: Int, workingTime: TimeInterval, sessions: Int) {
             self.cost = cost
             self.tokens = tokens
@@ -50,6 +53,8 @@ public struct Recap: Sendable, Equatable {
 
         public var id: String { provider }
 
+        /// A provider's part of the range, in both units, so a view can lead
+        /// with whichever one is in force.
         public init(provider: String, cost: Decimal, tokens: Int) {
             self.provider = provider
             self.cost = cost
@@ -63,6 +68,7 @@ public struct Recap: Sendable, Equatable {
         public let cost: Decimal
         public let tokens: Int
 
+        /// A model and what it spent, as read from a day's lines.
         public init(model: String, cost: Decimal, tokens: Int) {
             self.model = model
             self.cost = cost
@@ -79,6 +85,7 @@ public struct Recap: Sendable, Equatable {
         public let cost: Decimal
         public let tokens: Int
 
+        /// A day and what it added up to.
         public init(date: Date, cost: Decimal, tokens: Int) {
             self.date = date
             self.cost = cost
@@ -187,6 +194,8 @@ public struct Recap: Sendable, Equatable {
 
     // MARK: - The arithmetic
 
+    /// Adds days up into the range's totals — every field read, nothing
+    /// counted here.
     private static func totals(of days: [DailyUsageStat]) -> Totals {
         Totals(cost: days.reduce(Decimal.zero) { $0 + $1.totalCost },
                tokens: days.reduce(0) { $0 + $1.totalTokensWithCache },
@@ -194,6 +203,8 @@ public struct Recap: Sendable, Equatable {
                sessions: days.reduce(0) { $0 + $1.sessionCount })
     }
 
+    /// Each provider's share, largest first in the unit in force; two spans of
+    /// one provider become one.
     private static func providers(of spans: [Span], knowsCost: Bool) -> [ProviderShare] {
         var byProvider: [String: ProviderShare] = [:]
         for span in spans {
@@ -212,6 +223,8 @@ public struct Recap: Sendable, Equatable {
         }
     }
 
+    /// The model that spent the most, in the unit in force; an unnamed line is
+    /// no model at all.
     private static func topModel(of days: [DailyUsageStat], knowsCost: Bool) -> TopModel? {
         var byModel: [String: TopModel] = [:]
         for line in days.flatMap(\.lines) where !line.model.isEmpty {
@@ -228,6 +241,8 @@ public struct Recap: Sendable, Equatable {
         }
     }
 
+    /// The day that added up to the most, in the unit in force, across every
+    /// provider.
     private static func biggestDay(of days: [DailyUsageStat], knowsCost: Bool) -> BiggestDay? {
         var byDate: [Date: BiggestDay] = [:]
         for day in days {
@@ -244,18 +259,22 @@ public struct Recap: Sendable, Equatable {
         }
     }
 
+    /// The total's number in force — cost when priced, tokens when not.
     private static func value(of totals: Totals, knowsCost: Bool) -> Double {
         knowsCost ? NSDecimalNumber(decimal: totals.cost).doubleValue : Double(totals.tokens)
     }
 
+    /// A provider's number in force — cost when priced, tokens when not.
     private static func value(of provider: ProviderShare, knowsCost: Bool) -> Double {
         knowsCost ? NSDecimalNumber(decimal: provider.cost).doubleValue : Double(provider.tokens)
     }
 
+    /// A model's number in force — cost when priced, tokens when not.
     private static func value(of model: TopModel, knowsCost: Bool) -> Double {
         knowsCost ? NSDecimalNumber(decimal: model.cost).doubleValue : Double(model.tokens)
     }
 
+    /// A day's number in force — cost when priced, tokens when not.
     private static func value(of day: BiggestDay, knowsCost: Bool) -> Double {
         knowsCost ? NSDecimalNumber(decimal: day.cost).doubleValue : Double(day.tokens)
     }

@@ -36,6 +36,8 @@ struct RecapCardView: View {
 
     // MARK: - The card
 
+    /// The card for one range: the header, then either its highlights or the
+    /// note that the week held nothing.
     @ViewBuilder
     private func card(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -82,6 +84,7 @@ struct RecapCardView: View {
         }
     }
 
+    /// One range choice, drawn on when it is the one chosen.
     private func chip(_ choice: RecapRange) -> some View {
         let isOn = range == choice
         return Button {
@@ -123,6 +126,8 @@ struct RecapCardView: View {
         }
     }
 
+    /// The tokens, time and sessions under the total — or that there is nothing
+    /// yet.
     private func subline(_ recap: Recap) -> String {
         var parts: [String] = []
         if recap.knowsCost { parts.append("\(recap.formattedTokens) tokens") }
@@ -131,6 +136,8 @@ struct RecapCardView: View {
         return parts.isEmpty ? "nothing yet" : parts.joined(separator: " · ")
     }
 
+    /// The change against the range before, coloured by its direction, over
+    /// what it is compared with.
     private func changeBadge(_ change: String, up: Bool) -> some View {
         VStack(alignment: .trailing, spacing: 1) {
             Text(change)
@@ -164,6 +171,8 @@ struct RecapCardView: View {
         }
     }
 
+    /// The top model, the biggest day and the cache savings, when the range has
+    /// them.
     @ViewBuilder
     private func highlights(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -179,6 +188,7 @@ struct RecapCardView: View {
         }
     }
 
+    /// One titled line of the highlights.
     private func highlight(_ title: String, _ value: String) -> some View {
         HStack(spacing: 4) {
             Text(title)
@@ -196,6 +206,8 @@ struct RecapCardView: View {
     /// more providers than the palette holds.
     private static let palette: [Color] = [.purple, .green, .blue, .orange, .pink, .cyan, .indigo, .mint, .red]
 
+    /// A provider's display name, or its id capitalised when the lineup doesn't
+    /// know it.
     private func name(of provider: String) -> String {
         monitor.providers.provider(id: provider)?.name ?? provider.capitalized
     }
