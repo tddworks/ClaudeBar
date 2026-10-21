@@ -51,7 +51,12 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
 
     public func webhookURL(forRule ruleId: String) -> String? {
         let key = CredentialKey.ruleWebhookURL(ruleId)
-        return secureCredentials.get(forKey: key) ?? fallbackCredentials.get(forKey: key)
+        // The fallback first, not the vault: it holds a value only when the
+        // Keychain refused the latest one, so it is the newest. A Keychain ACL
+        // can allow reads while refusing updates and deletes, leaving an older
+        // URL readable in the vault — reading it first would send the webhook
+        // to the endpoint the person replaced.
+        return fallbackCredentials.get(forKey: key) ?? secureCredentials.get(forKey: key)
     }
 
     public func setWebhookURL(_ url: String?, forRule ruleId: String) {
@@ -77,12 +82,6 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
             return
         }
 
-        // The Keychain can hold an older URL and still refuse this write, and
-        // `webhookURL(forRule:)` reads the secure store first — so the stale
-        // value would shadow the new one in the fallback and the rule would
-        // keep POSTing to the endpoint the person replaced. Clear it, then keep
-        // the URL the person just gave.
-        _ = secureCredentials.delete(forKey: key)
         AppLog.credentials.warning(
             "A rule's webhook URL could not be stored in the Keychain, keeping it in the app credential store instead"
         )

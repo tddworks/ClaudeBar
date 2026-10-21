@@ -8,8 +8,9 @@ import Domain
 /// refuses ([design](docs/features/alerting/rules/design.md)).
 @Suite
 struct JSONRuleRepositoryTests {
-    /// A secure store that holds an older URL and refuses to replace it — the
-    /// Keychain of a locally built, ad-hoc signed app.
+    /// A secure store that holds an older URL and refuses to replace or remove
+    /// it — a Keychain ACL that allows reads while denying updates and deletes,
+    /// which is the state the fallback exists for.
     private final class StaleSecure: CredentialRepository, @unchecked Sendable {
         private let lock = NSLock()
         private var value: String?
@@ -18,10 +19,7 @@ struct JSONRuleRepositoryTests {
 
         func save(_ value: String, forKey key: String) { /* refused */ }
         func get(forKey key: String) -> String? { lock.withLock { value } }
-        @discardableResult func delete(forKey key: String) -> Bool {
-            lock.withLock { value = nil }
-            return true
-        }
+        @discardableResult func delete(forKey key: String) -> Bool { false /* refused */ }
         func exists(forKey key: String) -> Bool { lock.withLock { value != nil } }
     }
 
