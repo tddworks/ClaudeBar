@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Linux builds**: ClaudeBar's modules (`Quotas`, `Diagnostics`, `DataSources`, `Providers`, `Leaderboard`) build and pass their tests on Linux, so a Linux client can reuse them as the Windows one does. The Mac app is unchanged. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-three-platforms)
+- **Linux builds**: ClaudeBar's modules build and pass their tests on Linux, so a client there can reuse them as the Windows one does. The Mac app is unchanged. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10-one-package-three-platforms)
 
 ---
 

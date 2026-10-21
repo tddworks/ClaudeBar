@@ -444,6 +444,12 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
 - **Each module's factory picks the platform's implementation.** The Windows
   client calls the same factories as the App (`Leaderboard.make…`,
   `ProviderFactory.makeCatalog…`); no client names `Internal/`.
+- **A platform's file names are its own.** SwiftPM names each source file's
+  object after the file, so two platforms' files in one target can't share a
+  basename even when both are `#if`-guarded: hence `SystemTimeZone.swift` on
+  the Mac and `LinuxTimeZone.swift`, not a second `SystemTimeZone.swift`. An
+  extension of a shared type is fine — `FileStamp+Linux.swift` names the
+  platform in the file itself.
 - **An Apple-only package is a platform-conditional dependency**
   (`.product(…, condition: .when(platforms: [.macOS]))`): SwiftTerm and
   SweetCookieKit in `DataSources`. `AWSClients` builds on macOS only.
@@ -535,8 +541,8 @@ Modules/DataSources/Sources/
     │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows
     └── Linux/                 #if os(Linux), whole file: the same ports, as far as
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
-        ├── Time/SystemTimeZone.swift    TimeZone.current
-        ├── Process/LinuxProcesses.swift  the five facts: PathBinaryLocator (PATH),
+        ├── Time/LinuxTimeZone.swift     TimeZone.current
+        ├── Process/LinuxProcesses.swift  the five facts: LinuxBinaryLocator (PATH),
         │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill,
         │                                 /proc
         └── Logs/                    FileStamp+Linux · ByteSearch+Linux
@@ -669,6 +675,13 @@ Phase 5's slices, each its own issue and PR
   date formats, and APIs it lacks outright, such as `RelativeDateTimeFormatter`)
   are found by running the same tests there, which is why every module's tests
   run on both. A file that imports only Foundation can still fail to build.
+- **Foundation's differences on Linux** are found the same way. One already is:
+  `TimeZone(identifier:)` answers a name the OS's tzdata no longer carries —
+  Ubuntu keeps CLDR's deprecated aliases (`Asia/Calcutta`, `Europe/Kiev`, …) in
+  a separate `tzdata-legacy` package — and the zone it answers can't back a
+  `DateFormatter`, which stops the process instead of failing. `WindowsZones`
+  asks the OS's own zone files first, so a name it can't format in falls back
+  to the OS's offset ([#565](https://github.com/tddworks/ClaudeBar/pull/565)).
 - ~~**The machine GUID** is kept by a disk image cloned to another PC, unlike a
   Mac's `IOPlatformUUID`; the leaderboard design decides whether that is
   enough for its copied-key check.~~ It isn't: Windows reads the firmware's
