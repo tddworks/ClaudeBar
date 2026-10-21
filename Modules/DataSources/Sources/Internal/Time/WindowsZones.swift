@@ -9,8 +9,8 @@ enum WindowsZones {
     /// The key's IANA zone, with every daylight-saving change it has. The OS's
     /// own offset, fixed, when the person turned daylight saving's automatic
     /// adjustment off (the OS then keeps standard time all year), when the
-    /// table doesn't know the key, or when the zone is one Foundation on
-    /// Windows can't format in: still the OS's fact for now, never a guess.
+    /// table doesn't know the key, or when the zone is one Foundation can't
+    /// format in: still the OS's fact for now, never a guess.
     static func zone(key: String, daylightSavingOff: Bool, secondsFromGMT: Int) -> TimeZone {
         if !daylightSavingOff, let name = iana[key], !unformattable.contains(name),
            let zone = TimeZone(identifier: name) {
@@ -20,11 +20,26 @@ enum WindowsZones {
         return TimeZone(secondsFromGMT: secondsFromGMT)!
     }
 
-    /// Zones Foundation on Windows (Swift 6.3.3) has but can't format in: a
-    /// `DateFormatter` in one stops the process (0xC000001D), found by trying
-    /// every zone in the table on a Windows PC. Each has kept one offset since
-    /// 2022 or earlier, so the OS's offset is the same answer.
-    static let unformattable: Set<String> = [
-        "America/Mazatlan", "America/Whitehorse", "Asia/Qyzylorda", "Etc/UTC", "Europe/Volgograd",
-    ]
+    /// Zones Foundation on this platform has but can't format in: a
+    /// `DateFormatter` in one stops the whole process, found by trying every
+    /// zone in the table.
+    ///
+    /// On Windows (Swift 6.3.3) it is these five (0xC000001D), each of which
+    /// has kept one offset since 2022 or earlier, so the OS's offset is the
+    /// same answer.
+    ///
+    /// On Linux (Swift 6.2) it is the names CLDR still gives that the OS's
+    /// tzdata no longer carries — Ubuntu moved the deprecated aliases
+    /// (`Asia/Calcutta`, `Europe/Kiev`, …) to its `tzdata-legacy` package.
+    /// Foundation answers such a name with a zone, offsets and all, and only
+    /// the formatter fails, so the OS's own files are what's asked. Each alias
+    /// names the zone it is an alias of, which has one offset, so again the
+    /// OS's offset is the same answer.
+    static let unformattable: Set<String> = {
+        #if os(Linux)
+        Set(iana.values.filter { !FileManager.default.fileExists(atPath: "/usr/share/zoneinfo/\($0)") })
+        #else
+        ["America/Mazatlan", "America/Whitehorse", "Asia/Qyzylorda", "Etc/UTC", "Europe/Volgograd"]
+        #endif
+    }()
 }
