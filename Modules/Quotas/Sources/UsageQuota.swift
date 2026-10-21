@@ -380,7 +380,9 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
 
         return Forecast.of(
             leftPercent: leftPercent,
-            usedPercent: percentUsed,
+            // The same share `percentLeft` reports, so a capped money quota
+            // with a small balance never reads as nothing spent.
+            usedPercent: 100 - leftPercent,
             elapsed: windowDuration * elapsedPercent / 100,
             untilReset: untilReset
         )

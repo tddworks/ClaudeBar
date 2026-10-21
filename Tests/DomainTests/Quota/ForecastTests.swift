@@ -80,6 +80,26 @@ struct ForecastTests {
         #expect(credits.forecast?.outlastsReset == false)
     }
 
+    @Test
+    func `should forecast a capped money quota from its share even when the percentage was left full`() {
+        // A legacy construction writes 100 for a capped money quota: the
+        // forecast must read the share ($5 of $50 = 10% left, 90% used), not
+        // the full percentage, or 90% spent would read as "Lasts until it resets".
+        let credits = UsageQuota(
+            percentRemaining: 100,
+            quotaType: .timeLimit("Credits"),
+            providerId: "openrouter",
+            resetsAt: Date().addingTimeInterval(72 * 60),
+            windowDuration: 5 * 3600,
+            dollarRemaining: 5,
+            dollarCap: 50
+        )
+
+        #expect(credits.percentLeft == 10)
+        #expect(credits.forecast?.outlastsReset == false)
+        #expect(credits.forecast?.beforeReset != nil)
+    }
+
     // MARK: - Lasts until it resets
 
     @Test
