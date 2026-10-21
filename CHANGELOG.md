@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Rules: POST your quota to a webhook you own**: when a login falls below a percent you pick, turns critical or is depleted, ClaudeBar sends a Slack message or a JSON body to a URL you paste. Settings → Rules. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/rules/README.md)
+
 ---
 
 ## [0.5.18] - 2026-10-21
