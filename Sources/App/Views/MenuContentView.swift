@@ -1238,7 +1238,9 @@ struct MenuContentView: View {
         let report = history?.report ?? fallback
         let apps = history?.usedOtherApps ?? []
         let lastThirtyDays = history?.lastThirtyDays
-        if titled, settings.showDailyUsageCards, report != nil || !apps.isEmpty || lastThirtyDays != nil {
+        let lastYear = history?.lastYear
+        if titled, settings.showDailyUsageCards,
+           report != nil || !apps.isEmpty || lastThirtyDays != nil || lastYear != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1277,6 +1279,15 @@ struct MenuContentView: View {
         // The same login's last thirty days, as a chart.
         if settings.showDailyUsageCards, let lastThirtyDays {
             UsageHistoryChartView(days: lastThirtyDays)
+        }
+
+        // …and the shape of the last year: the heatmap, and the models it
+        // leans on. Both read the same range, `Days` answering.
+        if settings.showDailyUsageCards, let lastYear {
+            UsageInsightsHeatmapView(days: lastYear)
+            if lastYear.hasModels {
+                ModelMixView(days: lastYear)
+            }
         }
     }
 

@@ -1,0 +1,45 @@
+import Foundation
+import Domain
+
+/// A range of days laid out as a heatmap: a column a week, seven rows a week,
+/// the calendar's weekday order — what a GitHub-style heatmap draws. Every
+/// date of the range is one cell; the slots before the first day and after the
+/// last are empty, never a day.
+///
+/// A value, not a view, so "every date is a cell" and "an empty day is a cell,
+/// not a gap" are tested as state, with no screen in the loop.
+struct UsageHeatmap {
+    /// Where a month starts, for the labels above the grid.
+    struct MonthMark: Equatable {
+        /// The column the month's first day falls in.
+        let column: Int
+        /// The month's first day.
+        let month: Date
+    }
+
+    /// One column a week, oldest first; seven slots each, `nil` outside the range.
+    let weeks: [[DayValue?]]
+    /// Where each month the range covers starts, oldest first.
+    let monthMarks: [MonthMark]
+    /// The calendar's weekday order (1 = Sunday), so the rows can be labelled.
+    let firstWeekday: Int
+
+    init(_ days: [DayValue], calendar: Calendar = .current) {
+        firstWeekday = calendar.firstWeekday
+        let leading = days.first.map {
+            (calendar.component(.weekday, from: $0.date) - calendar.firstWeekday + 7) % 7
+        } ?? 0
+        var slots: [DayValue?] = Array(repeating: nil, count: leading) + days.map { Optional($0) }
+        while slots.count % 7 != 0 { slots.append(nil) }
+        weeks = stride(from: 0, to: slots.count, by: 7).map { Array(slots[$0..<($0 + 7)]) }
+
+        var marks: [MonthMark] = []
+        var seen: Set<Date> = []
+        for (position, day) in days.enumerated() {
+            guard let month = calendar.date(from: calendar.dateComponents([.year, .month], from: day.date)),
+                  seen.insert(month).inserted else { continue }
+            marks.append(MonthMark(column: (leading + position) / 7, month: month))
+        }
+        monthMarks = marks
+    }
+}
