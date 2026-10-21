@@ -38,15 +38,17 @@ public final class RuleEngine {
             }
             guard rule.isOn, rule.scope.covers(providerId: login.providerId) else { continue }
 
-            var inside = inCondition[rule.id] ?? []
+            // Recorded before the POST is awaited: `review` is re-entrant at an
+            // await, and two logins refreshed at once each run it. A
+            // read-modify-write that straddled the await would drop the login
+            // that wrote first and tell it again on the next refresh.
             if rule.condition.isMet(by: reading) {
-                if inside.insert(login.id).inserted {
+                if inCondition[rule.id, default: []].insert(login.id).inserted {
                     await deliver(rule, reading)
                 }
             } else {
-                inside.remove(login.id)
+                inCondition[rule.id]?.remove(login.id)
             }
-            inCondition[rule.id] = inside
         }
 
         // Forget rules the person removed, so a long-lived engine keeps no

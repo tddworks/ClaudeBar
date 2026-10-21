@@ -38,6 +38,20 @@ struct RuleEngineTests {
         }
     }
 
+    /// A sender that runs a closure mid-send, so a test can re-enter `review`
+    /// at the await the way a second login's refresh does.
+    private final class Reentrant: WebhookSending, @unchecked Sendable {
+        var bodies: [WebhookBody] = []
+        var during: (@MainActor () async -> Void)?
+        func send(_ body: WebhookBody, forRule ruleId: String) async throws {
+            bodies.append(body)
+            if let during {
+                self.during = nil
+                await during()
+            }
+        }
+    }
+
     private let sent = Sent()
 
     /// A rule set holding exactly `list`, each with a URL.
@@ -109,6 +123,20 @@ struct RuleEngineTests {
         await engine.review(login("claude.work", name: "Claude · work", usage: usage(.share(30))), under: .absolute)
 
         #expect(sent.bodies.map(\.reading.login) == ["Claude · me", "Claude · work"])
+    }
+
+    @Test func `should tell each login once when two reviews overlap`() async {
+        let reentrant = Reentrant()
+        let engine = RuleEngine(set: set([below(35)]), sender: reentrant)
+        // The first login's send re-enters `review` for a second login, the way
+        // two refreshes running at once interleave at the await.
+        reentrant.during = { await engine.review(self.login("b", name: "B", usage: self.usage(.share(10))), under: .absolute) }
+
+        await engine.review(login("a", name: "A", usage: usage(.share(10))), under: .absolute)
+        // A later refresh of the second login: it is still below, so it must stay quiet.
+        await engine.review(login("b", name: "B", usage: usage(.share(10))), under: .absolute)
+
+        #expect(reentrant.bodies.map(\.reading.login) == ["A", "B"])
     }
 
     @Test func `should send for a login already below when the rule is added`() async {
