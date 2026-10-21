@@ -252,7 +252,7 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
-Destinations                                notifications · your quota alerts · Notify! · live activity · status export
+Destinations                                notifications · your quota alerts · your rules · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
 MenuBarLabel · display mode (left/used) · countdown colon · popover height · theme ·
@@ -434,6 +434,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a quota alert says once that a login fell below one of the person's percentages, and again only after it climbed back a point above it | `QuotaAlerts` |
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
+| a rule says once that a login met its condition, and again only after the login climbed back out of it; a percent's "out" is a whole point above, the person's whole percent being what it judges | `RuleEngine` |
+| a rule judges what the person sees: the login's worst quota under the policy — hidden quotas left out, most severe status first, then the lowest share. A balance with no ceiling has no share and meets no percent condition | `RuleReading` |
+| a rule names the login (*Claude · work*), never only the product, once a product has several | `RuleReading` |
+| a rule follows a refresh through `onRefreshed`, never inside the Monitor; a paused login is never refreshed, so a rule never judges one | `RuleEngine` |
+| a rule that is off does nothing and keeps its place — turning one off is not deleting it | `Rule` · `RuleSet` |
+| a webhook URL is a secret: the vault, never `rules.json`, never a log line — what a failure names is the rule's id and the HTTP status | `RuleRepository` · `SecretVault` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
 | a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isPaused` |
 | a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
@@ -526,7 +532,7 @@ its factory.
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
 | **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, Notify!, live activity, status export | ◆ `QuotaAlerts`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, your rules, Notify!, live activity, status export | ◆ `QuotaAlerts`, `RuleEngine`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |
