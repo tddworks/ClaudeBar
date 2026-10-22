@@ -13,7 +13,8 @@ struct OAuth2RefresherTests {
     private static let now = Date(timeIntervalSince1970: 1_700_000_000)
 
     /// An expiry in milliseconds, refreshed five minutes early, with a JSON body.
-    private func refresher(network: any NetworkClient = MockNetworkClient(), bodyFormat: OAuth2Refresh.BodyFormat = .json) -> OAuth2Refresher {
+    private func refresher(network: any NetworkClient = MockNetworkClient(), bodyFormat: OAuth2Refresh.BodyFormat = .json,
+                           scopeFrom: String? = nil) -> OAuth2Refresher {
         OAuth2Refresher(
             refresh: OAuth2Refresh(
                 tokenURL: "https://auth.example.com/oauth/token",
@@ -22,6 +23,7 @@ struct OAuth2RefresherTests {
                 hint: "Log in again.",
                 bodyFormat: bodyFormat,
                 scope: "read write",
+                scopeFrom: scopeFrom,
                 dueWhen: .init(expiresAt: "expiresAt", unit: .milliseconds, skew: 300)
             ),
             network: network,
@@ -111,6 +113,55 @@ struct OAuth2RefresherTests {
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/x-www-form-urlencoded")
         #expect(String(data: request.httpBody ?? Data(), encoding: .utf8)
             == "grant_type=refresh_token&refresh_token=refresh-1&client_id=client-1&scope=read%20write")
+    }
+
+    @Test
+    func `should ask for the scopes the login was granted, so a renewed token is never narrower`() async throws {
+        let sent = SentRequest()
+        let network = MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            sent.request = request
+            return (Data(#"{"access_token":"token-2"}"#.utf8), Self.response(200))
+        }
+        var credential = credential(expiresIn: -60)
+        credential["scopes"] = "user:profile user:mcp_servers"
+
+        _ = try await refresher(network: network, scopeFrom: "scopes").refresh(credential)
+
+        let body = try #require(try JSONSerialization.jsonObject(with: sent.request?.httpBody ?? Data()) as? [String: String])
+        #expect(body["scope"] == "user:profile user:mcp_servers")
+    }
+
+    @Test
+    func `should ask for the scopes the provider names when the login names none`() async throws {
+        let sent = SentRequest()
+        let network = MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            sent.request = request
+            return (Data(#"{"access_token":"token-2"}"#.utf8), Self.response(200))
+        }
+
+        _ = try await refresher(network: network, scopeFrom: "scopes").refresh(credential(expiresIn: -60))
+
+        let body = try #require(try JSONSerialization.jsonObject(with: sent.request?.httpBody ?? Data()) as? [String: String])
+        #expect(body["scope"] == "read write")
+    }
+
+    @Test
+    func `should ask for the scopes the provider names when the login's are empty`() async throws {
+        let sent = SentRequest()
+        let network = MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            sent.request = request
+            return (Data(#"{"access_token":"token-2"}"#.utf8), Self.response(200))
+        }
+        var credential = credential(expiresIn: -60)
+        credential["scopes"] = ""
+
+        _ = try await refresher(network: network, scopeFrom: "scopes").refresh(credential)
+
+        let body = try #require(try JSONSerialization.jsonObject(with: sent.request?.httpBody ?? Data()) as? [String: String])
+        #expect(body["scope"] == "read write")
     }
 
     @Test
