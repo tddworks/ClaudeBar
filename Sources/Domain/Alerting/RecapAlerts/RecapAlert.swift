@@ -11,8 +11,10 @@ public struct RecapAlert: Sendable, Equatable {
     public let recap: Recap
     /// The week the recap sums — the one that closed.
     public let week: DateRange
-    /// The calendar the week was read in, so what is written of it names the
-    /// days the person's calendar holds, never a zone guess.
+    /// The calendar the week was read in, holding the week's boundaries —
+    /// where it starts and where it ends. What is written of the week (a
+    /// biggest day, a week's run) is Gregorian in this calendar's zone, never
+    /// a zone guess.
     public let calendar: Calendar
     /// Each provider's name, by id, as the lineup says it; a provider no
     /// longer kept is read as its id.

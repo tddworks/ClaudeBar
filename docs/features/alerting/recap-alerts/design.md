@@ -46,7 +46,7 @@ the answer is pure.
 | The screen prints | Means |
 |---|---|
 | *Weekly recap* | the third tick in a webhook's **SENDS** list, beside *Quota alerts* and *Status alerts* |
-| *Mondays: the week that closed, across every provider* | the tick's hint — the week is the calendar's, so its first day is wherever the person's week starts |
+| *When your week turns: the week that closed, across every provider* | the tick's hint — the week is the calendar's, so its first day is wherever the person's week starts |
 | in Slack: *Weekly recap Nov 3–9: $12.34, +20% vs the week before. …* | the recap's one message, built by `WebhookBody` |
 | *Sent 2m ago* · *Failed — 404* | the webhook's last delivery, as for any send |
 
@@ -141,8 +141,10 @@ Top model claude-sonnet-4-5 · biggest day Nov 5 · cache saved $1.02.
 Clauses the week doesn't have are left out of the Slack message; `change` and
 `tokens` are `null` in JSON when there is no change or the total already reads
 in tokens. Money reads through the kernel's `MoneyFormat`; counts spell like
-the chart's (K · M · B). The dates are written in the calendar the week was
-read in, so a body never guesses a zone. What leaves the Mac: the totals, the
+the chart's (K · M · B). The dates are written Gregorian in the week's zone —
+the person's calendar holds the week's boundaries, the numbers on the page stay
+Gregorian whatever calendar they keep — so a body never guesses a zone. What
+leaves the Mac: the totals, the
 provider names as the lineup says them, the top model's name and the days —
 no path, no prompt, no session.
 

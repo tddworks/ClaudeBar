@@ -145,9 +145,13 @@ private struct RecapPayload: Encodable {
         tokens = alert.recap.tokens
     }
 
-    /// The day a date falls on, in the week's own calendar — "2026-11-05".
+    /// The day a date falls on, Gregorian in the week's own zone — "2026-11-05".
+    /// The week's boundaries stay in the person's calendar; what a machine
+    /// reads is written Gregorian, whatever calendar the person keeps.
     private static func day(_ date: Date, in calendar: Calendar) -> String {
-        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        let day = gregorian.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", day.year ?? 0, day.month ?? 0, day.day ?? 0)
     }
 
@@ -178,17 +182,24 @@ private struct RecapPayload: Encodable {
 /// The recap's Slack words: the week, the total, the change, the split, and
 /// the highlights the week has. Clauses the week doesn't have are left out.
 /// Money reads through the kernel's `MoneyFormat`; counts spell like the
-/// chart's; the days are written in the calendar the week was read in.
+/// chart's; the days are written Gregorian in the week's zone — the person's
+/// calendar holds the week's boundaries, never the numbers on the page.
 private struct RecapLine {
     private let alert: RecapAlert
+    /// The calendar the words are written in: Gregorian, in the week's zone.
+    private let calendar: Calendar
     private let days: DateFormatter
     /// An en dash between a run of days.
     private static let dash = "\u{2013}"
 
     init(_ alert: RecapAlert) {
         self.alert = alert
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = alert.calendar.timeZone
+        calendar = gregorian
         days = DateFormatter()
         days.locale = Locale(identifier: "en_US_POSIX")
+        days.calendar = gregorian
         days.timeZone = alert.calendar.timeZone
         days.dateFormat = "MMM d"
     }
@@ -236,12 +247,12 @@ private struct RecapLine {
         let first = days.string(from: alert.week.first)
         let last = days.string(from: alert.week.last)
         if first == last { return first }
-        let sameMonth = alert.calendar.isDate(alert.week.first, equalTo: alert.week.last, toGranularity: .month)
-        return sameMonth ? "\(first)\(Self.dash)\(Self.dayNumber(of: alert.week.last, in: alert.calendar))"
+        let sameMonth = calendar.isDate(alert.week.first, equalTo: alert.week.last, toGranularity: .month)
+        return sameMonth ? "\(first)\(Self.dash)\(Self.dayNumber(of: alert.week.last, in: calendar))"
                          : "\(first)\(Self.dash)\(last)"
     }
 
-    /// The day of the month as the person's calendar holds it — "9".
+    /// The day of the month as the words' calendar holds it — "9".
     private static func dayNumber(of date: Date, in calendar: Calendar) -> String {
         String(calendar.dateComponents([.day], from: date).day ?? 0)
     }

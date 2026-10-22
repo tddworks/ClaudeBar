@@ -164,6 +164,19 @@ struct WebhookBodyTests {
         #expect(try slackText(.recap(straddling)) == "Weekly recap Nov 30–Dec 6: $5.00. Claude 100%. Biggest day Nov 30.")
     }
 
+    @Test func `should write a recap's days Gregorian whatever calendar the week was read in`() throws {
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = TimeZone(identifier: "UTC")!
+        buddhist.firstWeekday = 2
+        let week = DateRange.week(containing: date(11, 2), calendar: buddhist)
+        let alert = RecapAlert(recap: Recap(this: ["claude": days([stat(11, 2, cost: 12.34)])], before: [:]),
+                               week: week, calendar: buddhist, names: ["claude": "Claude"])
+        let body = try json(.recap(alert))
+
+        #expect(body["biggestDay"] as? String == "2026-11-02")
+        #expect(try slackText(.recap(alert))?.contains("Nov 2–8") == true)
+    }
+
     @Test func `should send a recap as JSON with the week's numbers`() throws {
         let body = try json(.recap(Self.fullWeek))
 
