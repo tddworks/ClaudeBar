@@ -9,7 +9,8 @@ extension Platform {
         timeZone: LinuxTimeZone(),
         processes: Processes(LinuxProcesses()),
         applicationData: { home, environment in
-            if let data = environment("XDG_DATA_HOME"), !data.isEmpty {
+            // The XDG spec: a relative path is invalid and is ignored.
+            if let data = environment("XDG_DATA_HOME"), data.hasPrefix("/") {
                 return URL(fileURLWithPath: data, isDirectory: true)
             }
             return home.appendingPathComponent(".local/share", isDirectory: true)
