@@ -72,10 +72,12 @@ A bug is often a shape that let it happen: a rule a view could call and decide
 for itself, two lifecycles in one class whose optionals disagree, a `String`
 where a type would have refused the bad value, a boundary that guessed the
 other side's format. Before fixing, ask how the domain should be, from the
-person's problem, and ask the five questions of the types the bug touches
+person's problem, and ask the seven questions of the types the bug touches
 → [domain-shape.md](../implement-feature/references/domain-shape.md). Fix the
 shape when it is the cause, in the same change, test first; a new aggregate or
-a moved owner is a design change, confirmed first.
+a moved owner is a design change, confirmed first. A screen that contradicts
+itself ("On track" beside "Runs out") is usually one law with two owners: fix it
+by giving the law one owner, not by adjusting one copy.
 
 ### Locate in Architecture
 
@@ -198,7 +200,7 @@ when the reading changed, and the CHANGELOG line.
 
 - [ ] Bug reproduced and understood
 - [ ] Root cause identified in code
-- [ ] Domain thought through: is the bug a shape the [five questions](../implement-feature/references/domain-shape.md) would have refused? Fixed there if so
+- [ ] Domain thought through: is the bug a shape the [seven questions](../implement-feature/references/domain-shape.md) would have refused? Fixed there if so
 - [ ] Failing test written (exposes bug)
 - [ ] Test FAILS before fix
 - [ ] Minimal fix implemented
