@@ -3,56 +3,121 @@ import Testing
 @testable import Quotas
 
 /// One status per quota: every surface reads `status(under:)` with the
-/// person's policy — absolute thresholds, or pace-aware by projected usage.
+/// person's policy. Pace-aware reads the one rule `SpendRate` owns, so a quota
+/// warns exactly when it runs out before it resets (CANONICAL_MODEL §5).
 @Suite
 struct StatusPolicyTests {
-    /// 40% left with 90% of a 5-hour window gone — on pace (projects 67%).
-    private func onPace() -> UsageQuota {
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+    private let length: TimeInterval = 5 * 3600
+
+    /// A 5-hour quota with `left` percent left and `elapsed` percent of its window gone.
+    private func quota(left: Double, elapsed: Double?) -> UsageQuota {
         UsageQuota(
-            percentRemaining: 40, quotaType: .session, providerId: "claude",
-            resetsAt: Date().addingTimeInterval(30 * 60), windowDuration: 5 * 3600
+            percentRemaining: left, quotaType: .session, providerId: "claude",
+            resetsAt: elapsed.map { now.addingTimeInterval(length * (100 - $0) / 100) },
+            windowDuration: elapsed == nil ? nil : length
         )
     }
 
-    /// 40% left with 20% of the window gone — burning fast (projects 300%).
-    private func burningFast() -> UsageQuota {
-        UsageQuota(
-            percentRemaining: 40, quotaType: .session, providerId: "claude",
-            resetsAt: Date().addingTimeInterval(4 * 3600), windowDuration: 5 * 3600
-        )
-    }
+    // MARK: - Absolute
 
     @Test
     func `should warn between 20 and 50 percent left under absolute thresholds, however fast the quota burns`() {
-        #expect(onPace().status(under: .absolute) == .warning)
-        #expect(burningFast().status(under: .absolute) == .warning)
+        #expect(quota(left: 40, elapsed: 90).status(under: .absolute, at: now) == .warning)
+        #expect(quota(left: 40, elapsed: 20).status(under: .absolute, at: now) == .warning)
+    }
+
+    // MARK: - Pace-aware
+
+    @Test
+    func `should read healthy when more than half is left and it lasts until the reset`() {
+        // 42% used, 41% of the window gone: On track.
+        let session = quota(left: 58, elapsed: 41)
+
+        #expect(session.pace(at: now) == .onPace)
+        #expect(session.status(under: .paceAware, at: now) == .healthy)
     }
 
     @Test
-    func `should call an on-pace quota healthy and a fast-burning one critical when the person picks pace-aware`() {
-        let policy = StatusPolicy.paceAware(burnRateThreshold: 1.5)
-
-        #expect(onPace().status(under: policy) == .healthy)
-        #expect(burningFast().status(under: policy) == .critical)
+    func `should read warning when it runs out before the reset even with most of it left`() {
+        // 40% used, 15% of the window gone.
+        #expect(quota(left: 60, elapsed: 15).status(under: .paceAware, at: now) == .warning)
     }
 
     @Test
-    func `should call 10 percent left critical even when the person picks pace-aware`() {
-        let low = UsageQuota(
-            percentRemaining: 10, quotaType: .session, providerId: "claude",
-            resetsAt: Date().addingTimeInterval(60), windowDuration: 5 * 3600
-        )
+    func `should read healthy between 20 and 50 percent left when it lasts until the reset`() {
+        #expect(quota(left: 40, elapsed: 90).status(under: .paceAware, at: now) == .healthy)
+        #expect(quota(left: 25, elapsed: 72).status(under: .paceAware, at: now) == .healthy)
+    }
 
-        #expect(low.status(under: .paceAware(burnRateThreshold: 1.5)) == .critical)
+    @Test
+    func `should read warning between 20 and 50 percent left when it runs out before the reset`() {
+        #expect(quota(left: 40, elapsed: 20).status(under: .paceAware, at: now) == .warning)
+        #expect(quota(left: 25, elapsed: 60).status(under: .paceAware, at: now) == .warning)
+    }
+
+    @Test
+    func `should read critical under 20 percent and depleted at 0 whatever the pace`() {
+        #expect(quota(left: 10, elapsed: 99).status(under: .paceAware, at: now) == .critical)
+        #expect(quota(left: 19, elapsed: 50).status(under: .paceAware, at: now) == .critical)
+        #expect(quota(left: 0, elapsed: 99).status(under: .paceAware, at: now) == .depleted)
+        #expect(quota(left: 0, elapsed: 10).status(under: .paceAware, at: now) == .depleted)
+    }
+
+    @Test
+    func `should fall back to the absolute bands before there is a rate`() {
+        // Under the noise floor: 2% of the window gone.
+        #expect(quota(left: 40, elapsed: 2).status(under: .paceAware, at: now) == .warning)
+        #expect(quota(left: 70, elapsed: 2).status(under: .paceAware, at: now) == .healthy)
+        // No window at all.
+        #expect(quota(left: 35, elapsed: nil).status(under: .paceAware, at: now) == .warning)
+        #expect(quota(left: 80, elapsed: nil).status(under: .paceAware, at: now) == .healthy)
+    }
+
+    @Test
+    func `should keep a balance healthy until it is spent under pace-aware`() {
+        let balance = UsageQuota(left: .money(Money(12, currency: "USD"), of: nil),
+                                 quotaType: .timeLimit("Balance"), providerId: "deepseek")
+        let spent = UsageQuota(left: .money(Money(0, currency: "USD"), of: nil),
+                               quotaType: .timeLimit("Balance"), providerId: "deepseek")
+
+        #expect(balance.status(under: .paceAware, at: now) == .healthy)
+        #expect(spent.status(under: .paceAware, at: now) == .depleted)
+    }
+
+    @Test
+    func `should never read warning beside an On track pace`() {
+        // Half-point elapsed values keep every case clear of the 5-point margin.
+        for used in stride(from: 0.0, through: 80.0, by: 2.0) {
+            for elapsed in stride(from: 3.5, through: 99.5, by: 4.0) {
+                let session = quota(left: 100 - used, elapsed: elapsed)
+                let status = session.status(under: .paceAware, at: now)
+                let pace = session.pace(at: now)
+
+                #expect(pace != .unknown)
+                #expect((status == .warning) == (pace == .ahead),
+                        "used \(used)%, \(elapsed)% gone: \(status) beside \(pace)")
+            }
+        }
+    }
+
+    // MARK: - The policy
+
+    @Test
+    func `should follow the forecast when the person turns the warning on`() {
+        #expect(StatusPolicy.from(burnRateWarningEnabled: true) == .paceAware)
+        #expect(StatusPolicy.from(burnRateWarningEnabled: false) == .absolute)
     }
 
     @Test
     func `should show the provider's status as its worst quota under the person's policy`() {
-        let usage = UsageSnapshot(providerId: "claude", quotas: [onPace(), burningFast()], capturedAt: Date())
-        let calm = UsageSnapshot(providerId: "claude", quotas: [onPace()], capturedAt: Date())
+        let lasting = quota(left: 40, elapsed: 90)
+        let runningOut = quota(left: 60, elapsed: 15)
+        let usage = UsageSnapshot(providerId: "claude", quotas: [lasting, runningOut], capturedAt: now)
+        let calm = UsageSnapshot(providerId: "claude", quotas: [lasting], capturedAt: now)
 
-        #expect(usage.overallStatus(under: .paceAware(burnRateThreshold: 1.5)) == .critical)
-        #expect(calm.overallStatus(under: .paceAware(burnRateThreshold: 1.5)) == .healthy)
-        #expect(calm.overallStatus(under: .absolute) == .warning)
+        #expect(usage.overallStatus(under: .paceAware, at: now) == .warning)
+        #expect(calm.overallStatus(under: .paceAware, at: now) == .healthy)
+        #expect(calm.overallStatus(under: .absolute, at: now) == .warning)
     }
 }

@@ -529,7 +529,7 @@ struct UsageQuotaTests {
 
     @Test
     func `should be healthy under pace-aware when 43 percent is left late in the window`() {
-        // 57% used, ~85% elapsed → burn rate ~0.67 → healthy
+        // 57% used, ~85% elapsed → room to spare → healthy
         let resetsAt = Date().addingTimeInterval(0.75 * 3600) // 15% of 5h remaining
         let quota = UsageQuota(
             percentRemaining: 43,
@@ -538,14 +538,14 @@ struct UsageQuotaTests {
             resetsAt: resetsAt,
             windowDuration: QuotaType.session.conventionalWindow.seconds
         )
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .healthy)
+        #expect(quota.status(under: .paceAware) == .healthy)
     }
 
     @Test
     func `should fall back to absolute thresholds under pace-aware when the quota has no reset time`() {
         let quota = UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "claude")
         // No reset time → falls back to absolute: 35% remaining → warning
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .warning)
+        #expect(quota.status(under: .paceAware) == .warning)
     }
 
     // MARK: - Window Duration Override

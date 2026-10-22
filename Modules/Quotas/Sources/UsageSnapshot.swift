@@ -170,12 +170,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         quotas.map(\.status).max() ?? .healthy
     }
 
-    /// The overall status using burn rate when enabled.
-    /// Falls back to absolute thresholds for quotas without reset time.
-    public func paceAwareOverallStatus(burnRateThreshold: Double) -> QuotaStatus {
-        quotas.map { $0.paceAwareStatus(burnRateThreshold: burnRateThreshold) }.max() ?? .healthy
-    }
-
     /// The quota with the lowest remaining percentage.
     /// Useful for determining which limit to highlight.
     public var lowestQuota: UsageQuota? {
