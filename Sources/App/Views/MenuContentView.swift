@@ -1248,10 +1248,10 @@ struct MenuContentView: View {
 
         if settings.showDailyUsageCards, let report {
             let baseDelay = Double(cards + 1) * 0.08
-            // Logs that can't be priced show no cost rather than a made-up $0.
-            let knowsCost = history?.knowsCost ?? true
+            // A log that writes a cost of zero everywhere shows no cost rather
+            // than a made-up $0.
             HStack(spacing: 10) {
-                if knowsCost {
+                if history?.hasCost ?? true {
                     DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
                         .frame(maxWidth: .infinity)
                 }

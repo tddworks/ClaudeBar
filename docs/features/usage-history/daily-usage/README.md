@@ -8,13 +8,13 @@ Below a provider's quota cards, the popover can show what you've used **today**,
 
 | Card | Shows | Sub-line |
 |---|---|---|
-| **Cost Usage** | Estimated spend at API list prices, in USD | "Saved $X (N%)" that prompt caching saved |
+| **Cost Usage** | Estimated spend at API list prices, in USD; shown only when a day holds a cost | "Saved $X (N%)" that prompt caching saved |
 | **Token Usage** | Input + output + cache tokens | "N% from cache" |
 | **Working Time** | Time you were active, shown only when there is some | — |
 
 Each card ends with a line like "Vs Sep 23 +$5.00 (12.5%)": green when today is lower, orange when it's higher.
 
-Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output), **Cache** (writes and reads) or **Models** (the bar stacked by the models the tool's log names — hover a day to see each model's part, largest first; only when the log names models), with the thirty-day total in the corner. Hover a bar to see that day.
+Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output), **Cache** (writes and reads) or **Models** (the bar stacked by the models the tool's log names — hover a day to see each model's part, largest first; only when the log names models), with the thirty-day total in the corner. Hover a bar to see that day. The chip you pick is the unit everything speaks: the corner total, the hovered day's value and each model's part are all in it. **Cost** is offered only when the log prices its records and a day holds a cost — a log that writes a cost of zero everywhere (a free plan) counts tokens instead.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ They appear for providers that keep local session logs:
 | Claude | Claude Code transcripts in `~/.claude/projects/**/*.jsonl`; an added account, its own folder's `projects/`. Your usual login also gets a **Claude Desktop · Token Usage** card from `Claude/buddy-tokens.json` under app-data (`~/Library/Application Support` on Mac, `%APPDATA%` on Windows), with tokens only and no cost |
 | Mistral | Vibe session metadata in `~/.vibe/logs/session/` |
 | Oh My Pi | omp's session logs in `~/.omp/agent/sessions/**/*.jsonl` (or `$PI_CODING_AGENT_DIR/sessions`), subagents included; every account omp drives adds up under Oh My Pi. See [Oh My Pi](../../../providers/omp/README.md#daily-usage) |
-| OpenCode | opencode's own database, through one read-only `opencode db` query: every assistant message of the last 30 days, whatever provider opencode drove, as one total. Requires `opencode` on the PATH; without it the cards are empty. See [OpenCode Go](../../../providers/opencode-go/README.md#daily-usage) |
+| OpenCode | opencode's own database (`~/.local/share/opencode/opencode.db`), read directly: every assistant message of the last 30 days, whatever provider opencode drove, as one total. OpenCode 1 and 2 both work. See [OpenCode Go](../../../providers/opencode-go/README.md#daily-usage) |
 | Extensions | Whatever the extension's `dailyUsage` section returns; see [extensions](../../providers/extensions/README.md) |
 
 The cards and the chart only read these files; nothing is sent anywhere. If you join the [Leaderboard](../../leaderboard/README.md), the providers you tick there upload their daily token totals, and nothing else from these logs.
@@ -49,6 +49,7 @@ The cards and the chart only read these files; nothing is sent anywhere. If you 
 - **Cost looks high on a subscription**: that's expected. It's the API list-price value of your usage, not what you paid.
 - **Cost is $0 while you're on a local model**: also expected. Nothing bills you per token for inference on your own machine, so ClaudeBar reports $0 rather than inventing a Sonnet-rate figure. Token Usage keeps counting.
 - **Cost is $0 but an invoice still arrived**: ClaudeBar only sees the model name and the endpoint's host, so a hosted open-weight model and a local proxy in front of a paid API both read as free. When the two disagree, the invoice wins.
+- **No Cost card, and the chart opens on Tokens**: that login's log prices nothing — a free plan (OpenCode Go), or a log that records a cost of zero for every message. Rather than a `$0.00` that means nothing, the Cost card is left out and the chart counts tokens; Cache is still offered.
 - **Usage on another machine** isn't counted. Only this Mac's logs are read.
 - **New models**: until a model is added to ClaudeBar's price list (`claude-prices.json`), it's priced by the fallback rules above — unless its name is one of the open-weight families, or it was served locally. Either way, free.
 - **The chart's first appearance takes a moment**: the first time, thirty days of logs are read; after that the closed days are kept and only today is read.

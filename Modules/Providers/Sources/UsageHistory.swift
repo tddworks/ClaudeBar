@@ -20,6 +20,11 @@ public final class UsageHistory {
     /// Whether a day's cost means anything; without it only tokens do.
     public var knowsCost: Bool { log.knowsCost }
 
+    /// Whether cost is worth a card: the last thirty days hold one
+    /// (`Days.hasCost`), so an idle day or two keeps a priced login's Cost
+    /// card, and a log that prices everything at zero never shows `$0.00`.
+    public var hasCost: Bool { lastThirtyDays?.hasCost ?? false }
+
     /// The app this history counts, when it isn't the login's own tool —
     /// another app on this Mac that uses the same plan.
     public let label: String?

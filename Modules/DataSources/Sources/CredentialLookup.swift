@@ -326,6 +326,10 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
     /// `form` (RFC 6749's default) or `json`.
     public let bodyFormat: BodyFormat
     public let scope: String?
+    /// The credential value holding the scopes this login was granted — asked
+    /// for instead of `scope`, so a renewed token is never narrower than the
+    /// one it replaces (RFC 6749 §6: a token is issued for what was asked).
+    public let scopeFrom: String?
     /// Refresh when the credential's `expiresAt` is within `skew` seconds.
     public let dueWhen: Expiry?
 
@@ -375,6 +379,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         hint: String? = nil,
         bodyFormat: BodyFormat = .form,
         scope: String? = nil,
+        scopeFrom: String? = nil,
         dueWhen: Expiry? = nil
     ) {
         self.tokenURL = tokenURL
@@ -385,6 +390,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         self.hint = hint
         self.bodyFormat = bodyFormat
         self.scope = scope
+        self.scopeFrom = scopeFrom
         self.dueWhen = dueWhen
     }
 
@@ -398,6 +404,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         hint = try container.decodeIfPresent(String.self, forKey: .hint)
         bodyFormat = try container.decodeIfPresent(BodyFormat.self, forKey: .bodyFormat) ?? .form
         scope = try container.decodeIfPresent(String.self, forKey: .scope)
+        scopeFrom = try container.decodeIfPresent(String.self, forKey: .scopeFrom)
         dueWhen = try container.decodeIfPresent(Expiry.self, forKey: .dueWhen)
     }
 }

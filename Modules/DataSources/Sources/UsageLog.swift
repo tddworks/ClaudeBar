@@ -337,9 +337,15 @@ extension UsageLog {
         /// The log's input count already holds its cache reads, so they are
         /// taken out of it: input then means what it means everywhere else.
         public let inputIncludesCacheRead: Bool?
+        /// The tokens the model reasoned with, which this log counts apart
+        /// from its output (OpenCode's `reasoning`, Codex's
+        /// `reasoning_output_tokens`): the model generated both, so they are
+        /// added into `output`.
+        public let reasoningOutput: String?
 
         public init(input: String? = nil, output: String? = nil, cacheWrite: String? = nil, cacheWrite1h: String? = nil,
-                    cacheRead: String? = nil, total: String? = nil, inputIncludesCacheRead: Bool? = nil) {
+                    cacheRead: String? = nil, total: String? = nil, inputIncludesCacheRead: Bool? = nil,
+                    reasoningOutput: String? = nil) {
             self.input = input
             self.output = output
             self.cacheWrite = cacheWrite
@@ -347,6 +353,7 @@ extension UsageLog {
             self.cacheRead = cacheRead
             self.total = total
             self.inputIncludesCacheRead = inputIncludesCacheRead
+            self.reasoningOutput = reasoningOutput
         }
     }
 

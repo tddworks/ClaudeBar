@@ -91,6 +91,18 @@ struct JSONLinesReaderTests {
         #expect(record?.tokens == 35)
     }
 
+    @Test func `should count the model's reasoning output as part of its output`() {
+        let records = UsageLog.Records(
+            files: "~/logs/*.jsonl", at: "$.at",
+            tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cached",
+                                    reasoningOutput: "$.thought")
+        )
+        let line = #"{"in":100,"out":5,"thought":40,"cached":70,"at":"2026-03-11T10:00:00.000Z"}"#
+        let record = reader(records).read(content: line).first
+        #expect(record?.output == 45)
+        #expect(record?.tokens == 145)
+    }
+
     @Test func `should count zero for a kind of token a line doesn't mention`() {
         let records = reader().read(content: Self.line("m-large"))
         #expect(records[0].cacheWrite == 0)
