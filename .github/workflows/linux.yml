@@ -1,0 +1,54 @@
+name: Linux
+
+# MODULAR_DESIGN §10 (one package, three platforms): the modules build and pass
+# their tests on Linux with the same Swift as the Mac, so a client there reads
+# the same logs, counts a day the same way and signs the same. A test that needs
+# a port Linux doesn't have yet is skipped there, saying why (§10, "The shape").
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# It checks the repository out and runs the tests; neither writes anything.
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    name: ClaudeBarKit on Linux
+    runs-on: ubuntu-latest
+    # The official image, so the Swift is pinned here and not by the runner's
+    # own toolchain, and the version is the one the macOS jobs' Xcode carries.
+    container:
+      image: swift:6.2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Get Swift version
+        run: swift --version
+
+      # The root Package.swift declares, on Linux, what builds there today:
+      # Quotas, Diagnostics, DataSources, Providers and Leaderboard, and their tests.
+      - name: Build and test
+        run: swift test
+
+      # The person's time zone (#565). The runner is in UTC, which is also what
+      # Foundation's own lookup answers in a container, so the port's contract
+      # runs again in a zone with daylight saving, in one without, and in a
+      # legacy alias the image's tzdata no longer carries.
+      - name: Time zone contract in Pacific, Korea and legacy Calcutta time
+        run: |
+          for zone in America/Los_Angeles Asia/Seoul Asia/Calcutta; do
+            TZ=$zone swift test --skip-build --filter TimeZoneContract
+          done

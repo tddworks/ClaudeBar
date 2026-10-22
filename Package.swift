@@ -159,8 +159,9 @@ let package = Package(
     ]
 )
 #else
-// What builds on Windows today (§10 phases 0 and 2): Quotas, Diagnostics, DataSources,
-// Providers and Leaderboard. SwiftTerm, SweetCookieKit and the AWS SDK are the Mac's.
+// What builds on Windows and Linux today (§10 phases 0–2 and 6): Quotas, Diagnostics,
+// DataSources, Providers and Leaderboard. SwiftTerm, SweetCookieKit and the AWS SDK are
+// the Mac's.
 let package = Package(
     name: "ClaudeBarKit",
     products: [

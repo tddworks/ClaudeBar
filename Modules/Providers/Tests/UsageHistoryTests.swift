@@ -107,6 +107,30 @@ struct UsageHistoryTests {
         #expect(history.lastThirtyDays == nil)
     }
 
+    // MARK: - The insights' year
+
+    @Test
+    func `should read a year for the insights, keeping the older days the chart leaves out`() async throws {
+        try log([("14", 0), ("41", 1), ("7", 29), ("99", 200)])
+        let history = history()
+
+        await history.read()
+
+        let year = try #require(history.lastYear)
+        #expect(year.stats.count == 365)
+        #expect(year.stats.last?.totalCost == 14)
+        #expect(year.stats.contains { $0.totalCost == 99 })
+    }
+
+    @Test
+    func `should show no insights when nothing was used in a year`() async {
+        let history = history()
+
+        await history.read()
+
+        #expect(history.lastYear == nil)
+    }
+
     @Test
     func `should show every day of a range, used or not`() async throws {
         try log([("14", 0), ("41", 1)])

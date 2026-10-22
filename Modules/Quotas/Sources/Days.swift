@@ -77,4 +77,15 @@ public struct Days: Sendable, Equatable {
         case .cache: Double(line.cacheCreationTokens + line.cacheReadTokens)
         }
     }
+
+    /// The last `n` days of the range, oldest first — a shorter range read
+    /// from the days already held, never the logs again.
+    public func last(_ n: Int) -> Days {
+        Days(Array(stats.suffix(n)), knowsCost: knowsCost)
+    }
+
+    /// What caching saved over the range.
+    public var cacheSavings: Decimal {
+        stats.reduce(0) { $0 + $1.cachedSavings }
+    }
 }
