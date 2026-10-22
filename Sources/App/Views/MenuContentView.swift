@@ -22,6 +22,8 @@ struct MenuContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(NewSessions.self) private var newSessions
+    /// *Login expiry* — the warning a sign-in nearing its end shows on its card.
+    @Environment(LoginExpiryAlerts.self) private var loginExpiryAlerts
     /// The user's Text Size choice, injected where the popover is hosted. The
     /// popover's fonts and its width both resolve against this value, so they
     /// can never disagree about how big the popover is.
@@ -978,6 +980,10 @@ struct MenuContentView: View {
         VStack(spacing: 8) {
             providerSectionHeader(provider: provider)
 
+            if let warning = loginExpiryAlerts.warning(of: provider) {
+                expiryNotice(warning)
+            }
+
             if let snapshot = monitor.usage(of: provider) {
                 let report = RefreshReport.of(provider)
                 if let failure = report.failure {
@@ -994,6 +1000,23 @@ struct MenuContentView: View {
             }
         }
         .contextMenu { accountMenuFor(provider) }
+    }
+
+    /// "Claude login expires in 3 days": the heads-up a sign-in nearing its
+    /// end shows on its card, beside the data the refresh read it from.
+    private func expiryNotice(_ warning: LoginExpiryWarning) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(theme.statusWarning)
+            Text("Login expires \(LoginExpiryWords.forDays(warning.days)) — sign in again to renew it")
+                .popoverFont(11)
+                .foregroundStyle(theme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(theme.statusWarning.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(theme.statusWarning.opacity(0.4), lineWidth: 1))
     }
 
     private func providerSectionHeader(provider: Account) -> some View {

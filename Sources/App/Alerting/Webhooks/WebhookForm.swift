@@ -33,6 +33,7 @@ struct WebhookForm: View {
     @State private var scope = Webhook.Scope.everyLogin
     @State private var quotaAlerts = true
     @State private var statusAlerts = false
+    @State private var loginExpiryAlerts = false
     @State private var refusal: Webhooks.Refusal?
 
     init(draft: Draft, providers: [Provider], quotaAlertPercents: [Int], close: @escaping () -> Void) {
@@ -46,6 +47,7 @@ struct WebhookForm: View {
             _scope = State(initialValue: webhook.scope)
             _quotaAlerts = State(initialValue: webhook.sends.quotaAlerts)
             _statusAlerts = State(initialValue: webhook.sends.statusAlerts)
+            _loginExpiryAlerts = State(initialValue: webhook.sends.loginExpiryAlerts)
         }
     }
 
@@ -95,6 +97,8 @@ struct WebhookForm: View {
                     WebhookCheck(title: WebhookWords.quotaAlerts, hint: WebhookWords.quotaAlertsHint(quotaAlertPercents),
                                  isOn: $quotaAlerts)
                     WebhookCheck(title: WebhookWords.statusAlerts, hint: WebhookWords.statusAlertsHint, isOn: $statusAlerts)
+                    WebhookCheck(title: WebhookWords.loginExpiryAlerts, hint: WebhookWords.loginExpiryAlertsHint,
+                                 isOn: $loginExpiryAlerts)
                     if refusal == .sendsNothing, let refusal {
                         refusalText(refusal)
                     }
@@ -116,7 +120,8 @@ struct WebhookForm: View {
     }
 
     private func save() {
-        let sends = Webhook.Sends(quotaAlerts: quotaAlerts, statusAlerts: statusAlerts)
+        let sends = Webhook.Sends(quotaAlerts: quotaAlerts, statusAlerts: statusAlerts,
+                                  loginExpiryAlerts: loginExpiryAlerts)
         do {
             if let editing {
                 try webhooks.edit(editing.id, url: url.isEmpty ? nil : url, name: name, channel: channel,

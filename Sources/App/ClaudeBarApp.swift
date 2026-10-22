@@ -29,6 +29,9 @@ struct ClaudeBarApp: App {
     /// *Quota alerts* — the person's own percentages (#68).
     @State private var quotaAlerts: QuotaAlerts
 
+    /// *Login expiry* — a warning before a sign-in ends.
+    @State private var loginExpiryAlerts: LoginExpiryAlerts
+
     /// *Webhooks* — the person's URLs that hear every alert, beside this Mac.
     @State private var webhooks: Webhooks
 
@@ -163,6 +166,10 @@ struct ClaudeBarApp: App {
         quotaAlerts.follow(monitor)
         // *Status alerts* follow every refresh: a login's status got worse under the policy.
         StatusAlerts(destination: destinations).follow(monitor)
+        // *Login expiry* follows every refresh too: a sign-in ends, days before it does.
+        let loginExpiryAlerts = LoginExpiryAlerts(destination: destinations)
+        self.loginExpiryAlerts = loginExpiryAlerts
+        loginExpiryAlerts.follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()
@@ -377,6 +384,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(loginExpiryAlerts)
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
             // image. The dropdown's lifecycle maps 1:1 to those flips, so
@@ -424,6 +432,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(loginExpiryAlerts)
             .environment(webhooks)
         }
         .windowStyle(.hiddenTitleBar)
