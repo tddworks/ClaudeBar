@@ -19,8 +19,9 @@ public struct ModelMix: Sendable, Equatable {
     /// first, models that tie in name order.
     public let parts: [Part]
 
-    /// The model leaned on most, or nil when the range names none.
-    public var top: Part? { parts.first }
+    /// The model leaned on most, or nil when the range names none. The
+    /// unnamed line is a part, never a model, so it is never the top one.
+    public var top: Part? { parts.first { !$0.line.model.isEmpty && $0.value > 0 } }
 
     /// `range`'s lines summed per model and read in `unit`.
     public init(of range: Days, in unit: Days.Unit) {

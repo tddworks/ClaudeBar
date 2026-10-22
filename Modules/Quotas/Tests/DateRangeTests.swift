@@ -45,4 +45,32 @@ struct DateRangeTests {
         #expect(before.first == date(2026, 10, 11))
         #expect(before.last == date(2026, 10, 11))
     }
+
+    /// A week is the calendar's own: Monday to Sunday where the week starts on
+    /// a Monday.
+    @Test func `should name the calendar week that holds a day`() {
+        let week = DateRange.week(containing: date(2026, 10, 22), calendar: calendar)
+
+        #expect(week.first == date(2026, 10, 19))
+        #expect(week.last == date(2026, 10, 25))
+        #expect(week.days(in: calendar).count == 7)
+    }
+
+    /// Where the week starts on a Sunday, so does the recap's week.
+    @Test func `should start the week on the calendar's first weekday`() {
+        var sundayFirst = calendar
+        sundayFirst.firstWeekday = 1
+
+        let week = DateRange.week(containing: date(2026, 10, 22), calendar: sundayFirst)
+
+        #expect(week.first == date(2026, 10, 18))
+        #expect(week.last == date(2026, 10, 24))
+    }
+
+    /// The week before a week is the calendar's previous week.
+    @Test func `should name last week as the week before this one`() {
+        let lastWeek = DateRange.week(containing: date(2026, 10, 22), calendar: calendar).before(calendar: calendar)
+
+        #expect(lastWeek == DateRange.week(containing: date(2026, 10, 15), calendar: calendar))
+    }
 }

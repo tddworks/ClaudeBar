@@ -25,6 +25,15 @@ public struct DateRange: Sendable, Equatable {
         return DateRange(first: first, last: last, calendar: calendar)
     }
 
+    /// The calendar's week that holds `day`: from the calendar's own first
+    /// weekday, seven days. Where the week starts is the person's calendar,
+    /// never a fixed Monday.
+    public static func week(containing day: Date, calendar: Calendar) -> DateRange {
+        let first = calendar.dateInterval(of: .weekOfYear, for: day)?.start ?? calendar.startOfDay(for: day)
+        let last = calendar.date(byAdding: .day, value: 6, to: first) ?? first
+        return DateRange(first: first, last: last, calendar: calendar)
+    }
+
     /// The same run of days, one run earlier — the range before this one, for
     /// a comparison. Its length is this range's own.
     public func before(calendar: Calendar) -> DateRange {
