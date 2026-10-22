@@ -69,8 +69,10 @@ background.
   last prices nothing. Expected — a sum in dollars would count it as $0.
 - **A second login of the same provider is added in**, not shown apart: the
   split is by provider, so *Personal* and *Work* Claude read as one **Claude**.
-- **Nothing leaves the Mac.** The recap is read and drawn here; the shareable
-  image and the Monday notification are not built yet.
+- **Nothing leaves the Mac by itself.** The recap is read and drawn here; it
+  only goes out if you tick **Weekly recap** on a
+  [webhook](../../alerting/webhooks/README.md) — the shareable image and a
+  Mac notification of its own are not built.
 
 ## See also
 

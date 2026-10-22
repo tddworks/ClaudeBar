@@ -39,7 +39,8 @@ public enum WebhookDelivery: Sendable, Equatable {
 }
 
 /// One URL the person owns, with how and what it is sent. It has no percent of
-/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide
+/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide, and
+/// the week's recap when `RecapAlerts` says it is due
 /// ([design](docs/features/alerting/webhooks/design.md)).
 public struct Webhook: Sendable, Equatable, Identifiable {
     /// Which logins' alerts it sends.
@@ -49,18 +50,23 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         case provider(String)
     }
 
-    /// Which kinds of alert it sends.
+    /// Which kinds of send it carries.
     public struct Sends: Sendable, Equatable {
         public var quotaAlerts: Bool
         public var statusAlerts: Bool
+        /// The week that closed, each calendar week turn — a third kind of
+        /// send is a field here and a case in `WebhookBody`, and nothing else
+        /// moves ([recap alerts](docs/features/alerting/recap-alerts/design.md)).
+        public var recap: Bool
 
-        public init(quotaAlerts: Bool, statusAlerts: Bool) {
+        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false) {
             self.quotaAlerts = quotaAlerts
             self.statusAlerts = statusAlerts
+            self.recap = recap
         }
 
-        /// Neither kind: a webhook that would never send.
-        public var isNothing: Bool { !quotaAlerts && !statusAlerts }
+        /// No kind at all: a webhook that would never send.
+        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap }
     }
 
     public let id: String
@@ -101,5 +107,12 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         case .everyLogin: true
         case .provider(let id): alert.providerId == id
         }
+    }
+
+    /// Whether it sends the week's recap: it is on and sends recaps. Scope is
+    /// never judged — the recap is one read across every provider, so no
+    /// login and no provider is in or out of it.
+    public func wants(_ recap: RecapAlert) -> Bool {
+        isOn && sends.recap
     }
 }

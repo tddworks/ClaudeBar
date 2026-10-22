@@ -173,10 +173,14 @@ which is offered from two providers.
 
 ## 8 · Deferred, and open
 
-- **The shareable image** and **the Monday notification** are not built. The
-  image is the one place repo or model names could leave the Mac, so it goes
-  through the Leaderboard's *exactly what gets shared* step; the notification is
-  a destination beside Notify!, never a Monitor edit.
+- **The shareable image** and **the Mac's Monday notification** are not
+  built. The image is the one place repo or model names could leave the Mac,
+  so it goes through the Leaderboard's *exactly what gets shared* step; the
+  notification is a destination beside Notify!, never a Monitor edit. What
+  **is** built of the Monday idea is the webhook send —
+  [recap alerts](../../alerting/recap-alerts/design.md), whose `RecapAlerts`
+  tells the recap destinations at the week's turn; the Mac's notification is
+  a second destination when it comes.
 - **A one-provider Mac** has no All page, so no recap. Whether it belongs under
   *TODAY'S USAGE* there is open.
 - **This week is partial.** Whether the card says *so far* is a wording question.
