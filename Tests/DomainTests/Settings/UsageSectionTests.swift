@@ -13,18 +13,19 @@ struct UsageSectionTests {
     }
 
     @Test
-    func `should keep the year and the model mix hidden until the person shows them`() {
+    func `should keep the year's sections hidden until the person shows them`() {
         #expect(!UsageSection.lastYear.isShownByDefault)
         #expect(!UsageSection.modelMix.isShownByDefault)
+        #expect(!UsageSection.projectMix.isShownByDefault)
     }
 
     @Test
-    func `should read the year only for the year's heatmap and the model mix`() {
-        #expect(UsageSection.allCases.filter(\.readsTheYear) == [.lastYear, .modelMix])
+    func `should read the year only for the year's heatmap, the model mix and the projects`() {
+        #expect(UsageSection.allCases.filter(\.readsTheYear) == [.lastYear, .modelMix, .projectMix])
     }
 
     @Test
-    func `should offer the five sections in the order the popover shows them`() {
-        #expect(UsageSection.allCases == [.today, .lastThirtyDays, .lastYear, .modelMix, .weeklyRecap])
+    func `should offer the six sections in the order the popover shows them`() {
+        #expect(UsageSection.allCases == [.today, .lastThirtyDays, .lastYear, .modelMix, .projectMix, .weeklyRecap])
     }
 }
