@@ -161,6 +161,11 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           Waiting for the person, not failing: the popover shows the
 │       │       │                           definition's `setup` (title · text · a button to its url) and
 │       │       │                           whatever usage history it can read
+│       │       ├── loginExpiresAt: Date?  ◇   WHAT THE SIGN-IN SAYS — when this login's
+│       │       │                           credential expires, as its data sources read it
+│       │       │                           at the last successful refresh; `nil` when none
+│       │       │                           declares an expiry. A failed refresh never
+│       │       │                           erases it ([login expiry design](../features/alerting/login-expiry/design.md))
 │       │       ├── budget: Budget?  ◇      THE USER'S OWN CEILING on this login's Cost — a Daily
 │       │       │                           Budget, the Claude API Budget. The vendor sets quotas;
 │       │       │                           the user sets budgets. Set in the provider's form
@@ -258,7 +263,7 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
-Destinations                                notifications · your quota alerts · status alerts · webhooks · Notify! · live activity · status export
+Destinations                                notifications · your quota alerts · status alerts · login expiry · webhooks · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
 MenuBarLabel · display mode (left/used) · countdown colon · popover height · theme ·
@@ -444,6 +449,9 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | a status alert says when a login's status got worse under the policy and is not healthy, once per worsening; the first status seen is compared with healthy ([design](../features/alerting/status-alerts/design.md)) | `StatusAlerts` |
+| a login's expiry is what its own data sources' credentials say, earliest first, read only as the definition declares (`dueWhen`) — nothing is parsed by guessing a field's format | `DataSource.credentialExpiry()` · `Provider.loginExpiry(of:)` |
+| the expiry is noted only on a successful refresh; a failed one keeps what we saw, a paused login is never noted, and a refresh that finds nothing forgets it ([design](../features/alerting/login-expiry/design.md)) | `Provider.refresh` · `Account.loginExpiresAt` |
+| a login whose sign-in expires is told once per step — 7 days, 3 days, today — a new expiry instant resetting the ladder, the past quiet, and a login with no knowable expiry never told or shown ([design](../features/alerting/login-expiry/design.md)) | `LoginExpiryAlerts` |
 | an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestinations` |
 | a webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope; it has no percent of its own ([design](../features/alerting/webhooks/design.md)) | `Webhook` |
 | how an alert or a test reads in Slack and as JSON; a test is never shaped like an alert | `WebhookBody` |
@@ -556,7 +564,7 @@ its factory.
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
 | **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, login expiry, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `LoginExpiryAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and when its sign-in expires |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |

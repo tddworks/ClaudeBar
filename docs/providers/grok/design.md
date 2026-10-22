@@ -37,6 +37,7 @@ A dictionary keyed by `"<issuer>::<client-id>"` (OIDC login) or a plain scope UR
 - **Candidate choice** when several entries have a `key`: prefer one with a non-empty `refresh_token`, then the latest `expires_at` (a missing expiry counts as never expiring). An empty `refresh_token` counts as absent, so it neither wins selection nor triggers a refresh that can't work (e4a503b).
 - **Timestamps** carry microsecond fractions (`.138930Z`) or `+00:00` offsets. `ISO8601DateFormatter` only takes milliseconds, so the fraction is trimmed to 3 digits before parsing.
 - Entries without `expires_at` (API-key style) never refresh proactively.
+- **Login expiry** ([alerting design](../../features/alerting/login-expiry/design.md)): the entry's `expires_at`, the same instant the proactive refresh uses, is read at every successful fetch to warn before the login expires. Only the instant is kept — never the key beside it.
 
 ## Refresh
 
