@@ -47,6 +47,8 @@ struct ClaudeBarApp: App {
     /// with `notify.enabled`; does nothing until a device is linked.
     private let notifyDriver: NotifyPublishDriver
     private let leaderboard: AppLeaderboard
+    /// *WEEKLY RECAP*'s two weeks across the lineup, read by the All page.
+    private let weeklyRecaps: WeeklyRecaps
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
@@ -201,6 +203,10 @@ struct ClaudeBarApp: App {
         leaderboard = AppLeaderboard(monitor: monitor)
         leaderboard.start()
 
+        // The weekly recap reads the lineup's usage history when the All page
+        // asks; it decides for itself when it is stale.
+        weeklyRecaps = WeeklyRecaps(monitor: monitor, calendar: DataSources.calendar())
+
         // Start hook server if hooks are enabled
         if settingsRepository.isHookEnabled() {
             // Reconcile installed hooks so newly-added events (e.g.
@@ -345,14 +351,14 @@ struct ClaudeBarApp: App {
         MenuBarExtra {
             Group {
                 #if ENABLE_SPARKLE
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, weeklyRecaps: weeklyRecaps, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
                     .environment(\.popoverTextSize, settings.popoverTextSize)
                     .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, weeklyRecaps: weeklyRecaps, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)

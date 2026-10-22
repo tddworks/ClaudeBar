@@ -96,8 +96,8 @@ count. A day owns its sum (`DailyUsageStat +`), as a line does.
 
 **The words are the App's.** The kernel holds numbers and a unit; the card
 writes them: `UsageFormat.value(_:in:)`, `change`, `duration`, a share, and the
-biggest day in the person's locale. The chip names and *vs last week* are
-`RecapRange`'s.
+biggest day in the person's locale. The weeks are `RecapRange`'s (Domain); its
+chip names and *vs last week* are the App's words for it.
 
 ## 4 · The laws, each with one owner
 
@@ -111,6 +111,7 @@ biggest day in the person's locale. The chip names and *vs last week* are
 | the biggest day is the busiest of the merged days | `DayActivity` |
 | two days of one date add up to one: every count, the cost, the time, the savings, one line per model | `DailyUsageStat` (`+`) |
 | a recap is a read, never stored; a week with nothing is said, never shown as zeros | `Recap.isEmpty` · the card |
+| the recap is read again only when the week turned or a login's days were read again since the last read; otherwise the last read stands | `WeeklyRecaps` |
 | a value is written once per unit | `UsageFormat` (App) |
 
 ## 5 · The pieces
@@ -118,20 +119,21 @@ biggest day in the person's locale. The chip names and *vs last week* are
 | Piece | Job | Where |
 |---|---|---|
 | `Recap`, `DateRange.week`, `Days.merged`, `DailyUsageStat +` | the values | `Modules/Quotas/Sources/` |
-| `RecapBuilder` | the composition: asks each login of the lineup for `usageHistory.days(in:)` for both weeks and the week before each, by provider, and builds a `Recap` per week. It cuts no days and picks no unit | `Sources/App/UsageHistory/` |
-| `RecapRange` | *This week* / *Last week*: the chip's name, the week it names (`DateRange.week`, or the week before), what it is compared with, its empty note | `Sources/App/UsageHistory/` |
+| `WeeklyRecaps` | the lineup's recaps: asks each login for `usageHistory.days(in:)` for both weeks and the week before each, by provider (`Days.merged`), and builds a `Recap` per week. Owns when it is read again (`readIfStale`): the week it was read for against now, and each login's last read. It cuts no days and picks no unit. Built in `ClaudeBarApp.init()` over the `QuotaMonitor`'s lineup; tests hand it `RecapLogin`s, a clock and a calendar | `Sources/Domain/UsageHistory/` |
+| `RecapRange` | *This week* / *Last week*: the week it names (`DateRange.week`, or the week before) | `Sources/Domain/UsageHistory/` |
+| `RecapRange` words | the chip's name, what it is compared with, its empty note | `Sources/App/UsageHistory/RecapRange+Words.swift` |
 | `RecapCardView` | renders a recap and tells: the range chips, the total in `recap.unit`, the change and what it is against, each provider's part, the highlights | `Sources/App/UsageHistory/` |
-| the All page (`MenuContentView`) | reads both weeks when it opens, and again when the week turns, the setting changes or a login's days are read again | `Sources/App/Views/` |
+| the All page (`MenuContentView`) | shows the card while **Daily Usage Cards** is on, and tells `WeeklyRecaps` to read if stale when the card appears and after the logins' usage is read | `Sources/App/Views/` |
 | `UsageFormat` | a value in a unit, a share, a change, a duration | `Sources/App/UsageHistory/` |
 
 ```
- All page opens  ─ .task(id: week · Daily Usage Cards · each login's lastThirtyDays)
-   └─ RecapBuilder.recaps(of: lineup's usage histories, at: now)
+ card appears · usage read (monitor.readToday)
+   └─ WeeklyRecaps.readIfStale()      nothing when the week and each login's lastThirtyDays are the ones it read for
         for This week, Last week:
           this   = each provider's days(in: week)           ← UsageHistory.days(in:)
           before = each provider's days(in: week.before)
           Recap(this:, before:)
-   └─ RecapCardView(recaps:, name: provider's name)
+   └─ RecapCardView(recaps: weeklyRecaps.recaps, name: provider's name)
         the chosen week's recap, its RecapRange's words; an empty week says so, the chips stay
 ```
 
