@@ -11,7 +11,7 @@ import Sparkle
 struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
-    let quotaAlerter: NotificationAlerter
+    let notifications: Notifications
     let leaderboard: AppLeaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
@@ -208,7 +208,7 @@ struct MenuContentView: View {
             // Request alert permission once (after app run loop is active)
             if !hasRequestedNotificationPermission {
                 hasRequestedNotificationPermission = true
-                let granted = await quotaAlerter.requestPermission()
+                let granted = await notifications.requestPermission()
                 AppLog.notifications.info("Alert permission request result: \(granted ? "granted" : "denied")")
             }
 

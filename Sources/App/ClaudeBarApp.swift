@@ -77,8 +77,9 @@ struct ClaudeBarApp: App {
     /// How often ClaudeBar checks that each session's Claude Code process still exists.
     private static let sessionSweepInterval: Duration = .seconds(30)
 
-    /// This Mac's notifications: the status alerts, and the permission to show them.
-    private let quotaAlerter = NotificationAlerter()
+    /// This Mac's notifications: a destination for every alert, and the
+    /// permission to show them.
+    private let notifications = Notifications()
 
     /// Sends session start/end notifications
     private let sessionAlertSender = SystemAlertSender()
@@ -154,7 +155,7 @@ struct ClaudeBarApp: App {
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
         // Every alert goes to every destination; neither decider knows who hears it.
-        let destinations = AlertDestinations([QuotaAlertNotifications(), quotaAlerter])
+        let destinations = AlertDestinations([notifications])
         // *Quota alerts* follow every refresh too, on what the person sees.
         let quotaAlerts = QuotaAlerts(settings: settingsRepository, destination: destinations)
         self.quotaAlerts = quotaAlerts
@@ -367,14 +368,14 @@ struct ClaudeBarApp: App {
         MenuBarExtra {
             Group {
                 #if ENABLE_SPARKLE
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, notifications: notifications, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
                     .environment(\.popoverTextSize, settings.popoverTextSize)
                     .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, notifications: notifications, leaderboard: leaderboard, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
