@@ -4,7 +4,7 @@ import Mockable
 @testable import Infrastructure
 @testable import Domain
 
-/// This Mac's notifications, for both kinds of alert: the login as the lineup
+/// This Mac's notifications, for every kind of alert: the login as the lineup
 /// names it, in the words the person has always read.
 @Suite
 struct NotificationsTests {
@@ -72,6 +72,30 @@ struct NotificationsTests {
         await Notifications(alertSender: sending(into: sent)).announce(status(.depleted))
 
         #expect(sent.body == "Your Claude · work quota is depleted. Usage may be blocked.")
+    }
+
+    // MARK: - Login expiry
+
+    @Test
+    func `should warn that a login expires in days, and say what to do`() async {
+        let sent = Sent()
+
+        await Notifications(alertSender: sending(into: sent))
+            .announce(.loginExpiry(LoginExpiryAlert(login: "Claude · work", providerId: "claude", days: 3)))
+
+        #expect(sent.title == "Claude · work Login Expiry")
+        #expect(sent.body == "Login expires in 3 days. Sign in again to renew it.")
+        #expect(sent.category == Notifications.loginExpiryCategory)
+    }
+
+    @Test
+    func `should say a login expires today when the day has come`() async {
+        let sent = Sent()
+
+        await Notifications(alertSender: sending(into: sent))
+            .announce(.loginExpiry(LoginExpiryAlert(login: "Claude · work", providerId: "claude", days: 0)))
+
+        #expect(sent.body == "Login expires today. Sign in again to renew it.")
     }
 
     // MARK: - This Mac

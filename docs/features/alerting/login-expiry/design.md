@@ -62,7 +62,7 @@ comes named as the lineup names it. The card reads the same decider, so the
 | The screen prints | Means |
 |---|---|
 | *Claude · work Login Expiry* | the notification's title, the login as the lineup names it |
-| *Login expires in 3 days* | calendar days from today; `0` is said as *expires today* |
+| *Login expires in 3 days* | calendar days from today; `0` is said as *expires today*, `1` as *tomorrow* |
 | *Sign in again to renew it.* | what to do — the same advice the CLI would give |
 
 ## The laws, one owner each
@@ -89,6 +89,7 @@ comes named as the lineup names it. The card reads the same decider, so the
 | `LoginExpiryAlert` ◇ | `Domain/Alerting/LoginExpiryAlerts` | `login` (lineupName), `providerId`, `days` — `0` = today | **built** |
 | `LoginExpiryAlerts` ◆ | `Domain/Alerting/LoginExpiryAlerts` | keeps each login's ladder, decides, tells every destination; `follow(monitor)` hears each refresh; `warning(of:)` is the card's read | **built** |
 | `Alert.loginExpiry` | `Domain/Alerting` | the third case a destination can be told | **built** |
+| `LoginExpiryWords` | `Domain/Alerting/LoginExpiryAlerts` | the days said aloud — *in 3 days*, *today*; one wording for the notification, the webhook and the card | **built** |
 | `DataSource.credentialExpiry()` | `DataSources` | reads the credential's expiry instant the way the definition declares it | **built** |
 | `Account.loginExpiresAt: Date?` ◇ | `Providers` | what we last saw — survives a failed refresh, forgotten when a refresh finds nothing | **built** |
 | `Provider.loginExpiry(of:)` | `Providers` | the earliest of the login's reached data sources | **built** |
@@ -106,9 +107,9 @@ onRefreshed(login)                                    // loginExpiryAlerts.follo
     expiresAt == nil → forget, quiet                  // no knowable expiry
     days = calendar days from today to expiresAt
     days < 0 → quiet                                  // already expired
-    step = [7, 3, 0].first { days <= $0 } else → reset the ladder, quiet
+    step = [7, 3, 0].last { days <= $0 } else → quiet // before the first step
     told[step]? → quiet;  else tell once:
-      destination.announce(.loginExpiry(LoginExpiryAlert(…)))
+      destination.announce(.loginExpiry(LoginExpiryAlert(…)))  
 ```
 
 `QuotaAlerts` and `StatusAlerts` run beside it on the same refresh; the three

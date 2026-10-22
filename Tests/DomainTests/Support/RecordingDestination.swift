@@ -16,4 +16,9 @@ final class RecordingDestination: AlertDestination, @unchecked Sendable {
     var statusAlerts: [StatusAlert] {
         alerts.compactMap { if case .status(let alert) = $0 { alert } else { nil } }
     }
+
+    /// The login-expiry alerts it heard, in order.
+    var loginExpiryAlerts: [LoginExpiryAlert] {
+        alerts.compactMap { if case .loginExpiry(let alert) = $0 { alert } else { nil } }
+    }
 }

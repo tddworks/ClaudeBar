@@ -14,6 +14,9 @@ Login Expiry — Login expires in 3 days. Sign in again to renew it.*
 - **Once per step**: 7 days before, 3 days before, and on the day. Not once
   per refresh — nothing arrives again until the next step.
 - **Per login**, named as the menu names it: *Claude · work*.
+- While a warning is live, the login's card in the menu shows it too:
+  **Login expires in 3 days — sign in again to renew it** (*today* on the
+  day, *tomorrow* the day before).
 - Signing in again clears it: the fresh login starts a new countdown, and if
   it no longer expires soon nothing is said at all.
 - A **paused** login is never refreshed, so it is never told. The menu bar
