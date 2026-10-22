@@ -3,8 +3,8 @@ import Quotas
 
 /// Records into days: each record on the local day its own time falls in,
 /// priced, with working sessions split by `sessionGap`. A day is the sum of
-/// its lines — one per model; records with no model form one unnamed line
-/// (daily-usage design §1).
+/// its lines — one per model, and, when the log names a working directory,
+/// one per project (daily-usage design §1, quota-by-project design §3).
 enum DayAggregator {
     /// Bumped when how days are summed changes. The log's fingerprint
     /// carries it, so kept days are summed again — a ledger is a cache, not
@@ -30,6 +30,8 @@ enum DayAggregator {
         var cost: Decimal = 0
         var savings: Decimal = 0
         var tallies: [String: Tally] = [:]
+        var projectTallies: [String: Tally] = [:]
+        var namesAProject = false
         for record in records {
             let spent: Decimal?
             if let own = record.cost {
@@ -54,6 +56,19 @@ enum DayAggregator {
             tally.read += record.cacheRead
             tally.cost += spent ?? 0
             tallies[model] = tally
+            // …and to its project, named by the working directory's last
+            // path component — the one place the naming happens, so a day is
+            // never kept with a path.
+            let project = record.project.map { ProjectUsageLine.name(of: $0) } ?? ""
+            if !project.isEmpty { namesAProject = true }
+            var projectTally = projectTallies[project] ?? Tally()
+            projectTally.total += record.tokens
+            projectTally.input += record.input
+            projectTally.output += record.output
+            projectTally.write += record.cacheWrite
+            projectTally.read += record.cacheRead
+            projectTally.cost += spent ?? 0
+            projectTallies[project] = projectTally
         }
         // Named models in name order; the unnamed line last, so it reads as
         // what remains of the day.
@@ -70,6 +85,7 @@ enum DayAggregator {
                                         cacheCreationTokens: unnamed.write, cacheReadTokens: unnamed.read,
                                         totalTokens: unnamed.total, cost: unnamed.cost))
         }
+        let projects = Self.projectLines(projectTallies, namedAny: namesAProject)
         let (workingTime, sessions) = sessionsAndTime(records, gap: sessionGap)
         return DailyUsageStat(
             date: day,
@@ -82,8 +98,32 @@ enum DayAggregator {
             cacheCreationTokens: records.reduce(0) { $0 + $1.cacheWrite },
             cacheReadTokens: records.reduce(0) { $0 + $1.cacheRead },
             cachedSavings: savings,
-            lines: lines
+            lines: lines,
+            projects: projects
         )
+    }
+
+    /// A day's project split, one line per project, read from the tallies the
+    /// records gathered: named lines in name order; on a day that names at
+    /// least one project the records without a directory form the unnamed
+    /// part last, so the parts add up to the day. A day whose records name no
+    /// project carries no split at all.
+    private static func projectLines(_ tallies: [String: Tally], namedAny: Bool) -> [ProjectUsageLine] {
+        guard namedAny else { return [] }
+        var lines = tallies
+            .filter { !$0.key.isEmpty }
+            .sorted { $0.key < $1.key }
+            .map { project, tally in
+                ProjectUsageLine(project: project, inputTokens: tally.input, outputTokens: tally.output,
+                                 cacheCreationTokens: tally.write, cacheReadTokens: tally.read,
+                                 totalTokens: tally.total, cost: tally.cost)
+            }
+        if let unnamed = tallies[""] {
+            lines.append(ProjectUsageLine(project: "", inputTokens: unnamed.input, outputTokens: unnamed.output,
+                                          cacheCreationTokens: unnamed.write, cacheReadTokens: unnamed.read,
+                                          totalTokens: unnamed.total, cost: unnamed.cost))
+        }
+        return lines
     }
 
     /// One model's share of a day, gathered while the records pass.

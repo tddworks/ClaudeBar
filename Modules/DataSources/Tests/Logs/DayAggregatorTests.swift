@@ -117,4 +117,72 @@ struct DayAggregatorTests {
         #expect(stat == .empty(for: day))
         #expect(stat.lines.isEmpty)
     }
+
+    // MARK: - The day's project split (quota-by-project design §3)
+
+    private func record(in directory: String?, input: Int = 0, output: Int = 0, cost: Decimal? = nil) -> LogRecord {
+        LogRecord(at: day.addingTimeInterval(600), project: directory, input: input, output: output, cost: cost)
+    }
+
+    @Test func `should attribute each record's tokens and cost to its project`() {
+        let stat = DayAggregator.stat([
+            record(in: "/Users/me/workspaces/ClaudeBar/marron", input: 1_000, output: 200, cost: 1.5),
+            record(in: "/Users/me/workspaces/api", input: 300, output: 100, cost: 0.25),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects == [
+            ProjectUsageLine(project: "marron", inputTokens: 1_000, outputTokens: 200, totalTokens: 1_200, cost: 1.5),
+            ProjectUsageLine(project: "api", inputTokens: 300, outputTokens: 100, totalTokens: 400, cost: 0.25),
+        ])
+    }
+
+    @Test func `should carry no project split when no record names a directory`() {
+        let stat = DayAggregator.stat([
+            record(in: nil, input: 100, cost: 0.5),
+            record(in: nil, input: 10, cost: 0.25),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects.isEmpty)
+    }
+
+    @Test func `should keep records without a directory as one unnamed part of a day that names projects`() {
+        let stat = DayAggregator.stat([
+            record(in: "/Users/me/marron", input: 1_000, cost: 1.5),
+            record(in: nil, input: 100, cost: 0.5),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects == [
+            ProjectUsageLine(project: "marron", inputTokens: 1_000, totalTokens: 1_000, cost: 1.5),
+            ProjectUsageLine(project: "", inputTokens: 100, totalTokens: 100, cost: 0.5),
+        ])
+    }
+
+    @Test func `should order a day's project lines by name, the unnamed part last`() {
+        let stat = DayAggregator.stat([
+            record(in: "/a/zeta", cost: 1),
+            record(in: "/a/api", cost: 1),
+            record(in: nil, cost: 1),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects.map(\.project) == ["api", "zeta", ""])
+    }
+
+    @Test func `should read an empty directory as unnamed`() {
+        let stat = DayAggregator.stat([
+            record(in: "", input: 500, cost: 0.5),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects.isEmpty)
+    }
+
+    @Test func `should make a day's project lines add up to the day`() {
+        let stat = DayAggregator.stat([
+            record(in: "/a/marron", input: 1_000, output: 200, cost: 1.5),
+            record(in: "/a/api", input: 300, output: 100, cost: 0.25),
+            record(in: nil, input: 50, cost: 0.1),
+        ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
+
+        #expect(stat.projects.reduce(0) { $0 + $1.cost } == stat.totalCost)
+        #expect(stat.projects.reduce(0) { $0 + $1.totalTokens } == stat.totalTokens)
+    }
 }
