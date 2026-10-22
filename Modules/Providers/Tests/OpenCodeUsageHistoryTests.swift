@@ -119,6 +119,16 @@ struct OpenCodeUsageHistoryTests {
     }
 
     @Test(arguments: places)
+    func `should count the model's reasoning output as part of its output`(_ place: Place) async throws {
+        let days = await try log([place], [
+            Message(id: "reasoned", at: Self.today, provider: "opencode", input: 100, output: 5,
+                    reasoning: 40, place: place),
+        ]).days(last: 1)
+        #expect(days[0].outputTokens == 45)
+        #expect(days[0].totalTokens == 145)
+    }
+
+    @Test(arguments: places)
     func `should read a store that only one version of opencode wrote`(_ place: Place) async throws {
         let days = await try log([place], [
             Message(id: "only_1", at: Self.today, provider: "opencode", input: 1000, output: 500, place: place),

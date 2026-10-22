@@ -16,9 +16,17 @@ public final class UsageHistory {
     /// *DAILY USAGE — LAST 30 DAYS*: the thirty days ending today, oldest
     /// first, once read and when any of them holds usage.
     public private(set) var lastThirtyDays: Quotas.Days?
+    /// *USAGE INSIGHTS*: the last year ending today, oldest first, once read
+    /// and when any of them holds usage — the heatmap's range and the mix's.
+    public private(set) var lastYear: Quotas.Days?
 
     /// Whether a day's cost means anything; without it only tokens do.
     public var knowsCost: Bool { log.knowsCost }
+
+    /// Whether cost is worth a card: the last thirty days hold one
+    /// (`Days.hasCost`), so an idle day or two keeps a priced login's Cost
+    /// card, and a log that prices everything at zero never shows `$0.00`.
+    public var hasCost: Bool { lastThirtyDays?.hasCost ?? false }
 
     /// The app this history counts, when it isn't the login's own tool —
     /// another app on this Mac that uses the same plan.
@@ -84,8 +92,9 @@ public final class UsageHistory {
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,
-    /// then the last thirty days, for the chart — closed days from the
-    /// ledger. Days with nothing are kept as none.
+    /// then the last year, for the insights — the chart's thirty days its
+    /// tail, never read twice. Closed days come from the ledger; a range with
+    /// nothing in it is kept as none.
     public func read() async {
         for app in otherApps { await app.read() }
         let days = await days(in: .last(2, endingOn: log.currentTime, calendar: log.calendar))
@@ -93,7 +102,9 @@ public final class UsageHistory {
         let report = DailyUsageReport(today: days.stats[1], previous: days.stats[0])
         self.report = report.today.isEmpty && report.previous.isEmpty ? nil : report
 
-        let month = await self.days(in: .last(30, endingOn: log.currentTime, calendar: log.calendar))
+        let year = await self.days(in: .last(365, endingOn: log.currentTime, calendar: log.calendar))
+        let month = year.last(30)
         lastThirtyDays = month.stats.allSatisfy(\.isEmpty) ? nil : month
+        lastYear = year.stats.allSatisfy(\.isEmpty) ? nil : year
     }
 }

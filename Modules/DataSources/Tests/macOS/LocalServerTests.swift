@@ -29,8 +29,9 @@ struct LocalServerTests {
         let call = try JSONDecoder().decode(LocalServerCall.self, from: Data(callJSON.utf8))
         let commands = MockCLIExecutor()
         given(commands).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { binary, _, _, _, _, _ in
-                return CLIResult(output: binary.hasSuffix("pgrep") ? pgrep : lsof)
+            .willProduce { binary, args, _, _, _, _ in
+                // The app's ports, only when asked about the app's own PID.
+                return CLIResult(output: binary.hasSuffix("pgrep") ? pgrep : args.last == "42" ? lsof : "")
             }
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { request in
@@ -71,6 +72,14 @@ struct LocalServerTests {
         await #expect(throws: UsageError.authenticationRequired) {
             try await fetch(pgrep: "42 /opt/acme/acme_server --app acme")
         }
+    }
+
+    @Test func `should ask the running app with its token while a CLI of the same name runs beside it without one`() async throws {
+        let seen = Seen()
+        let response = try await fetch(pgrep: "7 /opt/acme/acme_server --app acme\n42 /opt/acme/acme_server --app acme --csrf tok-2", seen: seen)
+        #expect(response.status == 200)
+        #expect(seen.urls.last == "https://127.0.0.1:5002/status")
+        #expect(seen.csrf.allSatisfy { $0 == "tok-2" })
     }
 
     @Test func `should say it couldn't connect to the app when no port answers`() async throws {

@@ -30,7 +30,7 @@ ClaudeBar picks a source automatically on each refresh:
 - **"Authentication required" with the app closed** means the saved sign-in expired and `agy` isn't on your login shell's `PATH` to renew it. Open Antigravity or run `agy` once, then refresh.
 - **"Command did not complete within the timeout" with the app closed** was a bug in 0.4.92 and earlier ([#301](https://github.com/tddworks/ClaudeBar/issues/301)): ClaudeBar treated "no Antigravity process" as a failure and never tried the Cloud Code fallback.
 - **The Claude pool shows as "Claude 5h" and "Claude 7d" cards, and the Gemini pool as Session and Weekly.** The cards are no longer grouped under "Gemini" / "Claude & others".
-- **"Authentication required" while Antigravity is running** means ClaudeBar found the language server process but its command line had no `--csrf_token`. Restart Antigravity.
+- **"Authentication required" while Antigravity is running** means none of the Antigravity processes ClaudeBar found (the app's language server, or `agy`) was started with a `--csrf_token`. Restart Antigravity.
 - **"Could not connect to Antigravity API"** means the process was found but none of its local ports answered. This usually happens while the app is still starting. Try again shortly.
 - **Gemini CLI quota is separate.** The [Gemini](../gemini/README.md) provider tracks Gemini Code Assist quota from the `gemini` CLI's sign-in.
 

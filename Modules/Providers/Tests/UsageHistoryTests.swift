@@ -36,6 +36,26 @@ struct UsageHistoryTests {
     // MARK: - Reading
 
     @Test
+    func `should offer cost when a day of the last thirty holds one, even if today and yesterday were idle`() async throws {
+        try log([("14", 5)])
+        let history = history()
+
+        await history.read()
+
+        #expect(history.hasCost)
+    }
+
+    @Test
+    func `should offer no cost when every day prices at zero`() async throws {
+        try log([("0", 0), ("0", 1), ("0", 7)])
+        let history = history()
+
+        await history.read()
+
+        #expect(!history.hasCost)
+    }
+
+    @Test
     func `should show today's usage against yesterday's`() async throws {
         try log([("14", 0), ("41", 1)])
         let history = history()
@@ -85,6 +105,30 @@ struct UsageHistoryTests {
         await history.read()
 
         #expect(history.lastThirtyDays == nil)
+    }
+
+    // MARK: - The insights' year
+
+    @Test
+    func `should read a year for the insights, keeping the older days the chart leaves out`() async throws {
+        try log([("14", 0), ("41", 1), ("7", 29), ("99", 200)])
+        let history = history()
+
+        await history.read()
+
+        let year = try #require(history.lastYear)
+        #expect(year.stats.count == 365)
+        #expect(year.stats.last?.totalCost == 14)
+        #expect(year.stats.contains { $0.totalCost == 99 })
+    }
+
+    @Test
+    func `should show no insights when nothing was used in a year`() async {
+        let history = history()
+
+        await history.read()
+
+        #expect(history.lastYear == nil)
     }
 
     @Test
@@ -272,7 +316,7 @@ struct UsageHistoryTests {
         #expect(days.stats.allSatisfy { !$0.isEmpty }, "the demo writes a session every day of the month")
         // The demo's records name a model, so the chart offers its split.
         #expect(days.hasModels)
-        #expect(days.lines(of: days.stats[29]).map(\.model) == ["claude-sonnet-sample"])
+        #expect(days.lines(of: days.stats[29], in: .cost).map(\.model) == ["claude-sonnet-sample"])
     }
 
     // MARK: - Kept days

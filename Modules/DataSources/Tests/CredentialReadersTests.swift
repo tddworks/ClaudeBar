@@ -121,6 +121,25 @@ struct CredentialReadersTests {
         #expect(empty == "/Users/someone/.claude.json")
     }
 
+    // MARK: - CredentialDocument.values
+
+    @Test
+    func `should read a login's granted scopes as the one line a refresh asks for`() throws {
+        let document: [String: Any] = ["oauth": ["scopes": ["user:profile", "user:mcp_servers"]] as [String: Any]]
+
+        let values = CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: document)
+
+        #expect(values["scopes"] == "user:profile user:mcp_servers")
+    }
+
+    @Test
+    func `should name no scopes when the login has none, so the provider's own are asked for`() throws {
+        let empty: [String: Any] = ["oauth": ["scopes": []] as [String: Any]]
+
+        #expect(CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: empty).isEmpty)
+        #expect(CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: [:]).isEmpty)
+    }
+
     // MARK: - CredentialDocument.updated
 
     private let fields = [
@@ -179,6 +198,18 @@ struct CredentialReadersTests {
     }
 
     // MARK: - JSONFileReader write-back
+
+    @Test
+    func `should leave a login's granted scopes as the list they were when a renewed login is saved back`() throws {
+        let document: [String: Any] = ["oauth": ["accessToken": "old", "scopes": ["a", "b"]] as [String: Any]]
+        let scopes = ["token": "$.oauth.accessToken", "scopes": "$.oauth.scopes#joined"]
+
+        let updated = CredentialDocument.updated(document, with: Credential(["token": "new", "scopes": "a b"]), fields: scopes)
+
+        let oauth = try #require(updated["oauth"] as? [String: Any])
+        #expect(oauth["accessToken"] as? String == "new")
+        #expect(oauth["scopes"] as? [String] == ["a", "b"])
+    }
 
     @Test
     func `should keep a login file's other fields and number types when a renewed login is saved into it`() throws {

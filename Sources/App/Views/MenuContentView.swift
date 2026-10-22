@@ -1246,7 +1246,9 @@ struct MenuContentView: View {
         let report = history?.report ?? fallback
         let apps = history?.usedOtherApps ?? []
         let lastThirtyDays = history?.lastThirtyDays
-        if titled, settings.showDailyUsageCards, report != nil || !apps.isEmpty || lastThirtyDays != nil {
+        let lastYear = history?.lastYear
+        if titled, settings.showDailyUsageCards,
+           report != nil || !apps.isEmpty || lastThirtyDays != nil || lastYear != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1256,10 +1258,10 @@ struct MenuContentView: View {
 
         if settings.showDailyUsageCards, let report {
             let baseDelay = Double(cards + 1) * 0.08
-            // Logs that can't be priced show no cost rather than a made-up $0.
-            let knowsCost = history?.knowsCost ?? true
+            // A log that writes a cost of zero everywhere shows no cost rather
+            // than a made-up $0.
             HStack(spacing: 10) {
-                if knowsCost {
+                if history?.hasCost ?? true {
                     DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
                         .frame(maxWidth: .infinity)
                 }
@@ -1285,6 +1287,15 @@ struct MenuContentView: View {
         // The same login's last thirty days, as a chart.
         if settings.showDailyUsageCards, let lastThirtyDays {
             UsageHistoryChartView(days: lastThirtyDays)
+        }
+
+        // …and the shape of the last year: the heatmap, and the models it
+        // leans on. Both read the same range, `Days` answering.
+        if settings.showDailyUsageCards, let lastYear {
+            UsageInsightsHeatmapView(days: lastYear)
+            if lastYear.hasModels {
+                ModelMixView(days: lastYear)
+            }
         }
     }
 

@@ -26,7 +26,18 @@ Records with no model form one unnamed line. Sessions, working time and
 cache savings stay the day's own. Nothing about "today and yesterday" is a
 type; a range of days is one answer, `Days`, and every view is a question
 asked of it — which models, in order; a day's lines, largest first; its
-total in a unit.
+total in a unit; which units it offers.
+
+A unit is **cost, tokens or cache**, and it is the unit the *view* chose:
+the same range read as cost, as tokens or as cache answers a total, a
+day's value and each model's value in that one unit, so a chart's chosen
+count drives everything it shows. Cost is offered only when the log prices
+its records **and a day holds a cost** — a log that writes a cost of zero
+everywhere (free models, OpenCode's `cost: 0`) has nothing to say in
+dollars, so the page counts tokens instead. The *Cost* card asks the same
+question of the same days — `UsageHistory.hasCost` is the last thirty days'
+`hasCost` — so an idle day or two never hides a priced login's Cost card,
+and the card and the chart never disagree.
 
 Today two vendor-named analyzers answer only the last two days, and each one
 hard-codes the same five jobs:
@@ -133,12 +144,15 @@ Tools write their logs differently. The difference stays at the edge: every
 reader turns its file into the same **`LogRecord`** — `at`, `id`, `model`,
 `tokens` (input · output · cache write · cache read, or a `total`), `cost` —
 and everything after it (dedupe, days, sessions, prices, the ledger, the
-screens) never learns which tool wrote it.
+screens) never learns which tool wrote it. A log that counts the model's
+**reasoning output** apart from its output (OpenCode's `reasoning`, Codex's
+`reasoning_output_tokens`) names `tokens.reasoningOutput`: the model
+generated both, so they are added into `output`.
 
 | How a tool's logs differ | What a contributor changes | Swift? |
 |---|---|---|
 | where the files are, what a field is called (Claude's `message.usage.input_tokens`, Vibe's `stats.session_total_llm_tokens`) | `files` and the field paths | no |
-| the same idea, said another way: the time in a folder's name, the log's own cost, a session per file, a running total | an option: `at.fromPath`, `cost`, no `sessionGap`, `"cumulative": true` | no |
+| the same idea, said another way: the time in a folder's name, the log's own cost, a session per file, a running total, reasoning counted apart from output | an option: `at.fromPath`, `cost`, no `sessionGap`, `"cumulative": true`, `tokens.reasoningOutput` | no |
 | one log that writes a record more than one way (Oh My Pi's turns under `message.usage`, the side calls it logs under `usage`) | `records.shapes`: one entry per shape, each read whole — its own `where`, `at`, `id` and paths | no |
 | a record no path can say (a field to compute, a list to add up) | `"script": "x-log.js"` — `read(record, context)` returns one `LogRecord`, the escape hatch a mapping already has (built when a tool first needs it) | no |
 | a file of another kind (SQLite, binary) | a new `format` case and its reader, named for the format, with a test that names no tool | once |
@@ -378,7 +392,7 @@ own cadence (popover open, never the background poll).
 | `DayLedger` (`Providers/Internal`) | closed days kept per login; open days asked of the `UsageLog` | — (new) |
 | `UsageHistory` (`Providers`, @Observable, one per login) | `days(in:)`, every date present | `Domain/UsageHistory` (one object for all logins, two days only) |
 | `Day` (`Quotas`) | the answer — the sum of its lines, one per model; records with no model, one unnamed line; `DailyUsageStat` until the words land | `Quotas` |
-| `Days` (`Quotas`) | a range of days: which models in order, a day's lines largest first, its total in a unit | — (new; the chart's arithmetic moves here) |
+| `Days` (`Quotas`) | a range of days: which models in order, a day's lines largest first, its total in a unit, the units it offers | — (new; the chart's arithmetic moves here) |
 
 A model's display name is a mechanical rule, no vendor named: drop a
 leading segment when at least two remain (`claude-opus-4-6` reads
@@ -395,7 +409,8 @@ a vendor; the readers are named for formats. The page owns the views:
 *TODAY'S USAGE* cards read `days(in: .last(2))`, a chart reads
 `days(in: .last(30))` and makes two choices — what is counted (cost,
 tokens, cache) and how the bars split (by kind, or by model) — and
-renders what `Days` answers.
+renders what `Days` answers: the same range in the chosen unit, and only
+the units `Days` offers (no cost when no day holds one).
 
 ## 5 · Is it easy to change? The checks
 

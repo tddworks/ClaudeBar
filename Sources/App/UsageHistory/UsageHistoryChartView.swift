@@ -9,7 +9,7 @@ import Domain
 /// Everything it says, `Days` answers.
 struct UsageHistoryChartView: View {
     let days: Days
-    @State private var count: Count
+    @State private var count: Days.Unit
     @State private var split: Split
     @State private var selectedDate: Date?
 
@@ -17,17 +17,8 @@ struct UsageHistoryChartView: View {
 
     init(days: Days) {
         self.days = days
-        _count = State(initialValue: days.knowsCost ? .cost : .tokens)
+        _count = State(initialValue: days.defaultUnit)
         _split = State(initialValue: .kind)
-    }
-
-    /// What is counted — cost only when the login is priced.
-    enum Count: String, CaseIterable, Identifiable {
-        case cost = "Cost"
-        case tokens = "Tokens"
-        case cache = "Cache"
-
-        var id: String { rawValue }
     }
 
     /// How the bars split — by model only when the log names models.
@@ -39,8 +30,8 @@ struct UsageHistoryChartView: View {
     }
 
     /// The count on show — the chosen one, unless it is no longer offered.
-    private var shownCount: Count {
-        count == .cost && !days.knowsCost ? .tokens : count
+    private var shownCount: Days.Unit {
+        counts.contains(count) ? count : days.defaultUnit
     }
 
     /// The split on show — the chosen one, unless it is no longer offered.
@@ -48,7 +39,7 @@ struct UsageHistoryChartView: View {
         split == .models && !days.hasModels ? .kind : split
     }
 
-    private var countSelection: Binding<Count> {
+    private var countSelection: Binding<Days.Unit> {
         Binding(get: { shownCount }, set: { count = $0 })
     }
 
@@ -56,7 +47,8 @@ struct UsageHistoryChartView: View {
         Binding(get: { shownSplit }, set: { split = $0 })
     }
 
-    private var counts: [Count] { days.knowsCost ? Count.allCases : Count.allCases.filter { $0 != .cost } }
+    /// What is counted — the units `Days` offers, cost only when a day holds one.
+    private var counts: [Days.Unit] { days.units }
 
     private var splits: [Split] { days.hasModels ? Split.allCases : [.kind] }
 
@@ -73,7 +65,7 @@ struct UsageHistoryChartView: View {
             header
             HStack(spacing: 4) {
                 if theme.isOutlined {
-                    InkSegmentedPicker(title: "Count", options: counts, selection: countSelection, label: \.rawValue)
+                    InkSegmentedPicker(title: "Count", options: counts, selection: countSelection, label: \.label)
                     if days.hasModels {
                         InkSegmentedPicker(title: "Split", options: splits, selection: splitSelection, label: \.rawValue)
                     }
@@ -191,19 +183,20 @@ struct UsageHistoryChartView: View {
         return days.stats.first { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
     }
 
-    /// The hovered day's value, else the thirty-day total — in the count's
-    /// unit, which `Days` carries.
+    /// The hovered day's value, else the thirty-day total — in the unit on
+    /// show, which `Days` answers.
     private var headline: String {
-        if let day = selectedDay { return unit(days.value(of: day)) }
-        return unit(days.total)
+        if let day = selectedDay { return unit(days.value(of: day, in: shownCount)) }
+        return unit(days.total(in: shownCount))
     }
 
     private var caption: String {
         selectedDay?.formattedDate ?? "30-day total"
     }
 
+    /// The value in the unit on show — money when cost, tokens otherwise.
     private func unit(_ value: Double) -> String {
-        shownCount == .cost ? Self.money(Decimal(value)) : Self.count(Int(value))
+        UsageFormat.value(value, in: shownCount)
     }
 
     // MARK: - Chart
@@ -240,26 +233,20 @@ struct UsageHistoryChartView: View {
 
     /// The models' colours — hues far apart, cycled when the log names more
     /// models than the palette holds. The unnamed line is grey.
-    private static let modelPalette: [Color] = [.purple, .green, .blue, .orange, .pink, .cyan, .indigo, .mint, .red]
-
     private var modelColors: [Color] {
-        modelKinds.map { kind in
-            guard let index = days.models.firstIndex(of: kind) else { return Color.gray }
-            return Self.modelPalette[index % Self.modelPalette.count]
-        }
+        modelKinds.map { ModelColors.color(of: $0, in: days) }
     }
 
     /// The colour the chart gives `model` — its place among the days' models.
     private func color(of model: String) -> Color {
-        guard let index = days.models.firstIndex(of: model) else { return Color.gray }
-        return Self.modelPalette[index % Self.modelPalette.count]
+        ModelColors.color(of: model, in: days)
     }
 
     private var segments: [Segment] {
         days.stats.flatMap { day -> [Segment] in
             switch shownSplit {
             case .models:
-                day.lines.map { Segment(date: day.date, kind: $0.model, value: days.value(of: $0)) }
+                day.lines.map { Segment(date: day.date, kind: $0.model, value: days.value(of: $0, in: shownCount)) }
             case .kind:
                 switch shownCount {
                 case .cost:
@@ -279,7 +266,7 @@ struct UsageHistoryChartView: View {
         Chart(segments) { segment in
             BarMark(
                 x: .value("Day", segment.date, unit: .day),
-                y: .value(shownCount.rawValue, segment.value)
+                y: .value(shownCount.label, segment.value)
             )
             .foregroundStyle(by: .value("Kind", segment.kind))
             .opacity(selectedDate == nil || Calendar.current.isDate(segment.date, inSameDayAs: selectedDate!) ? 1 : 0.35)
@@ -299,7 +286,7 @@ struct UsageHistoryChartView: View {
                 AxisGridLine().foregroundStyle(theme.progressTrack)
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text(shownCount == .cost ? Self.money(Decimal(amount), whole: true) : Self.count(Int(amount)))
+                        Text(UsageFormat.value(amount, in: shownCount, whole: true))
                             .font(theme.font(size: 7))
                             .foregroundStyle(theme.textTertiary)
                     }
@@ -317,14 +304,14 @@ struct UsageHistoryChartView: View {
     /// them, so they read as adding up to the day.
     private func modelsDetail(for day: DailyUsageStat) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 4) {
-            ForEach(days.lines(of: day), id: \.model) { line in
+            ForEach(days.lines(of: day, in: shownCount), id: \.model) { line in
                 HStack(spacing: 4) {
                     Circle().fill(color(of: line.model)).frame(width: 5, height: 5)
                     Text(ModelUsageLine.displayName(line.model))
                         .font(theme.font(size: 9, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
-                    Text(unit(days.value(of: line)))
+                    Text(unit(days.value(of: line, in: shownCount)))
                         .font(theme.font(size: 9, weight: .semibold))
                         .foregroundStyle(theme.textPrimary)
                 }
@@ -332,29 +319,27 @@ struct UsageHistoryChartView: View {
         }
         .padding(.top, 2)
     }
+}
 
-    static func money(_ amount: Decimal, whole: Bool = false) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.maximumFractionDigits = whole ? 0 : 2
-        formatter.minimumFractionDigits = whole ? 0 : 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
-
-    static func count(_ tokens: Int) -> String {
-        switch tokens {
-        case 1_000_000_000...: short(Double(tokens) / 1_000_000_000) + "B"
-        case 1_000_000...: short(Double(tokens) / 1_000_000) + "M"
-        case 1_000...: short(Double(tokens) / 1_000) + "K"
-        default: "\(tokens)"
+/// A unit's name on a chip and on the chart's axis — the page's words, not
+/// the kernel's.
+extension Days.Unit: @retroactive Identifiable {
+    var label: String {
+        switch self {
+        case .cost: "Cost"
+        case .tokens: "Tokens"
+        case .cache: "Cache"
         }
     }
 
-    /// One decimal, without a trailing ".0" — "2.5", "500".
-    private static func short(_ value: Double) -> String {
-        let text = String(format: "%.1f", value)
-        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+    /// The word under a card's total — what the number is.
+    var caption: String {
+        switch self {
+        case .cost: "spent"
+        case .tokens: "tokens"
+        case .cache: "cache tokens"
+        }
     }
+
+    public var id: String { label }
 }

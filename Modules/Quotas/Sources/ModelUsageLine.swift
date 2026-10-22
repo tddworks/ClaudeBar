@@ -30,6 +30,21 @@ public struct ModelUsageLine: Sendable, Equatable, Codable {
         self.cost = cost
     }
 
+    /// Two lines of one model as one: every count and the cost added, so a
+    /// sum over days never drops a field a day holds.
+    public static func + (lhs: ModelUsageLine, rhs: ModelUsageLine) -> ModelUsageLine {
+        precondition(lhs.model == rhs.model, "only lines of one model add up")
+        return ModelUsageLine(
+            model: lhs.model,
+            inputTokens: lhs.inputTokens + rhs.inputTokens,
+            outputTokens: lhs.outputTokens + rhs.outputTokens,
+            cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
+            cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
+            totalTokens: lhs.totalTokens + rhs.totalTokens,
+            cost: lhs.cost + rhs.cost
+        )
+    }
+
     /// "$1.50" — the line's cost.
     public var formattedCost: String {
         MoneyFormat.string(cost)

@@ -59,6 +59,10 @@ pieces and their one job, the flows), then any `docs/features/<context>/<x>/desi
 | Does a provider need something the definition can't say? | a **generic rule or worker** in `DataSources` (ENGINE_DESIGN), then a line of JSON — never a Swift line that names the provider |
 | Does it react to a refresh, a selection, a setting? | it observes an **extension point** (e.g. `QuotaMonitor.onRefreshed`) — the Monitor is not edited for it |
 | Does it notify? | its own port in Alerting — not a new method on an existing alerter |
+| Does something already decide it? (a threshold crossed, a rate, a unit, the worst quota) | use that owner: the feature is a new **destination** or a new **read** of it, never a parallel engine → [A new feature next to an old one](references/domain-shape.md#a-new-feature-next-to-an-old-one) |
+| Does it ask a type a new kind of question? | a new **value built from that type** (`ModelMix(of: days, in: unit)`), not another read on it → [question 6](references/domain-shape.md#seven-questions) |
+| Does it save a choice, or a secret? | `settings.json` through `JSONSettingsRepository`; a secret through the one Keychain-with-fallback store ([settings.md](../../../docs/settings.md)) — never a feature's own file |
+| Does another open PR touch the same type? | agree on one owner first; the later one rebases on it |
 | Is a law missing, or owned twice? | add it to CANONICAL §5 with **one** owner |
 
 When the docs don't cover it, write the change into them first (tree lines,
@@ -70,9 +74,12 @@ behind; don't bend the design to it.
 
 Before components, ask how the domain should be: from the root problem (the
 issue, the journey) to the facts it must respect, to the concepts those force,
-then compare with the code. Ask the five questions of every type the feature
+then compare with the code. Ask the seven questions of every type the feature
 touches, and draw now beside proposed →
-[domain-shape.md](references/domain-shape.md). A new aggregate, a moved law or
+[domain-shape.md](references/domain-shape.md). For each new type, write down
+its **one reason to change** and **which side it lives on** (kernel fact, App
+words or colours, Infrastructure storage, an OS port); a type with two reasons
+is two types. A new aggregate, a moved law or
 a changed owner goes into the docs in Step 0's change.
 
 ### Step 1: Analyze Requirements
@@ -88,7 +95,7 @@ Identify:
 Use ASCII diagram showing all components and their interactions:
 
 ```
-Example: Codex accounts (#326) — a definition change plus generic pieces
+Example: added accounts — a definition change plus generic pieces
 
 ┌──────────────────────────────────────────────────────────────────────┐
 │                            ARCHITECTURE                               │
@@ -135,7 +142,8 @@ Example:
 
 **IMPORTANT**: Always ask user to confirm the design is correct before implementing —
 the doc change (tree, laws and owners, pieces), the diagram, and for UI a mockup in
-`design-concept/<feature>/` on mock data.
+`design-concept/<feature>/` on mock data. A new card, pane or screen has its
+mockup **before** any view code; the review looks at the mockup first, then the domain.
 
 Use AskUserQuestion tool with options:
 - "Approve - proceed with implementation"
@@ -329,7 +337,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 - [Architecture diagram patterns](references/architecture-diagrams.md) - ASCII diagram examples for different scenarios
 - [Swift 6.2 @Observable patterns](references/swift-observable.md)
 - [Rich domain model patterns](references/domain-models.md)
-- [Think the domain first](references/domain-shape.md) - from the root problem to the concepts; five questions for a domain easy to understand; keeping it in scope
+- [Think the domain first](references/domain-shape.md) - from the root problem to the concepts; seven questions for a domain easy to understand, with one reason to change (SRP) and each concern on its own side; a new feature next to an old one; keeping it in scope
 - [TDD test patterns](references/tdd-patterns.md)
 
 ## Checklist
@@ -337,7 +345,9 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 ### Architecture Design (Phase 0)
 - [ ] Read CANONICAL_MODEL, TARGET_ARCHITECTURE and the feature's design.md
 - [ ] Place it: owner, capability (handle `nil` when not declared), extension point
-- [ ] Thought the domain first: root problem → concepts, the five questions asked of touched types, now/proposed drawn ([domain-shape.md](references/domain-shape.md))
+- [ ] Thought the domain first: root problem → concepts, the seven questions asked of touched types, now/proposed drawn ([domain-shape.md](references/domain-shape.md))
+- [ ] Searched for the rule before writing it: an existing owner is used, not copied (rate, threshold, unit, worst quota)
+- [ ] Each new type has one reason to change and one side (kernel fact · App words/colours · Infrastructure · OS port)
 - [ ] Write the design change into the docs first
 - [ ] Analyze requirements and identify components
 - [ ] Create ASCII architecture diagram with component interactions
@@ -354,7 +364,10 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 - [ ] Stub mocks to return data, assert on resulting state
 - [ ] Implement ports in the module's `Internal/`
 - [ ] Create views consuming domain models directly
-- [ ] Views render and tell only — no comparing, counting or reading quotas to decide
+- [ ] Views render and tell only — no comparing, counting or reading quotas to decide; the view passes the unit or login the person chose, it never picks one
+- [ ] Sentences, labels and colours in the App (`QuotaCardText`, `ModelColors`); the kernel answers facts and formats only the amounts it owns, through the shared formatter
+- [ ] Nothing built that no caller uses yet (no speculative type, case or setting)
+- [ ] Choices persist in `settings.json`; secrets in the one Keychain-with-fallback store
 - [ ] Public surface is tells and answers; rules `internal`; no Bool flag the caller decides; each aggregate changes only its own state
 - [ ] Docs updated in the same change (status, build truth, laws)
 - [ ] Real UI screenshots on mock data (`scripts/demo-screenshots.sh`) for UI changes
