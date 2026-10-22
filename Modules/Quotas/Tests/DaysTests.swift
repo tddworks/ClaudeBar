@@ -33,6 +33,33 @@ struct DaysTests {
         #expect(!days.hasModels)
     }
 
+    @Test func `should name the days' projects in name order, the unnamed part apart`() {
+        let marron = ProjectUsageLine(project: "marron", totalTokens: 120, cost: 12)
+        let api = ProjectUsageLine(project: "api", totalTokens: 400, cost: 2)
+        let unnamedProject = ProjectUsageLine(project: "", totalTokens: 50, cost: 1)
+        let split = DailyUsageStat(date: date, totalCost: 15, totalTokens: 570, workingTime: 0, sessionCount: 1,
+                                   projects: [marron, unnamedProject, api])
+
+        let days = Days([split, day(0, lines: [])], knowsCost: true)
+
+        #expect(days.projects == ["api", "marron"])
+        #expect(days.hasProjects)
+        #expect(days.value(of: marron, in: .cost) == 12)
+        #expect(days.value(of: marron, in: .tokens) == 120)
+        #expect(days.value(of: marron, in: .cache) == 0)
+    }
+
+    @Test func `should offer no project split when no day names a project`() {
+        let unnamedProject = ProjectUsageLine(project: "", totalTokens: 50, cost: 1)
+        let onlyUnnamed = DailyUsageStat(date: date, totalCost: 1, totalTokens: 50, workingTime: 0, sessionCount: 1,
+                                         projects: [unnamedProject])
+
+        let days = Days([onlyUnnamed, day(3, lines: [])], knowsCost: true)
+
+        #expect(days.projects.isEmpty)
+        #expect(!days.hasProjects)
+    }
+
     @Test func `should read a day's lines largest first in the unit asked`() {
         let mixed = day(15, lines: [sonnet, unnamed, opus])
 

@@ -40,6 +40,11 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
     /// when the day came from a log that doesn't name models.
     public let lines: [ModelUsageLine]
 
+    /// One line per project — the day's split by the working directory its
+    /// records were spent in, named lines in name order, the unnamed part
+    /// last. Empty when the log names no directory (quota-by-project design).
+    public let projects: [ProjectUsageLine]
+
     public init(
         date: Date,
         totalCost: Decimal,
@@ -51,7 +56,8 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         cacheCreationTokens: Int = 0,
         cacheReadTokens: Int = 0,
         cachedSavings: Decimal = 0,
-        lines: [ModelUsageLine] = []
+        lines: [ModelUsageLine] = [],
+        projects: [ProjectUsageLine] = []
     ) {
         self.date = date
         self.totalCost = totalCost
@@ -64,11 +70,12 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         self.cacheReadTokens = cacheReadTokens
         self.cachedSavings = cachedSavings
         self.lines = lines
+        self.projects = projects
     }
 
     private enum CodingKeys: String, CodingKey {
         case date, totalCost, totalTokens, workingTime, sessionCount
-        case inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, cachedSavings, lines
+        case inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, cachedSavings, lines, projects
     }
 
     /// Days kept before lines existed decode without them.
@@ -85,16 +92,22 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         cacheReadTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadTokens) ?? 0
         cachedSavings = try container.decodeIfPresent(Decimal.self, forKey: .cachedSavings) ?? 0
         lines = try container.decodeIfPresent([ModelUsageLine].self, forKey: .lines) ?? []
+        projects = try container.decodeIfPresent([ProjectUsageLine].self, forKey: .projects) ?? []
     }
 
     /// Two days of one date as one: every count, the cost, the time and the
-    /// savings added, and each model's lines added into one line, in name
-    /// order — so several logins' days read as one never drop a field.
+    /// savings added, and each model's and each project's lines added into
+    /// one line, in name order — so several logins' days read as one never
+    /// drop a field.
     public static func + (lhs: DailyUsageStat, rhs: DailyUsageStat) -> DailyUsageStat {
         precondition(lhs.date == rhs.date, "only days of one date add up")
         var lines: [String: ModelUsageLine] = [:]
         for line in lhs.lines + rhs.lines {
             lines[line.model] = lines[line.model].map { $0 + line } ?? line
+        }
+        var projects: [String: ProjectUsageLine] = [:]
+        for line in lhs.projects + rhs.projects {
+            projects[line.project] = projects[line.project].map { $0 + line } ?? line
         }
         return DailyUsageStat(
             date: lhs.date,
@@ -107,7 +120,8 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
             cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
             cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
             cachedSavings: lhs.cachedSavings + rhs.cachedSavings,
-            lines: lines.values.sorted { $0.model < $1.model }
+            lines: lines.values.sorted { $0.model < $1.model },
+            projects: projects.values.sorted { $0.project < $1.project }
         )
     }
 

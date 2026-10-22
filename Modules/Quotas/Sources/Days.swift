@@ -34,6 +34,17 @@ public struct Days: Sendable, Equatable {
         stats.contains { $0.lines.contains { !$0.model.isEmpty } }
     }
 
+    /// The projects the days name, in name order — a project keeps its colour
+    /// from day to day. The unnamed part is not a project.
+    public var projects: [String] {
+        Set(stats.flatMap { $0.projects.map(\.project) }).filter { !$0.isEmpty }.sorted()
+    }
+
+    /// Whether a project split is offered — whether any day names a project.
+    public var hasProjects: Bool {
+        stats.contains { $0.projects.contains { !$0.project.isEmpty } }
+    }
+
     /// Whether cost says anything: the log prices its records AND a day holds
     /// a cost. A log that writes a cost of zero everywhere — free models,
     /// OpenCode's `cost: 0` — has nothing to say in dollars.
@@ -71,6 +82,15 @@ public struct Days: Sendable, Equatable {
 
     /// A line's part in `unit`.
     public func value(of line: ModelUsageLine, in unit: Unit) -> Double {
+        switch unit {
+        case .cost: NSDecimalNumber(decimal: line.cost).doubleValue
+        case .tokens: Double(line.totalTokens)
+        case .cache: Double(line.cacheCreationTokens + line.cacheReadTokens)
+        }
+    }
+
+    /// A project line's part in `unit`.
+    public func value(of line: ProjectUsageLine, in unit: Unit) -> Double {
         switch unit {
         case .cost: NSDecimalNumber(decimal: line.cost).doubleValue
         case .tokens: Double(line.totalTokens)

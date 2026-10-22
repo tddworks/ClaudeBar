@@ -222,4 +222,22 @@ struct DailyUsageStatTests {
             ModelUsageLine(model: "m-large", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
         ])
     }
+
+    /// A day's project split rides with the day; days kept before it decode
+    /// with none.
+    @Test func `should decode a day kept before projects were recorded without them`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.projects.isEmpty)
+    }
+
+    @Test func `should decode a day's project lines`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2,"projects":[{"project":"marron","inputTokens":1000,"outputTokens":200,"cacheCreationTokens":0,"cacheReadTokens":0,"totalTokens":1200,"cost":1.5}]}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.projects == [
+            ProjectUsageLine(project: "marron", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
+        ])
+    }
 }
