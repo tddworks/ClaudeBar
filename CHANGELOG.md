@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **The popover stops at a comfortable height**: a provider's page shows up to 560 points of cards, then scrolls, so turning on every usage section never makes it as tall as the screen; the action bar stays in view. ([#608](https://github.com/tddworks/ClaudeBar/pull/608)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/insights/README.md)
 - **Pace waits for the window to get going**: in a window's first 3% (nine minutes of a 5-hour session) a quota reads no pace instead of guessing *Running hot* from a minute of use. ([#596](https://github.com/tddworks/ClaudeBar/pull/596)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
 - **The daily chart's chip decides all it shows** — the 30-day total, the hovered day and each model; a login that prices nothing (OpenCode Go) drops Cost for tokens. ([#566](https://github.com/tddworks/ClaudeBar/issues/566)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 

@@ -17,6 +17,10 @@ public enum PopoverContentHeight {
     /// Ceiling for overview mode (original design value — overview lists
     /// every provider and prefers a compact window).
     public static let overviewCeiling: CGFloat = 500
+    /// Ceiling for one provider's page: its quota cards and today's cards
+    /// show at once; the usage sections below scroll, so turning every one
+    /// on never makes the popover as tall as the screen.
+    public static let pageCeiling: CGFloat = 560
 
     /// Usable floor for degenerate displays: below this, a usable scroll
     /// region is preferred over strict on-screen fit.
@@ -36,6 +40,6 @@ public enum PopoverContentHeight {
         sessionCardHeight: CGFloat = 0
     ) -> CGFloat {
         let available = max(visibleScreenHeight - chrome - sessionCardHeight, usableFloor)
-        return overviewMode ? min(overviewCeiling, available) : available
+        return min(overviewMode ? overviewCeiling : pageCeiling, available)
     }
 }

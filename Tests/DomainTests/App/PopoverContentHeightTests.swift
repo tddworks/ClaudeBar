@@ -28,11 +28,17 @@ struct PopoverContentHeightTests {
     // MARK: - Mode Behavior
 
     @Test
-    func `should give one provider's cards all the screen height left on a normal display`() {
-        // 14" MacBook Pro visible frame ≈ 982pt → the Oh My Pi card set
-        // gets the whole remainder instead of an artificial ceiling.
-        let cap = PopoverContentHeight.maxHeight(visibleScreenHeight: 982, overviewMode: false)
-        #expect(cap == 982 - PopoverContentHeight.chrome)
+    func `should keep one provider's page at most 560pt tall on a tall display, scrolling the rest`() {
+        // Every usage section on reaches well past a 1,200pt screen; the
+        // page stops at its ceiling and scrolls, the action bar in view.
+        let cap = PopoverContentHeight.maxHeight(visibleScreenHeight: 1200, overviewMode: false)
+        #expect(cap == 560)
+    }
+
+    @Test
+    func `should shrink one provider's page below 560pt to fit a short display`() {
+        let cap = PopoverContentHeight.maxHeight(visibleScreenHeight: 735, overviewMode: false)
+        #expect(cap == 735 - PopoverContentHeight.chrome)
     }
 
     @Test
@@ -52,8 +58,8 @@ struct PopoverContentHeightTests {
 
     @Test
     func `should leave room for the Claude Code card above the cards, so the action bar stays on screen`() {
-        let without = PopoverContentHeight.maxHeight(visibleScreenHeight: 982, overviewMode: false)
-        let with = PopoverContentHeight.maxHeight(visibleScreenHeight: 982, overviewMode: false, sessionCardHeight: 180)
+        let without = PopoverContentHeight.maxHeight(visibleScreenHeight: 735, overviewMode: false)
+        let with = PopoverContentHeight.maxHeight(visibleScreenHeight: 735, overviewMode: false, sessionCardHeight: 180)
         #expect(with == without - 180)
     }
 
