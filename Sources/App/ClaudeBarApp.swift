@@ -170,7 +170,8 @@ struct ClaudeBarApp: App {
         StatusAlerts(destination: destinations).follow(monitor)
         // *Auto-pause on empty* follows every refresh, and keeps one quiet
         // loop per product it is holding off while they wait for a reset.
-        let autoPause = AutoPause(settings: settingsRepository, announcer: AutoPauseNotifications())
+        let autoPause = AutoPause(settings: settingsRepository, announcer: AutoPauseNotifications(),
+                                  clock: SystemClock())
         self.autoPause = autoPause
         autoPause.follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")

@@ -49,7 +49,7 @@ public final class AutoPause {
     /// Creates the follower over the person's settings, the one who tells,
     /// and the clock the quiet loop sleeps on.
     public init(settings: any ProviderSettingsRepository, announcer: any AutoPauseAnnouncer,
-                clock: any Clock = ContinuousClock()) {
+                clock: any Clock) {
         self.settings = settings
         self.announcer = announcer
         self.clock = clock
