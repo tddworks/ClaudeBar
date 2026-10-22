@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **A quota turns low when it will run out before it resets**: with the warning on, colours and alerts follow the forecast, so a quota on pace is never marked low and the threshold setting is gone. ([#613](https://github.com/tddworks/ClaudeBar/pull/613)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota/status-colors/README.md)
 
+### Added
+- **See where a provider's usage went, by project**: the daily usage can split each day by the folder it was spent in — *This week: marron 41%, api 33%*. Claude's history reads each line's working directory; other providers follow. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/quota-by-project/README.md)
+
 ---
 
 ## [0.5.19] - 2026-10-22
