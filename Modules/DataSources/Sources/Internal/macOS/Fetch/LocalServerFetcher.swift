@@ -30,20 +30,24 @@ struct LocalServerFetcher: Fetching {
         // An empty pgrep result surfaces as a runner timeout, not "not found".
         let listing = (try? await commands.execute(binary: query[0], args: Array(query.dropFirst()), input: nil,
                                                      timeout: call.timeout, workingDirectory: nil, autoResponses: [:]).output) ?? ""
-        guard let line = listing.components(separatedBy: .newlines).map({ $0.trimmingCharacters(in: .whitespaces) })
-            .first(where: { Self.isApp($0, call.process) }),
-              let pid = line.split(separator: " ", maxSplits: 1).first.flatMap({ Int($0) }) else {
+        let running = listing.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { Self.isApp($0, call.process) }
+            .compactMap { line -> (pid: Int, values: Credential)? in
+                guard let pid = line.split(separator: " ", maxSplits: 1).first.flatMap({ Int($0) }) else { return nil }
+                return (pid, self.values(in: line, with: credential))
+            }
+        guard let first = running.first else {
             AppLog.probes.info("\(call.app) isn't running")
             throw CLIMissingError(cli: call.app)
         }
 
-        var values = credential ?? Credential([:])
-        for (name, pattern) in call.values {
-            if let value = Self.firstGroup(pattern, in: line), values[name] == nil { values[name] = value }
-        }
-        for name in call.required where values[name] == nil {
-            // Never the value; only that it is missing.
-            AppLog.probes.error("\(call.app) is running without its \(name)")
+        // The first one started with every required value: a CLI of the same
+        // name can run beside the app, and pgrep lists them by PID.
+        guard let (pid, values) = running.first(where: { process in call.required.allSatisfy { process.values[$0] != nil } }) else {
+            if let name = call.required.first(where: { first.values[$0] == nil }) {
+                // Never the value; only that it is missing.
+                AppLog.probes.error("\(call.app) is running without its \(name)")
+            }
             throw UsageError.authenticationRequired
         }
 
@@ -60,6 +64,16 @@ struct LocalServerFetcher: Fetching {
             }
         }
         throw UsageError.executionFailed("Could not connect to \(call.app)")
+    }
+
+    /// What a process was started with, read from its command line; the
+    /// credential's own values come first.
+    private func values(in commandLine: String, with credential: Credential?) -> Credential {
+        var values = credential ?? Credential([:])
+        for (name, pattern) in call.values {
+            if let value = Self.firstGroup(pattern, in: commandLine), values[name] == nil { values[name] = value }
+        }
+        return values
     }
 
     /// One request; `nil` unless it answered 200.

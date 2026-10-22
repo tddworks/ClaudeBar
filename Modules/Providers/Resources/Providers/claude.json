@@ -157,7 +157,8 @@
               "token": "$.claudeAiOauth.accessToken",
               "refreshToken": "$.claudeAiOauth.refreshToken",
               "expiresAt": "$.claudeAiOauth.expiresAt",
-              "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              "subscriptionType": "$.claudeAiOauth.subscriptionType",
+              "scopes": "$.claudeAiOauth.scopes#joined"
             }
           },
           {
@@ -166,7 +167,8 @@
               "token": "$.claudeAiOauth.accessToken",
               "refreshToken": "$.claudeAiOauth.refreshToken",
               "expiresAt": "$.claudeAiOauth.expiresAt",
-              "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              "subscriptionType": "$.claudeAiOauth.subscriptionType",
+              "scopes": "$.claudeAiOauth.scopes#joined"
             }
           },
           {
@@ -175,7 +177,8 @@
               "token": "$.claudeAiOauth.accessToken",
               "refreshToken": "$.claudeAiOauth.refreshToken",
               "expiresAt": "$.claudeAiOauth.expiresAt",
-              "subscriptionType": "$.claudeAiOauth.subscriptionType"
+              "subscriptionType": "$.claudeAiOauth.subscriptionType",
+              "scopes": "$.claudeAiOauth.scopes#joined"
             }
           },
           {
@@ -187,6 +190,7 @@
             "tokenURL": "https://platform.claude.com/v1/oauth/token",
             "clientId": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
             "scope": "user:profile user:inference user:sessions:claude_code",
+            "scopeFrom": "scopes",
             "bodyFormat": "json",
             "dueWhen": {
               "expiresAt": "expiresAt",

@@ -199,21 +199,37 @@ struct FirstOfReader: CredentialFinding {
 /// ones back without changing a value's JSON type.
 enum CredentialDocument {
     /// `"$.tokens.id_token#jwt.email"` reads a claim out of a JWT's payload —
-    /// display metadata only; the token is not verified.
+    /// display metadata only; the token is not verified. `"$.oauth.scopes#joined"`
+    /// reads a list of strings as the one line a refresh asks for (an OAuth
+    /// `scope` is space-delimited). A transformed path is never written back.
     static func values(_ fields: [String: String], in document: [String: Any]) -> [String: String] {
         let scope = JSONScope(root: document)
         var values: [String: String] = [:]
         for (name, field) in fields {
-            let parts = field.components(separatedBy: "#jwt.")
-            var value = scope.string(parts[0])
-            if parts.count == 2 {
-                value = value.flatMap { claim(parts[1], in: $0) }
-            }
-            if let value = value.map(Credential.trimmed), !value.isEmpty {
+            if let value = text(field, in: scope).map(Credential.trimmed), !value.isEmpty {
                 values[name] = value
             }
         }
         return values
+    }
+
+    /// The transform that reads a list as its space-delimited line.
+    static let joined = "#joined"
+
+    private static func text(_ field: String, in scope: JSONScope) -> String? {
+        if field.hasSuffix(joined) {
+            return list(scope.value(String(field.dropLast(joined.count))))
+        }
+        let parts = field.components(separatedBy: "#jwt.")
+        let value = scope.string(parts[0])
+        return parts.count == 2 ? value.flatMap { claim(parts[1], in: $0) } : value
+    }
+
+    /// A list of strings as one line, separated by a space.
+    static func list(_ value: Any?) -> String? {
+        guard let items = value as? [Any] else { return nil }
+        let strings = items.compactMap(JSONPath.string)
+        return strings.isEmpty ? nil : strings.joined(separator: " ")
     }
 
     static func claim(_ name: String, in token: String) -> String? {
@@ -229,7 +245,9 @@ enum CredentialDocument {
     static func updated(_ document: [String: Any], with credential: Credential, fields: [String: String]) -> [String: Any] {
         var updated = document
         let scope = JSONScope(root: document)
-        for (name, path) in fields where path != "$" && !path.contains("#jwt.") {
+        // A transformed path (`#jwt.`, `#joined`) is read-only: the store's own
+        // shape is what the CLI that owns it keeps reading.
+        for (name, path) in fields where path != "$" && !path.contains("#") {
             guard let value = credential[name] else { continue }
             // A number stays a number: Claude Code reads `expiresAt` as one.
             if scope.value(path) is NSNumber || (scope.value(path) == nil && name == "expiresAt"),

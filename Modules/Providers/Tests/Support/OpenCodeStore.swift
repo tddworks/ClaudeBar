@@ -20,6 +20,9 @@ enum OpenCodeStore {
         var role = "assistant"
         var input = 0
         var output = 0
+        /// The model's reasoning output, which opencode counts apart from
+        /// `output` — the two are added.
+        var reasoning = 0
         var cacheRead = 0
         var cacheWrite = 0
         var cost: Double? = 0
@@ -62,7 +65,7 @@ enum OpenCodeStore {
         case .sessionMessage: fields.append(#""model":{"providerID":"\#(message.provider)","id":"claude-x"}"#)
         }
         if let at = message.at { fields.append(#""time":{"created":\#(at)}"#) }
-        fields.append(#""tokens":{"input":\#(message.input),"output":\#(message.output),"cache":{"read":\#(message.cacheRead),"write":\#(message.cacheWrite)}}"#)
+        fields.append(#""tokens":{"input":\#(message.input),"output":\#(message.output),"reasoning":\#(message.reasoning),"cache":{"read":\#(message.cacheRead),"write":\#(message.cacheWrite)}}"#)
         if let cost = message.cost { fields.append(#""cost":\#(cost)"#) }
         return "{" + fields.joined(separator: ",") + "}"
     }

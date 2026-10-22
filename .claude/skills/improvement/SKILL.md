@@ -73,10 +73,11 @@ approval. One that changes a law, its owner, a word the screen prints, or adds a
 design change: write it into the docs and ask the user to confirm before coding.
 
 **Think the domain first.** Before changing code, ask how the domain should be,
-from the person's problem rather than the class at hand. Ask the five questions of
+from the person's problem rather than the class at hand. Ask the seven questions of
 the types the improvement touches (would the person say it, does the thing
-decide about itself, can you see every state, is it as small as it can be, is
-what differs data) and refine them in the same change → [domain-shape.md](../implement-feature/references/domain-shape.md).
+decide about itself and alone, can you see every state, is it as small as it
+can be, is what differs data, does it change for one reason, is each concern on
+its own side) and refine them in the same change → [domain-shape.md](../implement-feature/references/domain-shape.md).
 An improvement is the usual moment to fit a type to its shape; a new aggregate
 or a moved owner is a design change, confirmed first.
 
@@ -224,7 +225,7 @@ never with a line in `ClaudeBarApp` that names it (providers are found by
 ## Checklist
 
 - [ ] Current behavior understood
-- [ ] Domain thought through: the touched types asked [the five questions](../implement-feature/references/domain-shape.md), refined in scope
+- [ ] Domain thought through: the touched types asked [the seven questions](../implement-feature/references/domain-shape.md), refined in scope
 - [ ] Improvement scope defined (minimal)
 - [ ] Test for improved behavior written
 - [ ] Test FAILS before implementation

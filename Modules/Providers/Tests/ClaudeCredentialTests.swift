@@ -97,6 +97,72 @@ struct ClaudeCredentialTests {
     }
 
     @Test
+    func `should renew an expired login asking for the scopes it was granted`() async throws {
+        let claude = try ClaudeHarness()
+        defer { claude.cleanUp() }
+        let granted = ["user:profile", "user:inference", "user:sessions:claude_code", "user:mcp_servers"]
+        try claude.writeCredentials(
+            refreshToken: "my-refresh-token",
+            expiresAt: claude.now.addingTimeInterval(-3600).timeIntervalSince1970 * 1000,
+            extra: ["scopes": granted]
+        )
+        let asked = Sent()
+        given(claude.network).request(.any).willProduce { @Sendable request in
+            if Self.isTokenRequest(request) {
+                asked.body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: String] }
+                return (Data(#"{ "access_token": "new-token", "expires_in": 3600 }"#.utf8), ClaudeHarness.response(200))
+            }
+            return (Data(Self.usageOK.utf8), ClaudeHarness.response(200))
+        }
+
+        _ = try await claude.fetchUsage(try claude.dataSource("api"))
+
+        #expect(asked.body?["scope"] == granted.joined(separator: " "))
+        #expect(try claude.readCredentials()["scopes"] as? [String] == granted)
+    }
+
+    @Test
+    func `should renew an expired login that names no scopes with the scopes ClaudeBar knows`() async throws {
+        let claude = try ClaudeHarness()
+        defer { claude.cleanUp() }
+        try claude.writeCredentials(
+            refreshToken: "my-refresh-token",
+            expiresAt: claude.now.addingTimeInterval(-3600).timeIntervalSince1970 * 1000
+        )
+        let asked = Sent()
+        given(claude.network).request(.any).willProduce { @Sendable request in
+            if Self.isTokenRequest(request) {
+                asked.body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: String] }
+                return (Data(#"{ "access_token": "new-token", "expires_in": 3600 }"#.utf8), ClaudeHarness.response(200))
+            }
+            return (Data(Self.usageOK.utf8), ClaudeHarness.response(200))
+        }
+
+        _ = try await claude.fetchUsage(try claude.dataSource("api"))
+
+        #expect(asked.body?["scope"] == "user:profile user:inference user:sessions:claude_code")
+    }
+
+    @Test
+    func `should renew a Keychain login asking for the scopes it was granted`() async throws {
+        var claude = try ClaudeHarness()
+        defer { claude.cleanUp() }
+        claude.keychainPassword = #"{"claudeAiOauth":{"accessToken":"keychain-token","refreshToken":"r-1","expiresAt":1,"scopes":["user:inference","user:mcp_servers"]}}"#
+        let asked = Sent()
+        given(claude.network).request(.any).willProduce { @Sendable request in
+            if Self.isTokenRequest(request) {
+                asked.body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: String] }
+                return (Data(#"{ "access_token": "new-token", "expires_in": 3600 }"#.utf8), ClaudeHarness.response(200))
+            }
+            return (Data(Self.usageOK.utf8), ClaudeHarness.response(200))
+        }
+
+        _ = try await claude.fetchUsage(try claude.dataSource("api"))
+
+        #expect(asked.body?["scope"] == "user:inference user:mcp_servers")
+    }
+
+    @Test
     func `should find no Claude login when the file's access token is empty`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -297,9 +363,16 @@ struct ClaudeCredentialTests {
 private final class Sent: @unchecked Sendable {
     private let lock = NSLock()
     private var _authorization: String?
+    private var _body: [String: String]?
 
     var authorization: String? {
         get { lock.withLock { _authorization } }
         set { lock.withLock { _authorization = newValue } }
+    }
+
+    /// A token request's JSON body.
+    var body: [String: String]? {
+        get { lock.withLock { _body } }
+        set { lock.withLock { _body = newValue } }
     }
 }
