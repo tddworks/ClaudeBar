@@ -19,4 +19,11 @@ enum ModelColors {
         guard let index = days.models.firstIndex(of: model) else { return .gray }
         return color(at: index)
     }
+
+    /// The colour a range gives `project` — the same palette, by the
+    /// project's place among the range's projects; grey for the unnamed part.
+    static func color(ofProject project: String, in days: Days) -> Color {
+        guard let index = days.projects.firstIndex(of: project) else { return .gray }
+        return color(at: index)
+    }
 }
