@@ -8,16 +8,22 @@ import Domain
 /// where the Monitor's state lives.
 @MainActor
 public struct MonitorLocalAPIReading: LocalAPIReading {
-    private let monitor: QuotaMonitor
+    private let reads: any LocalAPIMonitorReads
 
+    /// Answers from the Monitor itself, as the composition root wires it.
     public init(monitor: QuotaMonitor) {
-        self.monitor = monitor
+        self.reads = monitor
+    }
+
+    /// Answers from any Monitor's reads — the tests' seam.
+    init(reads: any LocalAPIMonitorReads) {
+        self.reads = reads
     }
 
     /// `GET /status` — the one line: the worst quota across the watched
     /// logins, under the person's policy.
     public func statusSummary() -> StatusSummary {
-        StatusSummary(status: monitor.overallStatus, lowest: lowestQuota(), providers: monitor.lineup.count)
+        StatusSummary(status: reads.overallStatus, lowest: lowestQuota(), providers: reads.lineup.count)
     }
 
     /// `GET /providers` — every watched login: what it last said, its status,
@@ -26,13 +32,13 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     public func providersReport() -> ProvidersReport {
         var order: [String] = []
         var byProduct: [String: [Account]] = [:]
-        for login in monitor.lineup {
+        for login in reads.lineup {
             if byProduct[login.providerId] == nil { order.append(login.providerId) }
             byProduct[login.providerId, default: []].append(login)
         }
         let providers = order.map { id -> ProviderReport in
             let logins = byProduct[id] ?? []
-            let product = logins.first.flatMap { monitor.product(of: $0) }
+            let product = logins.first.flatMap { reads.product(of: $0) }
             return ProviderReport(
                 id: id,
                 name: product?.definition.profile.name ?? id,
@@ -47,14 +53,14 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     /// card leaves the line out.
     public func forecastReport() -> ForecastReport {
         var forecasts: [ForecastLine] = []
-        for login in monitor.lineup {
-            guard let snapshot = monitor.usage(of: login) else { continue }
+        for login in reads.lineup {
+            guard let snapshot = reads.usage(of: login) else { continue }
             for quota in snapshot.quotas {
                 guard let forecast = quota.forecast,
                       let line = ForecastLine(
                         forecast: forecast, quota: quota,
                         provider: productName(of: login), login: login.id,
-                        loginName: monitor.lineupName(of: login)
+                        loginName: reads.lineupName(of: login)
                       )
                 else { continue }
                 forecasts.append(line)
@@ -69,12 +75,11 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     public func usageDays(count: Int) async -> UsageDaysReport {
         let calendar = DataSources.calendar()
         var logins: [LoginDaySeries] = []
-        for login in monitor.lineup {
-            guard let history = login.usageHistory else { continue }
-            let days = await history.days(in: .last(count, endingOn: Date(), calendar: calendar))
+        for login in reads.lineup {
+            guard let days = await reads.days(of: login, in: .last(count, endingOn: Date(), calendar: calendar)) else { continue }
             logins.append(LoginDaySeries(
                 id: login.id,
-                name: monitor.lineupName(of: login),
+                name: reads.lineupName(of: login),
                 days: days.stats.map { DayUsage(stat: $0, knowsCost: days.knowsCost, calendar: calendar) }
             ))
         }
@@ -87,8 +92,8 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     /// quota that has one. A balance with no ceiling never stands for it.
     private func lowestQuota() -> LowestQuota? {
         var lowest: (quota: UsageQuota, share: Double, login: Account)?
-        for login in monitor.lineup {
-            guard let snapshot = monitor.usage(of: login) else { continue }
+        for login in reads.lineup {
+            guard let snapshot = reads.usage(of: login) else { continue }
             for quota in snapshot.quotas where LocalAPIContract.hasShare(quota) {
                 let share = LocalAPIContract.share(of: quota) ?? 0
                 if lowest == nil || share < lowest!.share {
@@ -101,17 +106,17 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
             quota: lowest.quota,
             provider: productName(of: lowest.login),
             login: lowest.login.id,
-            name: monitor.lineupName(of: lowest.login)
+            name: reads.lineupName(of: lowest.login)
         )
     }
 
     /// One login, as the Accounts card prints it.
     private func loginReport(_ login: Account, product: Provider?) -> LoginReport {
-        let snapshot = monitor.usage(of: login)
+        let snapshot = reads.usage(of: login)
         return LoginReport(
             id: login.id,
-            name: monitor.lineupName(of: login),
-            status: monitor.status(of: login) ?? .healthy,
+            name: reads.lineupName(of: login),
+            status: reads.status(of: login) ?? .healthy,
             best: product?.accounts.best?.id == login.id,
             inUse: product?.inUse?.isInUse(login) == true,
             plan: snapshot?.accountTier?.badgeText,
@@ -123,6 +128,6 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
 
     /// The product's name, or its id when no product stands behind the login.
     private func productName(of login: Account) -> String {
-        monitor.product(of: login)?.definition.profile.name ?? login.providerId
+        reads.product(of: login)?.definition.profile.name ?? login.providerId
     }
 }

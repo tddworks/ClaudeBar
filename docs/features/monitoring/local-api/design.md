@@ -43,7 +43,7 @@ payloads; there is no second system.
 | Law | Owner |
 |---|---|
 | the API answers only what the Monitor already knows: it never refreshes, never decides, never holds a number of its own | `LocalAPIReading` · `MonitorLocalAPIReading` |
-| a status reads the person's `StatusPolicy`, hidden quotas left out — the same status every surface prints | `MonitorLocalAPIReading` (reads `monitor.status(of:)`) |
+| a status reads the person's `StatusPolicy`, hidden quotas left out — the same status every surface prints | `MonitorLocalAPIReading` (reads `LocalAPIMonitorReads.status(of:)`) |
 | a quota with no share reports no percentage — a balance with no ceiling is never dressed as 100% | `QuotaReport` (reads `quota.left`) |
 | **read-only**: the route table is closed and holds no mutation; pause, switch, refresh and settings stay behind the person's hands (URL schemes, the Settings window) | `LocalAPIRouter` |
 | the socket exists only while the person's switch is on; off means no listener, not a quiet one | `LocalAPISettingsRepository` · the composition root (`ClaudeBarApp`) |
@@ -147,11 +147,12 @@ wrong method: `405` + `Allow`. Only GET and POST exist.
 | Piece | Where | One job | Changes when |
 |---|---|---|---|
 | `LocalAPIConstants` · `LocalAPISettingsRepository` | `Domain/Monitoring` | the port's number; the switch's port (beside `HookSettingsRepository`) | the default port changes, or the switch grows company |
+| `LocalAPIMonitorReads` | `Domain/Monitoring` | the Monitor's reads, as the port asks them — `QuotaMonitor` conforms; the seam the reading answers from (and the tests stub) | a read the Monitor gains |
 | `LocalAPIRequest` · `LocalAPIResponse` | `Infrastructure/Monitoring/LocalAPI` | the wire as values: method, path, query, headers, body | a header or the query grows a field the routes need |
 | `LocalAPIRequestParser` · `LocalAPIResponseSerializer` | same | bytes ⇄ values, with the caps and the refusals | the HTTP dialect changes (chunked, keep-alive) |
 | `StatusSummary` · `ProvidersReport` · `ForecastReport` · `UsageDaysReport` | same | **the JSON contract** — values built purely from `Quotas` values | a payload field is added or renamed |
 | `LocalAPIReading` | same | what the API answers from — the port between wire and Monitor | a new question is asked |
-| `MonitorLocalAPIReading` | same | answers the port from `QuotaMonitor` on the main actor | the Monitor's reads move |
+| `MonitorLocalAPIReading` | same | answers the port from the Monitor's reads (`LocalAPIMonitorReads`) on the main actor | the JSON contract's shape moves |
 | `LocalAPIRouter` | same | the closed route table; 404/405; the MCP tool table | a route is added (a deliberate edit) |
 | `MCPValue` · `MCPKernel` | `Infrastructure/Monitoring/LocalAPI/MCP` | JSON-RPC 2.0 in values; initialize, tools/list, tools/call | the MCP surface grows (SSE, sessions) |
 | `LocalAPIServer` | same | the only socket: bind loopback, peer check, receive → answer → send → close | the transport changes |
@@ -207,6 +208,10 @@ school — the kernels are fed raw bytes and values, no socket:
 - `LocalAPIPayloadTests` — the JSON contract over hand-built `Quotas`
   values: a share, a balance with no percentage, a capped money quota, a
   forecast that runs out, one that lasts, a day series with empty days.
+- `MonitorLocalAPIReadingTests` — the reading's answers over a stubbed
+  `LocalAPIMonitorReads`: the lowest across logins, the lineup grouped under
+  its products, a login's own status, a quota with a forecast line and one
+  without, days read on the ask, and no series for a login with no history.
 - `LocalAPIRouterTests` — the closed table: 200s, `404`, `405` + `Allow`,
   `403` for a `Host` or `Origin` from another host, `n` clamped, and a full
   bytes→router→bytes round trip.

@@ -156,6 +156,7 @@ let project = Project(
                 .target(name: "Infrastructure"),
                 .external(name: "DataSources"),
                 .external(name: "Diagnostics"),
+                .external(name: "Providers"),
                 .target(name: "Domain"),
                 .external(name: "Mockable"),
                 .external(name: "AWSCloudWatch"),
