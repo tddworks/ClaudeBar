@@ -367,6 +367,7 @@ So such days count twice, bounded by the cap. Pointing them out to the member is
 - A restore to the same Mac keeps the UUID, so nothing is asked. A repair that replaces the logic board is expected to change the UUID, unconfirmed; that Mac is asked, and answers *Keep the key here* (below).
 - Keeping a hash, not the UUID, keeps a hardware id out of a settings file someone might attach to a bug report.
 - A key from before this rule has no hash: the first launch with it records whichever Mac that is, so a copy made before then goes unnoticed, as in v1. If the UUID can't be read (§9), the device keeps no hash, and a copy goes unnoticed the same way.
+- On Linux the UUID is the firmware's, read from `/sys/class/dmi/id/product_uuid`, which most distributions let only root read, so for an app run as the person it is usually `nil`, as is a placeholder UUID a board's maker left in. A `nil` UUID is no device fault: that Linux machine joins, uploads and is a device like any other, it just keeps no hash, so a copy of its key (a cloned home folder or disk image) goes unnoticed and the two machines' uploads replace each other's days, as in v1.
 
 **What the copy does.** It uploads nothing under the copied key and asks, until answered: *This Mac has a copy of «label»'s key.*
 - **Make this Mac its own device**, when both Macs stay in use:
@@ -589,7 +590,7 @@ The server's own threat model (rate limits, caching, moderation, logging) is in 
 
 A destination, not a provider, so it sits beside Notify! (AGENTS.md: destinations get standalone repositories, never under `ProviderSettingsRepository`).
 
-Its code is the `Leaderboard` module of the package that also builds on Windows, so ClaudeBar for Windows counts and signs a day with the same code as the Mac ([MODULAR_DESIGN §10](../../architecture/MODULAR_DESIGN.md#10--one-package-two-platforms)).
+Its code is the `Leaderboard` module of the package that also builds on Windows, so ClaudeBar for Windows counts and signs a day with the same code as the Mac ([MODULAR_DESIGN §10](../../architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)).
 
 ```
 ┌──────────────────────────────────────────── THIS MAC (Swift) ─────────────────────────────────────────────┐
@@ -643,8 +644,10 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 | `LeaderboardHTTPClient`; `FallbackSigningKeyStore`, the key in the Keychain first and in UserDefaults when the Keychain refuses it (`DefaultsSigningKeyStore`) | `Modules/Leaderboard/Sources/Internal/` |
 | `KeychainSigningKeyStore`, the same Keychain item as before the module | `Modules/Leaderboard/Sources/Internal/macOS/` |
 | `IOKitMachineIdentity`: `MachineIdentity` read through IOKit: the model, and `IOPlatformUUID` | `Modules/Leaderboard/Sources/Internal/macOS/` |
-| `WindowsMachineIdentity`: "Windows PC", and the SMBIOS system UUID from the firmware table (`SMBIOS`, a parser of the bytes, which builds and is tested everywhere) | `Modules/Leaderboard/Sources/Internal/Windows/` |
+| `SMBIOS`, a parser of the firmware table's bytes and the placeholder UUIDs that name no machine, which builds and is tested everywhere | `Modules/Leaderboard/Sources/Internal/` |
+| `WindowsMachineIdentity`: "Windows PC", and the SMBIOS system UUID from the firmware table | `Modules/Leaderboard/Sources/Internal/Windows/` |
 | `CredentialManagerSigningKeyStore`, the key as a Credential Manager generic credential kept on this PC; `WindowsMachineIdentity`, "Windows PC" | `Modules/Leaderboard/Sources/Internal/Windows/` |
+| `SecretToolSigningKeyStore`, the key in the person's secret store through libsecret's `secret-tool`, with `DefaultsSigningKeyStore` when it refuses; `LinuxMachineIdentity`, "Linux", and the SMBIOS system UUID from `/sys`, usually `nil` (§2a) | `Modules/Leaderboard/Sources/Internal/Linux/` |
 | Settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
 | `AppLeaderboard` (wiring through the factory with the app's `X-Client` name, `board` and `board(period:provider:)`, so a board outlives the popover, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
