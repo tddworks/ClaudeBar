@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The daily chart's chip decides all it shows** — the 30-day total, the hovered day and each model; a login that prices nothing (OpenCode Go) drops Cost for tokens. ([#566](https://github.com/tddworks/ClaudeBar/issues/566)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 
 ### Fixed
+- **An extension's API key field shows in Settings**: a `"type": "secret"` config field was left out of the form, so its key could never be saved and the script failed. ([#602](https://github.com/tddworks/ClaudeBar/issues/602))
 - **OpenCode daily usage showed no output and a 30-day total of 0**: reasoning tokens now count as output, and the Tokens chip totals tokens rather than the (zero) cost. ([#566](https://github.com/tddworks/ClaudeBar/issues/566))
 - **Claude's token refresh no longer narrows your login**: a renewed token asks for the scopes your login already has, not a fixed three, so it keeps every capability the old one had (e.g. `user:mcp_servers`). ([#593](https://github.com/tddworks/ClaudeBar/issues/593)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/claude/design.md)
 - **Antigravity's quota shows while `agy` is open in a terminal**: ClaudeBar asks the running app, instead of failing with "Authentication required" when the `agy` session had started first. ([#594](https://github.com/tddworks/ClaudeBar/pull/594))

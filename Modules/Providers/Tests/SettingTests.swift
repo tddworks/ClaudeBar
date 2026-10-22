@@ -24,6 +24,16 @@ struct SettingTests {
     }
 
     @Test
+    func `should own its value and every value its options fill in, and nothing of a setting with a longer name`() throws {
+        let setting = try decode(region)
+
+        #expect(setting.isNamed(by: "region"))
+        #expect(setting.isNamed(by: "region.site"))
+        #expect(!setting.isNamed(by: "regionId"))
+        #expect(!setting.isNamed(by: "plan"))
+    }
+
+    @Test
     func `should use the default for a blank, or the first option when a choice has no default`() throws {
         #expect(try decode(region).value(from: "  ") == "china")
         let noDefault = try decode(#"{"id":"plan","label":"Plan","kind":{"choice":["pro","max"]}}"#)

@@ -55,6 +55,11 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             return dashboard(filling: settings)
         }
 
+        /// The setting names the dashboard link fills in, as written.
+        var settingsRead: [String] {
+            dashboardTemplate.map { Placeholders.names(in: $0, scope: "setting") } ?? []
+        }
+
         private func dashboard(filling settings: [String: String]) -> URL? {
             guard var text = dashboardTemplate else { return nil }
             for (name, value) in settings { text = text.replacingOccurrences(of: "{{setting.\(name)}}", with: value) }
@@ -143,19 +148,13 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
 
     public func setting(_ id: String) -> Setting? { settings.first { $0.id == id } }
 
-    /// The settings the default login uses — those its data sources or
-    /// dashboard name, as `{{setting.x}}` or a `setting` lookup. A folder
-    /// only an added login has (Kiro's home) is not one of them, so
+    /// The settings the default login uses — those a data source reads
+    /// (`DataSourceDefinition.settingsRead`) or the dashboard link fills in.
+    /// A folder only an added login has (Kiro's home) is not one of them, so
     /// Settings never shows a field that changes nothing.
     public var defaultLoginSettings: [Setting] {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .withoutEscapingSlashes
-        let text = ((try? encoder.encode(dataSources)).map { String(decoding: $0, as: UTF8.self) } ?? "")
-            + (profile.links.dashboardTemplate ?? "")
-        return settings.filter { setting in
-            text.contains("{{setting.\(setting.id)}}") || text.contains("{{setting.\(setting.id).")
-                || text.contains("\"setting\":\"\(setting.id)\"")
-        }
+        let read = Set(dataSources.flatMap(\.settingsRead)).union(profile.links.settingsRead)
+        return settings.filter { setting in read.contains(where: setting.isNamed(by:)) }
     }
 
     /// How an account is signed in (#577): accounts a person adds beside the

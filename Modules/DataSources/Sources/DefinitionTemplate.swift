@@ -83,7 +83,7 @@ extension UsageLog.Definition {
 }
 
 /// `{{<scope>.<name>}}` in a definition's strings.
-enum Placeholders {
+public enum Placeholders {
     /// The names in `value`'s strings still waiting for a value.
     static func unfilled(in value: some Encodable, scope: String) -> [String] {
         guard let json = try? JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(value)) else { return [] }
@@ -122,7 +122,8 @@ enum Placeholders {
         return String(hash.prefix(max(0, digits)))
     }
 
-    static func names(in text: String, scope: String) -> [String] {
+    /// The `{{<scope>.<name>}}` names in `text`, as written.
+    public static func names(in text: String, scope: String) -> [String] {
         let opening = "{{\(scope)."
         var names: [String] = []
         var rest = text[...]

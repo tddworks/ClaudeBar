@@ -14,7 +14,7 @@ extension ProviderDefinition {
 
     /// *Key needed* — the settings this definition asks whoever adds it for.
     public var neededSettings: [String] {
-        Array(Set(dataSources.flatMap { $0.credential.map(Self.keyNames(in:)) ?? [] })).sorted()
+        Array(Set(dataSources.flatMap { $0.credential?.settings ?? [] })).sorted()
     }
 
     /// Where it sends a key — the host of every URL a data source with a
@@ -38,14 +38,6 @@ extension ProviderDefinition {
         settings.reduce([text]) { texts, setting in texts.flatMap(setting.expanding) }
     }
 
-    private static func keyNames(in lookup: CredentialLookup) -> [String] {
-        switch lookup {
-        case .setting(let name): [name]
-        case .firstOf(let lookups): lookups.flatMap(keyNames(in:))
-        case .refreshing(let base, _), .refined(let base, _): keyNames(in: base)
-        case .environment, .jsonFile, .keychain, .browserCookies, .browserStorage, .sqlite: []
-        }
-    }
 }
 
 /// *Import provider* — what a shared file would do, shown BEFORE anything is

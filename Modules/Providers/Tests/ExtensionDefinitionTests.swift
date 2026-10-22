@@ -60,6 +60,15 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
+    func `should ask for an extension's secret field in Settings, so its key can be saved (#602)`() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let shown = try read(try example()).defaultLoginSettings.map(\.id)
+
+        #expect(shown.contains("apiKey"))
+        #expect(shown.contains("baseUrl"))
+    }
+
+    @Test
     func `should run the extension's own script, with its key and settings, for each section it can read`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = try example()

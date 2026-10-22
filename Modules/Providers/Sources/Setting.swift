@@ -201,6 +201,13 @@ public struct Setting: Sendable, Equatable, Codable, Identifiable {
         return fills
     }
 
+    /// Whether a setting name a definition reads is this setting's: its own
+    /// value (`region`) or one its chosen option fills in (`region.console`)
+    /// — the names `fills(for:)` gives.
+    public func isNamed(by name: String) -> Bool {
+        name == id || name.hasPrefix("\(id).")
+    }
+
     /// `text` once for every value this setting can fill into it — each
     /// option's, or the default's — so *Import* lists every host a key may
     /// go to. Unchanged when it names no such setting.
