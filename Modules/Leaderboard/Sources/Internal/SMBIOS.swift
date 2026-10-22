@@ -2,8 +2,9 @@ import Foundation
 
 /// The SMBIOS table's system UUID (type 1, *System Information*, offset 8):
 /// a PC's hardware UUID, kept by its firmware, as `wmic csproduct get uuid`
-/// shows it. Pure bytes, so it builds and is tested everywhere, though only
-/// `WindowsMachineIdentity` reads a table.
+/// shows it. Pure bytes, so it builds and is tested everywhere: Windows reads
+/// the table (`WindowsMachineIdentity`), Linux the UUID alone from `/sys`
+/// (`LinuxMachineIdentity`), and both ask it what a placeholder is.
 ///
 /// The table as `GetSystemFirmwareTable('RSMB')` answers it: an 8-byte header
 /// (calling method, major, minor, DMI revision, length) and then the
