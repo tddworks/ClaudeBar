@@ -53,7 +53,7 @@ struct ClaudeUsageHistoryTests {
         let requestId = request.map { #""requestId":"\#($0)","# } ?? ""
         let messageId = message.map { #""id":"\#($0)","# } ?? ""
         let directory = cwd.map { #""cwd":"\#($0)","# } ?? ""
-        return #"{"type":"assistant",\#(requestId)"message":{\#(messageId)"model":"\#(model)","usage":{"input_tokens":\#(input),"output_tokens":\#(output),"cache_creation_input_tokens":\#(cacheWrite),"cache_read_input_tokens":\#(cacheRead)}},"\#(directory)timestamp":"\#(stamp(at))"}"#
+        return #"{"type":"assistant",\#(requestId)"message":{\#(messageId)"model":"\#(model)","usage":{"input_tokens":\#(input),"output_tokens":\#(output),"cache_creation_input_tokens":\#(cacheWrite),"cache_read_input_tokens":\#(cacheRead)}},\#(directory)"timestamp":"\#(stamp(at))"}"#
     }
 
     @Test func `should show today's tokens and cost from Claude Code's session logs`() async throws {
