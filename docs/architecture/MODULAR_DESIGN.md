@@ -541,7 +541,8 @@ Modules/DataSources/Sources/
     │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows
     └── Linux/                 #if os(Linux), whole file: the same ports, as far as
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
-        ├── Time/LinuxTimeZone.swift     TimeZone.current
+        ├── Time/LinuxTimeZone.swift     TimeZone.current; a zone with no tzdata
+        │                                 file is the OS's offset, fixed
         ├── Process/LinuxProcesses.swift  the five facts: LinuxBinaryLocator (PATH),
         │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill,
         │                                 /proc
@@ -682,9 +683,12 @@ Phase 5's slices, each its own issue and PR
   `TimeZone(identifier:)` answers a name the OS's tzdata no longer carries —
   Ubuntu keeps CLDR's deprecated aliases (`Asia/Calcutta`, `Europe/Kiev`, …) in
   a separate `tzdata-legacy` package — and the zone it answers can't back a
-  `DateFormatter`, which stops the process instead of failing. `WindowsZones`
-  asks the OS's own zone files first, so a name it can't format in falls back
-  to the OS's offset ([#565](https://github.com/tddworks/ClaudeBar/pull/565)).
+  `DateFormatter`, which stops the process instead of failing. Linux's own
+  adapter owns it: `LinuxTimeZone` answers a `TZ` with no file under
+  `/usr/share/zoneinfo` with the OS's offset, fixed, which is what the C
+  library's clock keeps for it, and the TimeZone contract's *should give a zone
+  a date can be written in* proves it on every OS (Linux CI runs it in
+  `Asia/Calcutta`) ([#600](https://github.com/tddworks/ClaudeBar/pull/600)).
 - ~~**The machine GUID** is kept by a disk image cloned to another PC, unlike a
   Mac's `IOPlatformUUID`; the leaderboard design decides whether that is
   enough for its copied-key check.~~ It isn't: Windows reads the firmware's

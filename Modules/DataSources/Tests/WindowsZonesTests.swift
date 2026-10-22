@@ -5,7 +5,8 @@ import Testing
 /// Windows names a person's zone by a key (`Korea Standard Time`), and
 /// Foundation takes only IANA names; CLDR's `windowsZones` table, vendored,
 /// joins the two (#565). Runs on every platform: the table and the choice
-/// are neutral, only reading the key is Windows'.
+/// are neutral, only reading the key is Windows'. Whether Foundation can
+/// format in each zone is Windows' own fact: `Windows/WindowsZoneFormatTests`.
 @Suite
 struct WindowsZonesTests {
     /// 2026-07-15 12:00 UTC: summer in the northern hemisphere.
@@ -47,19 +48,5 @@ struct WindowsZonesTests {
         let zone = WindowsZones.zone(key: key, daylightSavingOff: false, secondsFromGMT: offset)
         #expect(!WindowsZones.unformattable.contains(zone.identifier))
         #expect(zone.secondsFromGMT(for: Self.july) == offset)
-    }
-
-    /// On Windows a formatter in a zone it can't use stops the whole process,
-    /// so a zone a newer table brings in fails this run, not a person's app.
-    @Test func `should give, for every Windows zone, a zone a date can be written out and read back in`() {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        let wrong = WindowsZones.iana.keys.sorted().compactMap { key -> String? in
-            formatter.timeZone = WindowsZones.zone(key: key, daylightSavingOff: false, secondsFromGMT: 0)
-            let text = formatter.string(from: Self.july)
-            return formatter.date(from: text) == Self.july ? nil : "\(key): \(text)"
-        }
-        #expect(wrong.isEmpty, "\(wrong)")
     }
 }
