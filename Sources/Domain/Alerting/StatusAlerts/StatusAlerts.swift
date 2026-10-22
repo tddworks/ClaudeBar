@@ -1,5 +1,4 @@
 import Foundation
-import Mockable
 
 /// *Claude · work is critical — was warning*, as plain values.
 public struct StatusAlert: Sendable, Equatable {
@@ -20,12 +19,6 @@ public struct StatusAlert: Sendable, Equatable {
     }
 }
 
-/// Who needs to hear that a login's status got worse.
-@Mockable
-public protocol StatusAlertAnnouncer: Sendable {
-    func announce(_ alert: StatusAlert) async
-}
-
 /// *Status alerts*: after each refresh it says once that a login's status got
 /// worse under the person's policy — *running low*, *critically low*,
 /// *depleted* — and stays quiet while it stays or recovers. It follows
@@ -33,13 +26,13 @@ public protocol StatusAlertAnnouncer: Sendable {
 /// of it ([design](docs/features/alerting/status-alerts/design.md)).
 @MainActor
 public final class StatusAlerts {
-    private let announcer: any StatusAlertAnnouncer
+    private let destination: any AlertDestination
     /// Each login's last status. Kept in memory: after a relaunch a login
     /// still critical is told once more.
     private var last: [String: QuotaStatus] = [:]
 
-    public init(announcer: any StatusAlertAnnouncer) {
-        self.announcer = announcer
+    public init(destination: any AlertDestination) {
+        self.destination = destination
     }
 
     /// After a refresh: tells when `login`'s status got worse and isn't
@@ -51,7 +44,7 @@ public final class StatusAlerts {
         let was = last[login] ?? .healthy
         last[login] = now
         guard now > was, now != .healthy else { return }
-        await announcer.announce(StatusAlert(login: name, providerId: provider, was: was, now: now))
+        await destination.announce(.status(StatusAlert(login: name, providerId: provider, was: was, now: now)))
     }
 
     /// Follows every refresh of `monitor`: the login, as the lineup names it,

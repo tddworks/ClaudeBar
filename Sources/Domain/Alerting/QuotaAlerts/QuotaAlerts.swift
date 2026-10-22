@@ -35,15 +35,15 @@ public final class QuotaAlerts {
     public private(set) var percents: [Int]
 
     @ObservationIgnored private let settings: any QuotaAlertSettingsRepository
-    @ObservationIgnored private let announcer: any QuotaAlertAnnouncer
+    @ObservationIgnored private let destination: any AlertDestination
     /// Per login, the percentages it was told it fell below and hasn't
     /// climbed back from. Kept in memory: after a relaunch a login still
     /// below is told once more.
     @ObservationIgnored private var told: [String: Set<Int>] = [:]
 
-    public init(settings: any QuotaAlertSettingsRepository, announcer: any QuotaAlertAnnouncer) {
+    public init(settings: any QuotaAlertSettingsRepository, destination: any AlertDestination) {
         self.settings = settings
-        self.announcer = announcer
+        self.destination = destination
         self.percents = settings.quotaAlertPercents().sorted(by: >)
     }
 
@@ -64,21 +64,31 @@ public final class QuotaAlerts {
 
     /// After a refresh: tells each percentage `login` just fell below.
     /// `usage` is what the person sees — hidden quotas already left out.
-    public func review(_ login: String, named name: String, usage: UsageSnapshot?) async {
+    public func review(_ login: String, named name: String, provider: String, usage: UsageSnapshot?) async {
         guard let left = usage.flatMap(Self.lowestShare) else { return }
         var below = told[login] ?? []
         var alerts: [QuotaAlert] = []
         for percent in percents {
             if left < Double(percent) {
                 if below.insert(percent).inserted {
-                    alerts.append(QuotaAlert(login: name, below: percent, left: Int(left.rounded(.down))))
+                    alerts.append(QuotaAlert(login: name, providerId: provider, below: percent, left: Int(left.rounded(.down))))
                 }
             } else if left >= Double(percent + 1) {
                 below.remove(percent)
             }
         }
         told[login] = below
-        for alert in alerts { await announcer.announce(alert) }
+        for alert in alerts { await destination.announce(.quota(alert)) }
+    }
+
+    /// Follows every refresh of `monitor`: the login, as the lineup names it,
+    /// and its usage as the person sees it.
+    public func follow(_ monitor: QuotaMonitor) {
+        monitor.onRefreshed { [weak monitor] login in
+            guard let monitor else { return }
+            await self.review(login.id, named: monitor.lineupName(of: login), provider: login.providerId,
+                              usage: monitor.usage(of: login))
+        }
     }
 
     private func keep(_ list: [Int]) {

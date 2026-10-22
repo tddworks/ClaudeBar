@@ -7,9 +7,9 @@ import Testing
 @MainActor
 @Suite
 struct QuotaAlertsTests {
-    private final class Told: QuotaAlertAnnouncer, @unchecked Sendable {
-        var alerts: [QuotaAlert] = []
-        func announce(_ alert: QuotaAlert) async { alerts.append(alert) }
+    private final class Told {
+        let destination = RecordingDestination()
+        var alerts: [QuotaAlert] { destination.quotaAlerts }
     }
 
     private final class Kept: QuotaAlertSettingsRepository, @unchecked Sendable {
@@ -22,7 +22,7 @@ struct QuotaAlertsTests {
     private let told = Told()
 
     private func alerts(_ percents: [Int], kept: Kept? = nil) -> QuotaAlerts {
-        QuotaAlerts(settings: kept ?? Kept(percents), announcer: told)
+        QuotaAlerts(settings: kept ?? Kept(percents), destination: told.destination)
     }
 
     private func usage(_ lefts: Left...) -> UsageSnapshot {
@@ -38,16 +38,16 @@ struct QuotaAlertsTests {
     @Test func `should tell once when a login falls below a percentage`() async {
         let alerts = alerts([35])
 
-        await alerts.review("claude.work", named: "Claude · work", usage: left(40))
-        await alerts.review("claude.work", named: "Claude · work", usage: left(34))
+        await alerts.review("claude.work", named: "Claude · work", provider: "claude", usage: left(40))
+        await alerts.review("claude.work", named: "Claude · work", provider: "claude", usage: left(34))
 
-        #expect(told.alerts == [QuotaAlert(login: "Claude · work", below: 35, left: 34)])
+        #expect(told.alerts == [QuotaAlert(login: "Claude · work", providerId: "claude", below: 35, left: 34)])
     }
 
     @Test func `should stay quiet while the login stays below`() async {
         let alerts = alerts([35])
 
-        for percent in [34.0, 30, 31, 12] { await alerts.review("claude", named: "Claude", usage: left(percent)) }
+        for percent in [34.0, 30, 31, 12] { await alerts.review("claude", named: "Claude", provider: "claude", usage: left(percent)) }
 
         #expect(told.alerts.count == 1)
     }
@@ -55,7 +55,7 @@ struct QuotaAlertsTests {
     @Test func `should tell again after the login climbs back a point above`() async {
         let alerts = alerts([35])
 
-        for percent in [34.0, 36, 33] { await alerts.review("claude", named: "Claude", usage: left(percent)) }
+        for percent in [34.0, 36, 33] { await alerts.review("claude", named: "Claude", provider: "claude", usage: left(percent)) }
 
         #expect(told.alerts.map(\.left) == [34, 33])
     }
@@ -63,7 +63,7 @@ struct QuotaAlertsTests {
     @Test func `should not tell again when the login climbs back less than a point`() async {
         let alerts = alerts([35])
 
-        for percent in [34.0, 35.5, 34] { await alerts.review("claude", named: "Claude", usage: left(percent)) }
+        for percent in [34.0, 35.5, 34] { await alerts.review("claude", named: "Claude", provider: "claude", usage: left(percent)) }
 
         #expect(told.alerts.count == 1)
     }
@@ -71,7 +71,7 @@ struct QuotaAlertsTests {
     @Test func `should tell each percentage a login falls below, highest first`() async {
         let alerts = alerts([35, 60])
 
-        await alerts.review("claude", named: "Claude", usage: left(30))
+        await alerts.review("claude", named: "Claude", provider: "claude", usage: left(30))
 
         #expect(told.alerts.map(\.below) == [60, 35])
     }
@@ -79,8 +79,8 @@ struct QuotaAlertsTests {
     @Test func `should keep each login's crossing its own`() async {
         let alerts = alerts([35])
 
-        await alerts.review("claude", named: "Claude · me", usage: left(30))
-        await alerts.review("claude.work", named: "Claude · work", usage: left(30))
+        await alerts.review("claude", named: "Claude · me", provider: "claude", usage: left(30))
+        await alerts.review("claude.work", named: "Claude · work", provider: "claude", usage: left(30))
 
         #expect(told.alerts.map(\.login) == ["Claude · me", "Claude · work"])
     }
@@ -90,24 +90,24 @@ struct QuotaAlertsTests {
     @Test func `should judge the lowest quota the login shows`() async {
         let alerts = alerts([35])
 
-        await alerts.review("claude", named: "Claude", usage: usage(.share(80), .share(20)))
+        await alerts.review("claude", named: "Claude", provider: "claude", usage: usage(.share(80), .share(20)))
 
-        #expect(told.alerts == [QuotaAlert(login: "Claude", below: 35, left: 20)])
+        #expect(told.alerts == [QuotaAlert(login: "Claude", providerId: "claude", below: 35, left: 20)])
     }
 
     @Test func `should judge money with a ceiling by its share`() async {
         let alerts = alerts([35])
 
-        await alerts.review("acme", named: "Acme", usage: usage(.money(Money(10), of: Money(50))))
+        await alerts.review("acme", named: "Acme", provider: "acme", usage: usage(.money(Money(10), of: Money(50))))
 
-        #expect(told.alerts == [QuotaAlert(login: "Acme", below: 35, left: 20)])
+        #expect(told.alerts == [QuotaAlert(login: "Acme", providerId: "acme", below: 35, left: 20)])
     }
 
     @Test func `should never judge a balance without a ceiling`() async {
         let alerts = alerts([35])
 
-        await alerts.review("acme", named: "Acme", usage: usage(.money(Money(1), of: nil)))
-        await alerts.review("acme", named: "Acme", usage: nil)
+        await alerts.review("acme", named: "Acme", provider: "acme", usage: usage(.money(Money(1), of: nil)))
+        await alerts.review("acme", named: "Acme", provider: "acme", usage: nil)
 
         #expect(told.alerts.isEmpty)
     }

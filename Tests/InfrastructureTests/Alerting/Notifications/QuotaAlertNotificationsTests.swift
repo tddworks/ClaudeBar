@@ -15,7 +15,7 @@ struct QuotaAlertNotificationsTests {
         given(sender).send(title: .any, body: .any, categoryIdentifier: .any)
             .willProduce { title, body, category in sent.title = title; sent.body = body; sent.category = category }
 
-        await QuotaAlertNotifications(alertSender: sender).announce(QuotaAlert(login: "Claude · work", below: 35, left: 34))
+        await QuotaAlertNotifications(alertSender: sender).announce(.quota(QuotaAlert(login: "Claude · work", providerId: "claude", below: 35, left: 34)))
 
         #expect(sent.title == "Claude · work is below 35%")
         #expect(sent.body == "34% left.")

@@ -2,7 +2,7 @@ import Domain
 import Foundation
 
 /// *Quota alerts* as a notification: *Claude · work is below 35%*, *34% left.*
-public final class QuotaAlertNotifications: QuotaAlertAnnouncer, @unchecked Sendable {
+public final class QuotaAlertNotifications: AlertDestination, @unchecked Sendable {
     /// The category of quota-alert notifications.
     public static let category = "QUOTA_ALERT_PERCENT"
 
@@ -16,7 +16,8 @@ public final class QuotaAlertNotifications: QuotaAlertAnnouncer, @unchecked Send
         self.alertSender = alertSender
     }
 
-    public func announce(_ alert: QuotaAlert) async {
+    public func announce(_ alert: Alert) async {
+        guard case .quota(let alert) = alert else { return }
         do {
             try await alertSender.send(title: "\(alert.login) is below \(alert.below)%",
                                        body: "\(alert.left)% left.", categoryIdentifier: Self.category)

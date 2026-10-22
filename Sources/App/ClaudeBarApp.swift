@@ -153,15 +153,15 @@ struct ClaudeBarApp: App {
         self.monitor = monitor
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
+        // Every alert goes to every destination; neither decider knows who hears it.
+        let destinations = AlertDestinations([QuotaAlertNotifications(), quotaAlerter])
         // *Quota alerts* follow every refresh too, on what the person sees.
-        let quotaAlerts = QuotaAlerts(settings: settingsRepository, announcer: QuotaAlertNotifications())
+        let quotaAlerts = QuotaAlerts(settings: settingsRepository, destination: destinations)
         self.quotaAlerts = quotaAlerts
-        monitor.onRefreshed { [weak monitor] refreshed in
-            guard let monitor else { return }
-            await quotaAlerts.review(refreshed.id, named: monitor.lineupName(of: refreshed), usage: monitor.usage(of: refreshed))
-        }
+        quotaAlerts.follow(monitor)
         // *Status alerts* follow every refresh: a login's status got worse under the policy.
-        StatusAlerts(announcer: quotaAlerter).follow(monitor)
+        StatusAlerts(destination: destinations).follow(monitor)
+        // *Status alerts* follow every refresh: a login's status got worse under the policy.
         // *Rules* follow every refresh too: the person's own condition and their
         // own webhook, in their own file — never a provider's settings.
         let ruleRepository = JSONRuleRepository.shared

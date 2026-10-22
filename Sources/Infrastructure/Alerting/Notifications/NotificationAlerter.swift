@@ -18,7 +18,7 @@ protocol AlertSender: Sendable {
 /// *Status alerts* as a notification: *Claude · work Quota Alert*, *Your
 /// Claude · work quota is critically low! Save important work.* Whether to
 /// tell is `StatusAlerts`'; this only words it.
-public final class NotificationAlerter: StatusAlertAnnouncer, @unchecked Sendable {
+public final class NotificationAlerter: AlertDestination, @unchecked Sendable {
 
     private let alertSender: AlertSender
 
@@ -40,7 +40,8 @@ public final class NotificationAlerter: StatusAlertAnnouncer, @unchecked Sendabl
         return granted
     }
 
-    public func announce(_ alert: StatusAlert) async {
+    public func announce(_ alert: Alert) async {
+        guard case .status(let alert) = alert else { return }
         AppLog.notifications.notice("Sending a status alert for \(alert.providerId): \(alert.now)")
         do {
             try await alertSender.send(title: "\(alert.login) Quota Alert",

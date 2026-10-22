@@ -35,9 +35,9 @@ struct PausedLoginsTests {
     }
 
     /// What the person was told, so a test can read it.
-    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
-        var alerts: [StatusAlert] = []
-        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+    private final class Told {
+        let destination = RecordingDestination()
+        var alerts: [Alert] { destination.alerts }
     }
 
     /// A fetch that waits for `open()` — so a test can pause a login while its
@@ -214,7 +214,7 @@ struct PausedLoginsTests {
         let product = stubbedProduct("claude", probe: probe, settings: settings)
         let told = Told()
         let monitor = QuotaMonitor(providers: kept([product]), clock: TestClock())
-        StatusAlerts(announcer: told).follow(monitor)
+        StatusAlerts(destination: told.destination).follow(monitor)
 
         // When — she pauses the login, and only then lets the fetch land
         let inFlight = Task { await monitor.refreshAll() }

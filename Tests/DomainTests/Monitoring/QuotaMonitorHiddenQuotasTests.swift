@@ -16,9 +16,9 @@ struct QuotaMonitorHiddenQuotasTests {
     }
 
     /// Records the status alerts it was told, so a test asserts state.
-    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
-        var alerts: [StatusAlert] = []
-        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+    private final class Told {
+        let destination = RecordingDestination()
+        var alerts: [StatusAlert] { destination.statusAlerts }
     }
 
     /// Gemini-style snapshot: session and weekly healthy, flash critical (10%).
@@ -60,7 +60,7 @@ struct QuotaMonitorHiddenQuotasTests {
             clock: TestClock(),
             settingsRepository: settings
         )
-        if let told { StatusAlerts(announcer: told).follow(monitor) }
+        if let told { StatusAlerts(destination: told.destination).follow(monitor) }
         await monitor.refresh(providerId: "gemini")
         return (monitor, settings)
     }

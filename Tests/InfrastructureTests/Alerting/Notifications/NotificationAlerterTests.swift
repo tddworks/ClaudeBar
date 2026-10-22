@@ -10,8 +10,8 @@ import Mockable
 struct NotificationAlerterTests {
     private final class Sent: @unchecked Sendable { var title = "", body = "", category = "" }
 
-    private func alert(_ now: QuotaStatus, login: String = "Claude · work") -> StatusAlert {
-        StatusAlert(login: login, providerId: "claude", was: .healthy, now: now)
+    private func alert(_ now: QuotaStatus, login: String = "Claude · work") -> Alert {
+        .status(StatusAlert(login: login, providerId: "claude", was: .healthy, now: now))
     }
 
     private func sending(into sent: Sent) -> MockAlertSender {

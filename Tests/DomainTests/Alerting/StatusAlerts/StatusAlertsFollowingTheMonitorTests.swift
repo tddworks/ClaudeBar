@@ -13,9 +13,9 @@ struct StatusAlertsFollowingTheMonitorTests {
         func sleep(nanoseconds: UInt64) async throws {}
     }
 
-    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
-        var alerts: [StatusAlert] = []
-        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+    private final class Told {
+        let destination = RecordingDestination()
+        var alerts: [StatusAlert] { destination.statusAlerts }
     }
 
     private let told = Told()
@@ -37,7 +37,7 @@ struct StatusAlertsFollowingTheMonitorTests {
 
     private func monitor(_ product: Provider, policy: StatusPolicy = .absolute) -> QuotaMonitor {
         let monitor = QuotaMonitor(providers: kept([product]), clock: TestClock(), statusPolicy: { policy })
-        StatusAlerts(announcer: told).follow(monitor)
+        StatusAlerts(destination: told.destination).follow(monitor)
         return monitor
     }
 

@@ -7,14 +7,14 @@ import Testing
 @MainActor
 @Suite
 struct StatusAlertsTests {
-    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
-        var alerts: [StatusAlert] = []
-        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+    private final class Told {
+        let destination = RecordingDestination()
+        var alerts: [StatusAlert] { destination.statusAlerts }
     }
 
     private let told = Told()
 
-    private func alerts() -> StatusAlerts { StatusAlerts(announcer: told) }
+    private func alerts() -> StatusAlerts { StatusAlerts(destination: told.destination) }
 
     // MARK: - Telling
 

@@ -10,23 +10,20 @@ public protocol QuotaAlertSettingsRepository: Sendable {
     func setQuotaAlertPercents(_ percents: [Int])
 }
 
-/// Who needs to hear that a login fell below one of the person's percentages.
-@Mockable
-public protocol QuotaAlertAnnouncer: Sendable {
-    func announce(_ alert: QuotaAlert) async
-}
-
 /// *Claude · work is below 35% — 34% left*, as plain values.
 public struct QuotaAlert: Sendable, Equatable {
     /// The login, as the lineup names it.
     public let login: String
+    /// The product the login belongs to.
+    public let providerId: String
     /// The person's percentage it fell below.
     public let below: Int
     /// What it has left, in whole percent.
     public let left: Int
 
-    public init(login: String, below: Int, left: Int) {
+    public init(login: String, providerId: String, below: Int, left: Int) {
         self.login = login
+        self.providerId = providerId
         self.below = below
         self.left = left
     }

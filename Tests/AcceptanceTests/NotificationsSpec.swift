@@ -18,9 +18,9 @@ import Mockable
 struct NotificationsSpec {
 
     /// What the person was told, so a scenario asserts it.
-    final class Told: StatusAlertAnnouncer, @unchecked Sendable {
+    final class Told: AlertDestination, @unchecked Sendable {
         var alerts: [StatusAlert] = []
-        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+        func announce(_ alert: Alert) async { if case .status(let status) = alert { alerts.append(status) } }
     }
 
     private struct TestClock: Clock {
@@ -70,7 +70,7 @@ struct NotificationsSpec {
                 providers: kept([claudeProduct]),
                 clock: TestClock()
             )
-            StatusAlerts(announcer: told).follow(monitor)
+            StatusAlerts(destination: told).follow(monitor)
 
             // When — refresh returns 15% (critical)
             await monitor.refresh(providerId: "claude")
@@ -114,7 +114,7 @@ struct NotificationsSpec {
                 providers: kept([claudeProduct]),
                 clock: TestClock()
             )
-            StatusAlerts(announcer: told).follow(monitor)
+            StatusAlerts(destination: told).follow(monitor)
 
             // When — refresh twice with same healthy status
             await monitor.refresh(providerId: "claude")
