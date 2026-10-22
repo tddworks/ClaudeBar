@@ -59,7 +59,8 @@ public final class LocalAPIServer: @unchecked Sendable {
 
     /// Starts listening and returns when the socket is ready. The default
     /// port first; busy, a free one — the real number goes to the port file
-    /// either way.
+    /// either way. The task's cancellation is honoured: the switch going off
+    /// while the socket is still coming up leaves nothing listening.
     public func start(answer: @escaping @Sendable (HTTPRequestResult) async -> HTTPResponse) async throws {
         // Reset on the queue, where the listener's state lives.
         queue.async { [self] in
@@ -69,10 +70,14 @@ public final class LocalAPIServer: @unchecked Sendable {
 
         do {
             try await listen(on: NWEndpoint.Port(rawValue: defaultPort) ?? .any)
+        } catch is CancellationError {
+            return
         } catch {
+            try Task.checkCancellation()
             AppLog.network.info("Local API: port \(self.defaultPort) is taken; taking a free port")
             try await listen(on: .any)
         }
+        if Task.isCancelled { stop() }
     }
 
     /// Stops listening and removes the port file. Off means no door: no
