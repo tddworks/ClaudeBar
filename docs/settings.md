@@ -37,6 +37,7 @@ A key that's missing means "use the default", so a fresh install starts with an 
 | `<provider>.*` | A provider's own settings, each named in its definition's `settings` (`<id>.<setting>`), and its data source choice (`<id>.probeMode`) | `"kimi": { "probeMode": "api", "region": "international" }` |
 | `hook.*` | [Session hooks](features/activity/session-hooks/README.md) | `"hook": { "enabled": true }` |
 | `alerts.*` | [Quota alerts](features/alerting/quota-alerts/README.md): the percentages you chose | `"alerts": { "thresholds": [60, 35] }` |
+| `alerting.webhooks` | [Webhooks](features/alerting/webhooks/README.md): each webhook's id, name, channel (`slack` · `json`), scope (`provider`, `null` for every login), what it sends and whether it is on. Never its URL | `"alerting": { "webhooks": [{ "id": "9F2C…", "name": "#ai-quota", "channel": "slack", "provider": null, "quotaAlerts": true, "statusAlerts": false, "isOn": true }] }` |
 | `notify.*` | [Notify!](features/alerting/notify/README.md) device link and surfaces | `"notify": { "enabled": true, "widgetEnabled": true }` |
 | `leaderboard.*` | [Leaderboard](features/leaderboard/README.md) membership (name, what you share, last upload) and `leaderboard.on`, which outlives leaving | `"leaderboard": { "on": false, "username": "tokenwhale" }` |
 | `ext-<extension-id>.*` | A user [extension](features/providers/extensions/README.md)'s non-secret config fields, as provider settings. Values an older version kept under `extensions.<extension-id>.*` move here once | `"ext-my-api": { "baseURL": "https://…" }` |
@@ -78,6 +79,7 @@ Deleting the file resets every setting to its default. Secrets stay where they a
 |---|---|
 | Provider keys you paste into ClaudeBar — API keys, tokens, session cookies, for the default login and every added account | Keychain (the provider vault). A key an older version kept in the app credential store moves to the Keychain after a verified write, the first time it's read |
 | Notify! device token | Keychain, or the app credential store on builds the Keychain refuses (see below) |
+| [Webhook](features/alerting/webhooks/README.md) URLs — a Slack URL carries a token | Keychain under `webhook-url-<id>`, or the app credential store on builds the Keychain refuses (see below). Kept by the same store as the Notify! token |
 | Secret fields of user extensions | Keychain (the provider vault). One an older version kept in the app credential store moves there once |
 | Your provider sign-ins (Claude Code, Codex, Gemini, Grok, Cursor…) | Where that provider's own CLI or app keeps them. ClaudeBar reads them there; see each [provider doc](providers/) |
 
@@ -85,7 +87,7 @@ Deleting the file resets every setting to its default. Secrets stay where they a
 - **The app credential store** is ClaudeBar's own macOS preferences (`defaults read com.tddworks.claudebar`), with keys starting `com.claudebar.credentials.`. It isn't encrypted beyond your account's normal file protection. Provider and extension keys left there by older versions move to the Keychain.
 - **Environment variables**: some providers take a key from an env var instead (`zai.glmAuthEnvVar`, `copilot.authEnvVar`, `minimax.authEnvVar`…). The settings file stores only the variable's *name*, never its value.
 - **Another tool's login** (the GitHub CLI's, Antigravity's, Claude Code's) is read from that tool's own Keychain item or file and never written by ClaudeBar, except where the provider's doc says it renews a token there.
-- **Ad-hoc signed builds** (ones you compile yourself) can't use the Keychain, so the Notify! token falls back to the app credential store and the Notify! pane says so. A Developer ID build from the release page isn't affected.
+- **Ad-hoc signed builds** (ones you compile yourself) can't use the Keychain, so the Notify! token and webhook URLs fall back to the app credential store, and the Notify! pane and the Webhooks card say so. A Developer ID build from the release page isn't affected.
 
 ## See also
 

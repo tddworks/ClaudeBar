@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Linux builds**: ClaudeBar's modules build and pass their tests on Linux, so a client there can reuse them. ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)
 - **The popover shows the shape of a login's year**: below the 30-day chart, *Usage — last year* shades a cell a day by how full it was, and *Model Mix — last year* shows which models you lean on, largest first. ([#598](https://github.com/tddworks/ClaudeBar/pull/598)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/insights/README.md)
-- **Rules: POST your quota to a webhook you own**: when a login falls below a percent you pick, turns critical or is depleted, ClaudeBar sends a Slack message or a JSON body to a URL you paste. Settings → Rules. ([#599](https://github.com/tddworks/ClaudeBar/pull/599)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/rules/README.md)
+- **Webhooks: send your quota alerts to Slack or a URL you own**: the same alerts this Mac shows (a quota below your percent, and if you choose, a status that got worse) are POSTed as a Slack message or a JSON body. Settings → Sync & Alerts → Webhooks. ([#599](https://github.com/tddworks/ClaudeBar/pull/599)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/webhooks/README.md)
 
 ---
 

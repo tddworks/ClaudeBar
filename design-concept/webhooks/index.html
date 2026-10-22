@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webhooks — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--sun:#FFD84D;--violet:#7C5CFF;--red:#FF8A8A;--redInk:#B42318;--greenInk:#1F7A45;--code:#F6F1FF;--line:2.5px solid var(--ink);--shadow:3px 3px 0 var(--ink)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#1B1926;--dot:#2C2940;--ink:#F4EEE2;--muted:#B7B0C8;--card:#26233A;--lav:#332D52;--code:#1F1C30;--redInk:#FF9B9B;--greenInk:#8FE0AE}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:24px}
+h1{margin:0;font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted);max-width:780px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:12px;flex:1 1 420px;min-width:0}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px}
+.label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+.mono{font-family:"JetBrains Mono",monospace}
+.title{font-weight:800;font-size:15px}
+.head{display:flex;align-items:flex-start;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;padding:2px 10px;font-weight:800;font-size:12px;background:var(--sun);color:#1E1B2E}
+.chip.ghost{background:transparent;color:var(--muted);border-style:dashed}
+.tag{display:inline-block;border:2px solid var(--ink);border-radius:8px;padding:0 7px;font-size:11px;font-weight:800;background:var(--lav);color:var(--ink)}
+.btn{border:2px solid var(--ink);border-radius:10px;padding:5px 12px;font:800 13px "Bricolage Grotesque",system-ui;background:var(--lav);color:var(--ink);cursor:pointer;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+.btn.primary{background:var(--violet);color:#fff}
+.btn.danger{background:transparent;color:var(--redInk);border-color:var(--redInk);box-shadow:none}
+.btn.small{padding:3px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:active:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+.seg{display:inline-flex;align-self:flex-start;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);font:800 13px "Bricolage Grotesque",system-ui;padding:5px 14px;cursor:pointer}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button.on{background:var(--sun);color:#1E1B2E}
+/* the list */
+.hooks{display:flex;flex-direction:column;gap:10px}
+.hook{border:2px solid var(--ink);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:34px 1fr auto;gap:4px 12px;align-items:center;background:var(--card)}
+.hook.off{opacity:.6}
+.hook .ico{width:34px;height:34px;border-radius:9px;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font:800 15px/1 "JetBrains Mono",monospace;grid-row:1}
+.hook .ico.slack{background:var(--sun);color:#1E1B2E}.hook .ico.json{background:var(--mint);color:#1E1B2E}
+.hook .who{min-width:0;display:flex;flex-direction:column}
+.hook .who b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hook .who small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hook .meta{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hook .acts{display:flex;gap:8px;align-items:center}
+.hook .fail{grid-column:1/4;border-top:2px dashed var(--redInk);padding-top:8px;margin-top:4px;font-size:12px;color:var(--redInk);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.state{font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px}
+.state::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.state.sent{color:var(--greenInk)}.state.failed{color:var(--redInk)}.state.never{color:var(--muted)}
+.state.sending{color:var(--violet)}
+.sw{width:38px;height:22px;border-radius:999px;border:2px solid var(--ink);background:var(--mint);position:relative;cursor:pointer;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:17px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:left .15s}
+.sw.offsw{background:transparent}.sw.offsw::after{left:2px}
+.empty{border:2px dashed var(--ink);border-radius:14px;padding:22px 16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.empty .big{font-size:28px}
+/* the form */
+.form{display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field input[type=text],.field select{width:100%;border:2px solid var(--ink);border-radius:10px;padding:7px 10px;font:600 13px "JetBrains Mono",monospace;background:var(--card);color:var(--ink)}
+.field select{font-family:"Bricolage Grotesque",system-ui;font-weight:700}
+.field input.bad{border-color:var(--redInk)}
+.secret{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);background:var(--code);border-radius:10px;padding:8px 10px}
+.secret.warn{background:#FFF1C2;color:#6B4E00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .secret.warn{background:#3A3216;color:#F5D97A}}
+.refuse{font-size:12px;font-weight:700;color:var(--redInk);min-height:0}
+.checks{display:flex;flex-direction:column;gap:6px}
+.checks label{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:700;cursor:pointer}
+.checks small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.checks input{accent-color:var(--violet);margin-top:3px}
+.formacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.formacts .grow{flex:1}
+.testres{font-size:12px;font-weight:700}
+/* previews */
+.slack{border:1.5px solid #D9D3E2;border-radius:10px;padding:10px 12px;background:#fff;color:#1D1C1D;font:15px/1.45 -apple-system,"Segoe UI",system-ui,sans-serif;display:grid;grid-template-columns:36px 1fr;gap:10px}
+.slack .av{width:36px;height:36px;border-radius:7px;background:#7C5CFF;color:#fff;display:grid;place-items:center;font-weight:800}
+.slack b{font-weight:800}.slack .app{font-size:10px;background:#E8E8E8;color:#616061;border-radius:3px;padding:0 4px;font-weight:700;margin-left:4px;vertical-align:2px}
+.slack .t{font-size:12px;color:#616061;margin-left:6px}
+pre.json{margin:0;background:var(--code);border:2px solid var(--ink);border-radius:12px;padding:12px;font:500 12px/1.5 "JetBrains Mono",monospace;overflow-x:auto;color:var(--ink)}
+pre.json .k{color:var(--violet)}pre.json .s{color:var(--greenInk)}pre.json .n{color:#C2410C}pre.json .z{color:var(--muted)}
+/* simulator */
+.sim{display:flex;flex-direction:column;gap:8px}
+.sim .btns{display:flex;flex-wrap:wrap;gap:8px}
+.log{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.log div{border-left:3px solid var(--violet);padding:2px 8px}
+.log .no{border-left-color:var(--muted);color:var(--muted)}
+.log .bad{border-left-color:var(--redInk)}
+.rules li{margin:4px 0}
+.card.demo{flex-direction:row;flex-wrap:wrap;gap:10px;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Webhooks</h1>
+    <p class="sub">Journey moment 19a — Mia's team should hear the alerts she already gets. A webhook is a <b>destination</b>: it has no percent of its own, and sends the quota alerts and status alerts ClaudeBar already decides. Mock data only.</p>
+  </header>
+
+  <div class="card demo">
+    <span class="label">Mockup controls</span>
+    <div class="seg" id="demoList"><button class="on" data-v="some">With webhooks</button><button data-v="none">Empty</button></div>
+    <div class="seg" id="demoBuild"><button class="on" data-v="signed">Signed build</button><button data-v="adhoc">Keychain refuses</button></div>
+  </div>
+
+  <div class="row">
+    <!-- the pane -->
+    <div class="col">
+      <p class="section-title">Settings → Sync &amp; Alerts</p>
+
+      <div class="card">
+        <div class="head">
+          <div><div class="title">Quota alerts</div><div class="hint">Tell me when a login falls below a percentage I pick.</div></div>
+        </div>
+        <div class="chips"><span class="chip">60%</span><span class="chip">35%</span><span class="chip ghost">20% · built in</span><span class="chip ghost">0% · built in</span></div>
+      </div>
+
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="title">Webhooks</div>
+            <div class="hint">Send these alerts to Slack or a URL you own, as well as this Mac.</div>
+          </div>
+          <button class="btn primary" id="addBtn">+ Add Webhook</button>
+        </div>
+        <div class="hooks" id="hooks"></div>
+      </div>
+
+      <div class="card" id="formCard">
+        <div class="head">
+          <div class="title" id="formTitle">Add Webhook</div>
+          <button class="btn small" id="closeForm">Cancel</button>
+        </div>
+        <div class="form">
+          <div class="field">
+            <span class="label">URL</span>
+            <input type="text" id="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" spellcheck="false">
+            <div class="refuse" id="urlRefuse" role="status"></div>
+            <div class="secret" id="secretNote"></div>
+          </div>
+          <div class="field">
+            <span class="label">Name</span>
+            <input type="text" id="name" placeholder="the URL's host">
+          </div>
+          <div class="field">
+            <span class="label">Channel</span>
+            <div class="seg" id="channel"><button class="on" data-v="slack">Slack</button><button data-v="json">JSON</button></div>
+          </div>
+          <div class="field">
+            <span class="label">For</span>
+            <select id="scope">
+              <option value="">Every login</option>
+              <option value="claude">Claude</option>
+              <option value="codex">Codex</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </div>
+          <div class="field">
+            <span class="label">Sends</span>
+            <div class="checks">
+              <label><input type="checkbox" id="sendQuota" checked><span>Quota alerts<small>Your percentages above: 60%, 35%</small></span></label>
+              <label><input type="checkbox" id="sendStatus"><span>Status alerts<small>When a login gets worse: running low, critically low, depleted</small></span></label>
+            </div>
+            <div class="refuse" id="sendsRefuse"></div>
+          </div>
+          <div class="formacts">
+            <button class="btn danger" id="removeBtn" hidden>Remove</button>
+            <span class="grow"></span>
+            <button class="btn primary" id="saveBtn">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- previews and a refresh -->
+    <div class="col">
+      <p class="section-title">What it sends</p>
+      <div class="card">
+        <div class="seg" id="kind"><button class="on" data-v="quota">Quota alert</button><button data-v="status">Status alert</button><button data-v="test">Send a test</button></div>
+        <div class="label">Slack</div>
+        <div class="slack" id="slackPreview"></div>
+        <div class="label">JSON</div>
+        <pre class="json" id="jsonPreview"></pre>
+        <div class="hint">Every key on every send, <span class="mono">null</span> where there is no value. Nothing else leaves the Mac: no email, prompt, path or session.</div>
+      </div>
+
+      <p class="section-title">After a refresh</p>
+      <div class="card sim">
+        <div class="hint">Each alert goes to every destination; each webhook says whether it wants it.</div>
+        <div class="btns">
+          <button class="btn small" data-alert="quota" data-provider="claude" data-login="Claude · work">Claude · work falls below 35%</button>
+          <button class="btn small" data-alert="status" data-provider="codex" data-login="Codex · personal">Codex · personal turns critical</button>
+          <button class="btn small" data-alert="status" data-provider="claude" data-login="Claude · me">Claude · me turns critical</button>
+        </div>
+        <div class="log" id="log"><div class="no">Nothing yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">The rules this shows</div>
+    <ul class="rules">
+      <li>No percent per webhook: it sends the Quota alerts percentages, and status alerts if ticked.</li>
+      <li>A webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope.</li>
+      <li>The URL must be <span class="mono">https://</span>, except a host on this Mac or your network.</li>
+      <li><i>Send a test</i> sends a message labelled as a test — never a made-up alert — and works on a webhook that is off.</li>
+      <li>One attempt per alert, no retry. The last delivery is shown: <i>Sent</i>, <i>Failed — 404</i>, <i>Nothing sent yet</i>.</li>
+      <li>The URL is kept in the Keychain (or, when the Keychain refuses, the app credential store, and the card says so) — never in <span class="mono">settings.json</span> or a log.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const PROVIDERS = {claude:'Claude', codex:'Codex', gemini:'Gemini'};
+const SEED = [
+  {id:1, name:'#ai-quota', url:'https://hooks.slack.com/services/T000/B000/XXXX', channel:'slack', provider:null, quota:true, status:true, on:true, delivery:{kind:'sent', ago:'2m ago'}},
+  {id:2, name:'pause-jobs', url:'http://192.168.1.20:8080/claudebar', channel:'json', provider:'claude', quota:false, status:true, on:true, delivery:{kind:'failed', code:'404'}},
+  {id:3, name:'ops.example.com', url:'https://ops.example.com/hooks/quota', channel:'json', provider:null, quota:true, status:false, on:false, delivery:{kind:'never'}},
+];
+let hooks = SEED.map(h => ({...h}));
+let editing = null, channel = 'slack', kind = 'quota', adhoc = false, nextId = 4;
+const $ = id => document.getElementById(id);
+
+function host(u){ try { return new URL(u).host } catch { return '' } }
+function isLocal(h){
+  h = h.replace(/:\d+$/,'').replace(/^\[|\]$/g,'');
+  if (h === 'localhost' || h === '::1' || h.endsWith('.local')) return true;
+  const m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/); if (!m) return false;
+  const [a,b] = [+m[1], +m[2]];
+  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+function refuseURL(u){
+  let p; try { p = new URL(u) } catch { return 'Paste a full URL, starting https://' }
+  if (p.protocol === 'https:') return '';
+  if (p.protocol === 'http:' && isLocal(p.host)) return '';
+  if (p.protocol === 'http:') return 'Use an https URL — http is only for this Mac or your network.';
+  return 'Paste a full URL, starting https://';
+}
+function deliveryText(d){
+  if (d.kind === 'sent') return ['sent', 'Sent ' + d.ago];
+  if (d.kind === 'failed') return ['failed', 'Failed — ' + d.code];
+  if (d.kind === 'sending') return ['sending', 'Sending…'];
+  return ['never', 'Nothing sent yet'];
+}
+function failWords(code){
+  if (code === '404' || code === '410') return 'The URL wasn’t found — it may be wrong or revoked.';
+  if (code === '403' || code === '401') return 'The URL refused it — its token may be revoked.';
+  if (code === 'timed out') return 'No answer within 10 seconds.';
+  return 'The last send didn’t arrive.';
+}
+
+function render(){
+  const list = $('hooks'); list.innerHTML = '';
+  if (!hooks.length){
+    list.innerHTML = '<div class="empty"><div class="big">⇢</div><b>No webhooks yet</b><span class="hint">Add a Slack or JSON URL, and your quota alerts go there too.</span><button class="btn primary" onclick="openForm()">+ Add Webhook</button></div>';
+    return;
+  }
+  if (adhoc) list.insertAdjacentHTML('beforeend', '<div class="secret warn"><span>⚠︎</span><span>This build can\u2019t use the Keychain, so these URLs are kept in the app credential store.</span></div>');
+  hooks.forEach(h => {
+    const [cls, text] = deliveryText(h.delivery);
+    const el = document.createElement('div'); el.className = 'hook' + (h.on ? '' : ' off');
+    const sends = [h.quota && 'Quota alerts', h.status && 'Status alerts'].filter(Boolean).join(' · ');
+    el.innerHTML = `
+      <div class="ico ${h.channel}">${h.channel === 'slack' ? '#' : '{}'}</div>
+      <div class="who"><b>${h.name}</b><small class="mono">${host(h.url)}</small></div>
+      <div class="acts">
+        <button class="btn small" data-test>Send a test</button>
+        <button class="btn small" data-edit>Edit</button>
+        <button class="sw ${h.on ? '' : 'offsw'}" data-sw aria-label="On"></button>
+      </div>
+      <div class="meta">
+        <span class="tag">${h.channel === 'slack' ? 'Slack' : 'JSON'}</span>
+        <span class="tag">${h.provider ? PROVIDERS[h.provider] : 'Every login'}</span>
+        <span class="hint">${sends}</span>
+        <span class="state ${cls}" style="margin-left:auto">${text}</span>
+      </div>
+      ${h.delivery.kind === 'failed' ? `<div class="fail"><span><b>Failed — ${h.delivery.code}.</b> ${failWords(h.delivery.code)} The alert isn't sent again — check the URL, then send a test.</span></div>` : ''}`;
+    el.querySelectorAll('[data-test]').forEach(b => b.onclick = () => sendTest(h));
+    el.querySelector('[data-edit]').onclick = () => openForm(h);
+    el.querySelector('[data-sw]').onclick = () => { h.on = !h.on; render(); };
+    list.appendChild(el);
+  });
+}
+
+function sendTest(h){
+  h.delivery = {kind:'sending'}; render();
+  setTimeout(() => {
+    // mock: a URL with a LAN host that 404s keeps failing; everything else arrives
+    h.delivery = h.url.includes('192.168.1.20') ? {kind:'failed', code:'404'} : {kind:'sent', ago:'just now'};
+    render();
+    if (editing === h) $('formTitle').textContent = 'Edit ' + h.name;
+  }, 700);
+}
+
+function secretNote(){
+  $('secretNote').className = 'secret' + (adhoc ? ' warn' : '');
+  $('secretNote').innerHTML = adhoc
+    ? '<span>⚠︎</span><span>This build can’t use the Keychain, so the URL is kept in ClaudeBar’s app credential store instead — not encrypted beyond your account’s file protection. A release build keeps it in the Keychain.</span>'
+    : '<span>🔒</span><span>Stored in the Keychain — a Slack URL carries a token. Never written to settings.json or a log.</span>';
+}
+
+function openForm(h){
+  editing = h || null;
+  $('formCard').hidden = false;
+  $('formTitle').textContent = h ? 'Edit ' + h.name : 'Add Webhook';
+  $('saveBtn').textContent = h ? 'Save' : 'Add';
+  $('removeBtn').hidden = !h;
+  $('url').value = h ? h.url : '';
+  $('name').value = h ? h.name : '';
+  $('scope').value = h ? (h.provider || '') : '';
+  $('sendQuota').checked = h ? h.quota : true;
+  $('sendStatus').checked = h ? h.status : false;
+  setChannel(h ? h.channel : 'slack');
+  $('urlRefuse').textContent = ''; $('url').classList.remove('bad'); $('sendsRefuse').textContent = '';
+  updateName();
+  $('formCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function updateName(){ $('name').placeholder = host($('url').value) || "the URL's host"; }
+function setChannel(v){ channel = v; document.querySelectorAll('#channel button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+
+$('url').addEventListener('input', () => { updateName(); $('urlRefuse').textContent = ''; $('url').classList.remove('bad'); });
+$('channel').onclick = e => { if (e.target.dataset.v) setChannel(e.target.dataset.v); };
+$('addBtn').onclick = () => openForm();
+$('closeForm').onclick = () => { $('formCard').hidden = true; editing = null; };
+$('removeBtn').onclick = () => { hooks = hooks.filter(x => x !== editing); $('formCard').hidden = true; editing = null; render(); };
+$('saveBtn').onclick = () => {
+  const url = $('url').value.trim(), why = refuseURL(url);
+  if (why){ $('urlRefuse').textContent = why; $('url').classList.add('bad'); return; }
+  if (!$('sendQuota').checked && !$('sendStatus').checked){ $('sendsRefuse').textContent = 'Tick at least one kind of alert.'; return; }
+  const data = {url, name: $('name').value.trim() || host(url), channel, provider: $('scope').value || null,
+                quota: $('sendQuota').checked, status: $('sendStatus').checked};
+  if (editing) Object.assign(editing, data, editing.url === url ? {} : {delivery:{kind:'never'}});
+  else hooks.push({id: nextId++, on:true, delivery:{kind:'never'}, ...data});
+  $('formCard').hidden = true; editing = null; render();
+};
+
+/* previews */
+const NOW = '2026-10-22T09:41:00Z';
+const BODIES = {
+  quota: {slack:'Claude · work is below 35% — 34% left', json:{type:'quota', provider:'claude', login:'Claude · work', below:35, left:34, status:null, was:null, sentAt:NOW}},
+  status:{slack:'Claude · work is critical — was warning', json:{type:'status', provider:'claude', login:'Claude · work', below:null, left:null, status:'critical', was:'warning', sentAt:NOW}},
+  test:  {slack:'ClaudeBar test — this webhook works. No quota was judged.', json:{type:'test', provider:null, login:null, below:null, left:null, status:null, was:null, sentAt:NOW}},
+};
+function jsonHTML(o){
+  const keys = Object.keys(o);
+  return '{\n' + keys.map((k,i) => {
+    const v = o[k];
+    const val = v === null ? '<span class="z">null</span>' : typeof v === 'number' ? `<span class="n">${v}</span>` : `<span class="s">"${v}"</span>`;
+    return `  <span class="k">"${k}"</span>: ${val}${i < keys.length-1 ? ',' : ''}`;
+  }).join('\n') + '\n}';
+}
+function renderPreview(){
+  const b = BODIES[kind];
+  $('slackPreview').innerHTML = `<div class="av">C</div><div><b>ClaudeBar</b><span class="app">APP</span><span class="t">9:41</span><div>${b.slack}</div></div>`;
+  $('jsonPreview').innerHTML = jsonHTML(b.json);
+}
+$('kind').onclick = e => { if (!e.target.dataset.v) return; kind = e.target.dataset.v;
+  document.querySelectorAll('#kind button').forEach(x => x.classList.toggle('on', x.dataset.v === kind)); renderPreview(); };
+
+/* a refresh: every alert, every destination; each webhook decides */
+function wants(h, a){ return h.on && (a.kind === 'quota' ? h.quota : h.status) && (!h.provider || h.provider === a.provider); }
+function why(h, a){
+  if (!h.on) return 'off';
+  if (a.kind === 'quota' && !h.quota) return "doesn't send quota alerts";
+  if (a.kind === 'status' && !h.status) return "doesn't send status alerts";
+  return 'only ' + PROVIDERS[h.provider];
+}
+document.querySelectorAll('[data-alert]').forEach(btn => btn.onclick = () => {
+  const a = {kind: btn.dataset.alert, provider: btn.dataset.provider, login: btn.dataset.login};
+  const log = $('log'); if (log.querySelector('.no') && log.children.length === 1) log.innerHTML = '';
+  const words = a.kind === 'quota' ? `${a.login} is below 35%` : `${a.login} is critical`;
+  const lines = [`<div><b>This Mac</b> — notification: ${words}</div>`];
+  hooks.forEach(h => {
+    if (wants(h, a)) {
+      const fails = h.url.includes('192.168.1.20');
+      h.delivery = fails ? {kind:'failed', code:'404'} : {kind:'sent', ago:'just now'};
+      lines.push(`<div class="${fails ? 'bad' : ''}"><b>${h.name}</b> — ${h.channel === 'slack' ? 'Slack' : 'JSON'}: ${fails ? 'Failed — 404' : 'sent'}</div>`);
+    } else lines.push(`<div class="no"><b>${h.name}</b> — not sent (${why(h, a)})</div>`);
+  });
+  const group = document.createElement('div'); group.style.border = '0'; group.style.padding = '0';
+  group.innerHTML = `<div class="label" style="border:0;padding:0">${words}</div>` + lines.join('');
+  group.style.display = 'flex'; group.style.flexDirection = 'column'; group.style.gap = '4px';
+  log.prepend(group); render();
+});
+
+/* mockup controls */
+$('demoList').onclick = e => { if (!e.target.dataset.v) return;
+  document.querySelectorAll('#demoList button').forEach(x => x.classList.toggle('on', x === e.target));
+  hooks = e.target.dataset.v === 'none' ? [] : SEED.map(h => ({...h, delivery:{...h.delivery}}));
+  $('formCard').hidden = true; render(); };
+$('demoBuild').onclick = e => { if (!e.target.dataset.v) return;
+  document.querySelectorAll('#demoBuild button').forEach(x => x.classList.toggle('on', x === e.target));
+  adhoc = e.target.dataset.v === 'adhoc'; secretNote(); render(); };
+
+secretNote(); render(); renderPreview(); openForm(); window.scrollTo(0,0);
+</script>
+</body>
+</html>

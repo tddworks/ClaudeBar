@@ -72,7 +72,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Notch | Quota and live Claude Code sessions in the MacBook notch → [docs](docs/features/activity/notch/README.md) |
 | Touch Bar | Quota gauges on a MacBook Pro Touch Bar → [docs](docs/features/alerting/touch-bar/README.md) |
 | Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/alerting/notify/README.md) |
-| Rules | POST your quota to a webhook you own when a login crosses a line you pick → [docs](docs/features/alerting/rules/README.md) |
+| Webhooks | Your quota and status alerts in Slack or at a URL you own → [docs](docs/features/alerting/webhooks/README.md) |
 | Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/activity/session-hooks/README.md) |
 | Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/usage-history/daily-usage/README.md) |
 | Leaderboard | Share daily token totals and see where you rank → [docs](docs/features/leaderboard/README.md) |
