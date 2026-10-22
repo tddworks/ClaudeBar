@@ -111,7 +111,8 @@ chip names and *vs last week* are the App's words for it.
 | the biggest day is the busiest of the merged days | `DayActivity` |
 | two days of one date add up to one: every count, the cost, the time, the savings, one line per model | `DailyUsageStat` (`+`) |
 | a recap is a read, never stored; a week with nothing is said, never shown as zeros | `Recap.isEmpty` · the card |
-| the recap is read again only when the week turned or a login's days were read again since the last read; otherwise the last read stands | `WeeklyRecaps` |
+| the recap is read again only when the week turned, the lineup changed, or a login's days were read again since the last read that finished; otherwise the last read stands, and a cancelled read is read again next time | `WeeklyRecaps` |
+| a range that read nothing has no say in whether the merged range is priced | `Days.merged` |
 | a value is written once per unit | `UsageFormat` (App) |
 
 ## 5 · The pieces

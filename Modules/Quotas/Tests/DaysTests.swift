@@ -155,4 +155,12 @@ struct DaysTests {
 
         #expect(!Days.merged([priced, unpriced]).knowsCost)
     }
+
+    @Test func `should keep cost when a range that read nothing doesn't price its records`() {
+        let priced = Days([day(2, lines: [], tokens: 1)], knowsCost: true)
+        let idle = Days([DailyUsageStat(date: date, totalCost: 0, totalTokens: 0, workingTime: 0, sessionCount: 0)],
+                        knowsCost: false)
+
+        #expect(Days.merged([priced, idle]).knowsCost)
+    }
 }

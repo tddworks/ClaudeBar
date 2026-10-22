@@ -100,12 +100,14 @@ public struct Days: Sendable, Equatable {
 
     /// Several ranges read as one: each date once, oldest first, its days
     /// added up (`DailyUsageStat +`). Cost speaks for the whole only when every
-    /// range prices its records.
+    /// range that read something prices its records.
     public static func merged(_ ranges: [Days]) -> Days {
         var byDate: [Date: DailyUsageStat] = [:]
         for day in ranges.flatMap(\.stats) {
             byDate[day.date] = byDate[day.date].map { $0 + day } ?? day
         }
-        return Days(byDate.values.sorted { $0.date < $1.date }, knowsCost: ranges.allSatisfy(\.knowsCost))
+        // A range that read nothing has no say in what the others cost.
+        let used = ranges.filter { !$0.isEmpty }
+        return Days(byDate.values.sorted { $0.date < $1.date }, knowsCost: used.allSatisfy(\.knowsCost))
     }
 }

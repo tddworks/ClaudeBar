@@ -33,10 +33,13 @@ public final class WeeklyRecaps {
     /// What the recaps were read for: the week, and each login's last read.
     private struct Reading: Equatable {
         let week: DateRange
+        let providers: [String]
         let usage: [Days?]
     }
 
-    @ObservationIgnored private var reading: Reading?
+    /// What `recaps` were read from, and the read under way, if any.
+    @ObservationIgnored private var shown: Reading?
+    @ObservationIgnored private var underWay: Reading?
     @ObservationIgnored private let logins: @MainActor () -> [RecapLogin]
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let calendar: Calendar
@@ -75,9 +78,10 @@ public final class WeeklyRecaps {
         let logins = logins()
         let date = now()
         let current = Reading(week: DateRange.week(containing: date, calendar: calendar),
+                              providers: logins.map(\.providerId),
                               usage: logins.map { $0.lastRead() })
-        guard current != reading else { return }
-        reading = current
+        guard current != shown, current != underWay else { return }
+        underWay = current
 
         var read: [RecapRange: Recap] = [:]
         for range in RecapRange.allCases {
@@ -86,8 +90,12 @@ public final class WeeklyRecaps {
                                 before: await days(of: logins, in: week.before(calendar: calendar)))
         }
         // A newer read started meanwhile: its recaps are the ones to keep.
-        guard reading == current else { return }
+        guard underWay == current else { return }
+        underWay = nil
+        // A cancelled read may have stopped short: it is read again next time.
+        guard !Task.isCancelled else { return }
         recaps = read
+        shown = current
     }
 
     /// Each provider's days in `range`; two logins of one provider read as one.
