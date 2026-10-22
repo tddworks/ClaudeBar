@@ -65,7 +65,7 @@ public final class AutoPause {
     /// Whether the person asked `product` to turn itself off when empty.
     public func isOn(_ product: Provider) -> Bool {
         _ = revision
-        settings.isOn(Self.onKey, forProvider: product.id) ?? false
+        return settings.isOn(Self.onKey, forProvider: product.id) ?? false
     }
 
     /// The setting's switch. Turning it on arms the standing instruction —
@@ -85,7 +85,7 @@ public final class AutoPause {
     /// the row's *Waiting for a reset*.
     public func isWaiting(_ product: Provider) -> Bool {
         _ = revision
-        !product.isEnabled && isMarked(product) && isOn(product)
+        return !product.isEnabled && isMarked(product) && isOn(product)
     }
 
     /// *Turn back on* — the person, one click: the notice's button, or
