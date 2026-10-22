@@ -15,6 +15,7 @@ public final class JSONSettingsRepository:
     HookSettingsRepository,
     NotifySettingsRepository,
     QuotaAlertSettingsRepository,
+    WebhookSettingsRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -24,7 +25,9 @@ public final class JSONSettingsRepository:
     private let credentials: UserDefaults
     private let secureCredentials: any CredentialRepository
 
-
+    /// The destinations' secrets — Notify!'s token, the webhooks' URLs — in the
+    /// Keychain, falling back to the app credential store.
+    public let destinationSecrets: KeychainDestinationSecrets
 
     public init(
         store: JSONSettingsStore,
@@ -34,6 +37,10 @@ public final class JSONSettingsRepository:
         self.store = store
         self.credentials = credentials
         self.secureCredentials = secureCredentials
+        self.destinationSecrets = KeychainDestinationSecrets(
+            keychain: secureCredentials,
+            fallback: UserDefaultsCredentialRepository(defaults: credentials)
+        )
     }
 
     // MARK: - AppSettingsRepository
@@ -526,6 +533,41 @@ public final class JSONSettingsRepository:
         store.write(value: percents, key: "alerts.thresholds")
     }
 
+    // MARK: - WebhookSettingsRepository
+
+    /// `alerts.webhooks`: everything but the URL, which is a secret, and the
+    /// host and last delivery, which aren't saved. A row with a channel this
+    /// version doesn't know is skipped.
+    public func webhooks() -> [Webhook] {
+        let rows: [[String: Any]] = store.read(key: "alerts.webhooks") ?? []
+        return rows.compactMap { row in
+            guard let id = row["id"] as? String,
+                  let channel = (row["channel"] as? String).flatMap(WebhookChannel.init(rawValue:)) else { return nil }
+            return Webhook(
+                id: id,
+                name: row["name"] as? String ?? "",
+                channel: channel,
+                scope: (row["provider"] as? String).map(Webhook.Scope.provider) ?? .everyLogin,
+                sends: Webhook.Sends(quotaAlerts: row["quotaAlerts"] as? Bool ?? true,
+                                     statusAlerts: row["statusAlerts"] as? Bool ?? false),
+                isOn: row["isOn"] as? Bool ?? true
+            )
+        }
+    }
+
+    public func setWebhooks(_ webhooks: [Webhook]) {
+        let rows: [[String: Any]] = webhooks.map { webhook in
+            let provider: Any = switch webhook.scope {
+            case .everyLogin: NSNull()
+            case .provider(let id): id
+            }
+            return ["id": webhook.id, "name": webhook.name, "channel": webhook.channel.rawValue, "provider": provider,
+                    "quotaAlerts": webhook.sends.quotaAlerts, "statusAlerts": webhook.sends.statusAlerts,
+                    "isOn": webhook.isOn]
+        }
+        store.write(value: rows, key: "alerts.webhooks")
+    }
+
     // MARK: - HookSettingsRepository
 
     public func isHookEnabled() -> Bool {
@@ -563,10 +605,8 @@ public final class JSONSettingsRepository:
         store.write(value: deviceId, key: "notify.deviceId")
     }
 
-    // Notify! device token: straight to the secure store, with no
-    // `SecureCredentialMigration` wrapper. That wrapper exists to rescue a
-    // plaintext UserDefaults value shipped by an earlier release, and Notify! has
-    // never had one, so there is nothing to migrate away from.
+    // Notify! device token: a destination's secret, kept by `destinationSecrets`
+    // (the Keychain, or the app credential store on a build the Keychain refuses).
 
     public func saveNotifyDeviceToken(_ token: String) {
         // Tokens arrive pasted, so they arrive with stray whitespace. An empty
@@ -577,55 +617,20 @@ public final class JSONSettingsRepository:
             deleteNotifyDeviceToken()
             return
         }
-        secureCredentials.save(trimmed, forKey: CredentialKey.notifyDeviceToken)
-
-        // Prove it landed, rather than assume. `CredentialRepository.save` has no
-        // way to report a refusal, and the Keychain does refuse: a locally built
-        // ClaudeBar is ad-hoc signed (`CODE_SIGN_IDENTITY` is "-"), so it has no
-        // stable identity for a Keychain item's access control to name, and both
-        // the read and the write come back errSecAuthFailed (-25293). A release
-        // build signed with a Developer ID is unaffected. Without this check the
-        // user presses Save, every call reports success, and nothing is stored.
-        if secureCredentials.get(forKey: CredentialKey.notifyDeviceToken) == trimmed {
-            // Clear any earlier fallback copy, so a build that regains the
-            // Keychain stops leaving a plaintext one behind.
-            notifyFallbackCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
-            return
-        }
-
-        AppLog.credentials.warning(
-            "Notify! token could not be stored in the Keychain, keeping it in the app credential store instead"
-        )
-        notifyFallbackCredentials.save(trimmed, forKey: CredentialKey.notifyDeviceToken)
+        destinationSecrets.save(trimmed, forKey: CredentialKey.notifyDeviceToken)
     }
 
     public func notifyDeviceToken() -> String? {
-        secureCredentials.get(forKey: CredentialKey.notifyDeviceToken)
-            ?? notifyFallbackCredentials.get(forKey: CredentialKey.notifyDeviceToken)
+        destinationSecrets.get(forKey: CredentialKey.notifyDeviceToken)
     }
 
     public func notifyDeviceTokenIsSecure() -> Bool {
-        secureCredentials.get(forKey: CredentialKey.notifyDeviceToken) != nil
-    }
-
-    /// Where the token goes when the Keychain will not take it.
-    ///
-    /// The same UserDefaults credential store that already holds the GitHub,
-    /// MiniMax, DeepSeek and Alibaba tokens, so this is the app's existing bar
-    /// rather than a new low. It is a fallback and never the first choice: a
-    /// signed build stores the token in the Keychain and this store stays empty.
-    private var notifyFallbackCredentials: UserDefaultsCredentialRepository {
-        UserDefaultsCredentialRepository(defaults: credentials)
+        destinationSecrets.isInKeychain(CredentialKey.notifyDeviceToken)
     }
 
     @discardableResult
     public func deleteNotifyDeviceToken() -> Bool {
-        // Both stores, unconditionally. Removing a link has to remove it,
-        // and leaving a copy in whichever store this build does not read from
-        // would resurrect it the day the other one starts working.
-        let secure = secureCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
-        let fallback = notifyFallbackCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
-        return secure && fallback
+        destinationSecrets.delete(forKey: CredentialKey.notifyDeviceToken)
     }
 
     public func hasNotifyDeviceToken() -> Bool {
