@@ -148,6 +148,23 @@ struct OAuth2RefresherTests {
     }
 
     @Test
+    func `should ask for the scopes the provider names when the login's are empty`() async throws {
+        let sent = SentRequest()
+        let network = MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            sent.request = request
+            return (Data(#"{"access_token":"token-2"}"#.utf8), Self.response(200))
+        }
+        var credential = credential(expiresIn: -60)
+        credential["scopes"] = ""
+
+        _ = try await refresher(network: network, scopeFrom: "scopes").refresh(credential)
+
+        let body = try #require(try JSONSerialization.jsonObject(with: sent.request?.httpBody ?? Data()) as? [String: String])
+        #expect(body["scope"] == "read write")
+    }
+
+    @Test
     func `should keep the renewed tokens and their new expiry, so the login isn't renewed again at once`() async throws {
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((

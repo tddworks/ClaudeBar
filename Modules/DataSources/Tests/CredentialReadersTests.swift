@@ -125,19 +125,19 @@ struct CredentialReadersTests {
 
     @Test
     func `should read a login's granted scopes as the one line a refresh asks for`() throws {
-        let document: [String: Any] = ["claudeAiOauth": ["scopes": ["user:profile", "user:mcp_servers"]] as [String: Any]]
+        let document: [String: Any] = ["oauth": ["scopes": ["user:profile", "user:mcp_servers"]] as [String: Any]]
 
-        let values = CredentialDocument.values(["scopes": "$.claudeAiOauth.scopes#joined"], in: document)
+        let values = CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: document)
 
         #expect(values["scopes"] == "user:profile user:mcp_servers")
     }
 
     @Test
     func `should name no scopes when the login has none, so the provider's own are asked for`() throws {
-        let empty: [String: Any] = ["claudeAiOauth": ["scopes": []] as [String: Any]]
+        let empty: [String: Any] = ["oauth": ["scopes": []] as [String: Any]]
 
-        #expect(CredentialDocument.values(["scopes": "$.claudeAiOauth.scopes#joined"], in: empty).isEmpty)
-        #expect(CredentialDocument.values(["scopes": "$.claudeAiOauth.scopes#joined"], in: [:]).isEmpty)
+        #expect(CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: empty).isEmpty)
+        #expect(CredentialDocument.values(["scopes": "$.oauth.scopes#joined"], in: [:]).isEmpty)
     }
 
     // MARK: - CredentialDocument.updated
