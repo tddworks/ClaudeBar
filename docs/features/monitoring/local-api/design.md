@@ -196,9 +196,10 @@ the Monitor's cadence is untouched.
 `Tests/InfrastructureTests/Monitoring/LocalAPI`, Swift Testing, Chicago
 school — the kernels are fed raw bytes and values, no socket:
 
-- `HTTPRequestParserTests` — a real request's bytes become a value; bad
-  request lines, oversized bodies and header blocks are refused.
-- `HTTPResponseSerializerTests` — a value becomes bytes a client can read.
+- `HTTPRequestTests` — a real request's bytes become a value; bad request
+  lines, oversized bodies and header blocks are refused; a value becomes
+  bytes a client can read (`HTTPRequestParser` and
+  `HTTPResponseSerializer` share the wire's one file).
 - `LocalAPIPayloadTests` — the JSON contract over hand-built `Quotas`
   values: a share, a balance with no percentage, a capped money quota, a
   forecast that runs out, one that lasts, a day series with empty days.
@@ -206,7 +207,11 @@ school — the kernels are fed raw bytes and values, no socket:
   `n` clamped, and a full bytes→router→bytes round trip.
 - `MCPKernelTests` — the handshake, the notification's silence, the tool
   list, a tool call's text content, the three error codes, the version echo.
-- `JSONSettingsRepositoryTests` — `api.enabled` reads false before it is set.
+- `api.enabled` reads false before it is set and is remembered when turned
+  on — beside the hook settings' tests
+  (`Tests/InfrastructureTests/Settings/JSONSettingsRepositoryProviderTests`),
+  and the Settings search finds Local API by `mcp`/`localhost`
+  (`Tests/AppTests/Settings/SettingsSectionSearchTests`).
 
 CI builds the real targets (`tuist test`, including the socket-free rule:
 nothing in the kernel files imports `Network`).
