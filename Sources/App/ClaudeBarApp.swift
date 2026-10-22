@@ -77,8 +77,8 @@ struct ClaudeBarApp: App {
     /// How often ClaudeBar checks that each session's Claude Code process still exists.
     private static let sessionSweepInterval: Duration = .seconds(30)
 
-    /// Alerts users when quota status degrades
-    private let quotaAlerter = NotificationAlerter(accountSettings: JSONSettingsRepository.shared)
+    /// This Mac's notifications: the status alerts, and the permission to show them.
+    private let quotaAlerter = NotificationAlerter()
 
     /// Sends session start/end notifications
     private let sessionAlertSender = SystemAlertSender()
@@ -137,7 +137,7 @@ struct ClaudeBarApp: App {
                                       announcer: InUseNotifications())
         self.newSessions = newSessions
 
-        // Initialize the domain service with quota alerter
+        // Initialize the domain service
         // QuotaMonitor automatically validates selected provider on init
         // The settings repository carries the user's provider order (issue #141),
         // so the popover, overview and ⌘1–⌘9 follow it.
@@ -147,7 +147,6 @@ struct ClaudeBarApp: App {
             providers: Providers(providers, settings: settingsRepository, vault: vault, make: { definition in
                 ProviderFactory.make(definition, engine: engine)
             }),
-            alerter: quotaAlerter,
             settingsRepository: settingsRepository,
             statusPolicy: { AppSettings.shared.statusPolicy }
         )
@@ -161,6 +160,8 @@ struct ClaudeBarApp: App {
             guard let monitor else { return }
             await quotaAlerts.review(refreshed.id, named: monitor.lineupName(of: refreshed), usage: monitor.usage(of: refreshed))
         }
+        // *Status alerts* follow every refresh: a login's status got worse under the policy.
+        StatusAlerts(announcer: quotaAlerter).follow(monitor)
         // *Rules* follow every refresh too: the person's own condition and their
         // own webhook, in their own file — never a provider's settings.
         let ruleRepository = JSONRuleRepository.shared

@@ -15,15 +15,10 @@ struct QuotaMonitorHiddenQuotasTests {
         func sleep(nanoseconds: UInt64) async throws {}
     }
 
-    /// Chicago-school alerter: records what it was told, tests assert state.
-    private actor RecordingAlerter: QuotaAlerter {
-        private(set) var alerts: [(providerId: String, previous: QuotaStatus, current: QuotaStatus)] = []
-
-        func requestPermission() async -> Bool { true }
-
-        func alert(providerId: String, previousStatus: QuotaStatus, currentStatus: QuotaStatus) async {
-            alerts.append((providerId, previousStatus, currentStatus))
-        }
+    /// Records the status alerts it was told, so a test asserts state.
+    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
+        var alerts: [StatusAlert] = []
+        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
     }
 
     /// Gemini-style snapshot: session and weekly healthy, flash critical (10%).
@@ -55,17 +50,17 @@ struct QuotaMonitorHiddenQuotasTests {
 
     private func makeRefreshedGeminiMonitor(
         hiddenKeys: Set<String>,
-        alerter: (any QuotaAlerter)? = nil
+        told: Told? = nil
     ) async -> (QuotaMonitor, MockProviderSettingsRepository) {
         let settings = makeSettings(hiddenKeys: hiddenKeys)
         let providerProduct = stubbedProduct("gemini", probe: makeGeminiProbe(), settings: settings)
         let provider = providerProduct.defaultAccount
         let monitor = QuotaMonitor(
             providers: kept([providerProduct]),
-            alerter: alerter,
             clock: TestClock(),
             settingsRepository: settings
         )
+        if let told { StatusAlerts(announcer: told).follow(monitor) }
         await monitor.refresh(providerId: "gemini")
         return (monitor, settings)
     }
@@ -186,29 +181,20 @@ struct QuotaMonitorHiddenQuotasTests {
     @Test
     func `should not alert the person when only a hidden quota turns critical`() async {
         // Given — the critical flash model is hidden
-        let alerter = RecordingAlerter()
-        let (monitor, _) = await makeRefreshedGeminiMonitor(
-            hiddenKeys: ["model:gemini-2.0-flash"],
-            alerter: alerter
-        )
-        _ = monitor
+        let told = Told()
+        _ = await makeRefreshedGeminiMonitor(hiddenKeys: ["model:gemini-2.0-flash"], told: told)
 
-        // When & Then — the visible status is healthy, same as before the
-        // refresh, so there is nothing to alert about
-        #expect(await alerter.alerts.isEmpty)
+        // Then — the visible status is healthy, so there is nothing to alert about
+        #expect(told.alerts.isEmpty)
     }
 
     @Test
     func `should alert the person when a quota they can see turns critical`() async {
         // Given — nothing hidden, so the snapshot is critical
-        let alerter = RecordingAlerter()
-        let (monitor, _) = await makeRefreshedGeminiMonitor(hiddenKeys: [], alerter: alerter)
-        _ = monitor
+        let told = Told()
+        _ = await makeRefreshedGeminiMonitor(hiddenKeys: [], told: told)
 
         // Then — healthy → critical on first refresh
-        #expect(await alerter.alerts.count == 1)
-        #expect(await alerter.alerts.first?.providerId == "gemini")
-        #expect(await alerter.alerts.first?.previous == .healthy)
-        #expect(await alerter.alerts.first?.current == .critical)
+        #expect(told.alerts == [StatusAlert(login: "Gemini", providerId: "gemini", was: .healthy, now: .critical)])
     }
 }

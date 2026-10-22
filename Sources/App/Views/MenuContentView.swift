@@ -11,7 +11,7 @@ import Sparkle
 struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
-    let quotaAlerter: QuotaAlerter
+    let quotaAlerter: NotificationAlerter
     let leaderboard: AppLeaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?

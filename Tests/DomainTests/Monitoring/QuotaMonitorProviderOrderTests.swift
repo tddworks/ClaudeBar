@@ -45,7 +45,6 @@ struct QuotaMonitorProviderOrderTests {
     ) -> QuotaMonitor {
         QuotaMonitor(
             providers: providers,
-            alerter: nil,
             clock: TestClock(),
             settingsRepository: settings
         )

@@ -17,6 +17,12 @@ import Mockable
 @Suite("Feature: Notifications")
 struct NotificationsSpec {
 
+    /// What the person was told, so a scenario asserts it.
+    final class Told: StatusAlertAnnouncer, @unchecked Sendable {
+        var alerts: [StatusAlert] = []
+        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
+    }
+
     private struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}
         func sleep(nanoseconds: UInt64) async throws {}
@@ -49,8 +55,7 @@ struct NotificationsSpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let mockAlerter = MockQuotaAlerter()
-            given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
+            let told = Told()
 
             let probe = MockUsageProbe()
             given(probe).isAvailable().willReturn(true)
@@ -61,22 +66,17 @@ struct NotificationsSpec {
             ))
 
             let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
-            let claude = claudeProduct.defaultAccount
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct]),
-                alerter: mockAlerter,
                 clock: TestClock()
             )
+            StatusAlerts(announcer: told).follow(monitor)
 
             // When — refresh returns 15% (critical)
             await monitor.refresh(providerId: "claude")
 
-            // Then — alerter called with healthy → critical
-            verify(mockAlerter).alert(
-                providerId: .value("claude"),
-                previousStatus: .value(.healthy),
-                currentStatus: .value(.critical)
-            ).called(1)
+            // Then — told once: healthy → critical
+            #expect(told.alerts == [StatusAlert(login: "Claude", providerId: "claude", was: .healthy, now: .critical)])
         }
     }
 
@@ -99,8 +99,7 @@ struct NotificationsSpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let mockAlerter = MockQuotaAlerter()
-            given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
+            let told = Told()
 
             let probe = MockUsageProbe()
             given(probe).isAvailable().willReturn(true)
@@ -111,23 +110,18 @@ struct NotificationsSpec {
             ))
 
             let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
-            let claude = claudeProduct.defaultAccount
             let monitor = QuotaMonitor(
                 providers: kept([claudeProduct]),
-                alerter: mockAlerter,
                 clock: TestClock()
             )
+            StatusAlerts(announcer: told).follow(monitor)
 
             // When — refresh twice with same healthy status
             await monitor.refresh(providerId: "claude")
             await monitor.refresh(providerId: "claude")
 
             // Then — no alerts (healthy → healthy is not a degradation)
-            verify(mockAlerter).alert(
-                providerId: .any,
-                previousStatus: .any,
-                currentStatus: .any
-            ).called(0)
+            #expect(told.alerts.isEmpty)
         }
     }
 

@@ -95,18 +95,12 @@ struct QuotaMonitorTests {
         }
     }
 
-    private func makeMonitor(
-        providers: Providers,
-        alerter: (any QuotaAlerter)? = nil
-    ) -> QuotaMonitor {
-        QuotaMonitor(providers: providers, alerter: alerter, clock: TestClock())
+    private func makeMonitor(providers: Providers) -> QuotaMonitor {
+        QuotaMonitor(providers: providers, clock: TestClock())
     }
 
-    private func makeSuspendingMonitor(
-        providers: Providers,
-        alerter: (any QuotaAlerter)? = nil
-    ) -> QuotaMonitor {
-        QuotaMonitor(providers: providers, alerter: alerter, clock: SuspendingClock())
+    private func makeSuspendingMonitor(providers: Providers) -> QuotaMonitor {
+        QuotaMonitor(providers: providers, clock: SuspendingClock())
     }
 
 
@@ -1521,122 +1515,6 @@ struct QuotaMonitorTests {
 
         // Then
         #expect(monitor.logins.count == 2)
-    }
-
-    // MARK: - Quota Alerter
-
-    @Test
-    func `should alert when a provider turns critical`() async {
-        // Given
-        let mockAlerter = MockQuotaAlerter()
-        given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
-
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let settings = makeSettingsRepository()
-        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
-        let claude = claudeProduct.defaultAccount
-        let monitor = makeMonitor(providers: kept([claudeProduct]), alerter: mockAlerter)
-
-        // When
-        await monitor.refresh(providerId: "claude")
-
-        // Then
-        verify(mockAlerter).alert(
-            providerId: .value("claude"),
-            previousStatus: .value(.healthy),
-            currentStatus: .value(.critical)
-        ).called(1)
-    }
-
-    @Test
-    func `should not alert when a provider's status stays healthy`() async {
-        // Given
-        let mockAlerter = MockQuotaAlerter()
-        given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
-
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let settings = makeSettingsRepository()
-        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
-        let claude = claudeProduct.defaultAccount
-        let monitor = makeMonitor(providers: kept([claudeProduct]), alerter: mockAlerter)
-
-        // When - refresh twice with same status
-        await monitor.refresh(providerId: "claude")
-        await monitor.refresh(providerId: "claude")
-
-        // Then - only notified once (first change from nil/healthy to healthy)
-        // Actually, the first refresh won't trigger because healthy -> healthy
-        verify(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).called(0)
-    }
-
-    @Test
-    func `should neither warn nor alert for an on-pace quota when status is pace-aware`() async {
-        // Given — 40% left with 90% of the window gone: on pace, so healthy
-        let mockAlerter = MockQuotaAlerter()
-        given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(
-                percentRemaining: 40, quotaType: .session, providerId: "claude",
-                resetsAt: Date().addingTimeInterval(30 * 60), windowDuration: 5 * 3600
-            )],
-            capturedAt: Date()
-        ))
-        let claudeProduct = stubbedProduct("claude", probe: probe, settings: makeSettingsRepository())
-        let claude = claudeProduct.defaultAccount
-        let monitor = QuotaMonitor(
-            providers: kept([claudeProduct]), alerter: mockAlerter, clock: TestClock(),
-            statusPolicy: { .paceAware(burnRateThreshold: 1.5) }
-        )
-
-        // When
-        await monitor.refresh(providerId: "claude")
-
-        // Then — the notification agrees with the menu bar: no warning
-        verify(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).called(0)
-        #expect(monitor.selectedProviderStatus == .healthy)
-    }
-
-    @Test
-    func `should alert a warning for the same quota when status is absolute`() async {
-        let mockAlerter = MockQuotaAlerter()
-        given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(
-                percentRemaining: 40, quotaType: .session, providerId: "claude",
-                resetsAt: Date().addingTimeInterval(30 * 60), windowDuration: 5 * 3600
-            )],
-            capturedAt: Date()
-        ))
-        let claudeProduct = stubbedProduct("claude", probe: probe, settings: makeSettingsRepository())
-        let claude = claudeProduct.defaultAccount
-        let monitor = QuotaMonitor(
-            providers: kept([claudeProduct]), alerter: mockAlerter, clock: TestClock(),
-            statusPolicy: { .absolute }
-        )
-
-        await monitor.refresh(providerId: "claude")
-
-        verify(mockAlerter).alert(
-            providerId: .value("claude"), previousStatus: .value(.healthy), currentStatus: .value(.warning)
-        ).called(1)
     }
 
     // MARK: - Disabled Provider Skipping

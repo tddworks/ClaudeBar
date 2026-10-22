@@ -35,14 +35,9 @@ struct PausedLoginsTests {
     }
 
     /// What the person was told, so a test can read it.
-    private actor RecordingAlerter: QuotaAlerter {
-        private(set) var alerts: [String] = []
-
-        func requestPermission() async -> Bool { true }
-
-        func alert(providerId: String, previousStatus: QuotaStatus, currentStatus: QuotaStatus) async {
-            alerts.append(providerId)
-        }
+    private final class Told: StatusAlertAnnouncer, @unchecked Sendable {
+        var alerts: [StatusAlert] = []
+        func announce(_ alert: StatusAlert) async { alerts.append(alert) }
     }
 
     /// A fetch that waits for `open()` — so a test can pause a login while its
@@ -217,8 +212,9 @@ struct PausedLoginsTests {
         let settings = MockRepositoryFactory.makeSettingsRepository()
         let probe = GatedProbe(snapshot(quota(9)))
         let product = stubbedProduct("claude", probe: probe, settings: settings)
-        let alerter = RecordingAlerter()
-        let monitor = QuotaMonitor(providers: kept([product]), alerter: alerter, clock: TestClock())
+        let told = Told()
+        let monitor = QuotaMonitor(providers: kept([product]), clock: TestClock())
+        StatusAlerts(announcer: told).follow(monitor)
 
         // When — she pauses the login, and only then lets the fetch land
         let inFlight = Task { await monitor.refreshAll() }
@@ -229,6 +225,6 @@ struct PausedLoginsTests {
 
         // Then — nothing was fetched into it, and nobody was paged about it
         #expect(product.defaultAccount.snapshot == nil)
-        #expect(await alerter.alerts.isEmpty)
+        #expect(told.alerts.isEmpty)
     }
 }

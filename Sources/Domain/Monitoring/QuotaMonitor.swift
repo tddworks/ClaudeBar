@@ -14,7 +14,8 @@ public enum MonitoringEvent: Sendable {
 
 /// The main domain service that coordinates quota monitoring across AI providers.
 /// Providers are rich domain models that own their own snapshots.
-/// QuotaMonitor coordinates refreshes and alerts users when status changes.
+/// QuotaMonitor coordinates refreshes; whatever follows a refresh — alerts
+/// among them — observes it through `onRefreshed`.
 ///
 /// Isolated to `@MainActor` because its `@Observable` state (`isMonitoring`,
 /// `selectedProviderId`, …) is consumed by SwiftUI. This keeps the background
@@ -28,9 +29,6 @@ public final class QuotaMonitor {
     /// (CANONICAL §1). The Monitor reads them and watches; adding,
     /// deleting and ordering them is `Providers`' (TARGET §2.1).
     public let providers: Providers
-
-    /// Optional alerter for quota changes (e.g., system notifications)
-    private let alerter: (any QuotaAlerter)?
 
     /// Clock for scheduling intervals (injectable for tests)
     private let clock: any Clock
@@ -46,9 +44,6 @@ public final class QuotaMonitor {
     /// The person's status policy, read live — every status the monitor
     /// reports, and every alert it sends, is under it.
     private let readStatusPolicy: @MainActor () -> StatusPolicy
-
-    /// Previous status for change detection
-    private var previousStatuses: [String: QuotaStatus] = [:]
 
     /// Current monitoring task
     private var monitoringTask: Task<Void, Never>?
@@ -69,14 +64,12 @@ public final class QuotaMonitor {
     /// Automatically validates the selected provider on initialization.
     public init(
         providers: Providers,
-        alerter: (any QuotaAlerter)? = nil,
         clock: any Clock,
         settingsRepository: (any ProviderSettingsRepository)? = nil,
         powerStateProvider: (any PowerStateProvider)? = nil,
         statusPolicy: @escaping @MainActor () -> StatusPolicy = { .absolute }
     ) {
         self.providers = providers
-        self.alerter = alerter
         self.clock = clock
         self.powerStateProvider = powerStateProvider
         self.settingsRepository = settingsRepository
@@ -208,32 +201,18 @@ public final class QuotaMonitor {
         do {
             // A paused login's fetch is refused — before it starts, or as it
             // lands — so nothing is recorded and there is nothing to publish.
-            let snapshot = try await product.refresh(provider, kind)
-            await handleSnapshotUpdate(provider: provider, snapshot: snapshot)
+            _ = try await product.refresh(provider, kind)
+            await refreshed(provider)
         } catch {
             // The refusal (.paused) and every failure: the login holds both, in
             // `lastError`. No external observer is told.
         }
     }
 
-    /// Handles snapshot update and alerts user if status changed
-    private func handleSnapshotUpdate(provider: Account, snapshot: UsageSnapshot) async {
-        let previousStatus = previousStatuses[provider.id] ?? .healthy
-        // A quota the person hid doesn't page them.
-        let newStatus = snapshot.hiding(hiddenQuotaKeys(for: provider)).overallStatus(under: statusPolicy)
-
-        previousStatuses[provider.id] = newStatus
-
-        // Alert user only if status changed
-        if previousStatus != newStatus, let alerter = alerter {
-            await alerter.alert(
-                providerId: provider.id,
-                previousStatus: previousStatus,
-                currentStatus: newStatus
-            )
-        }
+    /// Tells whatever follows refreshes that `login` was refreshed.
+    private func refreshed(_ login: Account) async {
         for observer in refreshObservers {
-            await observer(provider)
+            await observer(login)
         }
     }
 
