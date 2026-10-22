@@ -1880,17 +1880,13 @@ struct WrappedStatCard: View {
                 HStack { Spacer(); PaceBadge(pace: quota.pace) }
             }
 
-            // The forecast, under the reset countdown: when this window runs
-            // out at its average pace, against when it refills. Two things
-            // have nothing to project and keep their card as it was: a quota
-            // with no window, and a balance with no ceiling — which reports a
-            // reset, so it has a window, but no share to project. A window
-            // still too young to read prints *No forecast yet*. It is
+            // The forecast, under the reset countdown: whether this window
+            // lasts until it refills at the pace it has been spent. The quota
+            // answers whether there is one; the card prints its words. It is
             // independent of `showsReset`: when a grid hoists the shared
-            // countdown above its cards, each card still prints its own
-            // run-out.
-            if QuotaCardText.showsForecast(for: quota) {
-                forecastLine(QuotaCardText.forecastLine(for: quota))
+            // countdown above its cards, each card still prints its own.
+            if let forecast = QuotaCardText.forecastLine(for: quota) {
+                forecastLine(forecast)
             }
         }
         .padding(12)
@@ -1963,7 +1959,7 @@ struct WrappedStatCard: View {
                 .foregroundStyle(theme.textTertiary)
         }
         .lineLimit(1)
-        .help(Forecast.paceQualifier)
+        .help(QuotaCardText.forecastQualifier)
     }
 
     /// The reset time and, on the right, the pace badge, on one row.

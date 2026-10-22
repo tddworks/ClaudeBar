@@ -1,3 +1,4 @@
+import Foundation
 import Domain
 
 /// The words on a quota card. An outlined theme (Pop) prints them its own
@@ -40,22 +41,39 @@ enum QuotaCardText {
         }
     }
 
-    /// The forecast sentence under a quota's *Resets in…* line: when this
-    /// window runs out at the average pace it has been spent, against when it
-    /// refills — *Runs out in 38m — 34m before it resets*, or *Lasts until it
-    /// resets*. *No forecast yet* when there is nothing honest to project
-    /// (CANONICAL_MODEL §5).
-    static func forecastLine(for quota: UsageQuota) -> String {
-        quota.forecast?.summary ?? Forecast.noForecast
+    /// The forecast line under a quota's *Resets in…*: *Runs out in 38m —
+    /// 34m before it resets*, or *Lasts until it resets*. `nil` — no line —
+    /// when the quota has no forecast (CANONICAL_MODEL §5).
+    static func forecastLine(for quota: UsageQuota, at now: Date = Date()) -> String? {
+        switch quota.forecast(at: now) {
+        case nil: nil
+        case .lastsUntilReset: "Lasts until it resets"
+        case .runsOut(let runsOutIn, let beforeReset):
+            "Runs out in \(duration(runsOutIn)) — \(duration(beforeReset)) before it resets"
+        }
     }
 
-    /// Whether a card prints a forecast row at all: only inside a window, and
-    /// never for a balance with no ceiling — which reports a reset, so it has
-    /// a `window`, but no share to project (CANONICAL_MODEL §5). A window too
-    /// young to read still prints its row, as *No forecast yet*; a balance
-    /// prints none.
-    static func showsForecast(for quota: UsageQuota) -> Bool {
-        quota.window != nil && !quota.isBalance
+    /// The tooltip every forecast line carries: it is the window's average,
+    /// not a promise about the next burst.
+    static let forecastQualifier = "at this pace"
+
+    /// A compact duration: *42s*, *38m*, *3h*, *1h 12m*, *2d 5h*.
+    static func duration(_ duration: Duration) -> String {
+        let total = max(0, Int((duration / .seconds(1)).rounded()))
+        if total < 60 { return "\(total)s" }
+
+        let minutes = total / 60
+        if minutes < 60 { return "\(minutes)m" }
+
+        let hours = minutes / 60
+        if hours < 24 {
+            let remainder = minutes % 60
+            return remainder == 0 ? "\(hours)h" : "\(hours)h \(remainder)m"
+        }
+
+        let days = hours / 24
+        let remainder = hours % 24
+        return remainder == 0 ? "\(days)d" : "\(days)d \(remainder)h"
     }
 
     /// A budget's status as a phrase under its amount ("On track"), not a badge.

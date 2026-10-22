@@ -8,25 +8,30 @@ struct UsagePaceTests {
     // MARK: - Factory Method
 
     @Test
-    func `should be on pace when usage is within 5 points of the time gone`() {
-        // Given: 50% time elapsed, 52% used (within 5% threshold)
-        let pace = UsagePace.from(percentUsed: 52, percentTimeElapsed: 50)
-
-        // Then
-        #expect(pace == .onPace)
+    func `should be on pace when usage trails the time gone by up to 5 points`() {
+        // 50% of the window gone, 46% used: it lasts until the reset, close to the line
+        #expect(UsagePace.from(percentUsed: 46, percentTimeElapsed: 50) == .onPace)
+        #expect(UsagePace.from(percentUsed: 45, percentTimeElapsed: 50) == .onPace)
     }
 
     @Test
     func `should be on pace when usage equals the time gone`() {
+        // Spent exactly as fast as the window passes: it reaches zero as it refills
         let pace = UsagePace.from(percentUsed: 50, percentTimeElapsed: 50)
         #expect(pace == .onPace)
     }
 
     @Test
-    func `should still be on pace when usage is exactly 5 points ahead of the time gone`() {
-        // Exactly 5% difference should still be on pace
-        let pace = UsagePace.from(percentUsed: 55, percentTimeElapsed: 50)
-        #expect(pace == .onPace)
+    func `should run hot when usage is even a little ahead of the time gone`() {
+        // 52% used at 50% gone runs out before the reset, so it is never "On track"
+        #expect(UsagePace.from(percentUsed: 52, percentTimeElapsed: 50) == .ahead)
+        #expect(UsagePace.from(percentUsed: 55, percentTimeElapsed: 50) == .ahead)
+    }
+
+    @Test
+    func `should have no pace before 3 percent of the window has gone`() {
+        // A minute into a week is noise, not a pace
+        #expect(UsagePace.from(percentUsed: 1, percentTimeElapsed: 0.01) == .unknown)
     }
 
     @Test
@@ -45,13 +50,6 @@ struct UsagePaceTests {
 
         // Then
         #expect(pace == .behind)
-    }
-
-    @Test
-    func `should run ahead when usage is just over 5 points ahead of the time gone`() {
-        // 5.1% difference (just beyond 5% threshold)
-        let pace = UsagePace.from(percentUsed: 55.1, percentTimeElapsed: 50)
-        #expect(pace == .ahead)
     }
 
     @Test

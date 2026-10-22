@@ -74,28 +74,50 @@ struct QuotaCardTextTests {
         #expect(line.time == nil)
     }
 
-    // MARK: - The forecast row
+    // MARK: - The forecast line
 
-    @Test func `should show a forecast row inside a window but none for a balance with no ceiling`() {
-        // A window to project in: the row prints, even before the rate reads
-        // (then it says "No forecast yet").
-        let session = UsageQuota(
-            percentRemaining: 40, quotaType: .session, providerId: "claude",
-            resetsAt: Date().addingTimeInterval(3_600), windowDuration: 5 * 3600
+    private static let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    private func session(left: Double, length: TimeInterval?, resetsIn: TimeInterval?) -> UsageQuota {
+        UsageQuota(
+            percentRemaining: left, quotaType: .session, providerId: "claude",
+            resetsAt: resetsIn.map { Self.now.addingTimeInterval($0) }, windowDuration: length
         )
-        // No window at all: nothing to project, so no row.
-        let noWindow = UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "claude")
-        // A prepaid balance reports a reset, so it has a window, but no share
-        // to project: no row — never "No forecast yet".
+    }
+
+    @Test func `should say when a window runs out and how long before it resets`() {
+        // 20% left of a 3h 44m window with 1h 12m to the reset.
+        let quota = session(left: 20, length: 13_440, resetsIn: 4_320)
+        #expect(QuotaCardText.forecastLine(for: quota, at: Self.now) == "Runs out in 38m — 34m before it resets")
+    }
+
+    @Test func `should say it lasts until it resets when spent slower than its window`() {
+        let quota = session(left: 90, length: 5 * 3600, resetsIn: 72 * 60)
+        #expect(QuotaCardText.forecastLine(for: quota, at: Self.now) == "Lasts until it resets")
+    }
+
+    @Test func `should print no forecast line when the quota has nothing to forecast`() {
+        // A reset with no window length, a used-up quota, and a prepaid
+        // balance with no ceiling: no line at all.
+        let noLength = session(left: 40, length: nil, resetsIn: 3_600)
+        let usedUp = session(left: 0, length: 5 * 3600, resetsIn: 72 * 60)
         let balance = UsageQuota(
             percentRemaining: 100, quotaType: .timeLimit("Credits"), providerId: "vercel-gateway",
-            resetsAt: Date().addingTimeInterval(72 * 60), windowDuration: 5 * 3600,
+            resetsAt: Self.now.addingTimeInterval(72 * 60), windowDuration: 5 * 3600,
             dollarRemaining: 12.40
         )
 
-        #expect(QuotaCardText.showsForecast(for: session))
-        #expect(!QuotaCardText.showsForecast(for: noWindow))
-        #expect(!QuotaCardText.showsForecast(for: balance))
+        #expect(QuotaCardText.forecastLine(for: noLength, at: Self.now) == nil)
+        #expect(QuotaCardText.forecastLine(for: usedUp, at: Self.now) == nil)
+        #expect(QuotaCardText.forecastLine(for: balance, at: Self.now) == nil)
+    }
+
+    @Test func `should print a run-out in seconds, minutes, hours and days`() {
+        #expect(QuotaCardText.duration(.seconds(42)) == "42s")
+        #expect(QuotaCardText.duration(.seconds(38 * 60)) == "38m")
+        #expect(QuotaCardText.duration(.seconds(3 * 3_600)) == "3h")
+        #expect(QuotaCardText.duration(.seconds(3_600 + 12 * 60)) == "1h 12m")
+        #expect(QuotaCardText.duration(.seconds(2 * 86_400 + 5 * 3_600)) == "2d 5h")
     }
 }
 

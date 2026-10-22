@@ -18,6 +18,10 @@ public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
 
     // MARK: - Factory Methods
 
+    /// The share of the window gone before the pace-aware status projects:
+    /// a warning is louder than a pace, so it waits for more of the window.
+    private static let warnFloor: Double = 15
+
     /// Creates a status based on the percentage remaining.
     /// This encapsulates the business rules for status thresholds.
     public static func from(percentRemaining: Double) -> QuotaStatus {
@@ -52,10 +56,13 @@ public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
 
         let percentUsed = 100 - percentRemaining
 
-        // Project end-of-period usage once enough of the period has elapsed
-        if percentTimeElapsed >= 15, percentTimeElapsed < 100, percentUsed > 0 {
-            let projected = percentUsed / percentTimeElapsed
-            switch projected {
+        // Project end-of-period usage from the quota's one rate, once enough of
+        // the period has elapsed to warn on it: `warnFloor` is when to warn,
+        // later than the rate's noise floor so an alarm never fires on a
+        // window's first minutes.
+        if percentTimeElapsed >= warnFloor, percentUsed > 0,
+           let rate = SpendRate(percentUsed: percentUsed, percentTimeElapsed: percentTimeElapsed) {
+            switch rate.value {
             case ..<0.70: return .healthy
             case 0.70..<0.90: return .warning
             default: return .critical
