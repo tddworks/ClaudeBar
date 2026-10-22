@@ -6,7 +6,8 @@
     "look": { "symbol": "creditcard" }
   },
   "settings": [
-    { "id": "apiKey", "label": "API key", "kind": "secret" }
+    { "id": "apiKey", "label": "API key", "kind": "secret", "scope": "account" },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "ACME_API_KEY" }
   ],
   "defaultDataSource": "api",
   "dataSources": [
@@ -14,7 +15,7 @@
       "kind": "api",
       "label": "API",
       "summary": "Reads the credits left of the monthly limit.",
-      "credential": { "firstOf": [ { "environment": "ACME_API_KEY" }, { "setting": "apiKey" } ] },
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
       "fetch": {
         "http": {
           "url": "https://api.acme.example/v1/credits",

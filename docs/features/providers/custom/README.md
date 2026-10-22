@@ -40,14 +40,16 @@ This is a whole provider for an API that reports a 5-hour and a weekly limit
     "look": { "symbol": "chevron.left.forwardslash.chevron.right" }
   },
   "settings": [
-    { "id": "apiKey", "label": "API key", "kind": "secret" }
+    { "id": "apiKey", "label": "API key", "kind": "secret", "scope": "account" },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "ACME_API_KEY" }
   ],
   "defaultDataSource": "api",
   "dataSources": [
     {
       "kind": "api",
       "label": "API",
-      "credential": { "firstOf": [ { "environment": "ACME_API_KEY" }, { "setting": "apiKey" } ] },
+      "summary": "Reads the 5-hour and weekly limits.",
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
       "fetch": {
         "http": {
           "url": "https://api.acme.example/v1/usage",
@@ -79,8 +81,8 @@ It reads an answer like [examples/acme-code.response.json](examples/acme-code.re
 |---|---|
 | `profile` | a unique `id`, the `name` on the card, a dashboard link, an SF Symbol |
 | `dataSources` | the ways to read usage, each with a `kind` you name; `defaultDataSource` picks the first one tried |
-| `settings` | the fields Settings shows. `"kind": "secret"` is a key: masked, kept in the Keychain, never in the file |
-| `credential` | where the key comes from, first that answers: an environment variable, then the `apiKey` setting. `{{token}}` is that key |
+| `settings` | the fields Settings shows. `"kind": "secret"` is a key: masked, kept in the Keychain, never in the file. `"scope": "account"` puts it on *Add Account* too, so you can watch a second key (a work account). `authEnvVar` names the environment variable to try first, editable in Settings |
+| `credential` | where the key comes from, first that answers: the environment variable, then the `apiKey` setting. `{{token}}` is that key |
 | `fetch.http` | the request: `url`, `headers`, optional `method`, `body`, `timeout` (seconds). `{{setting.x}}` fills in a plain setting |
 | `mapping.json` | how the answer becomes quota cards — below |
 

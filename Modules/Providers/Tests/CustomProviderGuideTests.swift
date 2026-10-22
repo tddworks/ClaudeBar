@@ -22,7 +22,8 @@ struct CustomProviderGuideTests {
     }
 
     /// The example run with its key saved and its API answering the sample.
-    private func provider(_ name: String) throws -> Provider {
+    private func provider(_ name: String, saved: [String: String]? = nil,
+                          environment: [String: String] = [:]) throws -> Provider {
         let (definition, answer) = try example(name)
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
@@ -32,20 +33,21 @@ struct CustomProviderGuideTests {
             return (answer, StubbedProvider.response(200))
         }
         let settings = InMemoryProviderSettings()
-        let vault = MemoryVault(["\(definition.id).apiKey": "acme-key"])
+        let vault = MemoryVault(saved ?? ["\(definition.id).apiKey": "acme-key"])
         return Provider(definition: definition, settings: settings, accounts: settings.accounts(forProvider: definition.id),
                         makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: MockCLIExecutor(), network: network,
                              makeTransport: { _, _, _, _ in MockRPCTransport() }, secrets: vault.scoped(to: login),
-                             environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
+                             environment: { environment[$0] }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         }, vault: vault)
     }
 
     @Test(arguments: ["acme-code", "acme-credits"])
-    func `should ask for the API key in Settings and send it only to the provider's own host`(_ name: String) throws {
+    func `should ask for the API key in Settings and on Add Account, and send it only to the provider's own host`(_ name: String) throws {
         let definition = try example(name).definition
 
-        #expect(definition.defaultLoginSettings.map(\.id) == ["apiKey"])
+        #expect(definition.defaultLoginSettings.map(\.id) == ["apiKey", "authEnvVar"])
+        #expect(definition.accountSettings.map(\.id) == ["apiKey"])
         #expect(definition.keyDestinations == ["api.acme.example"])
     }
 
@@ -59,6 +61,12 @@ struct CustomProviderGuideTests {
         #expect(session.resetsAt == ISO8601DateFormatter().date(from: "2026-10-22T15:00:00Z"))
         #expect(session.windowDuration == TimeInterval(5 * 3600))
         #expect(weekly.windowDuration == TimeInterval(7 * 86400))
+    }
+
+    @Test func `should read the key from the environment variable it names when none is saved`() async throws {
+        let usage = try await provider("acme-code", saved: [:], environment: ["ACME_API_KEY": "acme-key"]).refreshPlain()
+
+        #expect(usage.quotas.contains { $0.quotaType == .session })
     }
 
     @Test func `should show credits as dollars left of the monthly limit`() async throws {
