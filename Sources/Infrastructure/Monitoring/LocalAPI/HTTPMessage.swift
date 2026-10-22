@@ -128,10 +128,15 @@ public enum LocalAPIRequestParser {
         return length ?? 0
     }
 
-    /// Whether the header block is already over the cap while still arriving —
-    /// the server asks so it can refuse without waiting for the blank line.
+    /// Whether the header block is over the cap: while still arriving — the
+    /// server asks so it can refuse without waiting for the blank line — and
+    /// just as much once it is complete, so a block that crosses the cap in
+    /// the breath its blank line arrives is refused all the same.
     public static func isHeaderOverCap(_ accumulated: Data) -> Bool {
-        accumulated.range(of: headerSeparator) == nil && accumulated.count > maxHeaderBytes
+        guard let separator = accumulated.range(of: headerSeparator) else {
+            return accumulated.count > maxHeaderBytes
+        }
+        return separator.lowerBound > maxHeaderBytes
     }
 
     /// The whole request: its header block and its body, both complete.

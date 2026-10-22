@@ -148,10 +148,18 @@ struct LocalAPIRequestTests {
         #expect(LocalAPIRequestParser.isHeaderOverCap(accumulated))
     }
 
-    @Test func `should not refuse a finished header block however large it was`() {
-        let finished = Data(count: LocalAPIRequestParser.maxHeaderBytes + 1) + Data("GET / HTTP/1.1\r\n\r\n".utf8)
+    @Test func `should refuse a finished header block over the cap`() {
+        let oversized = Data(count: LocalAPIRequestParser.maxHeaderBytes + 1) + Data("GET / HTTP/1.1\r\n\r\n".utf8)
 
-        #expect(!LocalAPIRequestParser.isHeaderOverCap(finished))
+        #expect(LocalAPIRequestParser.isHeaderOverCap(oversized))
+    }
+
+    @Test func `should not refuse a header block that ends exactly at the cap`() {
+        let requestLine = Data("GET / HTTP/1.1\r\n".utf8)
+        let padding = Data(count: LocalAPIRequestParser.maxHeaderBytes - requestLine.count - 4)
+        let exact = requestLine + padding + Data("\r\n\r\n".utf8)
+
+        #expect(!LocalAPIRequestParser.isHeaderOverCap(exact))
     }
 
     // MARK: - Serializing
