@@ -21,7 +21,7 @@ Mia keeps three Claude logins ([multiple accounts](../multi-account/design.md)):
 *Personal 62%*, *Work 88%*, *Side 90%*, side by side on the product's page.
 Each card answers for itself, so the family's room is arithmetic she does in
 her head. She asks the one question the cards don't answer: *how much do we
-have left, together?* — *the team has 340% left*.
+have left, together?* — *the team has 240% left*.
 
 ## The one sentence
 

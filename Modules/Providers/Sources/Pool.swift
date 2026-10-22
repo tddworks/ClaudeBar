@@ -14,7 +14,8 @@ import Quotas
 public struct Pool: Sendable, Equatable {
     /// One counted login's room.
     public struct Share: Sendable, Equatable {
-        /// The login that brings it, by its lineup id (`codex`, `codex.work`).
+        /// The login that brings it, by its lineup id (`<provider>`,
+        /// `<provider>.<acct>`).
         public let loginId: String
         /// The share left, in percent — the login's tightest window's, the
         /// number its card already shows.
