@@ -106,7 +106,7 @@ While a duration is shown the countdown refreshes itself, and in the `H:MM` rang
 
 - **Background refresh is off by default.** With Settings → **Sync & Alerts** → Refresh Interval set to Off, the numbers update only when you open the popover. Choose 1, 5, 10 or 15 minutes to keep the menu bar current. Background refresh covers only the menu bar providers and the selected one.
 - The countdown ticks between refreshes, but the percentage only changes when a refresh arrives.
-- With **Burn Rate Warnings** on (Settings → General), the colors follow your consumption pace, not the fixed thresholds.
+- With **Warn when a quota will run out before it resets** on (Settings → General), a quota turns warning when, at its pace, it runs out before it refills, not at the fixed 50%. See [Status colors](../../quota/status-colors/README.md).
 - While a Claude Code session is working, a terminal glyph appears in front of the readout. It needs [session hooks](../../activity/session-hooks/README.md).
 
 ## See also

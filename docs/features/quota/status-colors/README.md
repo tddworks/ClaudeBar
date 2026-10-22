@@ -1,5 +1,5 @@
 ---
-description: How ClaudeBar colors a quota healthy, warning, critical or depleted, the optional pace-aware burn-rate warning, and custom status colors and High Contrast. Use when a color looks wrong or hard to read.
+description: How ClaudeBar colors a quota healthy, warning, critical or depleted, the optional warning when a quota will run out before it resets, and custom status colors and High Contrast. Use when a color looks wrong or hard to read.
 ---
 
 # Status Colors
@@ -19,21 +19,33 @@ The cutoffs are fixed; there is no setting for them. Settings → Appearance →
 
 **Notifications** fire when a provider's overall status gets worse, for example healthy → warning, or warning → critical. Nothing fires when it recovers. macOS asks for notification permission the first time.
 
-## Pace-aware warnings (burn rate)
+## Warn when a quota will run out before it resets
 
-A fixed 50% cutoff warns you at 45% left even when the window resets in ten minutes. Burn-rate warnings judge the pace instead.
+A fixed 50% cutoff warns you at 45% left even when the window resets in ten minutes, and says nothing at 60% left when you are burning through it in the first hour. This switch judges the pace instead.
 
-Turn it on in Settings → **General** → **Burn Rate Warnings**, then pick a **Threshold**: 1.2x, 1.5x (default), 2.0x or 3.0x.
+Turn it on in Settings → **General** → **Warn when a quota will run out before it resets**. There is nothing else to set.
 
-- **Burn rate** = % of the quota used ÷ % of the window elapsed. 1.0 means you'll run out exactly at reset.
-- **Warning** when the burn rate is above your threshold **and** under 50% is left. With plenty left, a fast pace isn't worth a warning.
+With it on, a quota's status follows the same answer as its **Pace** badge and its forecast line:
+
+- **Warning** when, at its pace, the quota runs out before it refills: the badge says *Running hot* and the forecast says *Runs out in…*. This holds at any level from 20% left up, so 60% left can be a warning.
+- **Healthy** when it lasts until it resets: the badge says *On track* or *Room to spare*. This holds even below 50% left.
 - **Critical and depleted stay absolute.** Under 20% is critical and 0% is depleted, whatever the pace.
-- **Healthy** otherwise, even below 50%, if you're on pace.
-- Quotas without a known reset time, and the first moment of a window, fall back to the fixed thresholds.
+- **The fixed thresholds apply until there's a pace**: in a window's first minutes (under 3% of it gone), for a quota with no reset time or window length, and for a balance with no ceiling.
 
-Example: 57% used with 85% of the session gone is a burn rate of 0.67, so it stays healthy. 53% used with 8.5% of the week gone is 6.2, so it's a warning.
+"Runs out before it refills" means more than 5 points more of the quota used than of the window gone. Within 5 points either way you're on the line, and it reads *On track* and healthy.
 
-Burn rate changes the colors in the menu bar and the popover. **Notifications still use the fixed thresholds.**
+Examples, in a 5-hour session:
+
+| Left | Window gone | Pace | Status (off) | Status (on) |
+|---|---|---|---|---|
+| 58% | 41% | On track | Healthy | Healthy |
+| 60% | 15% | Running hot | Healthy | **Warning** |
+| 40% | 90% | Room to spare | Warning | **Healthy** |
+| 15% | 95% | Room to spare | Critical | Critical |
+
+A card never shows a low status beside *On track*.
+
+**What follows it:** the status, and so its colour, in the menu bar, the provider pills, the cards and bars in the popover, the Touch Bar and the status export. The **"running low"** notifications and webhooks follow it too: they fire when a login's status gets worse under this same setting. Your own [quota alerts](../../alerting/quota-alerts/README.md) are separate: they fire at the percentages you set. The notch still colours by the fixed thresholds.
 
 ## Custom colors and High Contrast
 
@@ -55,8 +67,8 @@ So you can turn on High Contrast and still override just one level. Custom color
 
 - The stock theme colors are tuned for the dark popover. On a light menu bar the greens and ambers can be hard to read, and High Contrast fixes that.
 - The depleted color is a darker red or pink, depending on the theme. It isn't gray.
-- The Touch Bar ignores all of this. It colors by percentage with its own fixed blue, amber and red. See [Touch Bar](../../alerting/touch-bar/README.md).
+- The Touch Bar follows the status, but draws it in its own fixed blue, amber and red, not your custom colors. See [Touch Bar](../../alerting/touch-bar/README.md).
 
 ## See also
 
-[design.md](design.md) · [Menu bar](../../app/menu-bar/README.md) · [themes](../../app/themes/README.md) · [settings.md](../../../settings.md) for the `app.statusColorOverrides` and `app.highContrastEnabled` keys
+[design.md](design.md) · [Menu bar](../../app/menu-bar/README.md) · [themes](../../app/themes/README.md) · [Forecast](../../monitoring/forecast/README.md) · [settings.md](../../../settings.md) for the `app.burnRateWarningEnabled`, `app.statusColorOverrides` and `app.highContrastEnabled` keys

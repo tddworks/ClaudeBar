@@ -23,7 +23,7 @@ One cell per quota, centred on the bar, with a thin divider between cells. Each 
 - a reset countdown (`2:15`, `35m`, `3d`), shown only when the cell is wide enough
 - a bold percentage and a progress bar. `—` means the provider hasn't returned data yet.
 
-The percentage follows the display mode chosen at the top of **Settings → Menu Bar**. The colour follows that quota's own status: blue while healthy, amber for warning, and red with a `!` when critical or depleted. With the burn-rate warning on, the status is pace-aware. A provider showing two gauges can therefore show two colours, while its entry in `status.json` carries the provider's overall status. See [Status colors](../../quota/status-colors/README.md) for the cutoffs.
+The percentage follows the display mode chosen at the top of **Settings → Menu Bar**. The colour follows that quota's own status: blue while healthy, amber for warning, and red with a `!` when critical or depleted. With *Warn when a quota will run out before it resets* on, the status follows the forecast. A provider showing two gauges can therefore show two colours, while its entry in `status.json` carries the provider's overall status. See [Status colors](../../quota/status-colors/README.md) for the cutoffs.
 
 Tap anywhere on the gauges to open the ClaudeBar popover.
 

@@ -4,7 +4,7 @@ description: The notification ClaudeBar sends when a login's quota gets worse â€
 
 # Status alerts
 
-ClaudeBar tells you, once, when a login's quota gets worse: *running low* (below 50%), *critically low* (below 20%), *depleted* (empty). With burn-rate warnings on, the [status policy](../../quota/status-colors/README.md) decides those bands instead. These are the alerts the menu bar's colours come from; your own percentages are [quota alerts](../quota-alerts/README.md).
+ClaudeBar tells you, once, when a login's quota gets worse: *running low* (below 50%), *critically low* (below 20%), *depleted* (empty). With *Warn when a quota will run out before it resets* on, *running low* means it runs out before it refills, at any level from 20% up ([status colors](../../quota/status-colors/README.md)). These are the alerts the menu bar's colours come from; your own percentages are [quota alerts](../quota-alerts/README.md).
 
 ## When it tells you
 

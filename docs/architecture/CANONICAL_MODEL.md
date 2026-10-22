@@ -215,8 +215,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   └── switchWhenLow: SwitchWhenLow  ◆   opt-in: isOn · below · mayPick(login)
 │       └── status                          DERIVED → accounts.status (tell, don't ask)
 │
-└── statusPolicy: StatusPolicy  ◇           HOW STRICT TO BE — absolute thresholds, or pace-aware
-                                            with the user's burn-rate threshold. ONE for the app
+└── statusPolicy: StatusPolicy  ◇           HOW STRICT TO BE — absolute thresholds, or pace-aware:
+                                            warn when it runs out before it resets. ONE for the app
                                             (General): every surface — menu bar, pill, card, Touch
                                             Bar, notch, notifications, status export — reads the
                                             same status. Colours are not policy: they are the page's
@@ -381,7 +381,7 @@ Claude Code sessions (Activity); where settings and secrets are kept
 | *Add to ~/.zshrc* · *Copy — I'll Add It* · *Remove* | `newSessions.setUp()` · `setUpByHand()` · `turnOff()` | the lines are shown before they are written |
 | turns on *Switch when low*, sets its threshold, unticks a login | `inUse.switchWhenLow.isOn` · `.below` · `.setMayPick(_:_:)` | off by default |
 | sets a Daily Budget · the Claude API Budget | `account.budget = …` (an account-scope setting) | judges that login's cost only |
-| turns the burn-rate warning on, sets its threshold | `monitor.statusPolicy = …` | every status and every alert follows at once |
+| turns on *Warn when a quota will run out before it resets* | `monitor.statusPolicy = …` | every status and every alert follows at once |
 | adds or removes an alert percentage | `quotaAlerts.add(_:)` · `remove(_:)` | whole percents 1–99; 20% and 0% are refused, the status alerts already say them |
 | *Add Webhook* · *Edit* · *Remove* · its switch · *Send a test* | `webhooks.add(url:…)` · `edit(_:url:…)` · `remove(_:)` · `turn(_:on:)` · `sendTest(_:)` | an http URL is refused unless it is local; a test is labelled a test, never an alert ([design](../features/alerting/webhooks/design.md)) |
 | chooses status colours · high contrast | — the page's theme | how a status looks, never what it is |
@@ -464,11 +464,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
 | pace exists only inside a window with a reset; outside it is `unknown`, never `onPace` | `Quota.pace` |
 | **ONE rate per quota**: how fast it is spent against its window — one used share (from `left`, so a capped money quota by its money), one noise floor (3% of the window) — and pace, the pace tick, the pace-aware status and the forecast all read it, never their own copy | `SpendRate` · `Quota.rate` |
-| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of its window gone; within 5 either side it is on the line. ONE rule, read by Pace and the forecast | `SpendRate.runsOutBeforeReset` |
+| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of its window gone; within 5 either side it is on the line. ONE rule, read by Pace, the forecast and the pace-aware status | `SpendRate.runsOutBeforeReset` |
 | a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset unless it runs out first, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
 | no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
-| depleted at 0, critical under 20 — ABSOLUTE, whatever the policy; pace-aware only decides WARNING vs HEALTHY between 20% and 50% left | `StatusPolicy` |
+| depleted at 0, critical under 20 — ABSOLUTE, whatever the policy | `StatusPolicy` |
+| a quota's status under the pace-aware policy warns exactly when it runs out before its reset, from 20% left up; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `SpendRate` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
 | usage is stale 5 minutes after it was updated | `Usage` |
@@ -595,7 +596,7 @@ is built is not listed — the code is its record. What isn't yet:
 | `Plan` | `AccountTier` with Claude's cases | a name and a badge |
 | `Usage` | carries `extensionMetrics` and `dailyUsageReport` | kernel fields only — usage history is read from `account.usageHistory` |
 | `Account.budget` | `app.claudeApiBudget` (Claude's card) and Bedrock's `dailyBudget` as a quota | a `Budget` beside the login's `Cost`, judged as `BudgetStatus`; the old keys read as the default login's budget |
-| `StatusPolicy` | `menuBarLabel(…)` takes the two burn-rate values; `StatusColorPolicy` is in `Domain` | the label takes the policy; colours move to the App |
+| `StatusPolicy` | `StatusColorPolicy` is in `Domain` | colours move to the App |
 | page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`; `menuBarLabel(…)` on `QuotaMonitor` | the App |
 | `Day` | `DailyUsageReport` / `DailyUsageStat` (with `lines`) | `Day` — the sum of its lines, one per model; records with no model, one unnamed line |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
@@ -609,8 +610,7 @@ test first. Findings that need a decision first are in §9.
 
 | Context | The code today | Moves to |
 |---|---|---|
-| Quota | pace-aware `QuotaStatus.from` returns *critical* at 60% left and *warning* at 15%, breaking the absolute floor; the person's burn-rate threshold is never read | `StatusPolicy` owns status: the absolute bands first, pace decides only between 20% and 50%, against the threshold |
-| Quota | one `SpendRate` is graded three ways (`UsagePace`'s words, `PaceLevel`'s six levels, the status's 0.7/0.9), so one quota can read *On track*, a warm tick and WARNING at once | one `Pace` from the rate; the words and the tick are views of it |
+| Quota | one `SpendRate` is graded two ways (`UsagePace`'s words, `PaceLevel`'s six levels), so one quota can read *On track* beside a warm tick | one `Pace` from the rate; the words and the tick are views of it |
 | Quota | the share left of a money quota computed twice, once across currencies (`QuotaAlerts.lowestShare`); `<` compares `percentRemaining`, where a balance is 100 | `Left.share`, `nil` for a balance or mixed currencies, read by every comparison |
 | Quota · Providers | a login's status has two owners: `Account.status` / `Accounts.status` ignore the policy and hidden quotas, `QuotaMonitor.status(of:)` and `Overview` apply both | `accounts.status(under:)`; the Monitor and the overview delegate |
 | Monitoring | the menu-bar quota reads `snapshot` directly, so a hidden quota still colours the menu bar | read through the watched usage |

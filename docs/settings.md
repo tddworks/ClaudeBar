@@ -29,7 +29,7 @@ A key that's missing means "use the default", so a fresh install starts with an 
 
 | Namespace | Holds | Example |
 |---|---|---|
-| `app.*` | App-wide preferences: theme, menu bar readout, refresh, burn rate, status colors, notch, Touch Bar | `"app": { "burnRateWarningEnabled": true, "burnRateThreshold": 1.5 }` |
+| `app.*` | App-wide preferences: theme, menu bar readout, refresh, the run-out warning, status colors, notch, Touch Bar. `app.burnRateWarningEnabled` is *Warn when a quota will run out before it resets*: `true` colours and alerts by the forecast ([status colors](features/quota/status-colors/README.md)). `app.burnRateThreshold` is retired and ignored if present | `"app": { "burnRateWarningEnabled": true }` |
 | `providers.<id>.*` | Per-provider switches, keyed by the provider id | `"providers": { "gemini": { "isEnabled": false } }` |
 | `providers.order` | Your provider display order — the popover pills, the All page and ⌘1–⌘9 follow it; unset means registration order | `"providers": { "order": ["codex", "claude"] }` |
 | `providers.<id>.cliPath` | The *CLI location* a person chose for a provider that runs a CLI; absent means "find it as usual" (#210) | `"providers": { "claude": { "cliPath": "/opt/tools/bin/claude" } }` |

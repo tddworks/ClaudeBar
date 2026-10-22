@@ -23,7 +23,8 @@ of the window gone. That one rate answers every question about speed:
 
 - **Pace** — how fast, in words.
 - **The pace tick** (`PaceLevel`) — how fast, in six grades.
-- **The pace-aware status** — whether to warn.
+- **The pace-aware status** — whether to warn: it warns exactly when the quota
+  runs out before it resets ([status design](../../quota/status-colors/design.md)).
 - **The forecast** — whether it lasts until it resets, and when it runs out.
 
 A forecast is the rate carried forward to zero, with the 5-point margin Pace
@@ -49,7 +50,7 @@ SpendRate         percentUsed ÷ percentTimeElapsed      the ONLY owner of how f
   │                                         with no ceiling, under the floor
   ├ UsagePace(rate:)       Running hot ⇔ runsOutBeforeReset · Room to spare ⇔ hasRoomToSpare · else On track
   ├ PaceLevel(rate:)       the tick's six grades
-  ├ QuotaStatus.from(…)    projects from the rate once 15% of the window has gone
+  ├ StatusPolicy.paceAware warning ⇔ runsOutBeforeReset, from 20% left up (status-colors design)
   └ Forecast(rate:window:at:)
                            nil once used up, or without a window length/reset
                            .lastsUntilReset ⇔ !runsOutBeforeReset
@@ -71,11 +72,11 @@ It is a **read**: nothing is stored, nothing is fetched, no capability is
 declared. A reset starts a new window, so the rate always spans exactly the
 current cycle.
 
-**Two floors, two laws.** The rate's noise floor (3%) says when a rate exists
-at all: before it, Pace is `unknown`, the tick has no grade and there is no
-forecast. The status's 15% is a different law — **when to warn**: a warning is
-louder than a word, so the pace-aware status keeps its absolute thresholds until
-15% of the window has gone. It reads the same rate once it projects.
+**One floor, one margin.** The rate's noise floor (3%) says when a rate exists
+at all: before it, Pace is `unknown`, the tick has no grade, there is no
+forecast, and the pace-aware status gives the absolute answer. Once the rate
+exists, Pace, the forecast and the status read the same margin, so *On track*
+never sits beside a low status.
 
 ## 3 · The edges
 
@@ -143,7 +144,7 @@ quota.forecast                       → Forecast?    lasts until it resets, or 
 | Law | Owner |
 |---|---|
 | how fast a quota is spent against its window — one used share, one noise floor (3% of the window) — is ONE rate; pace, the tick, the pace-aware status and the forecast read it | `SpendRate` · `Quota.rate` |
-| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of the window gone (`SpendRate.margin`); within 5 either side it is on the line. ONE rule: Pace and the forecast read it, never their own threshold | `SpendRate.runsOutBeforeReset` |
+| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of the window gone (`SpendRate.margin`); within 5 either side it is on the line. ONE rule: Pace, the forecast and the pace-aware status read it, never their own threshold | `SpendRate.runsOutBeforeReset` |
 | a forecast lasts until the reset unless it runs out before it; then it runs out in `left × length ÷ (100 × rate)` | `Forecast` |
 | no forecast once the quota is used up, without a window length and reset, or without a rate | `Forecast` · `Quota.forecast` |
 | *Running hot* ⇔ it runs out before the reset; *Room to spare* ⇔ more than 5 points behind; otherwise *On track* | `UsagePace` (reads `SpendRate`) |
@@ -184,7 +185,7 @@ No port, no repository, no setting.
 | A person or a contributor wants… | They change |
 |---|---|
 | the forecast on another surface (menu bar, notch, status export) | that page reads `quota.forecast` and words it |
-| a different rate (weighted, measured from samples) | `SpendRate` — Pace and the forecast follow together |
+| a different rate (weighted, measured from samples) | `SpendRate` — Pace, the forecast and the pace-aware status follow together |
 | a warning before the run-out | a new alert beside `QuotaAlerts`, following `onRefreshed` |
 
 ## 10 · Considered and rejected
