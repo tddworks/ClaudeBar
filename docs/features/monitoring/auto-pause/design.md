@@ -100,7 +100,7 @@ Views never read settings.json, never compare statuses and never watch: the card
 | A product turns itself off only where the person asked it to: the instruction is per product, off until turned on, and arming alone does nothing until a crossing | `AutoPause.turn` |
 | Empty is seen, never assumed: at least one counted login has usage, every counted login reads `.depleted`; a login with no usage — not set up, fetch failed — is not counted, and never reads as empty | `QuotaMonitor.status(of product:)` |
 | Paused logins are out of every judgement, as ever | `QuotaMonitor.status(of product:)` (reads unpaused only) |
-| A product's logins are interchangeable: it is as empty as its emptiest counted login | `QuotaMonitor.status(of product:)` |
+| A product's logins are interchangeable: it reads its healthiest counted login (min) — so it is empty only when every counted login is; one empty login never empties its product while another has room | `QuotaMonitor.status(of product:)` |
 | ClaudeBar's off is the marker's, not the switch's: only a product off *with* the marker is waiting | `AutoPause` (the `autoPaused` key) |
 | The person's own off is never touched — an off product without the marker stays off, however empty it is | `AutoPause.review` |
 | One pause per crossing: while empty stays empty nothing fires again, and a manual re-enable is never re-paused until the product has recovered and emptied again | `AutoPause` (`wasDepleted`) |

@@ -63,7 +63,9 @@ enum URLSchemeAction: Equatable, Sendable {
     }
 
     /// `claudebar://enable?provider=<id>`, and nothing more — *auto-pause*'s
-    /// one click back on.
+    /// one click back on. The id's shape is checked loosely — built-in,
+    /// custom and extension ids differ, so only the unsafe is refused; the
+    /// handler resolves the name against the registered products.
     private static func enable(_ string: String) -> URLSchemeAction? {
         let prefixes = ["\(scheme)://enable?", "\(scheme):///enable?"]
         guard let prefix = prefixes.first(where: { string.lowercased().hasPrefix($0) }),
@@ -72,7 +74,8 @@ enum URLSchemeAction: Equatable, Sendable {
               items.count == 1,
               let provider = items.first(where: { $0.name == "provider" })?.value,
               Set(items.map(\.name)) == ["provider"],
-              provider.range(of: "^[a-z0-9-]{1,32}$", options: .regularExpression) != nil
+              !provider.isEmpty, provider.count <= 200,
+              provider.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
         else { return nil }
         return .enable(provider: provider)
     }

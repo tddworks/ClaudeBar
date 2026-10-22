@@ -58,6 +58,12 @@ struct URLSchemeActionTests {
     @Test(arguments: [
         ("claudebar://enable?provider=claude", "claude"),
         ("claudebar:///enable?provider=codex", "codex"),
+        // Real ids aren't all builtin-shaped: extensions are `ext-<manifest id>`,
+        // custom ones come from an imported definition. The parser refuses only
+        // the unsafe; the handler resolves the name against the products.
+        ("claudebar://enable?provider=ext-my-tool.v2", "ext-my-tool.v2"),
+        ("claudebar://enable?provider=ext-a-very-long-extension-identifier-1234567890",
+         "ext-a-very-long-extension-identifier-1234567890"),
     ])
     func `should turn the named provider back on from an enable link`(string: String, provider: String) {
         #expect(URLSchemeAction(url: URL(string: string)!) == .enable(provider: provider))
@@ -68,7 +74,7 @@ struct URLSchemeActionTests {
         "claudebar://enable?provider=",
         "claudebar://enable?provider=claude&x=1",
         "claudebar://enable?provider=claude&provider=codex",
-        "claudebar://enable?provider=../claude",
+        "claudebar://enable?provider=claude%0A",
         "claudebar://enable?provider=claude&account=work",
         "claudebar://enable/extra?provider=claude",
         "claudebar://enable?provider=claude#top",

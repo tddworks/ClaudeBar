@@ -46,6 +46,11 @@ public final class AutoPause {
     /// decides nothing and starts nothing.
     @ObservationIgnored private var toResume: Set<String> = []
 
+    /// How often the instructions and markers have changed. The settings
+    /// file isn't observable, so the cards read this — a turn redraws what
+    /// the file alone can't show.
+    private var revision = 0
+
     /// Creates the follower over the person's settings, the one who tells,
     /// and the clock the quiet loop sleeps on.
     public init(settings: any ProviderSettingsRepository, announcer: any AutoPauseAnnouncer,
@@ -59,6 +64,7 @@ public final class AutoPause {
 
     /// Whether the person asked `product` to turn itself off when empty.
     public func isOn(_ product: Provider) -> Bool {
+        _ = revision
         settings.isOn(Self.onKey, forProvider: product.id) ?? false
     }
 
@@ -68,6 +74,7 @@ public final class AutoPause {
     /// back on — the person's own off is left off.
     public func turn(_ on: Bool, product: Provider) {
         settings.setOn(on, Self.onKey, forProvider: product.id)
+        revision += 1
         guard !on, isMarked(product) else { return }
         turnBackOn(product)
     }
@@ -77,6 +84,7 @@ public final class AutoPause {
     /// Whether ClaudeBar turned `product` off and is watching for its reset —
     /// the row's *Waiting for a reset*.
     public func isWaiting(_ product: Provider) -> Bool {
+        _ = revision
         !product.isEnabled && isMarked(product) && isOn(product)
     }
 
@@ -99,7 +107,7 @@ public final class AutoPause {
         attach(monitor)
         monitor.onRefreshed { [weak self] login in await self?.review(login) }
         adopt()
-        let resuming = monitor.productTabs.filter { toResume.contains($0.id) }
+        let resuming = monitor.productTabs.map(\.provider).filter { toResume.contains($0.id) }
         toResume = []
         for product in resuming { startLoop(product) }
     }
@@ -119,7 +127,7 @@ public final class AutoPause {
     /// nothing, starts nothing.
     func adopt() {
         guard let monitor else { return }
-        for product in monitor.productTabs where isMarked(product) {
+        for product in monitor.productTabs.map(\.provider) where isMarked(product) {
             wasDepleted.insert(product.id)
             if !product.isEnabled, isOn(product) {
                 toResume.insert(product.id)
@@ -227,11 +235,13 @@ public final class AutoPause {
     /// Marks an off as ClaudeBar's own — saved, so the wait survives a relaunch.
     private func setMarker(for product: Provider) {
         settings.setOn(true, Self.markerKey, forProvider: product.id)
+        revision += 1
     }
 
     /// The wait is over — whatever turn of the person's said so.
     private func clearMarker(for product: Provider) {
         settings.setOn(false, Self.markerKey, forProvider: product.id)
+        revision += 1
     }
 
     /// The flip itself — through the Monitor, which owns the selection.

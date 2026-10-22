@@ -529,9 +529,10 @@ public final class QuotaMonitor {
         usage(of: login)?.overallStatus(under: statusPolicy)
     }
 
-    /// A product's status as the person sees it — its emptiest counted
-    /// login's, each login's read under the policy with hidden quotas and
-    /// paused logins left out; `nil` while no unpaused login has usage. A
+    /// A product's status as the person sees it — its healthiest counted
+    /// login's (so it reads *depleted* only when every counted login is),
+    /// each login's read under the policy with hidden quotas and paused
+    /// logins left out; `nil` while no unpaused login has usage. A
     /// login without usage never stands for the product: *not set up*, or a
     /// failed fetch, is not *empty* (CANONICAL §5) — the read *Auto-pause on
     /// empty* judges emptiness with.

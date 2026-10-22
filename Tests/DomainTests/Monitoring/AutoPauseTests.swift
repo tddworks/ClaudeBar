@@ -1,4 +1,5 @@
 import Foundation
+import Infrastructure
 import Testing
 @testable import Domain
 

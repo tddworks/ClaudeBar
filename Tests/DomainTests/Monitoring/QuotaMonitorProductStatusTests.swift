@@ -3,8 +3,9 @@ import Testing
 @testable import Domain
 
 /// A product's status as the person sees it — the read *Auto-pause on empty*
-/// judges emptiness with: its emptiest counted login's, under the policy,
-/// with paused logins and logins without usage left out
+/// judges emptiness with: its healthiest counted login's — depleted only when
+/// every counted login is —, under the policy, with paused logins and logins
+/// without usage left out
 /// (docs/features/monitoring/auto-pause/design.md §2).
 @MainActor
 @Suite
@@ -24,7 +25,7 @@ struct QuotaMonitorProductStatusTests {
     }
 
     @Test
-    func `should read a product as its emptiest login when another has room`() async throws {
+    func `should read a product as its healthiest login when another is emptier`() async throws {
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willReturn(snapshot(quota(80), quota(3)))
@@ -32,7 +33,9 @@ struct QuotaMonitorProductStatusTests {
 
         await monitor.refresh(providerId: "claude")
 
-        #expect(monitor.status(of: product) == .critical)
+        // One login with room keeps the whole product out of trouble —
+        // the 80% login's healthy covers the 3% login's critical.
+        #expect(monitor.status(of: product) == .healthy)
     }
 
     @Test

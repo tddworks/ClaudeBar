@@ -230,6 +230,8 @@ private struct ProviderDetailView: View {
     let provider: Account
     let onBack: () -> Void
 
+    @Environment(AutoPause.self) private var autoPause
+
     @Environment(\.appTheme) private var theme
 
     var body: some View {
@@ -277,6 +279,13 @@ private struct ProviderDetailView: View {
                         CustomCardURLField(providerId: provider.id)
                     }
                 } else {
+                    // A waiting product is off — ClaudeBar's own off — so this
+                    // is the one card the disabled page still shows: it is
+                    // where the person withdraws the instruction, which puts
+                    // the product back on.
+                    if autoPause.isWaiting(tab.provider) {
+                        AutoPauseCard(product: tab.provider)
+                    }
                     Text("Enable \(tab.name) to configure it.")
                         .font(theme.font(size: 12, weight: .medium))
                         .foregroundStyle(theme.textTertiary)

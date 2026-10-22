@@ -401,8 +401,10 @@ account.usage                        → Usage?       that login's latest — wh
 account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
 provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
-monitor.status(of: provider)         → Status?      the emptiest counted login, under the policy; nil with
-                                                    no usage — what auto-pause judges *empty* by
+monitor.status(of: provider)         → Status?      the healthiest counted login (min), under the
+                                                    policy; nil with no usage — what auto-pause
+                                                    judges *empty* by: depleted only when every
+                                                    counted login is
 provider.accounts.best               → Account?     the most left — "switch to work"
 provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
 provider.inUse?.login                → Account      the login new terminal sessions start with
