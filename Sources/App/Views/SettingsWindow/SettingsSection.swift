@@ -11,7 +11,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case syncAlerts
     case hooks
     case notify
-    case rules
     case leaderboard
     case updates
     case logs
@@ -28,7 +27,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: "Sync & Alerts"
         case .hooks: "Hooks"
         case .notify: "Notify!"
-        case .rules: "Rules"
         case .leaderboard: "Leaderboard"
         case .updates: "Updates"
         case .logs: "Logs"
@@ -46,7 +44,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "quota alert", "percent"]
         case .hooks: ["claude code", "session", "install"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
-        case .rules: ["webhook", "slack", "json", "post", "url", "trigger", "automation", "when", "below"]
         case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete", "hide", "disable", "turn off", "pause", "opt out"]
         case .updates: ["sparkle", "beta", "version", "check"]
         case .logs: ["log file", "debug", "report"]
@@ -74,7 +71,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .syncAlerts: "arrow.triangle.2.circlepath"
         case .hooks: "antenna.radiowaves.left.and.right"
         case .notify: "iphone.radiowaves.left.and.right"
-        case .rules: "bolt.horizontal.circle.fill"
         case .leaderboard: "trophy.fill"
         case .updates: "arrow.down.circle.fill"
         case .logs: "doc.text.fill"
@@ -102,7 +98,7 @@ enum SettingsSectionGroup: String, CaseIterable, Identifiable {
     var sections: [SettingsSection] {
         switch self {
         case .app: [.general, .appearance, .menuBar]
-        case .monitoring: [.providers, .syncAlerts, .hooks, .notify, .rules, .leaderboard]
+        case .monitoring: [.providers, .syncAlerts, .hooks, .notify, .leaderboard]
         case .system: [.updates, .logs, .about]
         }
     }

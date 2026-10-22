@@ -30,11 +30,4 @@ public enum CredentialKey {
     public static let vercelApiKey = "vercel-ai-gateway-api-key"
     public static let zaiApiKey = "zai-glm-api-key"
     public static let notifyDeviceToken = "notify-device-token"
-
-    /// A rule's webhook URL, keyed by the rule's id. It is a secret — a Slack
-    /// URL carries a token — so it lives here and never in `rules.json`
-    /// (CANONICAL §5).
-    public static func ruleWebhookURL(_ ruleId: String) -> String {
-        "rule-webhook-url-\(ruleId)"
-    }
 }

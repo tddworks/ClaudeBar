@@ -15,11 +15,6 @@ struct SettingsWindowView: View {
 
     let leaderboard: AppLeaderboard
 
-    /// The person's rules and the one engine that fires them. The pane reads
-    /// both; the engine is the same one a background crossing goes through.
-    let ruleSet: RuleSet
-    let ruleEngine: RuleEngine
-
     var onHookSettingsChanged: ((Bool) -> Void)?
 
     @Environment(\.appTheme) private var theme
@@ -113,8 +108,6 @@ struct SettingsWindowView: View {
             HooksPane()
         case .notify:
             NotifyPane(monitor: monitor, driver: notifyDriver)
-        case .rules:
-            RulesPane(monitor: monitor, rules: ruleSet, engine: ruleEngine)
         case .leaderboard:
             LeaderboardPane(leaderboard: leaderboard, monitor: monitor)
         case .updates:
