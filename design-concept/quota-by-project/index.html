@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota by project — mockup</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 40px 20px; display: flex; gap: 28px; flex-wrap: wrap;
+    background: radial-gradient(1200px 600px at 30% 0%, #23262e, #14161b);
+    font-family: -apple-system, "SF Pro Text", Helvetica, sans-serif;
+  }
+  .card {
+    width: 316px; padding: 12px; border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  }
+  .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .title { font-size: 8px; letter-spacing: .3px; color: #9aa0ab; font-weight: 600; }
+  .total { font-size: 13px; font-weight: 700; color: #f2f3f5; text-align: right; }
+  .caption { font-size: 8px; color: #7c828c; font-weight: 600; }
+  .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.08); margin-bottom: 10px; }
+  .bar i { display: block; height: 100%; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 9px; }
+  .dot { width: 6px; height: 6px; border-radius: 3px; }
+  .name { color: #c9cdd4; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .value { color: #f2f3f5; font-weight: 600; }
+  .share { color: #7c828c; width: 28px; text-align: right; }
+  h1 { font-size: 11px; color: #9aa0ab; font-weight: 600; letter-spacing: .4px; width: 100%; margin: 0 0 4px; }
+  .note { width: 100%; font-size: 9px; color: #6d737d; max-width: 660px; line-height: 1.5; }
+  .note code { color: #a8aeb8; }
+</style>
+</head>
+<body>
+<h1>PROJECTS — LAST YEAR · beside MODEL MIX in the popover's usage area (hidden by default)</h1>
+
+<div class="card">
+  <div class="head">
+    <span class="title">◈ PROJECTS — LAST YEAR</span>
+    <span><span class="total">$312.40</span><br><span class="caption">TOTAL COST</span></span>
+  </div>
+  <div class="bar">
+    <i style="width:41%; background:#bf9af6"></i><i style="width:33%; background:#7fd88f"></i>
+    <i style="width:15%; background:#7fb5f0"></i><i style="width:11%; background:#8e939c"></i>
+  </div>
+  <div class="row"><span class="dot" style="background:#bf9af6"></span><span class="name">marron</span><span class="value">$128.08</span><span class="share">41%</span></div>
+  <div class="row"><span class="dot" style="background:#7fd88f"></span><span class="name">api</span><span class="value">$103.09</span><span class="share">33%</span></div>
+  <div class="row"><span class="dot" style="background:#7fb5f0"></span><span class="name">claudebar</span><span class="value">$46.86</span><span class="share">15%</span></div>
+  <div class="row"><span class="dot" style="background:#8e939c"></span><span class="name">—</span><span class="value">$34.37</span><span class="share">11%</span></div>
+</div>
+
+<p class="note">
+  The unnamed part (<b>—</b>) is the records the log wrote with no working directory; it is a part so the
+  shares add up, and never the top project. A login whose log writes no directory at all shows no card.
+  The card reads the same <code>Days</code> as the heatmap and model mix, in the login's opening unit;
+  a project is the working directory's last path component, named once at aggregation — the ledger keeps
+  <code>marron</code>, never an absolute path.
+</p>
+</body>
+</html>

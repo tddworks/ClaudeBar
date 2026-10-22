@@ -123,14 +123,14 @@ holds `let unit = days.defaultUnit` and passes it in.
 | the heatmap's window (a month, a quarter) | the page: another range of `days` |
 | a different shade scale | `UsageHeatmap.level(of:)` and its legend — the share is the fact |
 | a model's colour | nothing: `ModelColors` is one palette for every view |
-| per-repo or per-session cost | **deferred** — see below |
+| the cost by project | built: [quota-by-project](../quota-by-project/design.md) — the definition names the record's directory, and `ByProject` reads it over `Days` |
+| per-session cost | **deferred** — see below |
 
-**Per-repo and per-session cost is out of this feature.** It needs a repo (or a
-session id) named **per record**, and a log's definition may not carry one: a
-log may name a model and a request, not a repo, so the repo would have to be
-inferred from a file path or a session's first prompt — a new field in the
-mapping's path language, not a value over `Days`. Until a definition can say
-*which repo this record is*, the question is left out rather than guessed.
+**Per-session cost is still out.** The project half of this deferred question
+is built — [quota-by-project](../quota-by-project/design.md): a definition's
+shape names the field of the working directory, and `ByProject` reads it over
+`Days`. The session half would need a session id named per record the same
+way; until a definition says it, the question stays out rather than guessed.
 
 ## 7 · Considered and rejected
 

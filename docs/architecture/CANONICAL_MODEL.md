@@ -183,7 +183,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │   │               read-only query of the app's own database · format (a
 │       │       │   │   │   │               JSON object per line, or per file) · the record's shape
 │       │       │   │   │   │               in the mapping's path language (when, which model,
-│       │       │   │   │   │               tokens by kind, its own cost, its identity), or its
+│       │       │   │   │   │               tokens by kind, its own cost, its identity, its
+│       │       │   │   │   │               project — the field of the working directory), or its
 │       │       │   │   │   │               `shapes` when the log writes it more than one way,
 │       │       │   │   │   │               each read whole
 │       │       │   │   ├── prices: PriceList   WHAT A TOKEN COSTS — a price file beside the
@@ -198,7 +199,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           per model, a line holding what the day holds — tokens
 │       │       │                           input · output · cache write · cache read · cost
 │       │       │                           (ESTIMATED unless the log states it); records with no
-│       │       │                           model form one unnamed line · sessions · working
+│       │       │                           model form one unnamed line · one line per project
+│       │       │                           when the log names the working directory · sessions ·
 │       │       │                           time · cache savings
 │       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
 │       │       │                           run by the engine; `nil` when not declared
@@ -507,10 +509,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit; which units it offers — so a view renders and tells. The unit is the view's choice (cost, tokens, cache), and COST is offered only when the log prices its records and a day holds a cost: a log that writes zero everywhere has nothing to say in dollars ; what caching saved over the range | `Days` |
 | two lines of one model add up to one line: every count and the cost, so a sum over days never drops a field | `ModelUsageLine` |
 | a range's mix is each model summed over it, largest first, the unnamed line included so the parts add up; each part carries its share — a page that needs a top model reads it here, and the unnamed line is never the top model | `ModelMix` |
+| a day's project split is one line per project — each named by its working directory's last path component, records with none forming one unnamed part so the parts add up — and exists only when the day's records name at least one; a path is never kept or shown, only its last component ([quota-by-project](../features/usage-history/quota-by-project/design.md)) | `DailyUsageStat.projects` · `ProjectUsageLine` |
+| the by-project read is each project summed over the range, largest first, ties by name, the unnamed part included so the parts add up; each part carries its share; the top project is the largest named one, never the unnamed part | `ByProject` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0. The shading band a heatmap draws is the App's | `DayActivity` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
 | a week is the calendar's week holding a day, from the calendar's own first weekday; the range before a range is the same length, one run earlier | `DateRange` (`week`, `before`) |
-| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
+| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model, one per project — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
 | a RECAP is the one read that sums across logins, for the person's total, and names the providers it spans — two logins of one provider are one part; a login's own chart stays its own. It reads in the unit every range offers: cost only when every provider that used anything, this range or the one before, offers cost, tokens otherwise; its change is against the range before, in that unit, and none when nothing was used before; its top model is `ModelMix`'s and its biggest day `DayActivity`'s, over the providers' days merged | `Recap` |
 | the weekly recap is read again only when the week turned or a login's days were read again since its last read; the page tells it when usage was read and never decides | `WeeklyRecaps` |
 | a capability is declared by the definition — even one only a single product has (guest passes), whose runner the engine supplies — never chosen by a provider's name, never a vendor name in a module. Either way it is reached through the login's handle (`account.usageHistory`, `account.guestPasses`), `nil` when not offered | `Account` |
