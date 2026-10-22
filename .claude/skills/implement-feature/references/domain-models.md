@@ -176,7 +176,7 @@ public struct ModelMix {
 // "Two lines of one model add up" — the line owns its own sum
 extension ModelUsageLine { static func + (lhs: Self, rhs: Self) -> Self }
 
-// A recap reuses them; it never counts again
+// Anything that needs the top model reuses the mix; it never counts again
 let top = ModelMix(of: week, in: unit).top
 ```
 

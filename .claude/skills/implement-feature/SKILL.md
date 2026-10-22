@@ -95,7 +95,7 @@ Identify:
 Use ASCII diagram showing all components and their interactions:
 
 ```
-Example: Codex accounts (#326) — a definition change plus generic pieces
+Example: added accounts — a definition change plus generic pieces
 
 ┌──────────────────────────────────────────────────────────────────────┐
 │                            ARCHITECTURE                               │
