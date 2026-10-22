@@ -25,7 +25,7 @@ ClaudeBar chooses the mode itself; there is no switch.
 
 ## Daily usage
 
-With Daily Usage Cards on (Settings → General), OpenCode Go shows today's tokens and cost from opencode's own database, read directly: every assistant message the database holds, whatever provider opencode drove — Zen, OpenCode Go, a custom endpoint — added up as one total. The cost is what opencode itself recorded, so it reads $0 for a provider that logs no cost. It's read when you open the popover. OpenCode 1 and 2 both work, and history from before an upgrade to 2 is counted too.
+With Daily Usage Cards on (Settings → General), OpenCode Go shows today's tokens and cost from opencode's own database, read directly: every assistant message the database holds, whatever provider opencode drove — Zen, OpenCode Go, a custom endpoint — added up as one total. The model's reasoning tokens count as output, since the model generated both. The cost is what opencode itself recorded, so it reads $0 for a provider that logs no cost — and when every message's cost is zero, no Cost card is shown and the 30-day chart counts tokens instead of dollars. It's read when you open the popover. OpenCode 1 and 2 both work, and history from before an upgrade to 2 is counted too.
 
 The same totals are what the [Leaderboard](../../features/leaderboard/README.md) shares when you tick OpenCode there.
 

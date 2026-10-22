@@ -153,7 +153,7 @@ public struct {Name}Report: Sendable, Equatable {
 
 **Rules:**
 - `Decimal` for money, `TimeInterval` for durations; `Locale(identifier: "en_US")` for currency.
-- Every formatted string and every comparison lives in the value — the view only reads them.
+- Every comparison, and every amount the value owns written one way (`formattedCostDelta`, through `MoneyFormat`), lives in the value — the view only reads them. The card's sentences and labels are the App's words, not the value's ([question 7](../implement-feature/references/domain-shape.md#seven-questions)).
 - A change percent is `nil` when the previous period is zero; deltas always carry a sign.
 - `isEmpty` means all zero (`&&`, not `||`).
 

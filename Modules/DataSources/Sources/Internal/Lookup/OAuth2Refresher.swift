@@ -51,7 +51,11 @@ struct OAuth2Refresher: CredentialRefreshing {
         if let clientId = Template.fill(refresh.clientId, with: credential), !clientId.isEmpty {
             fields.append(("client_id", clientId))
         }
-        if let scope = refresh.scope { fields.append(("scope", scope)) }
+        // Ask for the scopes the login already carries, so a renewed token is
+        // never narrower than the one it replaces; the definition's `scope` is
+        // the fallback for a login that names none.
+        let granted = refresh.scopeFrom.flatMap { credential[$0] }.flatMap { $0.isEmpty ? nil : $0 }
+        if let scope = granted ?? refresh.scope { fields.append(("scope", scope)) }
         switch refresh.bodyFormat {
         case .form:
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
