@@ -196,7 +196,7 @@ struct UsageHistoryChartView: View {
 
     /// The value in the unit on show — money when cost, tokens otherwise.
     private func unit(_ value: Double) -> String {
-        shownCount == .cost ? UsageFormat.money(Decimal(value)) : UsageFormat.count(Int(value))
+        UsageFormat.value(value, in: shownCount)
     }
 
     // MARK: - Chart
@@ -286,7 +286,7 @@ struct UsageHistoryChartView: View {
                 AxisGridLine().foregroundStyle(theme.progressTrack)
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text(shownCount == .cost ? UsageFormat.money(Decimal(amount), whole: true) : UsageFormat.count(Int(amount)))
+                        Text(UsageFormat.value(amount, in: shownCount, whole: true))
                             .font(theme.font(size: 7))
                             .foregroundStyle(theme.textTertiary)
                     }
@@ -329,6 +329,15 @@ extension Days.Unit: @retroactive Identifiable {
         case .cost: "Cost"
         case .tokens: "Tokens"
         case .cache: "Cache"
+        }
+    }
+
+    /// The word under a card's total — what the number is.
+    var caption: String {
+        switch self {
+        case .cost: "spent"
+        case .tokens: "tokens"
+        case .cache: "cache tokens"
         }
     }
 

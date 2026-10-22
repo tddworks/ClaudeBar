@@ -54,7 +54,21 @@ struct UsageHeatmapTests {
 
         #expect(cells.count == 3)
         #expect(cells[1].value == 0)
-        #expect(cells[1].level == 0)
+        #expect(UsageHeatmap.level(of: cells[1]) == 0)
+    }
+
+    @Test func `should shade a day by how full it is against the busiest`() {
+        let shades = [1, 0, 0.5, 0.2].map {
+            UsageHeatmap.level(of: DayValue(date: start, value: $0 * 10, share: $0))
+        }
+
+        #expect(shades == [4, 0, 2, 1])
+    }
+
+    @Test func `should leave every day unshaded when nothing was used`() {
+        let idle = DayValue(date: start, value: 0, share: 0)
+
+        #expect(UsageHeatmap.level(of: idle) == 0)
     }
 
     @Test func `should pad the week before the range's first day, never a day`() {

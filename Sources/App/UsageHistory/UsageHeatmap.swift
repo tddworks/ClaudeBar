@@ -24,6 +24,16 @@ struct UsageHeatmap {
     /// The calendar's weekday order (1 = Sunday), so the rows can be labelled.
     let firstWeekday: Int
 
+    /// The shading bands, lightest first — one legend square each.
+    static let levels = 0...4
+
+    /// A day's band: 0 for a day with nothing, else 1…4 by its share of the
+    /// busiest day — how full it is, never a colour.
+    static func level(of day: DayValue) -> Int {
+        guard day.value > 0, day.share > 0 else { return 0 }
+        return max(1, min(4, Int((day.share * 4).rounded(.up))))
+    }
+
     /// Lays `days` out a column a week, oldest first, in `calendar`'s
     /// weekday order — the slots outside the range empty, never a day.
     init(_ days: [DayValue], calendar: Calendar = .current) {

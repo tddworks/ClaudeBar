@@ -3,11 +3,15 @@ import Domain
 
 /// *USAGE — LAST YEAR* — a range of a login's days as a heatmap: a cell a day,
 /// shaded by how full it is against the range's busiest, an empty day an empty
-/// cell. Everything it says, `Days.byDay` answers.
+/// cell. Everything it says, `DayActivity` answers, read in the range's
+/// opening unit; the shading bands are `UsageHeatmap`'s.
 struct UsageInsightsHeatmapView: View {
     let days: Days
     /// The card's heading, in the page's words.
     var title: String = "USAGE — LAST YEAR"
+
+    /// The unit the card reads the range in: the one it opens on.
+    private var unit: Days.Unit { days.defaultUnit }
 
     @Environment(\.appTheme) private var theme
     @Environment(\.popoverTextSize) private var popoverTextSize
@@ -29,7 +33,7 @@ struct UsageInsightsHeatmapView: View {
     var body: some View {
         // Laid out and sized once, so a year's cells never rebuild the
         // heatmap for each of them.
-        let heatmap = UsageHeatmap(days.byDay)
+        let heatmap = UsageHeatmap(DayActivity(of: days, in: unit).days)
         let cell = cellSide(for: heatmap)
         VStack(alignment: .leading, spacing: 8) {
             header
@@ -64,11 +68,11 @@ struct UsageInsightsHeatmapView: View {
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(unit(days.total))
+                Text(UsageFormat.value(days.total(in: unit), in: unit))
                     .font(theme.displayFont(size: 13))
                     .foregroundStyle(theme.textPrimary)
                 if days.cacheSavings > 0 {
-                    Text("Saved \(days.formattedCacheSavings) by caching")
+                    Text("Saved \(UsageFormat.money(days.cacheSavings)) by caching")
                         .font(theme.font(size: 8, weight: .medium))
                         .foregroundStyle(theme.textTertiary)
                 }
@@ -111,9 +115,9 @@ struct UsageInsightsHeatmapView: View {
     private func cellView(_ day: DayValue?, cell: CGFloat) -> some View {
         if let day {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(shade(day.level))
+                .fill(shade(UsageHeatmap.level(of: day)))
                 .frame(width: cell, height: cell)
-                .help("\(Self.dayFormat.string(from: day.date)) · \(unit(day.value))")
+                .help("\(Self.dayFormat.string(from: day.date)) · \(UsageFormat.value(day.value, in: unit))")
         } else {
             Color.clear.frame(width: cell, height: cell)
         }
@@ -125,7 +129,7 @@ struct UsageInsightsHeatmapView: View {
             Text("less")
                 .font(theme.font(size: 8, weight: .medium))
                 .foregroundStyle(theme.textTertiary)
-            ForEach(0...4, id: \.self) { level in
+            ForEach(UsageHeatmap.levels, id: \.self) { level in
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(shade(level))
                     .frame(width: 6, height: 6)
@@ -142,8 +146,8 @@ struct UsageInsightsHeatmapView: View {
         popoverTextSize.popoverWidth - horizontalInsets
     }
 
-    /// A day's shade — how full it is, from `DayValue.level`; the palette is
-    /// the page's.
+    /// A band's shade — from `UsageHeatmap.level(of:)`; the palette is the
+    /// page's.
     private func shade(_ level: Int) -> Color {
         switch level {
         case 0: theme.progressTrack
@@ -152,11 +156,6 @@ struct UsageInsightsHeatmapView: View {
         case 3: Color.green.opacity(0.7)
         default: Color.green
         }
-    }
-
-    /// The value in the unit the range is read in — money, or tokens.
-    private func unit(_ value: Double) -> String {
-        days.unit == .cost ? UsageFormat.money(Decimal(value)) : UsageFormat.count(Int(value))
     }
 
     private static let monthFormat: DateFormatter = {

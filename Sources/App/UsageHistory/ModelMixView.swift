@@ -3,7 +3,7 @@ import Domain
 
 /// *MODEL MIX — LAST YEAR* — which models a login actually leans on over a
 /// range: one bar split by model, and a row each, largest first. Everything it
-/// says, `Days.byModel` and `Days.share(of:)` answer.
+/// says, `ModelMix` answers, read in the range's opening unit.
 struct ModelMixView: View {
     let days: Days
     /// The card's heading, in the page's words.
@@ -11,7 +11,9 @@ struct ModelMixView: View {
 
     @Environment(\.appTheme) private var theme
 
-    private var mix: [ModelUsageLine] { days.byModel }
+    /// The unit the card reads the range in: the one it opens on.
+    private var unit: Days.Unit { days.defaultUnit }
+    private var mix: ModelMix { ModelMix(of: days, in: unit) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -46,10 +48,10 @@ struct ModelMixView: View {
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(unit(days.total))
+                Text(UsageFormat.value(days.total(in: unit), in: unit))
                     .font(theme.displayFont(size: 13))
                     .foregroundStyle(theme.textPrimary)
-                Text(days.unit == .cost ? "spent" : "tokens")
+                Text(unit.caption)
                     .font(theme.font(size: 8, weight: .medium))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -62,10 +64,10 @@ struct ModelMixView: View {
     private var bar: some View {
         GeometryReader { proxy in
             HStack(spacing: 0) {
-                ForEach(mix, id: \.model) { line in
+                ForEach(mix.parts, id: \.line.model) { part in
                     Rectangle()
-                        .fill(ModelColors.color(of: line.model, in: days))
-                        .frame(width: proxy.size.width * days.share(of: line))
+                        .fill(ModelColors.color(of: part.line.model, in: days))
+                        .frame(width: proxy.size.width * part.share)
                 }
             }
         }
@@ -76,30 +78,25 @@ struct ModelMixView: View {
 
     private var rows: some View {
         VStack(spacing: 4) {
-            ForEach(mix, id: \.model) { line in
+            ForEach(mix.parts, id: \.line.model) { part in
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(ModelColors.color(of: line.model, in: days))
+                        .fill(ModelColors.color(of: part.line.model, in: days))
                         .frame(width: 6, height: 6)
-                    Text(ModelUsageLine.displayName(line.model))
+                    Text(part.line.displayName)
                         .font(theme.font(size: 9, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                     Spacer(minLength: 4)
-                    Text(unit(days.value(of: line)))
+                    Text(UsageFormat.value(part.value, in: unit))
                         .font(theme.font(size: 9, weight: .semibold))
                         .foregroundStyle(theme.textPrimary)
-                    Text(UsageFormat.share(days.share(of: line)))
+                    Text(UsageFormat.share(part.share))
                         .font(theme.font(size: 9, weight: .medium))
                         .foregroundStyle(theme.textTertiary)
                         .frame(width: 28, alignment: .trailing)
                 }
             }
         }
-    }
-
-    /// The value in the unit the range is read in — money, or tokens.
-    private func unit(_ value: Double) -> String {
-        days.unit == .cost ? UsageFormat.money(Decimal(value)) : UsageFormat.count(Int(value))
     }
 }

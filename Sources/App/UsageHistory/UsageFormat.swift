@@ -1,18 +1,22 @@
 import Foundation
+import Domain
 
-/// The one spelling of a usage number in the popover — money, tokens, a
+/// The one spelling of a usage number in the popover — a value in a unit, a
 /// share — so the chart, the heatmap and the mix never print the same figure
-/// two ways.
+/// two ways. Money reads through the kernel's `MoneyFormat`.
 enum UsageFormat {
+    /// A value in `unit`: money for cost ("$14.26", "$14" when `whole`), a
+    /// count for tokens and cache ("19.5M").
+    static func value(_ value: Double, in unit: Days.Unit, whole: Bool = false) -> String {
+        switch unit {
+        case .cost: money(Decimal(value), whole: whole)
+        case .tokens, .cache: count(Int(value))
+        }
+    }
+
     /// "$14.26", or "$1,234" when `whole`.
     static func money(_ amount: Decimal, whole: Bool = false) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.maximumFractionDigits = whole ? 0 : 2
-        formatter.minimumFractionDigits = whole ? 0 : 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
+        MoneyFormat.string(amount, whole: whole)
     }
 
     /// "19.5M", "1.2K", "500".
