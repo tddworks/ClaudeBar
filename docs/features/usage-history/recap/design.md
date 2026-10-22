@@ -1,204 +1,177 @@
 # Weekly recap — design
 
 > Applies [the design](../../../architecture/ARCHITECTURE.md) to Usage History:
-> a range of days read back as a week's story. Users: [README.md](README.md).
-> The days themselves — where they come from, how they are summed and kept —
-> are [daily-usage/design.md](../daily-usage/design.md); comparing days with
-> everyone else's is [leaderboard/design.md](../../leaderboard/design.md).
-> The laws this applies are [CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them);
-> this says how the read runs.
+> the words and laws are the model's ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
+> this says how it runs. Users: [README.md](README.md). The days it reads:
+> [daily-usage](../daily-usage/design.md). The values it reuses — `ModelMix`,
+> `DayActivity`: [insights](../insights/design.md).
+
+> **Status: BUILT.** Mockup: [design-concept/recap](../../../../design-concept/recap/index.html).
 
 ## 1 · What a person asks, and what is true
 
-Once a week a person stops and asks: **what did all of this add up to?**
-ClaudeBar already answers *how much did I use, day by day?* — *TODAY'S USAGE*
-(today against yesterday) and the *Daily usage — last 30 days* chart — and it
-answers *how do my days compare with everyone else's?* — the Leaderboard. It
-has no answer for the week itself: what the seven days cost, which tools the
-week was spent on, which model did the most, which day was the heaviest, what
-prompt caching saved, and whether it was more or less than the week before.
+Once a week a person stops and asks: **what did all of it add up to?** Not one
+login's day — *TODAY'S USAGE* and the chart answer that — but the week across
+every provider: what it came to, which tools it was spent on, which model did
+the most, which day was the heaviest, what caching saved, and whether it was
+more or less than the week before.
 
-A recap is **a read of a range, told as a few highlights**. It is not a new
-source of truth: the days are already there, each login's own
-`account.usageHistory` (CANONICAL §5, `UsageHistory`). What the recap adds is
-the *week* as the range, and the one read that adds the logins up.
+A recap is **a read of a range, across providers**. It adds no source, no store
+and no fetch: each login's days are `account.usageHistory.days(in:)`, and the
+questions it asks of them already have owners — the unit is `Days`', the top
+model `ModelMix`'s, the busiest day `DayActivity`'s. What the recap adds is
+the **week** as a range and the **one law that reads several providers in one
+unit**.
 
+```swift
+let week = DateRange.week(containing: now, calendar: calendar)   // the calendar's week
+let this   = [providerId: account.usageHistory.days(in: week)]              // per provider
+let before = [providerId: account.usageHistory.days(in: week.before(calendar: calendar))]
+
+let recap = Recap(this: this, before: before)
+recap.unit          // cost only if every provider that used anything offers cost
+recap.total         // Σ days.total(in: unit)
+recap.change        // against before; nil when nothing was used before
+recap.providers     // one part per provider: value, share — largest first
+recap.topModel      // ModelMix(of: merged, in: unit).top
+recap.biggestDay    // DayActivity(of: merged, in: unit).busiest
 ```
-account.usageHistory?.days(in: .last(2))    → TODAY'S USAGE
-account.usageHistory?.days(in: .last(30))   → the chart, kept as lastThirtyDays
-                                                └─ this week's days ┐
-                                                └─ last week's days ┘ → the recap
-```
-
-The recap reads the days a login has **already read** — the thirty days it
-keeps as `lastThirtyDays`, the same days the chart draws — and picks each week
-out of them. It asks the logs nothing of its own, so it is drawn with the
-daily usage cards, and refreshes when they do.
 
 ## 2 · The words
 
 | Word | Means | Not |
 |---|---|---|
-| **recap** | a read of one range of days, told as its highlights: the total, the split by provider, the top model, the biggest day, the cache savings, and the same range before it | a report that is kept, a new source of days, a quota |
-| **range** | the period the recap covers — *this week* or *last week*; a `DateRange` in the person's calendar | the 30 days the chart reads; a board's `today`/`7d`/`30d` period |
-| **span** | one provider's days inside the range, the unit the recap adds up | a login — two logins of one provider are one span; a `DailyTokens` row |
-| **highlight** | one line of the story: the total, a provider's share, the top model, the biggest day, the savings | a chart, a list of days |
-| **the same range before it** | the range one period earlier (last week, for this week), read for the comparison only | a stored history; a second recap |
+| a **recap** | one range across every provider, against the range before it: the total, the change, each provider's part, the top model, the biggest day, what caching saved, the time worked and the sessions | a kept report; a new source of days; a quota |
+| a **week** | the calendar's week holding a day, from the calendar's own first weekday, seven days (`DateRange.week`) | a fixed Monday; the last seven days |
+| **the week before** | the same run of days one run earlier (`DateRange.before`) | a stored history; a second recap |
+| the **unit** | what the whole recap is read in: cost or tokens, the one every provider offers | a unit per provider |
+| a **part** | one provider's total in the unit, and its share of the week | a login: two logins of one provider are one part |
+| the **change** | the week against the week before, as a fraction | a change against a range with nothing in it |
+| **tokens** | what `Days` and the chart count: input and output, never the cache | `totalTokensWithCache` |
 
-*Recap* is chosen over *summary* or *report*: a report is read on demand and
-kept; a recap is looked back at, once, and is a read. Do not rename it back.
-
-## 3 · The model: `Recap`, a read of a range
-
-A `Recap` is the answer to *what did this range add up to?*, and nothing else.
-It is built from **spans** — each provider's days in the range — plus the same
-spans one period earlier. Every number it shows is derived from the days; none
-is stored anywhere.
+## 3 · The model
 
 ```
-Recap                                    one range, added up
- ├─ totals : Totals                      THE RANGE'S OWN: cost · tokens · working time · sessions
- ├─ previous : Totals?                   THE SAME RANGE BEFORE IT, for the comparison; nil = unknown
- ├─ providers : [ProviderShare]          THE SPLIT, LARGEST FIRST: id · cost · tokens — "says which providers it spans"
- ├─ topModel : TopModel?                 THE MODEL THAT SPENT THE MOST, when a log named one
- ├─ biggestDay : BiggestDay?             THE DAY THAT ADDED UP TO THE MOST, when any day did
- ├─ cacheSavings : Decimal               WHAT PROMPT CACHING SAVED, summed over the range
- └─ knowsCost : Bool                     WHETHER COST MEANS ANYTHING — cost is the unit when it does, tokens when not
+DateRange.week(containing:calendar:)       the calendar's week                    Quotas
+DateRange.before(calendar:)                the same run one run earlier           Quotas
 
-Recap.Totals        cost : Decimal · tokens : Int · workingTime : TimeInterval · sessions : Int
-Recap.ProviderShare provider : String (an id, a reference) · cost · tokens
-Recap.TopModel      model : String · cost · tokens
-Recap.BiggestDay    date : Date · cost · tokens
-Recap.Span          provider : String · days : [DailyUsageStat]
+per provider id:  usageHistory.days(in: week), usageHistory.days(in: week.before)
+                  (two logins of one provider: Days.merged)
+
+Recap(this: [String: Days], before: [String: Days])                               Quotas
+ ├ unit        cost when every range that used anything offers cost, else tokens   ← one owner
+ ├ total       Σ days.total(in: unit)
+ ├ change      (total − before) / before; nil when before is 0
+ ├ providers   [Part]  provider · value · share — largest first, ties by id; a provider that used nothing is left out
+ ├ topModel    ModelMix(of: merged, in: unit).top                                  (ModelMix)
+ ├ biggestDay  DayActivity(of: merged, in: unit).busiest                           (DayActivity)
+ ├ cacheSavings · workingTime · sessions      plain sums of merged
+ ├ tokens      the week in tokens beside a total in another unit; nil when the unit is tokens
+ └ isEmpty     no provider used anything
+
+Days.merged([Days])         several ranges as one: each date once, its days added (DailyUsageStat +)
+DailyUsageStat +            two days of one date as one: every count, cost, time, savings; one line per model (ModelUsageLine +)
 ```
 
-The unit is the one `Days` already chooses: **cost when a login is priced,
-tokens when it is not** (`Days.knowsCost`). A recap knows cost when any span
-knows cost, so a Mac with one priced tool and one unpriced one still leads
-with dollars, and the cost is what the priced tools spent — an estimate, as
-every cost in the feature is.
-
-## 4 · The laws, each on the node that owns it
-
-| Law, in the person's terms | Owner |
-|---|---|
-| a recap may sum across logins for the person's own total, and **says which providers it spans**; it never puts two logins' days into one login's chart — the per-login `UsageHistory.days(in:)` law is unchanged | `Recap` (its `providers`) |
-| a recap is a **read of a range, never stored** — closing the popover loses it; the days are the record | `Recap` |
-| a recap with nothing in its range is **said, never shown as zeros**, and the range choice stays reachable while the other week holds anything | `Recap` (`isEmpty`) · the card |
-| a day with nothing is an empty day, not a missing one: every date of the range is asked of every login | `UsageHistory.days(in:)` (unchanged) |
-| **repo names leave the Mac only when the person says so** — the recap is read and drawn on this Mac, and nothing it holds is sent anywhere | `Recap` · the share view (deferred, §8) |
-| cost is the unit when a login is priced, tokens when it is not | `Recap.knowsCost`, from `Days.knowsCost` |
-
-The first law is the one this feature exists to add. It is deliberately narrow:
-**summing across logins is allowed here, for the person's total, and only
-here.** A login's own chart, cards and days stay that login's — the recap is
-the one place the person's whole week is one number, and it names the
-providers it covers so the sum is never a mystery.
-
-## 5 · Where it lives
-
-No new module, no new capability, no change to `Provider` or `Monitor`. The
-recap is a value in the kernel and a read the App makes.
-
-| Piece | Job | From |
+| Type | Answers | Where |
 |---|---|---|
-| `Recap` (`Quotas/Sources/Recap.swift`) | the value: adds the spans up, names the providers, finds the top model and the biggest day, sums the savings, answers the comparison and the formatted strings | — (new) |
-| `RecapBuilder` (`App/UsageHistory/RecapBuilder.swift`) | **pure**: picks each range out of each login's already-read days and builds the `Recap`; it spans the logins the Monitor holds, and decides nothing about where they came from | — (new) |
-| `RecapCardView` (`App/UsageHistory/RecapCardView.swift`) | the popover card: a range choice (*This week* / *Last week*), the highlights, and both weeks, so the choice stays reachable; it renders what `Recap` says and never counts | — (new) |
-| `RecapRange` (`App/UsageHistory/`) | the page's own choice of range: *this week* / *last week*, the `DateRange` each names in the person's calendar, and what each is compared with | — (new) |
-| the All page (`MenuContentView`) | hosts the card, under the provider overview — the one page that is already about every provider at once | `OverviewPageView` |
-| `DateRange` (`Quotas`) | extended: `before(calendar:)` names the same run of days one period earlier, so *last week* and the comparison are one arithmetic; the range itself is still the caller's cut | — |
+| `DateRange.week` | the calendar's week holding a day | `Modules/Quotas/Sources/DateRange.swift` |
+| `Recap` | the week across providers, in one unit, against the week before | `Modules/Quotas/Sources/Recap.swift` |
+| `Days.merged`, `isEmpty`, `workingTime`, `sessions` | several ranges as one; whether it holds anything; plain sums | `Modules/Quotas/Sources/Days.swift` |
+| `DailyUsageStat` `+` | two days of one date as one | `Modules/Quotas/Sources/DailyUsageStat.swift` |
 
-`Recap` imports nothing but `Foundation`, like `Days`. `RecapBuilder` is in the
-App because it is the one read that **spans logins**, and a login is the
-Providers context's — the kernel never learns the word. The App takes each
-login's days as `UsageHistory` already read them — `lastThirtyDays`, the
-thirty days the chart draws — and hands them to the builder.
+**One unit for the whole recap.** A sum across providers is only honest in a
+unit every one of them can say: a provider that prices nothing would count as
+$0 in dollars, and the total, the split and the change would quietly drop it.
+So the recap reads in cost only when **every provider that used anything** —
+this week or the week before — offers cost (`Days.units`), and in tokens
+otherwise. A priced provider that sat idle has nothing to say and takes no
+vote. The week and the week before are read in the same unit, so the change
+compares like with like.
+
+**The merged days answer the cross-provider questions.** The top model and the
+biggest day are about the week, not a provider, so the recap merges every
+provider's days by date and asks `ModelMix` and `DayActivity` — never a second
+count. A day owns its sum (`DailyUsageStat +`), as a line does.
+
+**The words are the App's.** The kernel holds numbers and a unit; the card
+writes them: `UsageFormat.value(_:in:)`, `change`, `duration`, a share, and the
+biggest day in the person's locale. The chip names and *vs last week* are
+`RecapRange`'s.
+
+## 4 · The laws, each with one owner
+
+| Law | Owner |
+|---|---|
+| a week is the calendar's week holding a day, from its own first weekday; the range before is the same length, one run earlier | `DateRange` (`week`, `before`) |
+| a recap across providers reads in the unit every range offers: cost only when every provider that used anything, this week or the week before, offers cost; tokens otherwise | `Recap.unit` |
+| the change is the week against the week before, in the same unit; no change when nothing was used before | `Recap.change` |
+| a recap sums across logins for the person's total and names the providers it spans; two logins of one provider are one part. A login's own chart stays its own | `Recap.providers` |
+| the top model is the mix's, the unnamed line never | `ModelMix` |
+| the biggest day is the busiest of the merged days | `DayActivity` |
+| two days of one date add up to one: every count, the cost, the time, the savings, one line per model | `DailyUsageStat` (`+`) |
+| a recap is a read, never stored; a week with nothing is said, never shown as zeros | `Recap.isEmpty` · the card |
+| a value is written once per unit | `UsageFormat` (App) |
+
+## 5 · The pieces
+
+| Piece | Job | Where |
+|---|---|---|
+| `Recap`, `DateRange.week`, `Days.merged`, `DailyUsageStat +` | the values | `Modules/Quotas/Sources/` |
+| `RecapBuilder` | the composition: asks each login of the lineup for `usageHistory.days(in:)` for both weeks and the week before each, by provider, and builds a `Recap` per week. It cuts no days and picks no unit | `Sources/App/UsageHistory/` |
+| `RecapRange` | *This week* / *Last week*: the chip's name, the week it names (`DateRange.week`, or the week before), what it is compared with, its empty note | `Sources/App/UsageHistory/` |
+| `RecapCardView` | renders a recap and tells: the range chips, the total in `recap.unit`, the change and what it is against, each provider's part, the highlights | `Sources/App/UsageHistory/` |
+| the All page (`MenuContentView`) | reads both weeks when it opens, and again when the week turns, the setting changes or a login's days are read again | `Sources/App/Views/` |
+| `UsageFormat` | a value in a unit, a share, a change, a duration | `Sources/App/UsageHistory/` |
 
 ```
- MenuContentView (All page)
-   └─ RecapCardView(monitor: monitor, calendar:)
-        │  each login: account.usageHistory?.lastThirtyDays  ← already read, with the page
-        │  each week: RecapRange → DateRange (this week, last week)
-        ▼
-     RecapBuilder.build(logins, in: range, calendar:)   ← pure
-        ▼
-     Recap(spans:previous:knowsCost:)                   ← adds up, names, finds
-        ▼
-     the card renders totals · split · top model · biggest day · savings · change
+ All page opens  ─ .task(id: week · Daily Usage Cards · each login's lastThirtyDays)
+   └─ RecapBuilder.recaps(of: lineup's usage histories, at: now)
+        for This week, Last week:
+          this   = each provider's days(in: week)           ← UsageHistory.days(in:)
+          before = each provider's days(in: week.before)
+          Recap(this:, before:)
+   └─ RecapCardView(recaps:, name: provider's name)
+        the chosen week's recap, its RecapRange's words; an empty week says so, the chips stay
 ```
 
-The card builds **both weeks** it offers, not only the chosen one, so the
-range choice is always there to switch with; the chosen week's highlights are
-the ones drawn, and an empty one says so.
+Both weeks are read together, so the chips are there whichever week holds
+usage, and switching reads nothing. The change's label comes from the same
+`RecapRange` the recap was read for, so it always names the week before the
+one on screen. The days come from the ledger for closed days and from the logs
+only for the open ones (daily-usage), so reading three weeks costs little.
 
-The card is shown only while **Daily Usage Cards** is on (Settings → General):
-it draws the same days as the cards, read on the same cadence — when the
-popover opens, never in the background (CANONICAL §5, `UsageHistory`).
+The card is shown while **Daily Usage Cards** is on, and needs the All page,
+which is offered from two providers.
 
-## 6 · The flows
-
-```
- A person opens the popover on All
-   └─ the page reads every login's usage history (CANONICAL §5, `UsageHistory.read()`)
-        └─ the thirty days each login keeps are the recap's days (daily-usage §3)
-   └─ the card picks this week and last week out of them, and adds the logins up
-   └─ the card draws the highlights; a week that holds nothing says so, and the
-      choice stays, because the other week is drawn too
-
- A person picks Last week
-   └─ the card draws last week, compared with the week before it — no read at
-      all: the days are already here
-```
-
-## 7 · Is it easy to change? The checks
+## 6 · Is it easy to change?
 
 | A person or a contributor wants… | They change |
 |---|---|
-| a *month* recap, a *today* recap | `RecapRange`: another case and the `DateRange` it names |
-| a different highlight (cost per session, a per-login split) | `Recap` (the value) and the card's one row — the days are already there |
-| the recap for one provider only | the card: take that provider's logins instead of `monitor.lineup` |
-| another tool to appear in the recap | its definition's `usageHistory` — the recap reads whatever the days hold |
-| the week to start on another day | the person's calendar (`Calendar.firstWeekday`) — no code |
+| a month recap | `RecapRange`: a case and the range it names (a `DateRange` rule beside `week`) |
+| another highlight (a median day, cost per session) | a value built from `Days`, read in `recap.unit` — never a count in the card |
+| another tool in the recap | its definition's `usageHistory`; the recap reads whatever days a login has |
+| the week to start on Sunday | the person's calendar — no code |
+| provider colours from the provider's look | the card: its palette; nothing in the kernel |
 
-## 8 · Considered and rejected
+## 7 · Considered and rejected
 
 | Considered | Rejected because |
 |---|---|
-| a new module for the recap | it has no SDK, no second consumer and no boundary to enforce; it is a value in the kernel and a read in the App, as *TODAY'S USAGE* is |
-| a `Recap` that keeps its own copy of the days, or a stored weekly report | the days are already the record; a kept recap would be a second source of truth to keep in step with the ledger |
-| summing every login's days into one chart on the provider page | the per-login law: a chart is one login's. The recap is a *read*, not a chart, and names the providers it spans |
-| a recap for every provider, on its own page | the person's question is about *all of it*; a provider's week is its own *TODAY'S USAGE* and chart |
-| a range choice of *today / 7 days / 30 days* | the Leaderboard's periods; the recap's question is the week, and the chart already covers 30 days |
-| a `RecapViewModel` that reads the logins | no ViewModel layer: the card reads the domain directly, and the arithmetic is `Recap`'s |
-| a card that asks the logs for its own week | the days are already read with the page, and kept as the login's `lastThirtyDays`; a second read would read the same logs twice and would not follow the cards when the page refreshes |
-| a card that draws only the chosen week | the choice would vanish with an empty week, and *Last week* would be unreachable whenever *This week* held nothing |
+| cost whenever any provider prices its days | an unpriced provider counts as $0: the total mixes units and the split drops it |
+| a cost-and-tokens pair per highlight (totals, share, top model, biggest day), each with its own value in the unit | one rule written four times; the unit is `Days`' and the reads are `ModelMix`'s and `DayActivity`'s |
+| tokens with the cache in them | the chart counts input and output; one person would see two totals for one week |
+| formatting in the kernel | words, dates and locales are the App's; the kernel holds numbers |
+| the card cutting each week out of `lastThirtyDays` | cutting a range is `UsageHistory.days(in:)`'s job |
+| a stored weekly report | the days are the record; a kept recap is a second truth |
+| a card that reads only the chosen week | the chips would vanish on an empty week, and the change label could name a week the recap wasn't read for |
 
-## 9 · Deferred, and open
+## 8 · Deferred, and open
 
-**Deferred from this slice** (the design keeps them; the code does not yet):
-
-- **The shareable image.** A `RankCard`-style image of the week — the total,
-  the split, the top model — drawn on this Mac and saved only when the person
-  asks. It is the one surface where repo names could leave the Mac, so it goes
-  through the same *"exactly what gets shared"* step the Leaderboard's
-  *Share my rank* does. Law: **repo names leave the Mac only when the person
-  says so** (`Recap` · the share view).
-- **The Monday notification.** A destination (`RecapAnnouncement`), beside
-  Notify! and the quota alerts, that says the week is ready once, on the
-  person's first look after the week turns. It follows the alerting design:
-  a destination, not a provider, and never a Monitor edit.
-
-**Open:**
-
-- **Where the recap lives on a one-provider Mac.** The All page needs two
-  providers, so a person with one provider never sees the card. Should the
-  recap also sit under *TODAY'S USAGE* on a provider page, or should the All
-  page be offered for one provider too?
-- **This week is partial.** *This week* runs from the week's first day through
-  today; the days still to come are empty, as every range's future days are.
-  Whether the card should say *so far* is a wording question, not a model one.
-- **Which providers the sum covers.** The recap spans the logins the popover
-  watches (`monitor.lineup`). Whether it should follow the *Leaderboard*
-  membership's sharing choice — which is a different, explicit choice — is
-  open; today it is simply everything on this Mac that has days.
+- **The shareable image** and **the Monday notification** are not built. The
+  image is the one place repo or model names could leave the Mac, so it goes
+  through the Leaderboard's *exactly what gets shared* step; the notification is
+  a destination beside Notify!, never a Monitor edit.
+- **A one-provider Mac** has no All page, so no recap. Whether it belongs under
+  *TODAY'S USAGE* there is open.
+- **This week is partial.** Whether the card says *so far* is a wording question.

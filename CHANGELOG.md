@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **The popover shows the shape of a login's year**: below the 30-day chart, *Usage — last year* shades a cell a day by how full it was, and *Model Mix — last year* shows which models you lean on, largest first. ([#598](https://github.com/tddworks/ClaudeBar/pull/598)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/insights/README.md)
-- **A weekly recap on the All page**: it adds the week up across every provider — cost, tokens, working time, the split by provider, the top model, the biggest day and what caching saved — with a *This week* / *Last week* choice and last week to compare. ([#597](https://github.com/tddworks/ClaudeBar/pull/597)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md)
+- **A weekly recap on the All page**: the week across every provider — total, split by provider, top model, biggest day, cache saved — against the week before, in dollars or in tokens when a provider prices nothing. ([#597](https://github.com/tddworks/ClaudeBar/pull/597)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md)
 
 ---
 

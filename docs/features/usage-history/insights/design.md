@@ -84,7 +84,7 @@ day gains is added by the line itself, never dropped by a field-by-field copy.
 |---|---|
 | a range offers its units and names the one a view opens on; a day's, a line's and the range's value in a unit; what caching saved over the range | `Days` |
 | two lines of one model add up to one line: every count and the cost | `ModelUsageLine` (`+`) |
-| the mix is each model summed over the range, largest first, ties by name, the unnamed line included so the parts add up; each part carries its share | `ModelMix` |
+| the mix is each model summed over the range, largest first, ties by name, the unnamed line included so the parts add up; each part carries its share; the top model is the largest named one, never the unnamed line | `ModelMix` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0 | `DayActivity` |
 | a day's shade is one of five bands by its share; a day with nothing is band 0 — a cell, never a gap | `UsageHeatmap` (App) |
 | a value is written once per unit: money for cost, a count for tokens and cache | `UsageFormat` (App), money through `MoneyFormat` |
