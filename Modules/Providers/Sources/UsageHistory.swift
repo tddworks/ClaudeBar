@@ -92,8 +92,9 @@ public final class UsageHistory {
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,
-    /// then the last year, for the insights — the chart's thirty days its
-    /// tail, never read twice. Closed days come from the ledger; a range with
+    /// then the last thirty days, for the chart and whether cost is worth a
+    /// card. The year is its own read (`readYear`), so a long history never
+    /// holds these back. Closed days come from the ledger; a range with
     /// nothing in it is kept as none.
     public func read() async {
         for app in otherApps { await app.read() }
@@ -102,9 +103,14 @@ public final class UsageHistory {
         let report = DailyUsageReport(today: days.stats[1], previous: days.stats[0])
         self.report = report.today.isEmpty && report.previous.isEmpty ? nil : report
 
-        let year = await self.days(in: .last(365, endingOn: log.currentTime, calendar: log.calendar))
-        let month = year.last(30)
+        let month = await self.days(in: .last(30, endingOn: log.currentTime, calendar: log.calendar))
         lastThirtyDays = month.stats.allSatisfy(\.isEmpty) ? nil : month
+    }
+
+    /// Reads the last year, for the insights — after `read()`, since a first
+    /// read of a long history goes through every log of the year.
+    public func readYear() async {
+        let year = await days(in: .last(365, endingOn: log.currentTime, calendar: log.calendar))
         lastYear = year.stats.allSatisfy(\.isEmpty) ? nil : year
     }
 }

@@ -160,7 +160,7 @@ public final class QuotaMonitor {
     /// usage is read with it — the moment the page is on screen (CANONICAL §1).
     /// Who is fetched is decided here, so a page draws and calls.
     public func refresh(_ tab: ProductTab, kind: RefreshKind = .interactive) async {
-        await refresh(tab.unpaused, kind: kind) { await $0.usageHistory?.read() }
+        await refresh(tab.unpaused, kind: kind) { await Self.read($0.usageHistory) }
     }
 
     /// *TODAY'S USAGE* for every unpaused login — what the *All* page and the
@@ -168,9 +168,16 @@ public final class QuotaMonitor {
     public func readToday() async {
         await withTaskGroup(of: Void.self) { group in
             for login in lineup {
-                group.addTask { await login.usageHistory?.read() }
+                group.addTask { await Self.read(login.usageHistory) }
             }
         }
+    }
+
+    /// Today and the thirty days first, so their cards never wait on the year.
+    private static func read(_ history: UsageHistory?) async {
+        guard let history else { return }
+        await history.read()
+        await history.readYear()
     }
 
     /// The logins, refreshed together — one place, whether it is the whole

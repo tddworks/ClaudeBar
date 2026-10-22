@@ -102,9 +102,10 @@ day gains is added by the line itself, never dropped by a field-by-field copy.
 | `UsageFormat` | a value in a unit, a share — the one spelling of a number on the page | `Sources/App/UsageHistory/` |
 | `ModelColors` | one palette, so a model keeps its colour between the chart and the mix | `Sources/App/UsageHistory/` |
 
-`UsageHistory` reads the year once when the popover opens; the chart's thirty
-days are the year's tail (`Days.last(30)`), so the logs are never read twice for
-one open. Each card holds `let unit = days.defaultUnit` and passes it in.
+When the popover opens, `UsageHistory.read()` reads today and the thirty days
+first, so today's cards and the chart never wait on a long history; then
+`readYear()` reads the year. The thirty days come from the ledger, so the second
+read costs little. Each card holds `let unit = days.defaultUnit` and passes it in.
 
 ## 6 · Is it easy to change?
 

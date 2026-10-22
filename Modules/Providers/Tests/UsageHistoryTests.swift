@@ -115,6 +115,7 @@ struct UsageHistoryTests {
         let history = history()
 
         await history.read()
+        await history.readYear()
 
         let year = try #require(history.lastYear)
         #expect(year.stats.count == 365)
@@ -123,10 +124,22 @@ struct UsageHistoryTests {
     }
 
     @Test
+    func `should show the thirty days without waiting for the year`() async throws {
+        try log([("14", 0), ("99", 200)])
+        let history = history()
+
+        await history.read()
+
+        #expect(history.lastThirtyDays?.stats.last?.totalCost == 14)
+        #expect(history.lastYear == nil)
+    }
+
+    @Test
     func `should show no insights when nothing was used in a year`() async {
         let history = history()
 
         await history.read()
+        await history.readYear()
 
         #expect(history.lastYear == nil)
     }
