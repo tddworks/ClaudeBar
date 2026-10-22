@@ -351,7 +351,6 @@ private struct AutoPauseCard: View {
     let product: Provider
 
     @Environment(AutoPause.self) private var autoPause
-    @Environment(\.appTheme) private var theme
 
     var body: some View {
         SettingsCard {
