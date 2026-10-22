@@ -51,6 +51,8 @@ public struct Rule: Sendable, Equatable, Identifiable, Codable {
     public var scope: Scope
     public var throttle: Throttle
 
+    /// A rule with the person's condition and action: on, judging every login,
+    /// firing once per crossing — unless the person says otherwise.
     public init(
         id: String = UUID().uuidString,
         isOn: Bool = true,

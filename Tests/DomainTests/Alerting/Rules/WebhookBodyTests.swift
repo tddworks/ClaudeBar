@@ -7,6 +7,7 @@ import Testing
 @MainActor
 @Suite
 struct WebhookBodyTests {
+    /// A reading of *Claude · work*'s Weekly window.
     private func reading(
         percentLeft: Int? = 34,
         resetsAt: Date? = nil,
@@ -23,6 +24,7 @@ struct WebhookBodyTests {
         )
     }
 
+    /// A body for one rule and the default reading.
     private func body(_ condition: Rule.Condition, channel: WebhookChannel = .slack, reading: RuleReading? = nil) -> WebhookBody {
         WebhookBody(
             rule: Rule(id: "r1", condition: condition, action: .webhook(channel: channel)),
@@ -30,24 +32,28 @@ struct WebhookBodyTests {
         )
     }
 
+    /// The body's bytes as a JSON object, so a test reads fields, not bytes.
     private func decode(_ body: WebhookBody) throws -> [String: Any] {
         try #require(JSONSerialization.jsonObject(with: try body.encoded()) as? [String: Any])
     }
 
     // MARK: - Slack
 
+    /// A *below* Slack body is the one line the person reads.
     @Test func `should say a below in the person's words`() throws {
         let json = try decode(body(.below(percent: 35)))
 
         #expect(json["text"] as? String == "Claude · work is below 35% — 34% left")
     }
 
+    /// A *critical* Slack body names the window and what is left.
     @Test func `should say a critical in the person's words`() throws {
         let json = try decode(body(.critical))
 
         #expect(json["text"] as? String == "Claude · work is critical — Weekly at 34% left")
     }
 
+    /// A *depleted* Slack body names the window alone.
     @Test func `should say a depleted in the person's words`() throws {
         let json = try decode(body(.depleted, reading: reading(percentLeft: nil, status: .depleted)))
 
@@ -56,6 +62,7 @@ struct WebhookBodyTests {
 
     // MARK: - Generic JSON
 
+    /// A generic body states every field a consumer reads.
     @Test func `should state every field of a generic body`() throws {
         let when = Date(timeIntervalSince1970: 1_800_000_000)
         let json = try decode(body(.below(percent: 35), channel: .json, reading: reading(resetsAt: when)))
@@ -71,6 +78,7 @@ struct WebhookBodyTests {
         #expect(json["resetsAt"] as? String == ISO8601DateFormatter().string(from: when))
     }
 
+    /// A field with no value is a null, never absent.
     @Test func `should state a null rather than leave a field out`() throws {
         let json = try decode(body(.depleted, channel: .json, reading: reading(percentLeft: nil, resetsAt: nil, status: .depleted)))
 
@@ -81,6 +89,7 @@ struct WebhookBodyTests {
         #expect(json["status"] as? String == "depleted")
     }
 
+    /// A *critical* carries no percent, only its condition.
     @Test func `should carry no percent for a critical`() throws {
         let json = try decode(body(.critical, channel: .json, reading: reading(status: .critical)))
 
@@ -89,6 +98,7 @@ struct WebhookBodyTests {
         #expect(json["status"] as? String == "critical")
     }
 
+    /// The body and the channel name the channel the rule chose.
     @Test func `should name the channel it sends through`() {
         #expect(body(.critical).channel == .slack)
         #expect(body(.critical, channel: .json).channel == .json)

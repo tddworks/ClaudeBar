@@ -25,12 +25,14 @@ struct RuleEngineSeamTests {
         func send(_ body: WebhookBody, forRule ruleId: String) async throws { bodies.append(body) }
     }
 
+    /// Usage of one product at `left` percent.
     private func usage(_ left: Double) -> UsageSnapshot {
         UsageSnapshot(providerId: "claude",
                       quotas: [UsageQuota(left: .share(left), quotaType: .session, providerId: "claude")],
                       capturedAt: Date())
     }
 
+    /// A paused login is never refreshed, so no rule ever judges it.
     @Test func `should never review a login the person paused`() async {
         // Given — a product watched by a monitor, and a rule that would fire at 9% left
         let settings = MockRepositoryFactory.makeSettingsRepository()

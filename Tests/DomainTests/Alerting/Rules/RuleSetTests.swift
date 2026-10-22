@@ -19,10 +19,12 @@ struct RuleSetTests {
         }
     }
 
+    /// A *below 35%* rule posting to Slack.
     private func aRule() -> Rule {
         Rule(condition: .below(percent: 35), action: .webhook(channel: .slack))
     }
 
+    /// A rule goes to the rules file, its URL to the vault.
     @Test func `should keep a rule and its webhook URL where they belong`() {
         let kept = Kept()
         let rules = RuleSet(repository: kept)
@@ -38,11 +40,13 @@ struct RuleSetTests {
         #expect(rules.hasWebhookURL(for: rule))
     }
 
+    /// A set built over stored rules reads them back.
     @Test func `should read the saved rules at launch`() {
         let rule = aRule()
         #expect(RuleSet(repository: Kept([rule])).rules == [rule])
     }
 
+    /// An edit replaces one rule in place and leaves the rest.
     @Test func `should replace a rule in place and keep the others`() {
         let kept = Kept()
         let rules = RuleSet(repository: kept)
@@ -60,6 +64,7 @@ struct RuleSetTests {
         #expect(kept.urls[first.id] == "https://example.test/a2")
     }
 
+    /// An edit without a URL keeps the URL the rule already had.
     @Test func `should leave a rule's URL alone when an edit gives none`() {
         let kept = Kept()
         let rules = RuleSet(repository: kept)
@@ -73,6 +78,7 @@ struct RuleSetTests {
         #expect(rules.webhookURL(for: rule) == "https://example.test/a")
     }
 
+    /// Turning off keeps the rule, its place and its URL.
     @Test func `should turn a rule off and on without forgetting it`() {
         let kept = Kept()
         let rules = RuleSet(repository: kept)
@@ -86,6 +92,7 @@ struct RuleSetTests {
         #expect(rules.webhookURL(for: rule) == "https://example.test/a")
     }
 
+    /// Removing forgets the rule and clears its URL.
     @Test func `should forget a rule and its URL when the person removes it`() {
         let kept = Kept()
         let rules = RuleSet(repository: kept)
@@ -99,6 +106,7 @@ struct RuleSetTests {
         #expect(kept.cleared.contains(rule.id))
     }
 
+    /// A rule with no URL says so.
     @Test func `should not claim a URL a rule does not have`() {
         let rules = RuleSet(repository: Kept())
         let rule = aRule()

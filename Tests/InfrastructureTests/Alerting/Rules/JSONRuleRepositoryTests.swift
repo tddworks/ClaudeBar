@@ -37,6 +37,7 @@ struct JSONRuleRepositoryTests {
         func exists(forKey key: String) -> Bool { lock.withLock { values[key] != nil } }
     }
 
+    /// A repository over a throwaway rules file and the two stores given.
     private func repository(
         secure: any CredentialRepository,
         fallback: any CredentialRepository
@@ -49,6 +50,7 @@ struct JSONRuleRepositoryTests {
         )
     }
 
+    /// A URL the Keychain refuses falls back to the app store, which wins.
     @Test func `should keep the URL the person just gave when the Keychain refuses it`() {
         let secure = StaleSecure(holding: "https://old.test/hook")
         let fallback = RecordingFallback()
@@ -59,6 +61,7 @@ struct JSONRuleRepositoryTests {
         #expect(repository.webhookURL(forRule: "rule-1") == "https://new.test/hook")
     }
 
+    /// A removal the Keychain refuses is tombstoned in the fallback.
     @Test func `should forget a URL the Keychain refuses to forget when the person removes it`() {
         let secure = StaleSecure(holding: "https://old.test/hook")
         let repository = repository(secure: secure, fallback: RecordingFallback())

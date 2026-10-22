@@ -9,6 +9,7 @@ public enum WebhookChannel: String, Sendable, Equatable, Codable, CaseIterable {
     /// A generic JSON body, for a script or a service of the person's own.
     case json
 
+    /// The channel as the pane names it.
     public var displayName: String {
         switch self {
         case .slack: "Slack"
@@ -24,11 +25,13 @@ public struct WebhookBody: Sendable, Equatable {
     public let rule: Rule
     public let reading: RuleReading
 
+    /// A body pairing the rule with the reading that met it.
     public init(rule: Rule, reading: RuleReading) {
         self.rule = rule
         self.reading = reading
     }
 
+    /// The channel the rule chose.
     public var channel: WebhookChannel {
         switch rule.action {
         case .webhook(let channel): channel
@@ -47,6 +50,8 @@ public struct WebhookBody: Sendable, Equatable {
         }
     }
 
+    /// The bytes to POST for the rule's channel: Slack's one line, or the generic
+    /// JSON.
     public func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -68,6 +73,7 @@ public struct WebhookBody: Sendable, Equatable {
         }
     }
 
+    /// The percent a `below` carries; nil for `critical` and `depleted`.
     private var conditionPercent: Int? {
         switch rule.condition {
         case .below(let percent): percent
@@ -75,6 +81,7 @@ public struct WebhookBody: Sendable, Equatable {
         }
     }
 
+    /// The generic body's fields, read from the rule and the reading.
     private var jsonPayload: JSONPayload {
         JSONPayload(
             ruleId: rule.id,
@@ -113,6 +120,7 @@ private struct JSONPayload: Encodable {
         case ruleId, condition, percent, provider, login, window, percentLeft, resetsAt, status
     }
 
+    /// Writes every key, so no field is ever absent.
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(ruleId, forKey: .ruleId)

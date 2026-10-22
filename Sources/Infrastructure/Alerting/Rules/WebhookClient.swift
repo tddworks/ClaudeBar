@@ -16,6 +16,8 @@ public struct WebhookClient: WebhookSending, Sendable {
     private let networkClient: any NetworkClient
     private let timeout: TimeInterval
 
+    /// A sender over `repository`, posting through the same-origin client within
+    /// `timeout`.
     public init(
         repository: any RuleRepository,
         networkClient: any NetworkClient = SameOriginRedirectClient.shared,
@@ -26,6 +28,8 @@ public struct WebhookClient: WebhookSending, Sendable {
         self.timeout = timeout
     }
 
+    /// One POST to the rule's URL; throws `WebhookError` when the rule has no
+    /// usable URL, the transport fails, or the endpoint answers outside 2xx.
     public func send(_ body: WebhookBody, forRule ruleId: String) async throws {
         guard let string = repository.webhookURL(forRule: ruleId),
               let url = URL(string: string),
@@ -81,6 +85,7 @@ public enum WebhookError: Error, LocalizedError, Equatable {
     /// The endpoint answered with a status outside 2xx.
     case refused(Int)
 
+    /// Each failure's sentence for the person; none quotes the URL.
     public var errorDescription: String? {
         switch self {
         case .noURL:

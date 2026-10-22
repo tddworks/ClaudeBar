@@ -68,6 +68,8 @@ struct RulesPane: View {
 
     // MARK: - One saved rule
 
+    /// One saved rule: its condition and action, its switch, its URL, *Try it* and
+    /// *Remove*.
     private func ruleCard(_ rule: Rule) -> some View {
         SettingsCard {
             SettingsRow(
@@ -253,6 +255,7 @@ struct RulesPane: View {
 
     // MARK: - The words
 
+    /// The condition in the person's words.
     private func whenLine(_ condition: Rule.Condition) -> String {
         switch condition {
         case .below(let percent): "Below \(percent)%"
@@ -261,6 +264,8 @@ struct RulesPane: View {
         }
     }
 
+    /// The action in the person's words: the channel, the scope and the one
+    /// throttle.
     private func actionLine(_ rule: Rule) -> String {
         let channel: String
         switch rule.action {
@@ -277,10 +282,12 @@ struct RulesPane: View {
         return "\(channel) · \(scope) · once, until it climbs back"
     }
 
+    /// The scope choice's label: *Every login*, or the product's name.
     private func scopeLabel(_ id: String) -> String {
         id.isEmpty ? "Every login" : providerName(id)
     }
 
+    /// A product's name as the lineup prints it, or its id when it is not there.
     private func providerName(_ id: String) -> String {
         monitor.providers.all.first { $0.id == id }?.name ?? id
     }
@@ -290,6 +297,7 @@ struct RulesPane: View {
         [""] + monitor.providers.all.map(\.id)
     }
 
+    /// The colour an outcome is shown in.
     private func tone(of outcome: RuleOutcome) -> Color {
         switch outcome {
         case .sent: theme.statusHealthy
@@ -298,12 +306,15 @@ struct RulesPane: View {
         }
     }
 
+    /// Placeholder text in the tertiary colour.
     private func prompt(_ text: String) -> Text {
         Text(text).foregroundStyle(theme.textTertiary)
     }
 
     // MARK: - Actions
 
+    /// The URL field for one rule: a secret is never echoed back, so it starts
+    /// empty.
     private func urlBinding(_ rule: Rule) -> Binding<String> {
         Binding(
             get: { editingURL[rule.id] ?? "" },
@@ -311,6 +322,7 @@ struct RulesPane: View {
         )
     }
 
+    /// Keeps the typed URL on the rule and clears the field.
     private func saveURL(_ rule: Rule) {
         let url = (editingURL[rule.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         rules.update(rule, webhookURL: url)
@@ -318,12 +330,15 @@ struct RulesPane: View {
         outcomes[rule.id] = nil
     }
 
+    /// Forgets the rule and anything the pane held for it.
     private func remove(_ rule: Rule) {
         rules.remove(rule)
         editingURL[rule.id] = nil
         outcomes[rule.id] = nil
     }
 
+    /// Adds the draft as a rule, or refuses with a sentence when it does not spell
+    /// one.
     private func add() {
         guard let rule = draft.rule() else {
             refusal = draft.when == .below
@@ -355,6 +370,7 @@ private struct RuleDraft {
     enum When: String, CaseIterable, Hashable {
         case below, critical, depleted
 
+        /// The condition as the pane names it.
         var label: String {
             switch self {
             case .below: "Below"

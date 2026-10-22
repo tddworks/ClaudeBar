@@ -7,7 +7,9 @@ import Mockable
 /// secret and goes to the vault, never to that file (CANONICAL §5).
 @Mockable
 public protocol RuleRepository: Sendable {
+    /// The rules as saved, in the order they were added.
     func rules() -> [Rule]
+    /// Replaces the saved rules.
     func setRules(_ rules: [Rule])
 
     /// The webhook URL one rule holds, nil until it has one. A secret.
@@ -33,6 +35,7 @@ public enum RuleOutcome: Sendable, Equatable {
     case nothingToSend
     case failed(String)
 
+    /// What the person reads after *Try it*.
     public var message: String {
         switch self {
         case .sent: "Sent."

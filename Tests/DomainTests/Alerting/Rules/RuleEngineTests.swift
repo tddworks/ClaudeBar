@@ -62,26 +62,31 @@ struct RuleEngineTests {
         return set
     }
 
+    /// An engine over a rule set holding `list`, sending into `sent`.
     private func engine(_ list: [Rule]) -> RuleEngine {
         RuleEngine(set: set(list), sender: sent)
     }
 
+    /// Usage of one product with the given lefts, one session quota each.
     private func usage(_ lefts: Left...) -> UsageSnapshot {
         UsageSnapshot(providerId: "claude",
                       quotas: lefts.map { UsageQuota(left: $0, quotaType: .session, providerId: "claude") },
                       capturedAt: Date())
     }
 
+    /// A login named `name`, of product `provider`, with `usage`.
     private func login(_ id: String = "claude", provider: String = "claude", name: String = "Claude", usage: UsageSnapshot?) -> RuleLogin {
         RuleLogin(id: id, providerId: provider, name: name, usage: usage)
     }
 
+    /// A *below `percent`%* rule posting to Slack.
     private func below(_ percent: Int) -> Rule {
         Rule(condition: .below(percent: percent), action: .webhook(channel: .slack))
     }
 
     // MARK: - Once per crossing
 
+    /// Crossing the line sends once, carrying the reading that crossed.
     @Test func `should send once when a login falls below the rule's percent`() async {
         let engine = engine([below(35)])
 
@@ -92,6 +97,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.first?.reading.percentLeft == 34)
     }
 
+    /// A login that stays below is not told again.
     @Test func `should stay quiet while the login stays below`() async {
         let engine = engine([below(35)])
 
@@ -100,6 +106,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 1)
     }
 
+    /// Climbing back to the line and crossing again tells again.
     @Test func `should send again after the login climbs back to the percent`() async {
         let engine = engine([below(35)])
 
@@ -108,6 +115,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 2)
     }
 
+    /// A wobble inside the same whole percent is not a new crossing.
     @Test func `should not send again when the login climbs back less than a whole point`() async {
         let engine = engine([below(35)])
 
@@ -116,6 +124,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 1)
     }
 
+    /// Each login crosses on its own, even at the same share.
     @Test func `should keep each login's crossing its own`() async {
         let engine = engine([below(35)])
 
@@ -125,6 +134,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.map(\.reading.login) == ["Claude · me", "Claude · work"])
     }
 
+    /// Two refreshes interleaving at the await still tell each login once.
     @Test func `should tell each login once when two reviews overlap`() async {
         let reentrant = Reentrant()
         let engine = RuleEngine(set: set([below(35)]), sender: reentrant)
@@ -139,6 +149,7 @@ struct RuleEngineTests {
         #expect(reentrant.bodies.map(\.reading.login) == ["A", "B"])
     }
 
+    /// A rule added while a login is already below fires on the next review.
     @Test func `should send for a login already below when the rule is added`() async {
         let engine = engine([below(35)])
 
@@ -149,6 +160,7 @@ struct RuleEngineTests {
 
     // MARK: - What it judges
 
+    /// The rule judges the login's worst quota, not the first one.
     @Test func `should judge the login's worst quota`() async {
         let engine = engine([below(35)])
 
@@ -157,6 +169,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.first?.reading.percentLeft == 20)
     }
 
+    /// A balance with no ceiling has no share, so a percent rule never fires.
     @Test func `should never judge a balance without a ceiling by a percent`() async {
         let engine = engine([below(35)])
 
@@ -165,6 +178,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.isEmpty)
     }
 
+    /// A *depleted* rule reaches a balance with no ceiling by its status.
     @Test func `should judge a depleted condition on a balance without a ceiling`() async {
         let engine = engine([Rule(condition: .depleted, action: .webhook(channel: .json))])
 
@@ -173,6 +187,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 1)
     }
 
+    /// A *critical* rule reads the status under the person's policy.
     @Test func `should read a critical condition under the person's policy`() async {
         let engine = engine([Rule(condition: .critical, action: .webhook(channel: .slack))])
 
@@ -183,6 +198,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.first?.reading.status == .critical)
     }
 
+    /// A login reporting no usage is never judged.
     @Test func `should send nothing for a login with no usage`() async {
         let engine = engine([below(35)])
 
@@ -193,6 +209,7 @@ struct RuleEngineTests {
 
     // MARK: - Scope and the switch
 
+    /// A rule scoped to one product ignores the others.
     @Test func `should only judge a rule's own provider`() async {
         let rule = Rule(condition: .below(percent: 35), action: .webhook(channel: .slack), scope: .provider("codex"))
         let engine = engine([rule])
@@ -204,6 +221,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.first?.reading.providerId == "codex")
     }
 
+    /// A rule turned off sends nothing.
     @Test func `should do nothing for a rule that is off`() async {
         let rule = Rule(isOn: false, condition: .below(percent: 35), action: .webhook(channel: .slack))
         let engine = engine([rule])
@@ -215,6 +233,7 @@ struct RuleEngineTests {
 
     // MARK: - A rule that changes
 
+    /// A changed condition starts the rule fresh, so it fires again.
     @Test func `should forget a crossing when the rule's condition changes`() async {
         let kept = Kept()
         let set = RuleSet(repository: kept)
@@ -231,6 +250,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 2)
     }
 
+    /// A removed rule leaves no memory behind.
     @Test func `should forget the crossings of a rule the person removes`() async {
         let kept = Kept()
         let set = RuleSet(repository: kept)
@@ -247,6 +267,7 @@ struct RuleEngineTests {
 
     // MARK: - Try it
 
+    /// *Try it* sends whatever the condition says, on every press.
     @Test func `should try a rule whatever the condition says, again and again`() async {
         let engine = engine([below(35)])
 
@@ -257,6 +278,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.count == 2)
     }
 
+    /// *Try it* says nothing to send when the login reports no quota.
     @Test func `should report nothing to send when a tried login has no usage`() async {
         let engine = engine([below(35)])
 
@@ -266,6 +288,7 @@ struct RuleEngineTests {
         #expect(sent.bodies.isEmpty)
     }
 
+    /// A failed send still counts as the crossing, so it is not retried.
     @Test func `should report a failure and not try again while the login stays below`() async {
         let engine = engine([below(35)])
         sent.refusal = Refused()
@@ -276,6 +299,7 @@ struct RuleEngineTests {
         #expect(sent.attempts == 1)
     }
 
+    /// A failure carries the sender's own sentence, which never quotes the URL.
     @Test func `should report a failure with the sender's sentence`() async {
         let engine = engine([below(35)])
         sent.refusal = Refused()

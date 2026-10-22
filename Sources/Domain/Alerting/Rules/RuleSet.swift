@@ -16,6 +16,7 @@ public final class RuleSet {
 
     @ObservationIgnored private let repository: any RuleRepository
 
+    /// The person's rules, read from `repository` at launch.
     public init(repository: any RuleRepository) {
         self.repository = repository
         self.rules = repository.rules()
@@ -60,6 +61,7 @@ public final class RuleSet {
         !(webhookURL(for: rule) ?? "").isEmpty
     }
 
+    /// The one place the list is replaced, so memory and the file move together.
     private func keep(_ list: [Rule]) {
         rules = list
         repository.setRules(list)

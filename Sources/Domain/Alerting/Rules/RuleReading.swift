@@ -11,6 +11,8 @@ public struct RuleLogin: Sendable, Equatable {
     public let name: String
     public let usage: UsageSnapshot?
 
+    /// A login as Alerting reaches it: the ids a rule scopes and throttles by,
+    /// the lineup name and the usage the person sees.
     public init(id: String, providerId: String, name: String, usage: UsageSnapshot?) {
         self.id = id
         self.providerId = providerId
@@ -42,6 +44,7 @@ public struct RuleReading: Sendable, Equatable {
     /// The worst quota's status under the person's policy.
     public let status: QuotaStatus
 
+    /// A reading of one login's worst quota, as a plain value.
     public init(
         login: String,
         loginId: String,

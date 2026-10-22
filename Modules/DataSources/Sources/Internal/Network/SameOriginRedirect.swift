@@ -58,6 +58,7 @@ public struct SameOriginRedirectClient: NetworkClient {
         self.session = URLSession(configuration: configuration, delegate: SameOriginRedirectDelegate(), delegateQueue: nil)
     }
 
+    /// Sends the request, refusing any redirect that leaves the origin it named.
     public func request(_ request: URLRequest) async throws -> (Data, URLResponse) {
         try await session.data(for: request)
     }

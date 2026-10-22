@@ -21,6 +21,7 @@ public final class RuleEngine {
     /// switch changed forgets who was in, so a changed rule starts fresh.
     private var seen: [String: Rule] = [:]
 
+    /// An engine over the person's rules, sending through `sender`.
     public init(set: RuleSet, sender: any WebhookSending) {
         self.set = set
         self.sender = sender

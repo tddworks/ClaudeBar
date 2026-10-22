@@ -19,6 +19,8 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
     private let fallbackCredentials: any CredentialRepository
     private let lock = NSLock()
 
+    /// A repository over `fileURL` and the two credential stores: the vault, and
+    /// the app store that holds what the Keychain refuses.
     public init(
         fileURL: URL? = nil,
         secureCredentials: any CredentialRepository = KeychainCredentialRepository.shared,
@@ -37,18 +39,22 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
 
     // MARK: - RuleRepository
 
+    /// The rules in the file; empty when it is missing or unreadable.
     public func rules() -> [Rule] {
         lock.lock()
         defer { lock.unlock() }
         return readRules()
     }
 
+    /// Writes the rules to the file.
     public func setRules(_ rules: [Rule]) {
         lock.lock()
         defer { lock.unlock() }
         writeRules(rules)
     }
 
+    /// The rule's URL, or nil when it has none. The app store is read first, so a
+    /// URL the Keychain refused to update or delete never resurfaces.
     public func webhookURL(forRule ruleId: String) -> String? {
         let key = CredentialKey.ruleWebhookURL(ruleId)
         // The fallback first, not the vault: it holds the newest answer — the
@@ -63,6 +69,8 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
         return secureCredentials.get(forKey: key)
     }
 
+    /// Stores the URL in the vault, falling back to the app store when the Keychain
+    /// refuses; an empty or nil URL clears it from both.
     public func setWebhookURL(_ url: String?, forRule ruleId: String) {
         let key = CredentialKey.ruleWebhookURL(ruleId)
         // A pasted URL arrives with stray whitespace; an empty one is the person
@@ -104,6 +112,7 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
         var rules: [Rule]
     }
 
+    /// Decodes the rules file, empty on any failure.
     private func readRules() -> [Rule] {
         guard let data = try? Data(contentsOf: fileURL),
               let file = try? JSONDecoder().decode(RulesFile.self, from: data) else {
@@ -112,6 +121,7 @@ public final class JSONRuleRepository: RuleRepository, @unchecked Sendable {
         return file.rules
     }
 
+    /// Writes the rules pretty and sorted, creating the folder if needed.
     private func writeRules(_ rules: [Rule]) {
         try? FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(),

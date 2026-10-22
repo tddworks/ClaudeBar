@@ -88,6 +88,8 @@ struct ClaudeBarApp: App {
     @State private var sparkleUpdater = SparkleUpdater()
     #endif
 
+    /// Wires every domain, the monitor and each destination. A launch's startup
+    /// work lives here, so a test host starts nothing.
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
