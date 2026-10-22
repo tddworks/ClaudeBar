@@ -1,5 +1,5 @@
 ---
-description: Contributor design for the run-out forecast — the quota line that says when a window will run out against when it refills, why it is a pure kernel read, and the laws it must keep.
+description: Contributor design for the run-out forecast — the quota line that says whether a window lasts until it refills, the one spend rate it shares with Pace, and the laws it must keep.
 ---
 
 # Forecast — design
@@ -7,181 +7,185 @@ description: Contributor design for the run-out forecast — the quota line that
 > Applies [the design](../../../architecture/ARCHITECTURE.md) to Monitoring: the
 > words and laws belong to the model
 > ([CANONICAL §1, §4, §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
-> this says how it runs. Users: `README.md` (written with the build).
+> this says how it runs. Users: [README.md](README.md).
 
 ## 1 · What a person asks, and what is true
 
 Mia's question is not *how much is left* — the menu bar already answers that —
-but **"will it last until it resets?"**. Today the app answers it obliquely.
-`Pace` prints *On track · Running hot · Room to spare*, which judges the rate
-against a steady spend but never names the moment. A person about to start a
-40-minute run wants the moment, not the adjective.
+but **"will it last until it resets?"**. `Pace` judges the speed (*On track ·
+Running hot · Room to spare*) but never names the moment. A person about to
+start a 40-minute run wants the moment.
 
-What is true: a `Quota` has a `left` and, when the vendor set one, a `window`
-that refills at `resetsAt`. Between the window's start and now the quota has
-been spent at some average rate, and the `Usage` already carries everything
-that rate needs — `percentUsed` and how much of the window has elapsed
-(`percentTimeElapsed`). **A forecast is what those facts say together**: at the
-rate this window has been spent so far, when does it reach zero, and is that
-before or after it refills.
+What is true: a `Quota` has a `left` and, when the vendor states one, a
+`window` with a length and a reset. Between the window's start and now the
+quota has been spent at some average **rate** — the share used over the share
+of the window gone. That one rate answers every question about speed:
 
-Two numbers, one sentence:
+- **Pace** — how fast, in words.
+- **The pace tick** (`PaceLevel`) — how fast, in six grades.
+- **The pace-aware status** — whether to warn.
+- **The forecast** — whether it lasts until it resets, and when it runs out.
 
-- `runsOutIn: Duration` — when it reaches zero at the average rate.
-- `beforeReset: Duration?` — how long before the reset that is; `nil` when it
-  outlasts the reset.
+A forecast is the rate carried forward to zero:
 
-The arithmetic is one line. With a window of length `D`, `E` elapsed and `U`
-percent used, the time to zero is `left% × E / U`. A window spent at nothing
-(`U == 0`) never runs out, and reads *Lasts until it resets*.
+- `rate ≤ 1` → **lasts until it resets**.
+- `rate > 1` → **runs out** in `left × length ÷ (100 × rate)`, which is
+  `length × (used − gone) ÷ used` before the reset.
 
-## 2 · Where it lives: a pure kernel read, no new state
-
-The tempting design is to measure the burn from samples the Monitor takes
-across refreshes. It is also unnecessary: the quota's own window already spans
-the cycle, and `percentUsed ÷ percentTimeElapsed` **is** the average rate over
-exactly that cycle. A reset starts a new window, so the average is always over
-the current one — nothing to cut, nothing to keep, nothing to lose on restart.
-
-So the whole feature is a **derived read on the kernel value**:
-
-```swift
-quota.forecast            // Forecast? — nil without a window, or a balance with no ceiling
-```
-
-`Forecast` is a value in `Quotas`, beside `Pace`. It needs no capability (a
-provider declares nothing about it), no Monitoring observation, and no second
-meter — nothing is fetched. The view renders it; the alert (below) follows a
-refresh like every other destination.
-
-**Forecast is not Pace.** `Pace` compares used against *time elapsed* — a
-judgement, inside a window, with no unit. `Forecast` projects used forward to
-zero — a duration, about the future. They answer different questions, so they
-are different values, and one never stands in for the other.
-
-## 3 · The words the screens print
-
-*Runs out in 38m* · *3h before it resets* · *Lasts until it resets* ·
-*No forecast yet* · *at this pace*
-
-The card line sits under *Resets in 1h 12m*:
+## 2 · The one rate, and who reads it
 
 ```text
-Session   ·  62% left
-Resets in 1h 12m · Runs out in 38m — 34m before it resets
+Window            length · resetsAt            elapsed(at:) · untilReset(at:)  — it knows its cycle
+SpendRate         percentUsed ÷ percentTimeElapsed      the ONLY owner of how fast a quota is spent
+  │                 one used share: from percentLeft (a capped money quota by its money)
+  │                 one noise floor: 3% of the window gone; none once the window is over
+  ├ UsageQuota.rate        → SpendRate?     nil without a window length + reset, for a balance
+  │                                         with no ceiling, under the floor
+  ├ UsagePace(rate:)       Running hot ⇔ rate > 1 · On track ≤ 5 points under · Room to spare
+  ├ PaceLevel(rate:)       the tick's six grades
+  ├ QuotaStatus.from(…)    projects from the rate once 15% of the window has gone
+  └ Forecast(rate:window:at:)
+                           nil once used up, or without a window length/reset
+                           .lastsUntilReset ⇔ rate ≤ 1
+                           .runsOut(in:, beforeReset:)
+QuotaCardText.forecastLine(for:)   the words, and only the words
 ```
 
-## 4 · What this adds to the canonical model
+`Forecast` is a value in `Quotas`, beside `UsagePace`:
+
+```swift
+public enum Forecast {
+    case lastsUntilReset
+    case runsOut(in: Duration, beforeReset: Duration)
+}
+quota.forecast            // Forecast? — the quota's answer; nil means no line
+```
+
+It is a **read**: nothing is stored, nothing is fetched, no capability is
+declared. A reset starts a new window, so the rate always spans exactly the
+current cycle.
+
+**Two floors, two laws.** The rate's noise floor (3%) says when a rate exists
+at all: before it, Pace is `unknown`, the tick has no grade and there is no
+forecast. The status's 15% is a different law — **when to warn**: a warning is
+louder than a word, so the pace-aware status keeps its absolute thresholds until
+15% of the window has gone. It reads the same rate once it projects.
+
+## 3 · The edges
+
+| The quota | Rate | Pace | Forecast |
+|---|---|---|---|
+| 52% used, 50% of the window gone | 1.04 | *Running hot* | *Runs out in 2h 18m — 11m before it resets* (5h window) |
+| 50% used, 50% gone | 1 | *On track* | *Lasts until it resets* — it reaches zero as it refills |
+| 48% used, 50% gone | 0.96 | *On track* | *Lasts until it resets* |
+| nothing used | 0 | *Room to spare* | *Lasts until it resets* |
+| 1% used a minute into a week | none (under 3%) | `unknown` | none |
+| used up (0% or over) | — | *Running hot* | none — it has already run out |
+| a reset but no window length | none | `unknown` | none |
+| a balance with no ceiling | none | `unknown` | none — no share to project |
+| a capped money quota | from its money share | from its money share | from its money share |
+
+*On track* is the band that lasts: up to 5 points under the time gone. A quota
+even a point ahead of the window runs out before the reset, so it reads
+*Running hot* — the badge and the line never contradict each other.
+
+## 4 · The words the card prints
+
+The line is its own row, under the card's *Resets in…* row, with an hourglass,
+muted. Its tooltip is *at this pace*. It is printed only when `quota.forecast`
+is not `nil`; the card does not decide whether there is a forecast.
+
+| `Forecast` | The line |
+|---|---|
+| `.runsOut(in: 38m, beforeReset: 34m)` | *Runs out in 38m — 34m before it resets* |
+| `.lastsUntilReset` | *Lasts until it resets* |
+| `nil` | no line |
+
+Durations print as *42s*, *38m*, *3h*, *1h 12m*, *2d 5h*.
+
+When a grid hoists one shared countdown above its cards, each card still prints
+its own forecast line.
+
+## 5 · What this adds to the canonical model
 
 **Tree** (CANONICAL §1), under `Quota`:
 
 ```text
-│       ├── window: Window?                 WHEN IT REFILLS — length + resetsAt. "Resets in 2h 5m".
-│       │                                   A prepaid balance has none
-│       ├── forecast: Forecast?  DERIVED    "Runs out in 38m — 34m before it resets": at the average
-│       │                                   pace this window has been spent, when it reaches zero,
-│       │                                   against when it refills. nil without a window, and nil
-│       │                                   for a balance with no ceiling (no share to project)
-│       ├── status                          DERIVED — Left × StatusPolicy (× Window, when pace-aware)
-│       └── pace                            DERIVED — needs a Window; otherwise unknown
+│       ├── window: Window?                 WHEN IT REFILLS — length + resetsAt
+│       ├── rate: SpendRate?     DERIVED    how fast it is spent against its window
+│       ├── forecast: Forecast?  DERIVED    lasts until it resets, or runs out N before it does
+│       ├── status                          DERIVED — Left × StatusPolicy (× rate, when pace-aware)
+│       └── pace                            DERIVED — reads the rate; otherwise unknown
 ```
 
 **Reads** (CANONICAL §4):
 
 ```text
-quota.forecast                       → Forecast?   at the current window's average pace: when it
-                                                   runs out, and whether that beats the reset
+quota.rate                           → SpendRate?   used share ÷ window share gone
+quota.forecast                       → Forecast?    lasts until it resets, or when it runs out
 ```
 
 **Laws** (CANONICAL §5):
 
 | Law | Owner |
 |---|---|
-| a forecast is a READ — never stored on `Usage`, never a second meter; it is derived from the quota's own window and the usage the vendor already gave | `Quota.forecast` |
-| a forecast exists only inside a window: without a `Window`, or for a balance with no ceiling, it is `nil` — *No forecast yet* — never a number invented from nothing | `Forecast` |
-| **a forecast is the average pace of the CURRENT window** — a reset starts a new window, so the average never spans two cycles and nothing needs cutting | `Quota.forecast` · `Window` |
-| a quota that outlasts its reset reads *Lasts until it resets*, never a run-out: the forecast never contradicts the vendor's window | `Forecast` |
-| a forecast says *at this pace*: it is the window's average, not a prediction of the next burst, and the words never claim more | `Forecast` |
+| how fast a quota is spent against its window — one used share, one noise floor (3% of the window) — is ONE rate; pace, the tick, the pace-aware status and the forecast read it | `SpendRate` · `Quota.rate` |
+| a forecast lasts until the reset ⇔ the rate is at most 1; otherwise it runs out in `left × length ÷ (100 × rate)` | `Forecast` |
+| no forecast once the quota is used up, without a window length and reset, or without a rate | `Forecast` · `Quota.forecast` |
+| *Running hot* ⇔ the forecast runs out before the reset | `UsagePace` |
+| how a forecast is said on a card, and that it is said *at this pace* | `QuotaCardText` |
 
-## 5 · The pieces
+## 6 · The pieces
 
 | Piece | Module | One job | Changes when |
 |---|---|---|---|
-| `Forecast` (`runsOutIn`, `beforeReset`, `outlastsReset`) | `Quotas` | the answer — a duration and whether it beats the reset | the words or the shape change |
-| `Quota.forecast` | `Quotas` | the rule: window + used% + elapsed% → `Forecast?` | the rate rule changes |
-| the card line | `App` (`Views`) | render the sentence under *Resets in…* | the layout changes |
-| `ForecastAlerts` (optional) | `Domain/Alerting/Forecast` | tell the person once per window when the forecast says it runs out first | the alert rule changes |
+| `Window.elapsed(at:)` · `untilReset(at:)` | `Quotas` | the cycle as of a moment | never, short of a new kind of window |
+| `SpendRate` | `Quotas` | how fast, with the noise floor | the rate rule changes (weighted, measured) |
+| `Forecast` | `Quotas` | the rate against the reset | the projection changes |
+| `QuotaCardText.forecastLine(for:)` · `duration(_:)` · `forecastQualifier` | `App` | the words | the wording changes |
+| `WrappedStatCard` | `App` | draw the line under the reset row | the layout changes |
 
-No port, no repository, no new setting: a read and a view. The alert, when
-built, gets its own port beside `QuotaAlerts` (Alerting) and follows
-`onRefreshed` — the Monitor is never edited for it.
+No port, no repository, no setting.
 
-## 6 · Flows
+## 7 · Flows
 
 - **A refresh lands** → `Usage` is replaced → `quota.forecast` answers again →
-  the card re-renders. Nothing is stored, so nothing has to be invalidated.
-- **A window resets** → `percentTimeElapsed` drops, `percentUsed` drops with
-  it, and the average restarts over the new cycle. The reset *is* the cut.
-- **The alert** (when built) → `onRefreshed` → `ForecastAlerts.review(login)`
-  → once per window, when `beforeReset != nil`, notify; never again until the
-  window resets.
-
-## 7 · Surfaces
-
-| Surface | Shows |
-|---|---|
-| the popover's quota card | the line under *Resets in…* — the default |
-| the **All** page | the same line, on the quota that leads the card |
-| the menu bar | an optional readout mode (*Runs out in 38m*), later |
-| the notch | the run-out beside the reset, later |
-| a notification | *Claude · work runs out 34m before it resets* — its own port, off by default |
+  the card re-renders.
+- **A window resets** → the share gone drops, the share used drops with it, and
+  the rate restarts over the new cycle; under the floor there is no line until
+  the rate exists.
 
 ## 8 · What could go wrong
 
-- **A window that did not start full.** A quota seen for the first time
-  mid-cycle averages over a cycle it did not observe from the start. The
-  forecast is still the honest average of what the window *reports*, and it
-  says *at this pace*; the measured-rate refinement is in §11.
-- **A bursty spender.** The average hides a spike. That is the point of
-  *at this pace*: it is a rate, not a promise, and `Pace` already names the
-  "running hot" case beside it.
-- **Idle time.** A window that sat idle lowers the average, so the forecast
-  reads *Lasts until it resets* — true at the moment, and the number moves as
-  soon as work resumes. Weighting recent activity is §11.
-- **A hidden quota or a paused login.** Out of every judgement (CANONICAL §5),
-  so no forecast line and no alert.
-- **A balance with no ceiling.** No share, no window → `nil`. A money quota
-  *with* a ceiling has a share and forecasts; a prepaid balance does not.
+- **A window first seen mid-cycle** averages over a cycle ClaudeBar did not
+  watch from the start. It is still the honest average of what the window
+  reports, and it says *at this pace*.
+- **A bursty spender** hides a spike in the average; *Running hot* names it.
+- **Idle time** lowers the average, so the line can read *Lasts until it
+  resets*, true at that moment.
+- **A hidden quota or a paused login** is out of every judgement, so no line.
 
 ## 9 · Is it easy to change?
 
 | A person or a contributor wants… | They change |
 |---|---|
-| the forecast on another surface (menu bar, Touch Bar, notch, status export) | the page reads `quota.forecast` — nothing else |
-| a different rate rule (weighted, active-only, sampled) | `Quota.forecast` — one function |
-| a warning before the reset | `ForecastAlerts` |
-| a forecast for a Cost or a Budget | `Budget` already has a period; a second `Forecast` over money |
+| the forecast on another surface (menu bar, notch, status export) | that page reads `quota.forecast` and words it |
+| a different rate (weighted, measured from samples) | `SpendRate` — Pace and the forecast follow together |
+| a warning before the run-out | a new alert beside `QuotaAlerts`, following `onRefreshed` |
 
 ## 10 · Considered and rejected
 
-- **On `Usage`.** The usage is what the vendor said as of a moment; a forecast
-  is about time passing, and storing it would make two identical usages
-  unequal and go stale between refreshes.
+- **A rate of its own for the forecast.** A second "used" or a second floor
+  lets the card print *On track* beside *Runs out before it resets*.
+- **On `Usage`.** A forecast is about time passing; storing it would go stale
+  between refreshes.
 - **A capability in the definition.** Nothing about a forecast is the
-  provider's; it would put a block in the shared format for a universal fact.
-- **Samples kept by the Monitor.** More accurate, and a second source of
-  truth to persist, invalidate and lose on restart — for a number the window
-  already answers. Kept as the §11 refinement, not the first build.
-- **From Usage History days.** Daily granularity, and only for providers that
-  declare a `usageHistory`; a quota can run out inside one day.
+  provider's.
+- **Samples kept by the Monitor.** A second source of truth for a number the
+  window already answers.
 
 ## 11 · Open
 
-- **Measured vs implied rate.** The implied rate is the window's average; a
-  measured rate (samples across refreshes, weighted to recent activity) would
-  react to a burst. Worth it only if the average proves misleading in practice.
-- **A minimum elapsed span.** `U ÷ E` with `E` of a few seconds and `U` of one
-  point is noise. The build should require a small floor (say one minute, or a
-  used% above a point) and answer `nil` below it.
-- **The alert's wording and place.** Does a run-out alert sit beside the
-  20%/critical status alerts, or replace them for windows that forecast?
+- **Measured vs implied rate.** A measured rate (samples across refreshes)
+  would react to a burst; worth it only if the average proves misleading.
+- **A run-out alert**, and whether it sits beside the status alerts.

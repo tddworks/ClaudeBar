@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Pace agrees with the forecast**: a quota spent even a little faster than its window reads *Running hot*, since it runs out before it resets, and a window's first 3% shows no pace. ([#596](https://github.com/tddworks/ClaudeBar/pull/596)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
 - **The daily chart's chip decides all it shows** — the 30-day total, the hovered day and each model; a login that prices nothing (OpenCode Go) drops Cost for tokens. ([#566](https://github.com/tddworks/ClaudeBar/issues/566)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 
 ### Fixed
@@ -16,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Antigravity's quota shows while `agy` is open in a terminal**: ClaudeBar asks the running app, instead of failing with "Authentication required" when the `agy` session had started first. ([#594](https://github.com/tddworks/ClaudeBar/pull/594))
 
 ### Added
-- **Quota cards forecast the run-out**: under *Resets in…*, a card says when the window will run out at the pace it has been spent — *Runs out in 38m — 34m before it resets*, or *Lasts until it resets* — so you know whether it lasts until it refills. ([#596](https://github.com/tddworks/ClaudeBar/pull/596)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
+- **Quota cards forecast the run-out**: a line under *Resets in…* says whether the window lasts until it refills at the pace it has been spent — *Runs out in 38m — 34m before it resets*, or *Lasts until it resets*. ([#596](https://github.com/tddworks/ClaudeBar/pull/596)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/forecast/README.md)
 
 ---
 
