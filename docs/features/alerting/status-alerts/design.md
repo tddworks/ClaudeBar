@@ -1,18 +1,15 @@
 ---
-description: Contributor design for StatusAlerts — the one owner of "a login's status got worse under the policy", moved out of QuotaMonitor into Alerting beside QuotaAlerts, telling every alert destination.
+description: Contributor design for StatusAlerts — the one owner of "a login's status got worse under the policy", in Alerting beside QuotaAlerts, following the Monitor's refreshes and telling every alert destination.
 ---
 
 # Status alerts — design
 
 > Applies [the design](../../../architecture/ARCHITECTURE.md) to the
 > notification the person has always had at *low*, *critical* and *empty*.
-> It answers the Monitoring and Alerting rows of
-> [CANONICAL §8](../../../architecture/CANONICAL_MODEL.md#8--where-the-code-is-still-behind):
-> the Monitor sends status alerts itself, and names a login by a `"codex."`
-> prefix. [Webhooks](../webhooks/design.md) is the first destination besides
-> this Mac to hear them.
+> [Webhooks](../webhooks/design.md) is the destination besides this Mac that
+> hears them.
 >
-> **Status: DESIGN — not built yet.** User guide: [README.md](README.md).
+> **Status: BUILT.** User guide: [README.md](README.md).
 
 ## The person and the moment
 
@@ -21,23 +18,20 @@ notification saying so — not one per refresh, not one for a login she paused,
 and named the way the menu names it. With [webhooks](../webhooks/README.md),
 her team's channel wants the same moment.
 
-## Who answers it today, and where it moves
+## Who answers it
 
 ```
- NOW                                              DESIGN
- QuotaMonitor                                     QuotaMonitor  (refreshes; knows nothing after)
-  ├─ previousStatuses[login]                         │ onRefreshed(login)
-  └─ alerter.alert(id, previous, current)            ├─► QuotaAlerts  ─► .quota(QuotaAlert)
-       NotificationAlerter                           └─► StatusAlerts ─► .status(StatusAlert)
-        ├─ "only when worse"  ◀── a rule in a           │
-        │   notification adapter                        └─► every AlertDestination
-        └─ names the login by "codex." prefix,               (Notifications · Webhooks)
-            saved accounts, ProviderFactory
+QuotaMonitor  (refreshes; knows nothing after)
+  │ onRefreshed(login)
+  ├─► QuotaAlerts  ─► .quota(QuotaAlert)
+  └─► StatusAlerts ─► .status(StatusAlert)
+                         │
+                         └─► AlertDestinations: Notifications · Webhooks
 ```
 
-The Monitor stops being a destination's caller: it drops `previousStatuses`
-and `alerter`, and `QuotaAlerter` is removed. "Only when worse" moves from the
-notification adapter to the one decider.
+The Monitor is no destination's caller. "Only when worse" has one owner,
+`StatusAlerts`; the notification only words what it is told, and the login
+comes named as the lineup names it.
 
 ## The words
 
@@ -61,26 +55,25 @@ notification adapter to the one decider.
 
 | Piece | Where | One job | |
 |---|---|---|---|
-| `StatusAlert` ◇ | `Domain/Alerting/StatusAlerts` | `login` (lineupName), `providerId`, `was`, `now` | **new** |
-| `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | `review(_ id:, named:, provider:, status:) async` — keeps each login's last status, decides, tells every destination | **moved** from `QuotaMonitor.handleSnapshotUpdate` and `NotificationAlerter.alert` |
-| `Alert` · `AlertDestination` | `Domain/Alerting` | the alert both deciders hand out, and the one port that hears it ([webhooks design](../webhooks/design.md#the-pieces)) | **new** |
-| `Notifications` | `Infrastructure/Alerting/Notifications` | words `.status` as today: *Your Claude · work quota is critically low! Save important work.* | **moved** from `NotificationAlerter`, without its naming code |
-| `QuotaMonitor` | `Domain/Monitoring` | — | **changed**: drops `previousStatuses`, `alerter` |
-| `QuotaAlerter` | `Domain/Monitoring` | — | **removed** |
+| `StatusAlert` ◇ | `Domain/Alerting/StatusAlerts` | `login` (lineupName), `providerId`, `was`, `now` | **built** |
+| `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | `review(_:named:provider:status:) async` — keeps each login's last status, decides, tells every destination; `follow(monitor)` hears each refresh | **built** |
+| `Alert` · `AlertDestination` | `Domain/Alerting` | the alert both deciders hand out, and the one port that hears it ([webhooks design](../webhooks/design.md#the-pieces)) | **built** |
+| `Notifications` | `Infrastructure/Alerting/Notifications` | words `.status`: *Claude · work Quota Alert*, *Your Claude · work quota is critically low! Save important work.* | **built** |
+| `QuotaMonitor` | `Domain/Monitoring` | refreshes; `status(of:)` under the policy, hidden quotas left out | **built** |
 
 ## The flow
 
 ```
-onRefreshed(login)
-  statusAlerts.review(login.id, named: login.lineupName, provider: login.providerId,
+onRefreshed(login)                                         // statusAlerts.follow(monitor)
+  statusAlerts.review(login.id, named: monitor.lineupName(of: login), provider: login.providerId,
                       status: monitor.status(of: login))      // nil (no usage) → nothing
     was = last[login.id] ?? .healthy;  last[login.id] = now
-    if now > was && now != .healthy → for d in destinations: await d.announce(.status(StatusAlert(…)))
+    if now > was && now != .healthy → await destination.announce(.status(StatusAlert(…)))   // AlertDestinations
 ```
 
 `QuotaAlerts` runs beside it on the same refresh; the two never read each
-other. A quota alert at 35% and a status alert at *low* can both arrive, as
-today: they answer different questions.
+other. A quota alert at 35% and a status alert at *low* can both arrive:
+they answer different questions.
 
 ## Not in it
 

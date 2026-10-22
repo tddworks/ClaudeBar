@@ -61,11 +61,11 @@ The seven questions look at one type. To find what is wrong across the domain, c
 
 | # | Ask | The smell | Example |
 |---|---|---|---|
-| 1 | **Does anything cross the fence?** Only a reference (an id, a name, a value of the Quota kernel) may | another context's type inside this one's model; reading its storage or factory | the status alert reads Providers' saved accounts to name a login, instead of taking `lineupName` |
+| 1 | **Does anything cross the fence?** Only a reference (an id, a name, a value of the Quota kernel) may | another context's type inside this one's model; reading its storage or factory | `Provider` and `Account` write storage keys (`plainLoginKey`, `verifiedAtLeastOnce`) instead of telling a port |
 | 2 | **Does every word mean one thing here?** | one name for two facts, two names for one | `providerId` is the product in one place and the login in the next |
 | 3 | **Does every law have one owner?** | the same rule written twice, drifting apart; a caller reading state to decide | *the login with the most left* is computed in `Accounts.best`, `InUse` and `SwitchWhenLow` |
 | 4 | **Is the business above, and the technique below?** | argv, paths, JSON keys or OS calls handed to a worker to put together; a business rule in an App driver | the Keychain reader builds `security` argv; the menu-bar driver decides which logins refresh in the background |
-| 5 | **Does a new case add data, not an edit?** (SRP, OCP) | a `switch` on an id, a vendor or theme name in shared Swift; one type changing for several reasons | `theme.id == "christmas"` in the popover; `"codex."` in an alert |
+| 5 | **Does a new case add data, not an edit?** (SRP, OCP) | a `switch` on an id, a vendor or theme name in shared Swift; one type changing for several reasons | `theme.id == "christmas"` in the popover |
 | 6 | **Does the question have a home?** | a context's words and rules scattered over modules, or living in the composition root | Usage History is split over Quotas, Providers, DataSources and the Monitor |
 
 A finding is a row in CANONICAL §8 when a law already says what is right, or a question in §9 when the design must decide first.

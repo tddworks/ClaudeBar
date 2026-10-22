@@ -138,7 +138,6 @@ Use actors for stateful domain services:
 @MainActor @Observable
 public final class QuotaMonitor {
     public let providers: Providers               // the providers you keep
-    private var previousStatuses: [String: QuotaStatus] = [:]
 
     public func refreshAll() async {
         await withTaskGroup(of: Void.self) { group in

@@ -4,8 +4,6 @@ description: Send ClaudeBar's quota alerts and status alerts to a Slack channel 
 
 # Webhooks
 
-> **Not built yet** — this is the guide for the design in [design.md](design.md).
-
 [Quota alerts](../quota-alerts/README.md) and the [status alerts](../status-alerts/README.md) tell *you*, on this Mac. A webhook sends the same alerts somewhere else: a Slack channel your team watches, a script on a home server, a monitoring service.
 
 A webhook has no percent of its own. It sends the percents you already chose under Quota alerts, and, if you tick it, every status that got worse (low, critical, empty).
@@ -21,6 +19,8 @@ A webhook has no percent of its own. It sends the percents you already chose und
 5. Press **Add**, then **Send a test**.
 
 Each webhook shows its name (the URL's host until you type one), its channel and scope, an on/off switch, and its last delivery: *Sent 2m ago*, *Failed — 404*, or *Nothing sent yet*.
+
+**Edit** changes the name, channel, scope and what it sends. The URL is never shown again: leave the field empty to keep it, or paste a new one to replace it. **Remove** deletes the webhook and its URL. Turning a webhook off keeps it, its URL and its last delivery.
 
 ## What it sends
 

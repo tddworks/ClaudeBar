@@ -647,7 +647,7 @@ This means:
 - **80-100% budget used** → critical (🔴 alert)
 - **>100% budget used** → depleted (💀 alert)
 
-Alerts use existing `NotificationAlerter` infrastructure:
+Alerts use the existing status alerts (`StatusAlerts`, told through `Notifications`):
 
 ```swift
 // In QuotaMonitor.handleSnapshotUpdate

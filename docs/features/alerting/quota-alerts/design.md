@@ -17,17 +17,16 @@ alert is the person's own percentage, beside them — not a new status, not a
 colour.
 
 It follows a refresh, so it is not the Monitor's: it observes through
-`onRefreshed`, the way In use does, and the Monitor and `QuotaAlerter` don't
-change.
+`onRefreshed`, the way In use does, and the Monitor doesn't change.
 
 ## The pieces
 
 | Piece | One job | Changes when |
 |---|---|---|
-| `QuotaAlerts` (`Domain`) ◆ | the person's percentages (`add`, `remove`, `percents`), and `review(login, usage:, name:)` after each refresh: which percentages the login just fell below | the rule for when to say it changes |
+| `QuotaAlerts` (`Domain`) ◆ | the person's percentages (`add`, `remove`, `percents`), and `review(_:named:provider:usage:)` after each refresh: which percentages the login just fell below | the rule for when to say it changes |
 | `QuotaAlertSettingsRepository` (port, `Domain`) · `JSONSettingsRepository` | the percentages, kept as `alerts.thresholds`: `[35, 60]` | where they are kept changes |
-| `QuotaAlertAnnouncer` (port, `Domain`) · `QuotaAlertNotifications` (`Infrastructure`) | tell the person, through the macOS notifications ClaudeBar already sends | the wording or the channel changes |
-| the composition root | `monitor.onRefreshed { login in quotaAlerts.review(login, usage: monitor.usage(of: login), name: …) }` | never for quota alerts |
+| `AlertDestination` (port, `Domain`) · `Notifications` (`Infrastructure`) · `Webhooks` | tell the person — the macOS notifications ClaudeBar already sends, and their [webhooks](../webhooks/design.md) — each `.quota(QuotaAlert)` | the wording or the channel changes |
+| `QuotaAlerts.follow(monitor)` | `monitor.onRefreshed { login in review(login.id, named: monitor.lineupName(of: login), provider: login.providerId, usage: monitor.usage(of: login)) }` | never for quota alerts |
 
 `monitor.usage(of:)` is the usage with the person's hidden quotas already left
 out, so `QuotaAlerts` never sees a quota nobody watches.

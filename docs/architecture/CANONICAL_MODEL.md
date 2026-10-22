@@ -377,7 +377,7 @@ Claude Code sessions (Activity); where settings and secrets are kept
 | sets a Daily Budget · the Claude API Budget | `account.budget = …` (an account-scope setting) | judges that login's cost only |
 | turns the burn-rate warning on, sets its threshold | `monitor.statusPolicy = …` | every status and every alert follows at once |
 | adds or removes an alert percentage | `quotaAlerts.add(_:)` · `remove(_:)` | whole percents 1–99; 20% and 0% are refused, the status alerts already say them |
-| *Add Webhook* · *Edit* · *Remove* · its switch · *Send a test* | `webhooks.add(url:…)` · `edit` · `remove` · `turn(on:)` · `sendTest(_:)` | an http URL is refused unless it is local; a test is labelled a test, never an alert ([design](../features/alerting/webhooks/design.md)) |
+| *Add Webhook* · *Edit* · *Remove* · its switch · *Send a test* | `webhooks.add(url:…)` · `edit(_:url:…)` · `remove(_:)` · `turn(_:on:)` · `sendTest(_:)` | an http URL is refused unless it is local; a test is labelled a test, never an alert ([design](../features/alerting/webhooks/design.md)) |
 | chooses status colours · high contrast | — the page's theme | how a status looks, never what it is |
 
 ## 4 · The reads — what the tree answers
@@ -436,12 +436,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | a status alert says when a login's status got worse under the policy and is not healthy, once per worsening; the first status seen is compared with healthy ([design](../features/alerting/status-alerts/design.md)) | `StatusAlerts` |
-| an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestination` |
+| an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestinations` |
 | a webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope; it has no percent of its own ([design](../features/alerting/webhooks/design.md)) | `Webhook` |
 | how an alert or a test reads in Slack and as JSON; a test is never shaped like an alert | `WebhookBody` |
 | a webhook URL is https, or http only to a loopback or LAN host | `WebhookAddress` |
 | one POST per alert, no retry; a redirect stays on the URL's origin; nothing that could carry the URL reaches a log or the pane | `WebhookClient` |
-| a destination's secret (Notify!'s token, a webhook's URL) is never in `settings.json` or a log; one the Keychain refuses falls back to the app credential store, read Keychain first, and the pane says so — one copy of that rule for every destination | `DestinationSecrets` |
+| a destination's secret (Notify!'s token, a webhook's URL) is never in `settings.json` or a log — webhooks keep the rest under `alerts.webhooks`; one the Keychain refuses falls back to the app credential store, read Keychain first, and the pane says so — one copy of that rule for every destination | `DestinationSecrets` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
 | a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isPaused` |
 | a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
@@ -596,10 +596,8 @@ test first. Findings that need a decision first are in §9.
 | Quota | the share left of a money quota computed twice, once across currencies (`QuotaAlerts.lowestShare`); `<` compares `percentRemaining`, where a balance is 100 | `Left.share`, `nil` for a balance or mixed currencies, read by every comparison |
 | Quota · Providers | a login's status has two owners: `Account.status` / `Accounts.status` ignore the policy and hidden quotas, `QuotaMonitor.status(of:)` and `Overview` apply both | `accounts.status(under:)`; the Monitor and the overview delegate |
 | Monitoring | the menu-bar quota reads `snapshot` directly, so a hidden quota still colours the menu bar | read through the watched usage |
-| Monitoring | the Monitor sends status alerts itself (`previousStatuses`, `alerter`); "alert only when worse" sits in `NotificationAlerter` | `StatusAlerts` in Alerting, beside `QuotaAlerts`, following `onRefreshed` — **designed** in [status alerts](../features/alerting/status-alerts/design.md), with [webhooks](../features/alerting/webhooks/design.md) |
 | Monitoring | which logins the background refresh fetches, and starting the loop, live in `StatusItemLabelDriver` | the Monitor, from what each surface asks to keep fresh; the driver renders |
 | Monitoring | `selectedProviderId = "claude"`; `ObservationRenderSync` (a SwiftUI workaround) in `Domain`; `MonitoringEvent.error` never sent | the first in the lineup; the App; removed |
-| Alerting | the status alert names a login by `"codex."` prefix, Providers' saved accounts and `ProviderFactory` | it is handed the login's `lineupName`, as `QuotaAlerts` is — **designed** in [status alerts](../features/alerting/status-alerts/design.md) |
 | Alerting | Notify!'s publishing laws (a tile's backoff never silences a widget, the 6-hour pause, forget only the refused handle) in `NotifyPublishDriver` | a `NotifyPublication` in Alerting, told each offer and failure; the driver keeps the timer |
 | Alerting | status export recomputes status and *no data*, and turns off with the Touch Bar; Notify!'s tint is hard-coded in `Domain`; `QuotaAlerts` repeats the policy's 20 and 0 | every destination reads the status under the policy; colours come from the App's theme; the policy names its boundaries |
 | Providers | `Provider` and `Account` write storage keys (`plainLoginKey`, `isEnabled(forProvider: loginId)`, `verifiedAtLeastOnce`) and migrate old ones | a pause/switch port; compatibility in `JSONSettingsRepository`'s tables |
