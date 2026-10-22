@@ -141,6 +141,10 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── best → Account?             DERIVED — the unpaused login with the most left: "switch to work"
 │       │   ├── cause → Account?            DERIVED — best, while it isn't healthy: the callout's subject
 │       │   │                               ("Home is at 18% Weekly — causing Warning")
+│       │   ├── pool → Pool?  ◇             DERIVED — the logins' shares, summed: "340% left across 3
+│       │   │                               logins" — a SUM OF SHARES, never a forecast, never a
+│       │   │                               percentage of a bigger whole; nil below two unpaused logins
+│       │   │                               ([pool design](../features/providers/quota-pools/design.md))
 │       │   └── Account  ◆                  A LOGIN YOU PAY FOR — who, and what we last saw. No behaviour
 │       │       ├── id: Account.ID          `<provider>` for the default, `<provider>.<acct>` for an added one
 │       │       ├── providerId          its product, by id — a value, never a reference
@@ -398,6 +402,7 @@ account.sync.lastError               → DataSourceError?  FETCH HEALTH: which s
 provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
 provider.accounts.best               → Account?     the most left — "switch to work"
 provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
+provider.accounts.pool               → Pool?        the logins' shares summed — "340% left across 3 logins"
 provider.inUse?.login                → Account      the login new terminal sessions start with
 account.isInUse · account.canBeInUse → Bool         the chip's mark; whether it can be chosen
 newSessions.state(of: provider)      → State?       the strip: waiting for setup · worth switching · in use
@@ -434,6 +439,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **an account shows only what its own sign-in reaches** ([USER_JOURNEYS F13](USER_JOURNEYS.md)): a definition is written once, for any account. The default account is signed in on this Mac — its folder is `folder.default`, and every read is reached. An added account is signed in through its folder or key: a read that names nothing of it — an environment variable, a fixed path or Keychain name, browser cookies, a local database or log — is not reached, whatever its definition forgets ([multi-account design](../features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)) | `ProviderDefinition.dataSources(for:)` — the definition read for one account |
 | status is QUOTA health, derived from usage; a failed fetch is FETCH health, in `sync` — a key that expired never turns the menu bar red | `Account.status` · `Account.sync` |
 | **a product's logins are INTERCHANGEABLE** — a pool: the product reads its healthiest unpaused login (min), so one empty login never holds its product at DEPLETED while another has room; it reads DEPLETED only when every one is empty. Products are not: one product's room never covers another's, so the menu bar reads the worst product (max). Every login keeps its own truth — its row, pill and alert say its own status and when it resets. A login with no usage yet never stands for its product | `Accounts.status` · `Monitor.overallStatus` |
+| **the pool's total is a SUM OF SHARES** — each unpaused login brings the share it already shows (its tightest window's); a login with nothing seen, or with only a balance and no ceiling, brings nothing, and is never guessed at zero or a hundred. Over 100 is fine and meaningful — the logins refill independently — and the sum is never a forecast and never a percentage of a bigger whole; it exists from two unpaused logins ([pool design](../features/providers/quota-pools/design.md)) | `Pool` · `Accounts.pool` |
 | *in use* is the TERMINAL's choice, not the monitor's: every enabled login is still fetched and shown; only new `claude` / `codex` sessions start on the login in use. It is not the `active` account the law above rules out | `InUse` |
 | the login in use is the plain login or a folder login of the same product; only its folder is recorded, nowhere else, **under its CLI's name** (`in-use/claude`) — the shell starts a CLI, not a product; nothing recorded, or a folder no login has, is the plain login; removing it goes back to the plain login | `InUse` · `LoginsInUse` |
 | **a CLI is wrapped once**, however many products run it: two products on `claude` share its record, and the last choice wins | `NewSessions` (its commands, each once) · `ShellSetup` |
