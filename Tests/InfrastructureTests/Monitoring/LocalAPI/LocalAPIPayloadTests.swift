@@ -234,7 +234,7 @@ struct LocalAPIPayloadTests {
         calendar.timeZone = TimeZone(identifier: "UTC")!
         let stat = DailyUsageStat(date: now, totalCost: 1.5, totalTokens: 100, workingTime: 120, sessionCount: 2)
         let report = UsageDaysReport(days: 30, logins: [
-            LoginDays(id: "work", name: "Work", days: [DayUsage(stat: stat, knowsCost: true, calendar: calendar)]),
+            LoginDaySeries(id: "work", name: "Work", days: [DayUsage(stat: stat, knowsCost: true, calendar: calendar)]),
         ])
 
         let data = try JSONEncoder().encode(report)

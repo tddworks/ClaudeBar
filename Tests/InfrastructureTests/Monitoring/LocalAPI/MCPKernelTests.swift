@@ -33,7 +33,7 @@ struct MCPKernelTests {
         Data(#"{"jsonrpc":"2.0","id":"a1","method":"\#(method)","params":\#(params)}"#.utf8)
     }
 
-    private func result(_ reply: MCPReply) -> JSONValue? {
+    private func result(_ reply: MCPReply) -> MCPValue? {
         if case let .result(value) = reply { return value }
         return nil
     }
@@ -260,7 +260,7 @@ struct MCPKernelTests {
     // MARK: - JSON values
 
     @Test func `should round trip a value through its bytes`() {
-        let value = JSONValue.object([
+        let value = MCPValue.object([
             "number": .number(42),
             "float": .number(0.5),
             "bool": .bool(true),
@@ -270,11 +270,11 @@ struct MCPKernelTests {
             "object": .object(["nested": .bool(false)]),
         ])
 
-        #expect(JSONValue.parse(value.encoded()) == value)
+        #expect(MCPValue.parse(value.encoded()) == value)
     }
 
     @Test func `should read a boolean as a boolean never a number`() {
-        let value = JSONValue.parse(Data(#"{"on":true,"off":false,"one":1}"#.utf8))
+        let value = MCPValue.parse(Data(#"{"on":true,"off":false,"one":1}"#.utf8))
 
         #expect(value?["on"] == .bool(true))
         #expect(value?["off"] == .bool(false))
@@ -282,36 +282,36 @@ struct MCPKernelTests {
     }
 
     @Test func `should read a whole number exactly`() {
-        let value = JSONValue.parse(Data(#"{"n":7,"half":3.5}"#.utf8))
+        let value = MCPValue.parse(Data(#"{"n":7,"half":3.5}"#.utf8))
 
         #expect(value?["n"]?.intValue == 7)
         #expect(value?["half"]?.intValue == nil)
     }
 
     @Test func `should find a pair by key on an object and nowhere else`() {
-        let value = JSONValue.parse(Data(#"{"a":{"b":1}}"#.utf8))
+        let value = MCPValue.parse(Data(#"{"a":{"b":1}}"#.utf8))
 
         #expect(value?["a"]?["b"]?.intValue == 1)
         #expect(value?["a"]?["missing"] == nil)
         #expect(value?["b"] == nil)
-        #expect(JSONValue.string("a")["a"] == nil)
-        #expect(JSONValue.number(1)["a"] == nil)
+        #expect(MCPValue.string("a")["a"] == nil)
+        #expect(MCPValue.number(1)["a"] == nil)
     }
 
     @Test func `should refuse bytes that are not JSON`() {
-        #expect(JSONValue.parse(Data("<html>".utf8)) == nil)
+        #expect(MCPValue.parse(Data("<html>".utf8)) == nil)
     }
 
     @Test func `should write an array of numbers as one line with sorted keys`() {
-        let value = JSONValue.object(["b": .number(1), "a": .array([.number(2)])])
+        let value = MCPValue.object(["b": .number(1), "a": .array([.number(2)])])
 
         #expect(String(decoding: value.encoded(), as: UTF8.self) == #"{"a":[2],"b":1}"#)
     }
 }
 
-extension JSONValue {
+extension MCPValue {
     /// The value's array, or empty — how a test reads a listed set.
-    var elements: [JSONValue] {
+    var elements: [MCPValue] {
         if case let .array(values) = self { return values }
         return []
     }

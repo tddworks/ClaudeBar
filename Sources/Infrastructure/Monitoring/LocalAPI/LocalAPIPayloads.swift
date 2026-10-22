@@ -217,16 +217,16 @@ public struct ForecastLine: Codable, Equatable, Sendable {
 /// present: a day with nothing is an empty day, not a missing one.
 public struct UsageDaysReport: Codable, Equatable, Sendable {
     public let days: Int
-    public let logins: [LoginDays]
+    public let logins: [LoginDaySeries]
 
-    public init(days: Int, logins: [LoginDays]) {
+    public init(days: Int, logins: [LoginDaySeries]) {
         self.days = days
         self.logins = logins
     }
 }
 
 /// One login's series of days.
-public struct LoginDays: Codable, Equatable, Sendable {
+public struct LoginDaySeries: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let days: [DayUsage]

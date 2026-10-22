@@ -37,17 +37,17 @@ struct LocalAPIRouterTests {
     }
 
     /// A GET request value, whole.
-    private func get(_ path: String) -> HTTPRequest {
-        HTTPRequest(method: "GET", path: path)
+    private func get(_ path: String) -> LocalAPIRequest {
+        LocalAPIRequest(method: "GET", path: path)
     }
 
     /// A POST /mcp request carrying one JSON-RPC message.
-    private func postMCP(_ message: String) -> HTTPRequest {
-        HTTPRequest(method: "POST", path: "/mcp", body: Data(message.utf8))
+    private func postMCP(_ message: String) -> LocalAPIRequest {
+        LocalAPIRequest(method: "POST", path: "/mcp", body: Data(message.utf8))
     }
 
     /// The response body as one JSON object, for reading answers back.
-    private func object(_ response: HTTPResponse) throws -> [String: Any] {
+    private func object(_ response: LocalAPIResponse) throws -> [String: Any] {
         try #require(JSONSerialization.jsonObject(with: response.body) as? [String: Any])
     }
 
@@ -105,7 +105,7 @@ struct LocalAPIRouterTests {
     @Test func `should answer usage days with the n the query names`() async throws {
         let (router, _) = makeRouter()
 
-        let response = await router.answer(HTTPRequest(method: "GET", path: "/usage/days", query: ["n": "7"]))
+        let response = await router.answer(LocalAPIRequest(method: "GET", path: "/usage/days", query: ["n": "7"]))
 
         #expect(try object(response)["days"] as? Int == 7)
     }
@@ -113,7 +113,7 @@ struct LocalAPIRouterTests {
     @Test func `should clamp a year of days as the most usage days answers`() async throws {
         let (router, _) = makeRouter()
 
-        let response = await router.answer(HTTPRequest(method: "GET", path: "/usage/days", query: ["n": "1000"]))
+        let response = await router.answer(LocalAPIRequest(method: "GET", path: "/usage/days", query: ["n": "1000"]))
 
         #expect(try object(response)["days"] as? Int == 365)
     }
@@ -121,8 +121,8 @@ struct LocalAPIRouterTests {
     @Test func `should clamp usage days to never fewer than one`() async throws {
         let (router, _) = makeRouter()
 
-        let none = await router.answer(HTTPRequest(method: "GET", path: "/usage/days", query: ["n": "0"]))
-        let negative = await router.answer(HTTPRequest(method: "GET", path: "/usage/days", query: ["n": "-5"]))
+        let none = await router.answer(LocalAPIRequest(method: "GET", path: "/usage/days", query: ["n": "0"]))
+        let negative = await router.answer(LocalAPIRequest(method: "GET", path: "/usage/days", query: ["n": "-5"]))
 
         #expect(try object(none)["days"] as? Int == 1)
         #expect(try object(negative)["days"] as? Int == 1)
@@ -131,7 +131,7 @@ struct LocalAPIRouterTests {
     @Test func `should clamp a query n that is not a number to the default`() async throws {
         let (router, _) = makeRouter()
 
-        let response = await router.answer(HTTPRequest(method: "GET", path: "/usage/days", query: ["n": "soon"]))
+        let response = await router.answer(LocalAPIRequest(method: "GET", path: "/usage/days", query: ["n": "soon"]))
 
         #expect(try object(response)["days"] as? Int == 30)
     }
@@ -148,7 +148,7 @@ struct LocalAPIRouterTests {
     @Test func `should answer a wrong method with not allowed and the one allowed`() async throws {
         let (router, _) = makeRouter()
 
-        let posted = await router.answer(HTTPRequest(method: "POST", path: "/status", body: Data()))
+        let posted = await router.answer(LocalAPIRequest(method: "POST", path: "/status", body: Data()))
         let gotten = await router.answer(get("/mcp"))
 
         #expect(posted.status == 405)
@@ -306,12 +306,12 @@ struct LocalAPIRouterTests {
             Issue.record("expected a header separator"); return
         }
 
-        let request = try HTTPRequestParser.parse(
+        let request = try LocalAPIRequestParser.parse(
             headerBlock: bytes[..<separator.lowerBound],
             body: bytes[separator.upperBound...]
         )
         let response = await router.answer(.request(request))
-        let wire = HTTPResponseSerializer.serialize(response)
+        let wire = LocalAPIResponseSerializer.serialize(response)
 
         let text = String(decoding: wire, as: UTF8.self)
         #expect(text.hasPrefix("HTTP/1.1 200 OK\r\n"))

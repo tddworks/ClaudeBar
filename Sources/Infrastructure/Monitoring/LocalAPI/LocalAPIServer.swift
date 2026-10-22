@@ -44,7 +44,7 @@ public final class LocalAPIServer: @unchecked Sendable {
 
     /// The router's answer, installed at start. The server never knows the
     /// routes; it moves bytes.
-    private var answer: (@Sendable (HTTPRequestResult) async -> HTTPResponse)?
+    private var answer: (@Sendable (LocalAPIRequestResult) async -> LocalAPIResponse)?
 
     /// Serial queue for all mutable state; NW callbacks run on it too.
     private let queue = DispatchQueue(label: "com.tddworks.claudebar.localapi")
@@ -61,7 +61,7 @@ public final class LocalAPIServer: @unchecked Sendable {
     /// port first; busy, a free one — the real number goes to the port file
     /// either way. The task's cancellation is honoured: the switch going off
     /// while the socket is still coming up leaves nothing listening.
-    public func start(answer: @escaping @Sendable (HTTPRequestResult) async -> HTTPResponse) async throws {
+    public func start(answer: @escaping @Sendable (LocalAPIRequestResult) async -> LocalAPIResponse) async throws {
         // Reset on the queue, where the listener's state lives.
         queue.async { [self] in
             stopListener()
@@ -179,16 +179,16 @@ public final class LocalAPIServer: @unchecked Sendable {
                 connection.cancel()
                 return
             }
-            if HTTPRequestParser.isHeaderOverCap(buffer) {
+            if LocalAPIRequestParser.isHeaderOverCap(buffer) {
                 self.finish(connection, with: .failed(.oversized))
                 return
             }
-            if let wanted = HTTPRequestParser.pendingBodyLength(headerBlockPrefix: buffer) {
-                if wanted > HTTPRequestParser.maxBodyBytes {
+            if let wanted = LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: buffer) {
+                if wanted > LocalAPIRequestParser.maxBodyBytes {
                     self.finish(connection, with: .failed(.oversized))
                     return
                 }
-                if let separator = buffer.range(of: HTTPRequestParser.headerSeparator),
+                if let separator = buffer.range(of: LocalAPIRequestParser.headerSeparator),
                    buffer.count - separator.upperBound >= wanted {
                     let head = buffer.subdata(in: buffer.startIndex..<separator.lowerBound)
                     let body = buffer.subdata(in: separator.upperBound..<buffer.index(separator.upperBound, offsetBy: wanted))
@@ -207,10 +207,10 @@ public final class LocalAPIServer: @unchecked Sendable {
 
     /// A whole request's bytes, as a value — or the reason the parser
     /// refused them.
-    private func request(headerBlock: Data, body: Data) -> HTTPRequestResult {
+    private func request(headerBlock: Data, body: Data) -> LocalAPIRequestResult {
         do {
-            return .request(try HTTPRequestParser.parse(headerBlock: headerBlock, body: body))
-        } catch let error as HTTPParseError {
+            return .request(try LocalAPIRequestParser.parse(headerBlock: headerBlock, body: body))
+        } catch let error as LocalAPIParseError {
             return .failed(error)
         } catch {
             return .failed(.malformed)
@@ -218,13 +218,13 @@ public final class LocalAPIServer: @unchecked Sendable {
     }
 
     /// One answer, then the connection is gone: send, close.
-    private func finish(_ connection: NWConnection, with result: HTTPRequestResult) {
+    private func finish(_ connection: NWConnection, with result: LocalAPIRequestResult) {
         guard let answer else {
             connection.cancel()
             return
         }
         Task {
-            let wire = HTTPResponseSerializer.serialize(await answer(result))
+            let wire = LocalAPIResponseSerializer.serialize(await answer(result))
             connection.send(
                 content: wire,
                 contentContext: .finalMessage,

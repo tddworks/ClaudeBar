@@ -48,9 +48,9 @@ payloads; there is no second system.
 | **read-only**: the route table is closed and holds no mutation; pause, switch, refresh and settings stay behind the person's hands (URL schemes, the Settings window) | `LocalAPIRouter` |
 | the socket exists only while the person's switch is on; off means no listener, not a quiet one | `LocalAPISettingsRepository` · the composition root (`ClaudeBarApp`) |
 | **loopback only**: the listener binds `127.0.0.1`, and a connection whose peer is not a loopback address is cancelled before a byte is read | `LocalAPIServer` |
-| only GET and POST are served; anything else is refused with *405* and an `Allow` header. Bodies are capped (1 MiB) and header blocks (64 KiB) — an oversized or unparseable request is refused, never half-served | `HTTPRequestParser` · `LocalAPIRouter` |
+| only GET and POST are served; anything else is refused with *405* and an `Allow` header. Bodies are capped (1 MiB) and header blocks (64 KiB) — an oversized or unparseable request is refused, never half-served | `LocalAPIRequestParser` · `LocalAPIRouter` |
 | one MCP tool per question, and each tool answers with the same payload its HTTP route answers — the tool list is the route list | `LocalAPIRouter` (the tool table it hands `MCPKernel`) |
-| the protocol handling is socket-free: bytes in, values out. Every decision on the wire is testable without a socket | `HTTPRequestParser` · `HTTPResponseSerializer` · `MCPKernel` · `LocalAPIRouter` |
+| the protocol handling is socket-free: bytes in, values out. Every decision on the wire is testable without a socket | `LocalAPIRequestParser` · `LocalAPIResponseSerializer` · `MCPKernel` · `LocalAPIRouter` |
 
 ### Why read-only
 
@@ -126,7 +126,7 @@ wrong method: `405` + `Allow`. Only GET and POST exist.
 │                                   127.0.0.1; peer check; bytes ⇄    │
 │                                   values; one request per connection │
 └───────────────┬──────────────────────────────────────────────────────┘
-                │ HTTPRequest
+                │ LocalAPIRequest
                 ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │ LocalAPIRouter (Infrastructure)   THE ROUTES — the closed table:     │
@@ -147,13 +147,13 @@ wrong method: `405` + `Allow`. Only GET and POST exist.
 | Piece | Where | One job | Changes when |
 |---|---|---|---|
 | `LocalAPIConstants` · `LocalAPISettingsRepository` | `Domain/Monitoring` | the port's number; the switch's port (beside `HookSettingsRepository`) | the default port changes, or the switch grows company |
-| `HTTPRequest` · `HTTPResponse` | `Infrastructure/Monitoring/LocalAPI` | the wire as values: method, path, query, headers, body | a header or the query grows a field the routes need |
-| `HTTPRequestParser` · `HTTPResponseSerializer` | same | bytes ⇄ values, with the caps and the refusals | the HTTP dialect changes (chunked, keep-alive) |
+| `LocalAPIRequest` · `LocalAPIResponse` | `Infrastructure/Monitoring/LocalAPI` | the wire as values: method, path, query, headers, body | a header or the query grows a field the routes need |
+| `LocalAPIRequestParser` · `LocalAPIResponseSerializer` | same | bytes ⇄ values, with the caps and the refusals | the HTTP dialect changes (chunked, keep-alive) |
 | `StatusSummary` · `ProvidersReport` · `ForecastReport` · `UsageDaysReport` | same | **the JSON contract** — values built purely from `Quotas` values | a payload field is added or renamed |
 | `LocalAPIReading` | same | what the API answers from — the port between wire and Monitor | a new question is asked |
 | `MonitorLocalAPIReading` | same | answers the port from `QuotaMonitor` on the main actor | the Monitor's reads move |
 | `LocalAPIRouter` | same | the closed route table; 404/405; the MCP tool table | a route is added (a deliberate edit) |
-| `JSONValue` · `MCPKernel` | `Infrastructure/Monitoring/LocalAPI/MCP` | JSON-RPC 2.0 in values; initialize, tools/list, tools/call | the MCP surface grows (SSE, sessions) |
+| `MCPValue` · `MCPKernel` | `Infrastructure/Monitoring/LocalAPI/MCP` | JSON-RPC 2.0 in values; initialize, tools/list, tools/call | the MCP surface grows (SSE, sessions) |
 | `LocalAPIServer` | same | the only socket: bind loopback, peer check, receive → answer → send → close | the transport changes |
 | `LocalAPIPane` | `App/Views/SettingsWindow` | the switch, and the lines to copy while it is on | the copy changes |
 | `ClaudeBarApp` | `App` | the composition root: starts and stops the server with the switch | never, for a route |
@@ -165,9 +165,9 @@ byte of the contract is testable without a Monitor.
 ## The flows
 
 **A curl.** bytes arrive → the server rejects any non-loopback peer, reads
-until the request is whole (or the caps refuse it) → `HTTPRequestParser` makes
+until the request is whole (or the caps refuse it) → `LocalAPIRequestParser` makes
 a value → `LocalAPIRouter` looks the route up → the reading hops to the main
-actor, reads the Monitor, builds the payload → `HTTPResponseSerializer` makes
+actor, reads the Monitor, builds the payload → `LocalAPIResponseSerializer` makes
 bytes → send, close. One request per connection; no keep-alive to time out.
 
 **`claude mcp add --transport http claudebar http://127.0.0.1:19848/mcp`.**
@@ -196,10 +196,10 @@ the Monitor's cadence is untouched.
 `Tests/InfrastructureTests/Monitoring/LocalAPI`, Swift Testing, Chicago
 school — the kernels are fed raw bytes and values, no socket:
 
-- `HTTPRequestTests` — a real request's bytes become a value; bad request
+- `LocalAPIRequestTests` — a real request's bytes become a value; bad request
   lines, oversized bodies and header blocks are refused; a value becomes
-  bytes a client can read (`HTTPRequestParser` and
-  `HTTPResponseSerializer` share the wire's one file).
+  bytes a client can read (`LocalAPIRequestParser` and
+  `LocalAPIResponseSerializer` share the wire's one file).
 - `LocalAPIPayloadTests` — the JSON contract over hand-built `Quotas`
   values: a share, a balance with no percentage, a capped money quota, a
   forecast that runs out, one that lasts, a day series with empty days.

@@ -6,14 +6,14 @@ import Foundation
 public struct MCPTool: Sendable {
     public let name: String
     public let description: String
-    public let inputSchema: JSONValue
+    public let inputSchema: MCPValue
     /// The read, given the call's arguments (or none). Answers the payload
     /// already encoded as text — `tools/call` returns it as text content.
-    public let run: @Sendable (JSONValue?) async -> String
+    public let run: @Sendable (MCPValue?) async -> String
 
     public init(
-        name: String, description: String, inputSchema: JSONValue = .emptyObject,
-        run: @escaping @Sendable (JSONValue?) async -> String
+        name: String, description: String, inputSchema: MCPValue = .emptyObject,
+        run: @escaping @Sendable (MCPValue?) async -> String
     ) {
         self.name = name
         self.description = description
@@ -36,7 +36,7 @@ public struct MCPServerInfo: Sendable, Equatable {
 /// What one JSON-RPC message deserves back. `.none` is a notification's
 /// silence: received, nothing to say — the HTTP layer answers 202.
 public enum MCPReply: Sendable {
-    case result(JSONValue)
+    case result(MCPValue)
     case error(code: Int, message: String)
     case none
 }
@@ -44,7 +44,7 @@ public enum MCPReply: Sendable {
 /// One inbound message, decoded: a request (has an id), a notification (has
 /// none), or the reason it never became either.
 public enum MCPInbound: Sendable {
-    case request(id: JSONValue, method: String, params: JSONValue)
+    case request(id: MCPValue, method: String, params: MCPValue)
     case notification(method: String)
     /// Not JSON at all, or not one JSON-RPC message — a batch included
     /// (removed from the protocol in `2025-06-18`; one error object answers).
@@ -74,7 +74,7 @@ public enum MCPKernel {
 
     /// Decodes one message body into what it is.
     public static func decode(_ body: Data) -> MCPInbound {
-        guard let message = JSONValue.parse(body) else {
+        guard let message = MCPValue.parse(body) else {
             return .malformed(code: parseErrorCode, message: "Parse error: the body is not JSON")
         }
         guard case let .object(pairs) = message else {
@@ -94,7 +94,7 @@ public enum MCPKernel {
     /// Answers one request. Notifications never reach here — the caller
     /// answers them with silence (`MCPReply.none`).
     public static func handle(
-        id: JSONValue, method: String, params: JSONValue,
+        id: MCPValue, method: String, params: MCPValue,
         serverInfo: MCPServerInfo, tools: [MCPTool]
     ) async -> MCPReply {
         switch method {
@@ -126,7 +126,7 @@ public enum MCPKernel {
     /// `tools/call` — the one place a name becomes a read. An unknown tool is
     /// a protocol error (`invalid params`); a known one answers text content,
     /// the payload its HTTP route answers.
-    static func call(id: JSONValue, params: JSONValue, tools: [MCPTool]) async -> MCPReply {
+    static func call(id: MCPValue, params: MCPValue, tools: [MCPTool]) async -> MCPReply {
         guard let name = params["name"]?.stringValue else {
             return .error(code: invalidParamsCode, message: "Invalid params: tools/call needs a tool name")
         }

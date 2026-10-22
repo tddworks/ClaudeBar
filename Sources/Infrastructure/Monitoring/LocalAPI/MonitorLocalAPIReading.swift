@@ -68,11 +68,11 @@ struct MonitorLocalAPIReading: LocalAPIReading {
     /// in the background; a login with no history has no series.
     func usageDays(count: Int) async -> UsageDaysReport {
         let calendar = DataSources.calendar()
-        var logins: [LoginDays] = []
+        var logins: [LoginDaySeries] = []
         for login in monitor.lineup {
             guard let history = login.usageHistory else { continue }
             let days = await history.days(in: .last(count, endingOn: Date(), calendar: calendar))
-            logins.append(LoginDays(
+            logins.append(LoginDaySeries(
                 id: login.id,
                 name: monitor.lineupName(of: login),
                 days: days.stats.map { DayUsage(stat: $0, knowsCost: days.knowsCost, calendar: calendar) }

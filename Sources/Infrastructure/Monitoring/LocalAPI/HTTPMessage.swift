@@ -2,8 +2,8 @@ import Foundation
 
 /// One request off the wire, as a value: the only parts the routes may look
 /// at — method, path, query, headers, body. No socket, no callbacks; built by
-/// `HTTPRequestParser` from raw bytes and answered by `LocalAPIRouter`.
-public struct HTTPRequest: Sendable, Equatable {
+/// `LocalAPIRequestParser` from raw bytes and answered by `LocalAPIRouter`.
+public struct LocalAPIRequest: Sendable, Equatable {
     /// The method as sent — `"GET"`, `"POST"`. The router is the one place
     /// that decides which of the two a route takes.
     public let method: String
@@ -14,7 +14,7 @@ public struct HTTPRequest: Sendable, Equatable {
     /// Header names lowercased; the first of a repeated name wins.
     public let headers: [String: String]
     /// The body, whole, as the server accumulated it (capped by
-    /// `HTTPRequestParser.maxBodyBytes`).
+    /// `LocalAPIRequestParser.maxBodyBytes`).
     public let body: Data
 
     public init(method: String, path: String, query: [String: String] = [:], headers: [String: String] = [:], body: Data = Data()) {
@@ -33,14 +33,14 @@ public struct HTTPRequest: Sendable, Equatable {
 
 /// What the server can hand the router: a whole request, or the reason it
 /// refused one. The router answers both — the adapter stays dumb.
-public enum HTTPRequestResult: Sendable {
-    case request(HTTPRequest)
-    case failed(HTTPParseError)
+public enum LocalAPIRequestResult: Sendable {
+    case request(LocalAPIRequest)
+    case failed(LocalAPIParseError)
 }
 
 /// Why a request never became a value. Each case has one answer, mapped by
 /// `LocalAPIRouter.response(for:)`.
-public enum HTTPParseError: Error, Sendable, Equatable {
+public enum LocalAPIParseError: Error, Sendable, Equatable {
     /// The request line or a header could not be read.
     case malformed
     /// The header block or the body is over the caps.
@@ -53,8 +53,8 @@ public enum HTTPParseError: Error, Sendable, Equatable {
 }
 
 /// One answer to be written back: status, a few headers, a body. Built by
-/// the router, turned into bytes by `HTTPResponseSerializer`.
-public struct HTTPResponse: Sendable, Equatable {
+/// the router, turned into bytes by `LocalAPIResponseSerializer`.
+public struct LocalAPIResponse: Sendable, Equatable {
     public let status: Int
     public let headers: [String: String]
     public let body: Data
@@ -67,28 +67,28 @@ public struct HTTPResponse: Sendable, Equatable {
 
     /// A JSON answer, pretty-printed with sorted keys — the same shape a
     /// person reads in `~/.claudebar/status.json`.
-    public static func json(_ payload: some Encodable, status: Int = 200) -> HTTPResponse {
+    public static func json(_ payload: some Encodable, status: Int = 200) -> LocalAPIResponse {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(payload) else {
-            return HTTPResponse(status: 500, body: Data("{\"error\": \"could not encode\"}".utf8))
+            return LocalAPIResponse(status: 500, body: Data("{\"error\": \"could not encode\"}".utf8))
         }
-        return HTTPResponse(status: status, body: data)
+        return LocalAPIResponse(status: status, body: data)
     }
 
-    /// A JSON answer for a value already on the wire's terms (`JSONValue`).
-    public static func jsonValue(_ value: JSONValue, status: Int = 200) -> HTTPResponse {
-        HTTPResponse(status: status, body: value.encoded(pretty: true))
+    /// A JSON answer for a value already on the wire's terms (`MCPValue`).
+    public static func jsonValue(_ value: MCPValue, status: Int = 200) -> LocalAPIResponse {
+        LocalAPIResponse(status: status, body: value.encoded(pretty: true))
     }
 
     /// `{"error": message}` — the one error shape every refusal shares.
-    public static func error(_ status: Int, _ message: String, headers: [String: String] = [:]) -> HTTPResponse {
-        HTTPResponse(status: status, headers: headers, body: Data("{\"error\": \(jsonQuoted(message))}".utf8))
+    public static func error(_ status: Int, _ message: String, headers: [String: String] = [:]) -> LocalAPIResponse {
+        LocalAPIResponse(status: status, headers: headers, body: Data("{\"error\": \(jsonQuoted(message))}".utf8))
     }
 
     /// 202 Accepted — the answer to a notification: received, nothing to say.
-    public static var accepted: HTTPResponse {
-        HTTPResponse(status: 202)
+    public static var accepted: LocalAPIResponse {
+        LocalAPIResponse(status: 202)
     }
 
     private static func jsonQuoted(_ text: String) -> String {
@@ -101,7 +101,7 @@ public struct HTTPResponse: Sendable, Equatable {
 
 /// Bytes ⇄ values. The caps live here, on the wire's edge: a request that
 /// cannot be read whole is refused, never half-served.
-public enum HTTPRequestParser {
+public enum LocalAPIRequestParser {
     /// The largest header block (request line + headers, to the blank line).
     public static let maxHeaderBytes = 64 * 1024
     /// The largest body. The MCP surface's largest real body is a tool call's
@@ -131,22 +131,22 @@ public enum HTTPRequestParser {
     }
 
     /// The whole request: its header block and its body, both complete.
-    public static func parse(headerBlock: Data, body: Data) throws -> HTTPRequest {
-        guard body.count <= maxBodyBytes else { throw HTTPParseError.oversized }
+    public static func parse(headerBlock: Data, body: Data) throws -> LocalAPIRequest {
+        guard body.count <= maxBodyBytes else { throw LocalAPIParseError.oversized }
         let head = String(decoding: headerBlock, as: UTF8.self)
         var lines = head.split(separator: "\r\n", omittingEmptySubsequences: false)[...]
-        guard let requestLine = lines.first else { throw HTTPParseError.malformed }
+        guard let requestLine = lines.first else { throw LocalAPIParseError.malformed }
         lines = lines.dropFirst()
 
         let parts = requestLine.split(separator: " ")
-        guard parts.count == 3 else { throw HTTPParseError.malformed }
-        guard parts[2].hasPrefix("HTTP/1.") else { throw HTTPParseError.unsupportedProtocol }
+        guard parts.count == 3 else { throw LocalAPIParseError.malformed }
+        guard parts[2].hasPrefix("HTTP/1.") else { throw LocalAPIParseError.unsupportedProtocol }
 
         let method = String(parts[0])
-        guard !method.isEmpty else { throw HTTPParseError.malformed }
+        guard !method.isEmpty else { throw LocalAPIParseError.malformed }
 
         let target = String(parts[1])
-        guard target.hasPrefix("/") else { throw HTTPParseError.malformed }
+        guard target.hasPrefix("/") else { throw LocalAPIParseError.malformed }
         let targetParts = target.split(separator: "?", maxSplits: 1)
         let path = String(targetParts[0])
         let query = targetParts.count > 1 ? Self.query(String(targetParts[1])) : [:]
@@ -154,16 +154,16 @@ public enum HTTPRequestParser {
         var headers: [String: String] = [:]
         for line in lines where !line.isEmpty {
             let pair = line.split(separator: ":", maxSplits: 1)
-            guard pair.count == 2 else { throw HTTPParseError.malformed }
+            guard pair.count == 2 else { throw LocalAPIParseError.malformed }
             let name = pair[0].trimmingCharacters(in: .whitespaces).lowercased()
-            guard !name.isEmpty else { throw HTTPParseError.malformed }
+            guard !name.isEmpty else { throw LocalAPIParseError.malformed }
             if headers[name] == nil {
                 headers[name] = pair[1].trimmingCharacters(in: .whitespaces)
             }
         }
-        if headers["transfer-encoding"] != nil { throw HTTPParseError.chunkedUnsupported }
+        if headers["transfer-encoding"] != nil { throw LocalAPIParseError.chunkedUnsupported }
 
-        return HTTPRequest(method: method, path: path, query: query, headers: headers, body: body)
+        return LocalAPIRequest(method: method, path: path, query: query, headers: headers, body: body)
     }
 
     /// The query string's pairs, undecoded; a key with no `=` reads as empty.
@@ -181,11 +181,11 @@ public enum HTTPRequestParser {
 
 /// The answer as bytes: a status line, the response's own headers plus the
 /// three every reply carries, the blank line, the body.
-public enum HTTPResponseSerializer {
+public enum LocalAPIResponseSerializer {
     /// Writes one response. `Content-Length`, `Content-Type` (JSON, when the
     /// response carries a body and names none) and `Connection: close` are
     /// the serializer's — one request per connection, no keep-alive to time out.
-    public static func serialize(_ response: HTTPResponse) -> Data {
+    public static func serialize(_ response: LocalAPIResponse) -> Data {
         var head = "HTTP/1.1 \(response.status) \(reasonPhrase(response.status))\r\n"
         var headers = response.headers
         headers["Content-Length"] = "\(response.body.count)"

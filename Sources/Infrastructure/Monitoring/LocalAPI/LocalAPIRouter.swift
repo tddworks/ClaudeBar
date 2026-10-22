@@ -48,7 +48,7 @@ public struct LocalAPIRouter: Sendable {
 
     /// Answers one request — a whole one, or the reason the parser refused
     /// it. Errors are JSON, so a launcher always gets something to read.
-    public func answer(_ result: HTTPRequestResult) async -> HTTPResponse {
+    public func answer(_ result: LocalAPIRequestResult) async -> LocalAPIResponse {
         switch result {
         case let .request(request): await answer(request)
         case let .failed(error): Self.response(for: error)
@@ -56,7 +56,7 @@ public struct LocalAPIRouter: Sendable {
     }
 
     /// Answers one parsed request from the closed route table.
-    public func answer(_ request: HTTPRequest) async -> HTTPResponse {
+    public func answer(_ request: LocalAPIRequest) async -> LocalAPIResponse {
         switch (request.method, request.path) {
         case ("GET", "/"):
             return Self.index(version: version)
@@ -75,7 +75,7 @@ public struct LocalAPIRouter: Sendable {
         case (_, "/mcp"):
             return Self.methodNotAllowed(allowed: "POST")
         default:
-            return HTTPResponse.error(404, "not found")
+            return LocalAPIResponse.error(404, "not found")
         }
     }
 
@@ -84,7 +84,7 @@ public struct LocalAPIRouter: Sendable {
     /// POST /mcp — one JSON-RPC message in, one JSON answer out. A
     /// notification is answered with 202 and silence; a body that is not one
     /// message is a JSON-RPC error at 400.
-    func answerMCP(_ request: HTTPRequest) async -> HTTPResponse {
+    func answerMCP(_ request: LocalAPIRequest) async -> LocalAPIResponse {
         let inbound = MCPKernel.decode(request.body)
         switch inbound {
         case let .malformed(code, message):
@@ -127,8 +127,8 @@ public struct LocalAPIRouter: Sendable {
     }
 
     /// The JSON-RPC 2.0 envelope: the id back, and a result or an error.
-    static func envelope(id: JSONValue, reply: MCPReply) -> JSONValue {
-        var pairs: [String: JSONValue] = ["jsonrpc": .string("2.0"), "id": id]
+    static func envelope(id: MCPValue, reply: MCPReply) -> MCPValue {
+        var pairs: [String: MCPValue] = ["jsonrpc": .string("2.0"), "id": id]
         switch reply {
         case let .result(value): pairs["result"] = value
         case let .error(code, message):
@@ -163,7 +163,7 @@ public struct LocalAPIRouter: Sendable {
 
     /// GET / — what this service is and what it answers, for a person who
     /// just pointed curl at it.
-    static func index(version: String) -> HTTPResponse {
+    static func index(version: String) -> LocalAPIResponse {
         .jsonValue(.object([
             "name": .string("claudebar"),
             "version": .string(version),
@@ -173,17 +173,17 @@ public struct LocalAPIRouter: Sendable {
         ]))
     }
 
-    static func methodNotAllowed(allowed: String) -> HTTPResponse {
-        HTTPResponse.error(405, "method not allowed", headers: ["Allow": allowed])
+    static func methodNotAllowed(allowed: String) -> LocalAPIResponse {
+        LocalAPIResponse.error(405, "method not allowed", headers: ["Allow": allowed])
     }
 
     /// The refusal each parse error earns.
-    static func response(for error: HTTPParseError) -> HTTPResponse {
+    static func response(for error: LocalAPIParseError) -> LocalAPIResponse {
         switch error {
-        case .malformed: HTTPResponse.error(400, "malformed request")
-        case .oversized: HTTPResponse.error(413, "request too large")
-        case .chunkedUnsupported: HTTPResponse.error(400, "chunked bodies are not supported; send Content-Length")
-        case .unsupportedProtocol: HTTPResponse.error(505, "only HTTP/1.x is supported")
+        case .malformed: LocalAPIResponse.error(400, "malformed request")
+        case .oversized: LocalAPIResponse.error(413, "request too large")
+        case .chunkedUnsupported: LocalAPIResponse.error(400, "chunked bodies are not supported; send Content-Length")
+        case .unsupportedProtocol: LocalAPIResponse.error(505, "only HTTP/1.x is supported")
         }
     }
 }

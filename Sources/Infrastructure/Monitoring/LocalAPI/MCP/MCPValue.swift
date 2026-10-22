@@ -4,16 +4,16 @@ import Foundation
 /// so a message can cross an actor boundary. Parsed with
 /// `JSONSerialization`, written back with it too; `parse`/`encoded` are the
 /// only places bytes and values meet.
-public enum JSONValue: Sendable, Hashable {
+public enum MCPValue: Sendable, Hashable {
     case null
     case bool(Bool)
     case number(Double)
     case string(String)
-    case array([JSONValue])
-    case object([String: JSONValue])
+    case array([MCPValue])
+    case object([String: MCPValue])
 
     /// The value's object pairs, or `nil` for anything else.
-    public var objectValue: [String: JSONValue]? {
+    public var objectValue: [String: MCPValue]? {
         if case let .object(pairs) = self { return pairs }
         return nil
     }
@@ -31,17 +31,17 @@ public enum JSONValue: Sendable, Hashable {
     }
 
     /// A pair in an object; anything else reads as `nil`.
-    public subscript(key: String) -> JSONValue? {
+    public subscript(key: String) -> MCPValue? {
         objectValue?[key]
     }
 
     /// An empty object — the schema of a tool that takes no arguments.
-    public static let emptyObject: JSONValue = .object([:])
+    public static let emptyObject: MCPValue = .object([:])
 
     /// Parses bytes into a value, JSON fragments included. `nil` for anything
     /// that does not parse — a batch (`[...]`) parses as `.array`, and the
     /// MCP kernel is the one that refuses it.
-    public static func parse(_ data: Data) -> JSONValue? {
+    public static func parse(_ data: Data) -> MCPValue? {
         guard let any = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else { return nil }
         return Self(any)
     }
@@ -64,7 +64,7 @@ public enum JSONValue: Sendable, Hashable {
         return (try? JSONSerialization.data(withJSONObject: any, options: serialization)) ?? Data("null".utf8)
     }
 
-    private static func anyValue(_ value: JSONValue) -> Any {
+    private static func anyValue(_ value: MCPValue) -> Any {
         switch value {
         case .null: NSNull()
         case let .bool(bool): bool
@@ -89,7 +89,7 @@ public enum JSONValue: Sendable, Hashable {
         case let string as String: self = .string(string)
         case let values as [Any]: self = .array(values.compactMap { Self.init($0) })
         case let pairs as [String: Any]:
-            var converted: [String: JSONValue] = [:]
+            var converted: [String: MCPValue] = [:]
             for (key, value) in pairs {
                 guard let convertedValue = Self.init(value) else { return nil }
                 converted[key] = convertedValue
