@@ -774,12 +774,16 @@ struct MenuContentView: View {
     }
 
     /// One product, its logins side by side: chips that hide one from this
-    /// view, a section per unpaused login, the ones paused under PAUSED with a
-    /// Resume, and the login that makes the product's status what it is, named.
+    /// view, their pool summed into one line, a section per unpaused login,
+    /// the ones paused under PAUSED with a Resume, and the login that makes
+    /// the product's status what it is, named.
     private func accountsContent(_ tab: ProductTab) -> some View {
         VStack(spacing: 12) {
             if !tab.unpaused.isEmpty {
                 accountChips(tab)
+            }
+            if let pool = tab.provider.accounts.pool {
+                poolLine(pool)
             }
             if let state = newSessions.state(of: tab.provider) {
                 InUseStrip(state: state)
@@ -954,6 +958,19 @@ struct MenuContentView: View {
             .padding(.leading, theme.isOutlined ? 2 : 1)
             .padding(.trailing, theme.isOutlined ? 5 : 1)
         }
+    }
+
+    /// "340% left across 3 logins" — the pool's sum, said for what it is:
+    /// shares across the logins, never a percentage of a bigger whole
+    /// (docs/features/providers/quota-pools/design.md).
+    private func poolLine(_ pool: Pool) -> some View {
+        let across = pool.count == 1 ? "1 login" : "\(pool.count) logins"
+        return Text("\(Int(pool.percent))% left across \(across)")
+            .popoverFont(10, weight: .medium)
+            .foregroundStyle(theme.textTertiary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help("Each login's tightest window, added together. The logins refill independently, so over 100% is normal.")
+            .accessibilityLabel("\(Int(pool.percent))% left across \(across)")
     }
 
     /// "Work is at 18% Session — causing Warning": the aggregate names its cause.
