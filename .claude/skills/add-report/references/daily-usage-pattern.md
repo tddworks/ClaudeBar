@@ -60,6 +60,6 @@ UsageHistory.read() ─▶ report (last 2 days) ─▶ MenuContentView ─▶ Da
 3. **Read on popover open, never in the background** (#204).
 4. **Performance** — only files changed since the range's first day; appended
    lines only; lines without the `where` text are never decoded.
-5. **Formatting in domain models** — views read `formattedCost`, `formattedTokens`.
+5. **Amounts formatted in domain models, words in the App** — views read `formattedCost`, `formattedTokens`; a card's sentences and labels are the App's.
 6. **Cards match existing style** — `theme.cardGradient`, `theme.glassBorder`;
    Cost and Tokens side by side, Working Time full width below.

@@ -22,7 +22,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 ## Local language server
 
-1. **Find the process**: `/usr/bin/pgrep -lf language_server`. Keep lines that contain one of `language_server`, `language_server_macos`, `language_server_macos_arm` or `agy`, and also look like Antigravity: an `agy` binary, `--app_data_dir … antigravity`, or `/antigravity/` / `.antigravity/` in the path. The first matching line must have `--csrf_token <t>`, or detection throws `authenticationRequired`. `--extension_server_port <p>` is optional.
+1. **Find the process**: `/usr/bin/pgrep -lf 'language_server|language_server_macos|language_server_macos_arm|agy'`. Keep lines that contain one of `language_server`, `language_server_macos`, `language_server_macos_arm` or `agy`, and also look like Antigravity: an `agy` binary, `--app_data_dir … antigravity`, or `/antigravity/` / `.antigravity/` in the path. The first matching line, in `pgrep`'s (PID) order, that has `--csrf_token <t>` is the one asked: an `agy` session left open in a terminal matches too but is started without a token, and it can have the lower PID. If no matching line has one, detection throws `authenticationRequired`. `--extension_server_port <p>` is optional.
 2. **Empty `pgrep` (#301, PR #304)**: when `pgrep` matches nothing it exits with empty output. The PTY runner reports that as `InteractiveRunner.RunError.timedOut`, not as empty output. Before the fix, that timeout escaped `detectProcess()`, `probe()` never saw `cliNotFound`, and the Cloud Code fallback was unreachable with the app closed. The user saw "Command did not complete within the timeout" on every refresh. A `pgrep` timeout now counts as "not running".
 3. **Ports**: `lsof -nP -iTCP -sTCP:LISTEN -a -p <pid>` → every `:<port> (LISTEN)`.
 4. **Quota**: `POST https://127.0.0.1:<port>/exa.language_server_pb.LanguageServerService/<method>` on each port, in this order:
@@ -62,6 +62,5 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 - The local server is reached on `localhost` / `127.0.0.1` only, and a redirect must keep its scheme, host and port; anything else is refused before the server's token could leave the Mac.
 
-- `pgrep` matches on `language_server`, so an `agy` process is only found if its command line contains that string. The `agy` name check only runs on lines `pgrep` has already matched.
 - If the saved token has expired and `agy` isn't installed (only the desktop app is), nothing can renew it until the app runs again. The user sees "Authentication required".
 - If the keychain item's service or account changes in a future Antigravity build, the app-closed fallback stops working without any error beyond "not running and no stored credentials".
