@@ -23,6 +23,12 @@ struct WeeklyRecapsTests {
         DateRange.week(containing: date(day), calendar: calendar)
     }
 
+    /// A day in a named month, for the months the recap reads.
+    private func day(_ month: Int, _ dayOfMonth: Int, cost: Decimal) -> DailyUsageStat {
+        DailyUsageStat(date: calendar.date(from: DateComponents(year: 2026, month: month, day: dayOfMonth))!,
+                       totalCost: cost, totalTokens: 10, workingTime: 0, sessionCount: 1)
+    }
+
     private func day(_ day: Int, cost: Decimal) -> DailyUsageStat {
         DailyUsageStat(date: date(day), totalCost: cost, totalTokens: 10, workingTime: 0, sessionCount: 1)
     }
@@ -91,6 +97,44 @@ struct WeeklyRecapsTests {
 
         #expect(recaps.recap(for: .thisWeek)?.total == 3)
         #expect(recaps.recap(for: .lastWeek)?.total == 12)
+    }
+
+    /// The month recap reads the calendar's month against the one before it.
+    @Test func `should read this month against last month and last month against the month before`() async {
+        let recaps = recaps([login("a", Log([day(21, cost: 12), day(10, cost: 5), day(9, 20, cost: 8)]))]) { self.date(22) }
+
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(for: .thisMonth)?.total == 17)
+        #expect(recaps.recap(for: .thisMonth)?.change == 1.125)
+        #expect(recaps.recap(for: .lastMonth)?.total == 8)
+        #expect(recaps.recap(for: .lastMonth)?.change == nil)
+    }
+
+    /// October 31 and November 1, 2026 share the Monday-first week Oct 26 –
+    /// Nov 1, yet the month turned: the recaps are read again.
+    @Test func `should read again when the month turns inside the same week`() async {
+        var today = date(31)
+        let recaps = recaps([login("a", Log([day(31, cost: 12), day(5, cost: 9)]))]) { today }
+        await recaps.readIfStale()
+
+        today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(for: .thisMonth)?.isEmpty == true)
+        #expect(recaps.recap(for: .lastMonth)?.total == 21)
+    }
+
+    /// The ranges the recaps were read for — what a report writes in its
+    /// header — are there once the recaps are.
+    @Test func `should name the ranges it read for once read`() async {
+        let recaps = recaps([login("a", Log([day(21, cost: 12)]))]) { self.date(22) }
+        #expect(recaps.ranges.isEmpty)
+
+        await recaps.readIfStale()
+
+        #expect(recaps.ranges[.thisWeek] == DateRange.week(containing: date(22), calendar: calendar))
+        #expect(recaps.ranges[.lastMonth] == DateRange.month(containing: date(22), calendar: calendar).previousMonth(calendar: calendar))
     }
 
     @Test func `should read again when a login's usage was read again`() async {

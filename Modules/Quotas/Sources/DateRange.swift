@@ -34,6 +34,23 @@ public struct DateRange: Sendable, Equatable {
         return DateRange(first: first, last: last, calendar: calendar)
     }
 
+    /// The calendar's month that holds `day`: from its first day to its last,
+    /// however long it runs.
+    public static func month(containing day: Date, calendar: Calendar) -> DateRange {
+        let first = calendar.dateInterval(of: .month, for: day)?.start ?? calendar.startOfDay(for: day)
+        let count = calendar.range(of: .day, in: .month, for: day)?.count ?? 1
+        let last = calendar.date(byAdding: .day, value: count - 1, to: first) ?? first
+        return DateRange(first: first, last: last, calendar: calendar)
+    }
+
+    /// The calendar month before this one. A month steps a month, never a
+    /// day-count back: months differ in length, and stepping a month's own
+    /// day-count from March 1 lands in January.
+    public func previousMonth(calendar: Calendar) -> DateRange {
+        let previous = calendar.date(byAdding: .month, value: -1, to: first) ?? first
+        return DateRange.month(containing: previous, calendar: calendar)
+    }
+
     /// The same run of days, one run earlier — the range before this one, for
     /// a comparison. Its length is this range's own.
     public func before(calendar: Calendar) -> DateRange {

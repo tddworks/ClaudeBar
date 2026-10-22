@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linux runs a CLI fetch on a pseudo-terminal**: Claude's and Kimi's CLI sources and Codex's tty fallback read their screen there as the Mac does — the Mac's interactive session became one copy, and Linux answers it with a pty of its own. ([#615](https://github.com/tddworks/ClaudeBar/pull/615)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)
 - **A product's logins sum to one pool**: from two logins, the popover adds what its logins have left — "340% left across 3 logins". ([#617](https://github.com/tddworks/ClaudeBar/pull/617)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/quota-pools/README.md)
 - **Windows reads a CLI's screen**: Claude's and Kimi's CLI sources and Codex's tty fallback run in a pseudo console there, typed into and rendered as on the Mac. ([#625](https://github.com/tddworks/ClaudeBar/pull/625)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#terminal-a-clis-screen)
+- **The recap exports as an HTML report**: the card's ↗ saves the recap on screen — total, change, a bar per day, the models — as one self-contained file, light or dark in any browser. Months joined the recap. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md) ([#624](https://github.com/tddworks/ClaudeBar/pull/624))
 
 ---
 

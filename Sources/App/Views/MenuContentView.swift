@@ -708,7 +708,7 @@ struct MenuContentView: View {
             // that adds logins up, so it lives on the one page that is about
             // them all. It reads the same days as the daily usage cards.
             if settings.isShown(.weeklyRecap) {
-                RecapCardView(recaps: weeklyRecaps.recaps) { monitor.providers.provider(id: $0)?.name ?? $0 }
+                RecapCardView(recaps: weeklyRecaps.recaps, dates: weeklyRecaps.ranges) { monitor.providers.provider(id: $0)?.name ?? $0 }
                     .task { await weeklyRecaps.readIfStale() }
             }
         }

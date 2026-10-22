@@ -18,21 +18,25 @@ public struct RecapLogin {
     }
 }
 
-/// *WEEKLY RECAP*'s two weeks across the lineup: for each `RecapRange`, every
-/// login's days in the week and the week before, by provider — two logins of
+/// *WEEKLY RECAP*'s ranges across the lineup: for each `RecapRange`, every
+/// login's days in the range and the range before, by provider — two logins of
 /// one provider as one (`Days.merged`) — read into a `Recap`. It decides for
-/// itself when it is stale: another week than the one it was read for, or a
+/// itself when it is stale: another range than the ones it was read for, or a
 /// login whose days were read again. It cuts no days and picks no unit — those
 /// are `UsageHistory.days(in:)`'s and `Recap`'s.
 @MainActor
 @Observable
 public final class WeeklyRecaps {
-    /// Each week's recap, once read.
+    /// Each range's recap, once read.
     public private(set) var recaps: [RecapRange: Recap] = [:]
 
-    /// What the recaps were read for: the week, and each login's last read.
+    /// The date range each recap was read for — what a report writes in its
+    /// header. There once the recaps are.
+    public private(set) var ranges: [RecapRange: DateRange] = [:]
+
+    /// What the recaps were read for: the ranges, and each login's last read.
     private struct Reading: Equatable {
-        let week: DateRange
+        let ranges: [DateRange]
         let providers: [String]
         let usage: [Days?]
     }
@@ -77,16 +81,17 @@ public final class WeeklyRecaps {
     /// for the week the read was taken in (still under way, so not the whole
     /// week), and while the read left standing covers other weeks.
     public func recap(of week: DateRange) -> Recap? {
-        guard let shown, week == shown.week.before(calendar: calendar) else { return nil }
+        guard let shown, let readIn = shown.ranges.first,
+              week == readIn.before(calendar: calendar) else { return nil }
         return recaps[.lastWeek]
     }
 
-    /// Reads both weeks again when the week turned or a login's days were read
+    /// Reads every range again when one turned or a login's days were read
     /// again since the last read; otherwise reads nothing.
     public func readIfStale() async {
         let logins = logins()
         let date = now()
-        let current = Reading(week: DateRange.week(containing: date, calendar: calendar),
+        let current = Reading(ranges: RecapRange.allCases.map { $0.range(containing: date, calendar: calendar) },
                               providers: logins.map(\.providerId),
                               usage: logins.map { $0.lastRead() })
         guard current != shown, current != underWay else { return }
@@ -94,9 +99,8 @@ public final class WeeklyRecaps {
 
         var read: [RecapRange: Recap] = [:]
         for range in RecapRange.allCases {
-            let week = range.range(containing: date, calendar: calendar)
-            read[range] = Recap(this: await days(of: logins, in: week),
-                                before: await days(of: logins, in: week.before(calendar: calendar)))
+            read[range] = Recap(this: await days(of: logins, in: range.range(containing: date, calendar: calendar)),
+                                before: await days(of: logins, in: range.rangeBefore(containing: date, calendar: calendar)))
         }
         // A newer read started meanwhile: its recaps are the ones to keep.
         guard underWay == current else { return }
@@ -104,6 +108,7 @@ public final class WeeklyRecaps {
         // A cancelled read may have stopped short: it is read again next time.
         guard !Task.isCancelled else { return }
         recaps = read
+        ranges = Dictionary(uniqueKeysWithValues: zip(RecapRange.allCases, current.ranges))
         shown = current
     }
 

@@ -13,7 +13,7 @@ public enum UsageSection: String, Sendable, CaseIterable {
     case lastYear
     /// The year's model mix.
     case modelMix
-    /// The weekly recap on the All page.
+    /// The recap on the All page: weeks and months.
     case weeklyRecap
 
     /// Shown until the person hides it. The year's two sections start

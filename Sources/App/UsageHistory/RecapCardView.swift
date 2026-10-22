@@ -1,14 +1,20 @@
+import AppKit
 import SwiftUI
 import Domain
+import UniformTypeIdentifiers
 
-/// *WEEKLY RECAP* — the week's story across every provider: the total, the
-/// split by provider, the top model, the biggest day, what caching saved, and
-/// the week before it. A range choice picks the week. It renders what `Recap`
-/// says, in the recap's own unit, and never counts; a week that holds nothing
-/// says so, and the choice stays while either week has something.
+/// *RECAP* — the week's or month's story across every provider: the total,
+/// the split by provider, the top model, the biggest day, what caching saved,
+/// and the range before it. A range choice picks the range. It renders what
+/// `Recap` says, in the recap's own unit, and never counts; a range that holds
+/// nothing says so, and the choice stays while any range has something. The
+/// export button writes the recap out as one HTML report, where the person
+/// saves it.
 struct RecapCardView: View {
-    /// Both weeks the card offers, read by the page.
+    /// Every range the card offers, read by the page.
     let recaps: [RecapRange: Recap]
+    /// The dates each recap was read for — what a report writes in its header.
+    let dates: [RecapRange: DateRange]
     /// A provider's name, from its id.
     let name: (String) -> String
 
@@ -24,11 +30,12 @@ struct RecapCardView: View {
     // MARK: - The card
 
     /// The card for one range: the header, then either its highlights or the
-    /// note that the week held nothing.
+    /// note that the range held nothing.
     @ViewBuilder
     private func card(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+            chips
             if recap.isEmpty {
                 Text(range.emptyNote)
                     .popoverFont(9, weight: .medium)
@@ -57,16 +64,59 @@ struct RecapCardView: View {
                 Image(systemName: "calendar")
                     .popoverFont(9, weight: .bold)
                     .foregroundStyle(theme.textSecondary)
-                Text("WEEKLY RECAP")
+                Text("RECAP")
                     .popoverFont(8, weight: .medium)
                     .foregroundStyle(theme.textSecondary)
                     .tracking(0.3)
             }
             Spacer(minLength: 4)
-            HStack(spacing: 4) {
-                ForEach(RecapRange.allCases) { choice in
-                    chip(choice)
-                }
+            if let chosen = recaps[range], !chosen.isEmpty {
+                exportButton
+            }
+        }
+    }
+
+    /// The ranges the card offers, as chips.
+    private var chips: some View {
+        HStack(spacing: 4) {
+            ForEach(RecapRange.allCases) { choice in
+                chip(choice)
+            }
+        }
+    }
+
+    /// The person's one gesture: the recap written out as an HTML report,
+    /// saved where they say, opened when saved.
+    private var exportButton: some View {
+        Button {
+            exportReport()
+        } label: {
+            Image(systemName: "square.and.arrow.up")
+                .popoverFont(9, weight: .medium)
+                .foregroundStyle(theme.textTertiary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Save as HTML report")
+    }
+
+    /// The save panel, the atomic write, the file opened — the report holds
+    /// what the card holds; the app never reads it back.
+    private func exportReport() {
+        guard let recap = recaps[range] else { return }
+        let report = RecapHTMLReport(recap: recap, range: range, dates: dates[range], name: name)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.html]
+        panel.nameFieldStringValue = "Usage recap — \(range.title)"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                try report.html.write(to: url, atomically: true, encoding: .utf8)
+                NSWorkspace.shared.open(url)
+            } catch {
+                AppLog.ui.error("The recap report could not be written: \(error.localizedDescription)")
             }
         }
     }

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage recap — This week · ClaudeBar (mockup)</title>
+<style>
+/* The exported report's own stylesheet: self-contained, no script, follows
+   the system's light or dark. Mock data throughout. */
+:root{--bg:#F6F4FA;--wash:#EDE8F6;--card:#FFFFFF;--hair:#E6E1F0;--ink:#1D1B2E;--muted:#6B6580;--faint:#9A93AE;--track:#ECE6F5;--up:#C46A00;--down:#1F8A4D;--glow:rgba(140,110,220,.10)}
+@media (prefers-color-scheme:dark){
+:root{--bg:#0C0D12;--wash:#14151D;--card:rgba(255,255,255,.045);--hair:rgba(255,255,255,.09);--ink:#F2F2F5;--muted:#A8A8B3;--faint:#6E6E7A;--track:rgba(255,255,255,.07);--up:#FF9F0A;--down:#30D158;--glow:rgba(120,90,220,.16)}
+}
+*{box-sizing:border-box}
+body{margin:0;background:
+  radial-gradient(900px 340px at 50% -120px,var(--glow),transparent 70%),
+  var(--bg);
+  color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:0 auto;padding:48px 24px 24px;display:flex;flex-direction:column;gap:14px}
+
+/* Header */
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:18px;height:1px;background:var(--faint)}
+h1{margin:4px 0 2px;font-size:34px;font-weight:800;letter-spacing:-.02em}
+.when{color:var(--muted);font-size:14px}
+.stamp{color:var(--faint);font-size:12px;margin-top:2px}
+
+/* Cards */
+section{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:18px 20px}
+section>h2{margin:0 0 12px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* Lead */
+.lead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.lead .total{font:700 44px/1 "SF Pro Rounded","SF Pro Display",-apple-system,system-ui;letter-spacing:-.02em}
+.lead .cap{color:var(--faint);font-size:13px}
+.change{margin-left:auto;text-align:right}
+.change b{font-size:17px;font-weight:700;color:var(--up)}
+.change b.down{color:var(--down)}
+.change span{display:block;font-size:11px;color:var(--faint)}
+.subline{margin-top:10px;color:var(--muted);font-size:13px}
+.subline i{font-style:normal;color:var(--faint);padding:0 6px}
+
+/* Provider split */
+.rows{display:flex;flex-direction:column;gap:9px}
+.row{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.row .name{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .val{margin-left:auto;color:var(--faint);font-variant-numeric:tabular-nums}
+.row .share{font-weight:700;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--track);margin-bottom:12px}
+.stack div{height:100%}
+.c1{background:#BF5AF2}.c2{background:#0A84FF}.c3{background:#FF9F0A}.c4{background:#FF375F}.c5{background:#30D158}.c6{background:#64D2FF}
+
+/* Day by day */
+.chart{display:flex;align-items:flex-end;gap:8px;height:120px}
+.chart .day{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.chart .bar{width:100%;max-width:34px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#BF5AF2,#7B5BE6);min-height:2px}
+.chart .bar.empty{background:var(--track)}
+.chart .v{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.chart .l{font-size:11px;color:var(--faint)}
+.chart .peak .l{color:var(--ink);font-weight:700}
+
+/* Highlights */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{border:1px solid var(--hair);border-radius:12px;padding:12px 14px;background:var(--wash)}
+.tile .k{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.tile .v{margin-top:4px;font-size:15px;font-weight:700}
+
+footer{color:var(--faint);font-size:12px;text-align:center;padding:20px 0 40px}
+footer b{color:var(--muted);font-weight:600}
+@media (max-width:560px){.tiles{grid-template-columns:1fr}.change{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <div class="eyebrow">ClaudeBar · Usage recap</div>
+    <h1>This week</h1>
+    <div class="when">Monday, Oct 19 – Sunday, Oct 25, 2026 · vs last week</div>
+    <div class="stamp">Written Oct 22, 2026 at 14:32 · mock data</div>
+  </header>
+
+  <section>
+    <h2>The week</h2>
+    <div class="lead">
+      <span class="total">$142.37</span>
+      <span class="cap">estimated cost</span>
+      <span class="change"><b>▲ 23%</b><span>vs last week</span></span>
+    </div>
+    <div class="subline">41.2M tokens <i>·</i> 31h 24m worked <i>·</i> 62 sessions</div>
+  </section>
+
+  <section>
+    <h2>Where it went</h2>
+    <div class="stack">
+      <div class="c1" style="width:69%"></div><div class="c2" style="width:23%"></div><div class="c3" style="width:8%"></div>
+    </div>
+    <div class="rows">
+      <div class="row"><span class="dot c1"></span><span class="name">Claude Code</span><span class="val">$98.12</span><span class="share">69%</span></div>
+      <div class="row"><span class="dot c2"></span><span class="name">Codex</span><span class="val">$32.50</span><span class="share">23%</span></div>
+      <div class="row"><span class="dot c3"></span><span class="name">Copilot</span><span class="val">$11.75</span><span class="share">8%</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Day by day</h2>
+    <div class="chart">
+      <div class="day"><span class="v">$12.40</span><div class="bar" style="height:39%"></div><span class="l">Mon</span></div>
+      <div class="day peak"><span class="v">$31.80</span><div class="bar" style="height:100%"></div><span class="l">Tue</span></div>
+      <div class="day"><span class="v">$28.15</span><div class="bar" style="height:88%"></div><span class="l">Wed</span></div>
+      <div class="day"><span class="v">$22.60</span><div class="bar" style="height:71%"></div><span class="l">Thu</span></div>
+      <div class="day"><span class="v">$26.90</span><div class="bar" style="height:85%"></div><span class="l">Fri</span></div>
+      <div class="day"><span class="v">$4.32</span><div class="bar" style="height:14%"></div><span class="l">Sat</span></div>
+      <div class="day"><span class="v">$16.20</span><div class="bar" style="height:51%"></div><span class="l">Sun</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Models</h2>
+    <div class="rows">
+      <div class="row"><span class="dot c1"></span><span class="name">Claude Opus 4.5</span><span class="val">$74.03</span><span class="share">52%</span></div>
+      <div class="row"><span class="dot c2"></span><span class="name">GPT-5.2</span><span class="val">$44.13</span><span class="share">31%</span></div>
+      <div class="row"><span class="dot c3"></span><span class="name">Claude Sonnet 4.5</span><span class="val">$17.08</span><span class="share">12%</span></div>
+      <div class="row"><span class="dot c4"></span><span class="name">Other models</span><span class="val">$7.13</span><span class="share">5%</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Highlights</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Top model</div><div class="v">Claude Opus 4.5</div></div>
+      <div class="tile"><div class="k">Biggest day</div><div class="v">Tuesday, October 20</div></div>
+      <div class="tile"><div class="k">Cache saved</div><div class="v">$41.20</div></div>
+    </div>
+  </section>
+
+  <footer>Written by <b>ClaudeBar</b> from your local usage logs — a read of the week, never stored.</footer>
+
+</main>
+</body>
+</html>

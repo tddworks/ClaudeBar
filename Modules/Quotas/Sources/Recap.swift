@@ -36,9 +36,15 @@ public struct Recap: Sendable, Equatable {
     public let providers: [Part]
     /// The model leaned on most across every provider, or nil when none is named.
     public let topModel: ModelMix.Part?
+    /// Every model the range names, largest first — the mix's read, for the
+    /// report's model by model.
+    public let models: [ModelMix.Part]
     /// The day that added up to the most across every provider, or nil when
     /// nothing was used.
     public let biggestDay: DayValue?
+    /// Every day of the merged range, oldest first — the activity's read, for
+    /// the report's day by day.
+    public let days: [DayValue]
     /// What caching saved over the range.
     public let cacheSavings: Decimal
     /// The time worked over the range.
@@ -59,6 +65,8 @@ public struct Recap: Sendable, Equatable {
         let total = this.values.reduce(0) { $0 + $1.total(in: unit) }
         let earlier = before.values.reduce(0) { $0 + $1.total(in: unit) }
         let week = Days.merged(Array(this.values))
+        let mix = ModelMix(of: week, in: unit)
+        let activity = DayActivity(of: week, in: unit)
 
         self.unit = unit
         self.total = total
@@ -68,8 +76,10 @@ public struct Recap: Sendable, Equatable {
             .filter { $0.value > 0 }
             .map { Part(provider: $0.provider, value: $0.value, share: $0.value / total) }
             .sorted { $0.value == $1.value ? $0.provider < $1.provider : $0.value > $1.value }
-        topModel = ModelMix(of: week, in: unit).top
-        biggestDay = DayActivity(of: week, in: unit).busiest
+        topModel = mix.top
+        models = mix.parts
+        biggestDay = activity.busiest
+        days = activity.days
         cacheSavings = week.cacheSavings
         workingTime = week.workingTime
         sessions = week.sessions

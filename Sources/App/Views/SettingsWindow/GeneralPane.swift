@@ -108,7 +108,7 @@ private extension UsageSection {
         case .lastThirtyDays: "Last 30 days"
         case .lastYear: "Last year"
         case .modelMix: "Model mix"
-        case .weeklyRecap: "Weekly recap"
+        case .weeklyRecap: "Recap"
         }
     }
 
@@ -118,7 +118,7 @@ private extension UsageSection {
         case .lastThirtyDays: "The daily chart"
         case .lastYear: "The year as a heatmap"
         case .modelMix: "Which models you lean on"
-        case .weeklyRecap: "The week's story, on the All page"
+        case .weeklyRecap: "The week's and month's story, on the All page"
         }
     }
 }

@@ -140,6 +140,35 @@ struct RecapTests {
         #expect(recap.sessions == 3)
     }
 
+    // MARK: - The shape, read by the report
+
+    /// The day-by-day is `DayActivity`'s read of the merged days: every day
+    /// once, oldest first, each provider's day added in.
+    @Test func `should read the day by day from the merged days, oldest first`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 8), day(tuesday, cost: 6)),
+                                 "b": priced(day(monday, cost: 1), day(tuesday, cost: 5))], before: [:])
+
+        #expect(recap.days.map(\.date) == [monday, tuesday])
+        #expect(recap.days.map(\.value) == [9, 11])
+    }
+
+    /// The model-by-model is the mix's read: every model, largest first.
+    @Test func `should read every model from the mix, largest first`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 2, tokens: 400, lines: [small])),
+                                 "b": priced(day(monday, cost: 12, tokens: 100, lines: [large]))], before: [:])
+
+        #expect(recap.models.map(\.line.model) == [large.model, small.model])
+        #expect(recap.models.map(\.value) == [12, 2])
+    }
+
+    /// A week that held nothing has no shape to read.
+    @Test func `should read no days and no models when the week held nothing`() {
+        let recap = Recap(this: ["a": priced(DailyUsageStat.empty(for: monday))], before: [:])
+
+        #expect(recap.days.isEmpty)
+        #expect(recap.models.isEmpty)
+    }
+
     // MARK: - Nothing
 
     @Test func `should hold nothing when no provider used anything in the week`() {

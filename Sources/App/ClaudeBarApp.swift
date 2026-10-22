@@ -50,7 +50,7 @@ struct ClaudeBarApp: App {
     /// with `notify.enabled`; does nothing until a device is linked.
     private let notifyDriver: NotifyPublishDriver
     private let leaderboard: AppLeaderboard
-    /// *WEEKLY RECAP*'s two weeks across the lineup, read by the All page.
+    /// *WEEKLY RECAP*'s ranges across the lineup, read by the All page.
     private let weeklyRecaps: WeeklyRecaps
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
