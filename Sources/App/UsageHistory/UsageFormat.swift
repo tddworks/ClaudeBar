@@ -34,6 +34,19 @@ enum UsageFormat {
         String(format: "%.0f%%", share * 100)
     }
 
+    /// "+12%", "−8%" — a change against what came before, as a fraction.
+    static func change(_ change: Double) -> String {
+        let percent = Int((abs(change) * 100).rounded())
+        return (change < 0 && percent > 0 ? "−" : "+") + "\(percent)%"
+    }
+
+    /// "21h 40m", or "5m 30s" under an hour.
+    static func duration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let hours = total / 3600, minutes = total / 60 % 60
+        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m \(total % 60)s"
+    }
+
     /// One decimal, without a trailing ".0" — "2.5", "500".
     private static func short(_ value: Double) -> String {
         let text = String(format: "%.1f", value)

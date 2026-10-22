@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quota Forecast — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--sun:#FFD84D;--violet:#7C5CFF;--red:#FF8A8A;--track:#EFE6D6;--line:2.5px solid var(--ink);--shadow:3px 3px 0 var(--ink);
+  --g-bg:linear-gradient(135deg,#2A1B4A,#3B1F55);--g-card:rgba(255,255,255,.09);--g-border:rgba(255,255,255,.22);--g-text:#F5F0FF;--g-muted:rgba(245,240,255,.62);--g-faint:rgba(245,240,255,.48)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#1B1926;--dot:#2C2940;--ink:#F4EEE2;--muted:#B7B0C8;--card:#26233A;--lav:#332D52;--track:#38344F}}
+:root[data-theme="dark"]{--paper:#1B1926;--dot:#2C2940;--ink:#F4EEE2;--muted:#B7B0C8;--card:#26233A;--lav:#332D52;--track:#38344F}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted);max-width:780px}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+.state{display:flex;flex-direction:column;gap:10px;min-width:0}
+.state h3{margin:0;font-size:14px;font-weight:800}
+.state p{margin:0;font-size:12px;color:var(--muted)}
+.mono{font-family:"JetBrains Mono",monospace}
+
+/* Pop (outlined) quota card */
+.qc{background:#fff;color:#1E1B2E;border:3px solid #1E1B2E;border-radius:20px;box-shadow:5px 5px 0 #1E1B2E;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.qc .head{display:flex;justify-content:space-between;align-items:center}
+.qc .name{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;display:flex;gap:6px;align-items:center}
+.qc .name i{font-style:normal;color:#3CC27A}
+.badge{border:2px solid #1E1B2E;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:800;letter-spacing:.04em;background:#9FE3B8}
+.badge.warn{background:#FFD84D}.badge.crit{background:#FF8A8A}.badge.dep{background:#C9C3D6}
+.qc .big{display:flex;align-items:baseline;gap:4px}
+.qc .big b{font-size:40px;font-weight:800;line-height:1;color:#fff;-webkit-text-stroke:2.5px #1E1B2E;paint-order:stroke fill;text-shadow:3px 3px 0 #1E1B2E}
+.qc .big span{font-size:13px;font-weight:700;color:#5E5873}
+.bar{height:20px;border:2.5px solid #1E1B2E;border-radius:999px;background:repeating-linear-gradient(135deg,#EFE6D6 0 6px,#E6DAC4 6px 8px);overflow:hidden;position:relative}
+.bar>div{height:100%;background:#9FE3B8;border-right:2.5px solid #1E1B2E}
+.bar.warn>div{background:#FFD84D}.bar.crit>div{background:#FF8A8A}
+.bar .tick{position:absolute;top:-2px;bottom:-2px;width:3px;background:#1E1B2E;border:0}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12px;color:#5E5873;font-weight:700}
+.foot b{color:#1E1B2E}
+.pace{display:inline-flex;gap:4px;align-items:center;border:2px solid #1E1B2E;border-radius:999px;padding:0 8px;font-size:11px;font-weight:800;color:#1E1B2E}
+.pace.hot{background:#FF8A8A}.pace.ok{background:#EDE6FF}.pace.spare{background:#9FE3B8}
+.fc{font-size:11px;font-weight:600;color:#7A748C;border-top:2px dashed #E6DAC4;padding-top:7px;cursor:help;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.none{font-size:11px;color:var(--muted);font-style:italic}
+
+/* Glass (default) */
+.glass{background:var(--g-bg);border-radius:22px;padding:20px;border:2px solid var(--ink);box-shadow:var(--shadow)}
+.glass .grid{gap:16px}
+.gc{background:var(--g-card);border:1px solid var(--g-border);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:9px;color:var(--g-text);backdrop-filter:blur(8px)}
+.gc .head{display:flex;justify-content:space-between;align-items:center}
+.gc .name{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--g-muted)}
+.gbadge{border-radius:6px;padding:1px 8px;font-size:11px;font-weight:800;background:#4FD9A0;color:#fff}
+.gbadge.warn{background:#F2B33D}.gbadge.crit{background:#F26B6B}.gbadge.dep{background:#8A8499}
+.gc .big{display:flex;justify-content:space-between;align-items:baseline}
+.gc .big b{font-size:32px;font-weight:800}.gc .big span{color:var(--g-muted);font-size:14px}
+.gbar{height:7px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+.gbar>div{height:100%;background:linear-gradient(90deg,#8B5CF6,#4FD9A0)}
+.gfoot{display:flex;justify-content:space-between;font-size:11px;color:var(--g-muted)}
+.gpace{border-radius:6px;padding:0 6px;font-size:10px;font-weight:800;background:rgba(255,255,255,.14)}
+.gpace.hot{background:rgba(255,120,120,.35)}
+.gfc{font-size:10px;color:var(--g-faint);cursor:help;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glass .state h3{color:var(--g-text)}.glass .state p,.glass .none{color:var(--g-muted)}
+
+.rules{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px 20px}
+.rules table{border-collapse:collapse;width:100%;font-size:13px}
+.rules th,.rules td{text-align:left;padding:6px 8px;border-bottom:1.5px solid var(--dot)}
+.rules th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Will it last until it resets?</h1>
+    <p class="sub">Monitoring · Forecast (#596). A quota card prints one more row under <i>Resets in…</i>, muted and on one line: whether the window lasts until it refills at the pace it has been spent. Pace and the forecast read one <span class="mono">SpendRate</span> with one 5-point margin, so the badge and the line never disagree. Mock data only. Hover a forecast line for its tooltip.</p>
+  </header>
+
+  <section>
+    <p class="section-title">Pop theme (outlined) — every state</p>
+    <div class="grid" id="pop"></div>
+  </section>
+
+  <section>
+    <p class="section-title">Glass theme — the same row, muted</p>
+    <div class="glass"><div class="grid" id="glass"></div></div>
+  </section>
+
+  <section class="rules">
+    <p class="section-title">The one rule, owned by SpendRate</p>
+    <div class="tablewrap">
+    <table>
+      <tr><th>Used vs window gone</th><th>Pace badge</th><th>Forecast row</th></tr>
+      <tr><td class="mono">used − gone &gt; 5</td><td>Running hot</td><td>Runs out in … — … before it resets</td></tr>
+      <tr><td class="mono">−5 ≤ used − gone ≤ 5</td><td>On track</td><td>Lasts until it resets</td></tr>
+      <tr><td class="mono">used − gone &lt; −5</td><td>Room to spare</td><td>Lasts until it resets</td></tr>
+      <tr><td>under 3% of the window, used up, a balance, no window length</td><td>— (unknown)</td><td>no row</td></tr>
+    </table>
+    </div>
+  </section>
+</div>
+<script>
+// Mock quotas: a 5h session window unless stated.
+const H = 3600;
+const states = [
+  {title:'Lasts until it resets', note:'30% used, 76% of the window gone.', name:'Session', used:30, gone:76, len:5*H},
+  {title:'Runs out before the reset', note:'80% used, 68% of a 3h 44m window gone.', name:'Session', used:80, gone:67.86, len:13440},
+  {title:'On track, within the margin', note:'52% used, 50% gone: 2 points ahead, inside ±5.', name:'Session', used:52, gone:50, len:5*H},
+  {title:'Running hot, past the margin', note:'60% used, 50% gone: 10 points ahead.', name:'Weekly', used:60, gone:50, len:7*24*H},
+  {title:'No row: early in the window', note:'1% used, a minute into the week (under 3%).', name:'Weekly', used:1, gone:0.01, len:7*24*H},
+  {title:'No row: used up', note:'It has already run out.', name:'Session', used:100, gone:40, len:5*H},
+  {title:'No row: a balance', note:'Prepaid credits, no ceiling — no share to project.', name:'Credits', balance:'$24.19'},
+];
+
+function dur(s){
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return s + 's';
+  const m = Math.floor(s/60); if (m < 60) return m + 'm';
+  const h = Math.floor(m/60); if (h < 24) return m%60 ? h + 'h ' + (m%60) + 'm' : h + 'h';
+  const d = Math.floor(h/24); return h%24 ? d + 'd ' + (h%24) + 'h' : d + 'd';
+}
+// SpendRate: nil under 3% gone or once over; the margin is 5 points.
+function rate(q){ return (q.balance || q.gone < 3 || q.gone >= 100) ? null : {used:q.used, gone:q.gone, value:Math.max(0,q.used)/q.gone}; }
+const runsOutBeforeReset = r => r.used - r.gone > 5;
+const roomToSpare = r => r.gone - r.used > 5;
+function pace(q){ const r = rate(q); if (!r) return null; return runsOutBeforeReset(r) ? 'hot' : roomToSpare(r) ? 'spare' : 'ok'; }
+function forecast(q){
+  const r = rate(q); const left = 100 - q.used;
+  if (!r || left <= 0) return null;
+  if (!runsOutBeforeReset(r)) return {text:'Lasts until it resets', hot:false};
+  const untilReset = q.len * (100 - q.gone) / 100;
+  const runsOutIn = left * q.len / (100 * r.value);
+  return {text:'Runs out in ' + dur(runsOutIn) + ' — ' + dur(Math.max(0, untilReset - runsOutIn)) + ' before it resets', hot:true};
+}
+const paceWords = {hot:'Running hot', ok:'On track', spare:'Room to spare'};
+const paceIcon = {hot:'🐇', ok:'=', spare:'🐢'};
+function status(q){ const left = 100 - q.used; return left <= 0 ? ['DEPLETED','dep'] : left < 20 ? ['CRITICAL','crit'] : left < 50 ? ['WARNING','warn'] : ['HEALTHY','']; }
+
+function popCard(q){
+  const f = forecast(q), p = pace(q);
+  if (q.balance) return `<div class="qc"><div class="head"><span class="name"><i>▣</i>${q.name}</span><span class="badge">HEALTHY</span></div>
+    <div class="big"><b>${q.balance}</b><span>left</span></div><div class="bar"><div style="width:98%"></div></div></div>`;
+  const left = Math.max(0, 100 - q.used), [st, cls] = status(q);
+  const reset = dur(q.len * (100 - q.gone) / 100);
+  return `<div class="qc"><div class="head"><span class="name"><i>⚡</i>${q.name}</span><span class="badge ${cls}">${st}</span></div>
+    <div class="big"><b>${left}%</b><span>left</span></div>
+    <div class="bar ${cls}"><div style="width:${left}%"></div>${q.gone >= 3 ? `<span class="tick" style="left:${100 - q.gone}%"></span>` : ''}</div>
+    <div class="foot"><span>Resets in <b>${reset}</b></span>${p ? `<span class="pace ${p}">${paceIcon[p]} ${paceWords[p]}</span>` : ''}</div>
+    ${f ? `<div class="fc" title="at this pace">⌛ ${f.text}</div>` : ''}</div>`;
+}
+function glassCard(q){
+  const f = forecast(q), p = pace(q);
+  if (q.balance) return `<div class="gc"><div class="head"><span class="name">${q.name}</span><span class="gbadge">HEALTHY</span></div>
+    <div class="big"><b>${q.balance}</b><span>Remaining</span></div><div class="gbar"><div style="width:98%"></div></div></div>`;
+  const left = Math.max(0, 100 - q.used), [st, cls] = status(q);
+  return `<div class="gc"><div class="head"><span class="name">${q.name}</span><span class="gbadge ${cls}">${st}</span></div>
+    <div class="big"><b>${left}%</b><span>Remaining</span></div><div class="gbar"><div style="width:${left}%"></div></div>
+    <div class="gfoot"><span>◷ Resets in ${dur(q.len * (100 - q.gone) / 100)}</span>${p ? `<span class="gpace ${p === 'hot' ? 'hot' : ''}">${paceWords[p]}</span>` : ''}</div>
+    ${f ? `<div class="gfc" title="at this pace">⌛ ${f.text}</div>` : ''}</div>`;
+}
+function fill(id, card){
+  document.getElementById(id).innerHTML = states.map(q => {
+    const f = forecast(q);
+    return `<div class="state"><h3>${q.title}</h3><p>${q.note}</p>${card(q)}${f ? '' : '<span class="none">no forecast row — nothing to forecast</span>'}</div>`;
+  }).join('');
+}
+fill('pop', popCard); fill('glass', glassCard);
+</script>
+</body>
+</html>

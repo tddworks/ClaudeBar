@@ -66,6 +66,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Area | What you can do |
 |---|---|
 | All providers | Every provider's tightest quota on one page as rings, or every quota as bars, one tap from its own → [docs](docs/features/monitoring/all-providers/README.md) |
+| Forecast | Under a quota's reset countdown, whether that window lasts until it resets at its current pace, or when it runs out → [docs](docs/features/monitoring/forecast/README.md) |
 | Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/app/menu-bar/README.md) |
 | [Multiple Codex accounts](docs/features/providers/multi-account/README.md) | Separate logins, identified by email, with independent quotas |
 | Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/quota/status-colors/README.md) |

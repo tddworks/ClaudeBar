@@ -280,15 +280,27 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         }
     }
 
-    // MARK: - Burn Rate
+    // MARK: - Spend Rate
 
-    /// The burn rate: how fast quota is being consumed relative to time elapsed.
-    /// A burn rate of 1.0 means consuming exactly on pace.
-    /// A burn rate of 2.0 means consuming 2x faster than sustainable.
-    /// Returns nil when reset time is unknown.
-    public var burnRate: Double? {
-        guard let percentTimeElapsed, percentTimeElapsed > 0 else { return nil }
-        return percentUsed / percentTimeElapsed
+    /// HOW FAST IT IS SPENT AGAINST ITS WINDOW — the one rate `pace`,
+    /// `paceLevel`, the pace-aware status and `forecast` read (CANONICAL §5).
+    /// `nil` without a window length and reset, for a balance with no ceiling,
+    /// and before `SpendRate.noiseFloor` percent of the window has gone.
+    public var rate: SpendRate? {
+        rate(at: Date())
+    }
+
+    /// The rate as of `now`.
+    public func rate(at now: Date) -> SpendRate? {
+        guard let usedShare, let percentTimeElapsed = percentTimeElapsed(at: now) else { return nil }
+        return SpendRate(percentUsed: usedShare, percentTimeElapsed: percentTimeElapsed)
+    }
+
+    /// The share used, read from `percentLeft` — so a capped money quota is
+    /// judged by its money, whatever percentage an old shape wrote. `nil` for
+    /// a balance with no ceiling.
+    private var usedShare: Double? {
+        percentLeft.map { 100 - $0 }
     }
 
     /// Returns quota status using burn rate when time information is available.
@@ -311,25 +323,33 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     ///
     /// Calculated as: `(totalDuration - timeUntilReset) / totalDuration * 100`
     public var percentTimeElapsed: Double? {
+        percentTimeElapsed(at: Date())
+    }
+
+    private func percentTimeElapsed(at now: Date) -> Double? {
         // A balance has no window to be on pace in; a window's length is the
         // data source's word, never guessed from the quota's name.
-        guard !isBalance, let timeUntilReset, let totalDuration = windowDuration, totalDuration > 0 else { return nil }
-        let elapsed = totalDuration - timeUntilReset
-        return min(100, max(0, elapsed / totalDuration * 100))
+        guard !isBalance, let window, let length = window.length, let elapsed = window.elapsed(at: now) else { return nil }
+        return elapsed / length * 100
     }
 
     /// The difference between actual usage and expected usage based on time elapsed.
     /// Positive means ahead (consuming faster), negative means behind (room to spare).
     /// Returns nil if time-based pace cannot be determined.
     public var pacePercent: Double? {
-        guard let percentTimeElapsed else { return nil }
-        return percentUsed - percentTimeElapsed
+        guard let usedShare, let percentTimeElapsed else { return nil }
+        return usedShare - percentTimeElapsed
     }
 
-    /// The pace classification for this quota.
+    /// The pace classification for this quota: a read of its `rate`,
+    /// `unknown` without one.
     public var pace: UsagePace {
-        guard let pacePercent, let percentTimeElapsed else { return .unknown }
-        return UsagePace.from(percentUsed: percentUsed, percentTimeElapsed: percentTimeElapsed)
+        pace(at: Date())
+    }
+
+    /// The pace as of `now`.
+    public func pace(at now: Date) -> UsagePace {
+        rate(at: now).map(UsagePace.init(rate:)) ?? .unknown
     }
 
     /// A human-readable insight about the pace deviation (e.g., "37% below expected usage").
@@ -358,6 +378,23 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         }
         guard let insight = paceInsight else { return base + "." }
         return base + " — " + insight.prefix(1).lowercased() + insight.dropFirst() + "."
+    }
+
+    // MARK: - Forecast
+
+    /// WILL IT LAST UNTIL IT RESETS — a read of `rate` against `window`.
+    /// `nil` without a rate (no window length or reset, a balance with no
+    /// ceiling, under the noise floor, the window over) and once the quota is
+    /// used up. Nothing is stored: a reset starts a new window, so the rate
+    /// always spans exactly the current cycle.
+    public var forecast: Forecast? {
+        forecast(at: Date())
+    }
+
+    /// The forecast as of `now`.
+    public func forecast(at now: Date) -> Forecast? {
+        guard let rate = rate(at: now), let window else { return nil }
+        return Forecast(rate: rate, window: window, at: now)
     }
 
     /// Time until this quota resets (if known)

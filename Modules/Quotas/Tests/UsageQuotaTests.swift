@@ -492,7 +492,7 @@ struct UsageQuotaTests {
     @Test
     func `should know no burn rate when the quota has no reset time`() {
         let quota = UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")
-        #expect(quota.burnRate == nil)
+        #expect(quota.rate == nil)
     }
 
     @Test
@@ -506,7 +506,7 @@ struct UsageQuotaTests {
             resetsAt: resetsAt,
             windowDuration: QuotaType.session.conventionalWindow.seconds
         )
-        let rate = quota.burnRate!
+        let rate = quota.rate!.value
         #expect(rate > 2.5 && rate < 3.1) // ~2.8, allow for test execution time
     }
 
@@ -521,7 +521,7 @@ struct UsageQuotaTests {
             resetsAt: resetsAt,
             windowDuration: QuotaType.session.conventionalWindow.seconds
         )
-        let rate = quota.burnRate!
+        let rate = quota.rate!.value
         #expect(rate > 0.4 && rate < 0.6) // ~0.5
     }
 

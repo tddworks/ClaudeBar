@@ -33,3 +33,17 @@ public struct Window: Sendable, Equatable, Hashable {
         self.resetsAt = resetsAt
     }
 }
+
+extension Window {
+    /// How long until it refills, from `now`; zero once the reset has passed.
+    public func untilReset(at now: Date) -> TimeInterval? {
+        resetsAt.map { max(0, $0.timeIntervalSince(now)) }
+    }
+
+    /// How much of this cycle has gone by `now`, from its length and its
+    /// reset; `nil` when either is unknown.
+    public func elapsed(at now: Date) -> TimeInterval? {
+        guard let length, length > 0, let untilReset = untilReset(at: now) else { return nil }
+        return min(length, max(0, length - untilReset))
+    }
+}

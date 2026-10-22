@@ -77,4 +77,18 @@ struct ModelMixTests {
         #expect(mix.parts.map(\.share) == [0])
         #expect(ModelMix(of: Days([], knowsCost: true), in: .cost).top == nil)
     }
+
+    /// The unnamed line is a part of the mix, never a model, so it is never
+    /// the top one.
+    @Test func `should name the largest model as the top one when unnamed records spent more`() {
+        let days = Days([day(monday, [small, ModelUsageLine(model: "", totalTokens: 900, cost: 90)])], knowsCost: true)
+
+        #expect(ModelMix(of: days, in: .cost).top?.line.model == small.model)
+    }
+
+    @Test func `should have no top model when no record names one`() {
+        let days = Days([day(monday, [unnamed])], knowsCost: true)
+
+        #expect(ModelMix(of: days, in: .cost).top == nil)
+    }
 }

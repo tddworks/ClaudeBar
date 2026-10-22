@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Recap — Mockup</title>
+<style>
+:root{--paper:#F6F3FB;--ink:#1E1B2E;--muted:#6B6580;--faint:#9A93AE;--card:#fff;--hair:#E4DEEF;--healthy:#2E9E62;--up:#E07B00;--down:#2E9E62;--track:#ECE6F5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+h2{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sub{margin:6px 0 0;color:var(--muted);max-width:820px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:8px;max-width:100%}
+figcaption{font-size:12px;color:var(--muted);max-width:400px}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;background:#DFF3E7;color:var(--healthy)}
+
+/* The popover's All page, drawn in the app's light theme. */
+.pop{--s:1;width:min(calc(400px * var(--s)),100%);background:linear-gradient(180deg,#FBF8FF,#F3EEFA);border:1px solid var(--hair);border-radius:16px;padding:calc(14px * var(--s));display:flex;flex-direction:column;gap:calc(10px * var(--s));box-shadow:0 18px 36px rgba(30,27,46,.12)}
+.card{background:rgba(255,255,255,.75);border:1px solid var(--hair);border-radius:12px;padding:calc(12px * var(--s));display:flex;flex-direction:column;gap:calc(10px * var(--s));min-width:0}
+.overview{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.overview .card{gap:4px;font-size:11px}
+.bar{height:5px;border-radius:3px;background:var(--track);overflow:hidden}
+.bar div{height:100%;border-radius:3px;background:var(--healthy)}
+
+.head{display:flex;align-items:center;gap:6px}
+.head .t{font-size:8px;font-weight:500;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:5px}
+.chips{margin-left:auto;display:flex;gap:4px}
+.chip{font-size:9px;font-weight:500;color:var(--faint);border:1px solid var(--hair);border-radius:999px;padding:2px 8px;background:none;cursor:pointer;font-family:inherit}
+.chip.on{font-weight:700;color:var(--ink);background:var(--track);border-color:transparent}
+.lead{display:flex;align-items:baseline;gap:8px}
+.lead b{font:700 26px/1 "SF Pro Rounded",-apple-system,system-ui}
+.lead .cap{display:flex;flex-direction:column;font-size:9px;font-weight:500;color:var(--faint);line-height:1.3}
+.change{margin-left:auto;text-align:right;line-height:1.2}
+.change b{display:block;font-size:11px}
+.change b.up{color:var(--up)}
+.change b.down{color:var(--down)}
+.change span{font-size:7px;color:var(--faint)}
+.split{display:flex;flex-direction:column;gap:4px}
+.split .r{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;font-size:9px}
+.split i{width:6px;height:6px;border-radius:50%}
+.split .n{color:var(--muted)}
+.split .v{color:var(--faint)}
+.split .p{font-weight:600;min-width:28px;text-align:right}
+.hl{display:flex;flex-direction:column;gap:3px}
+.hl .r{display:flex;justify-content:space-between;gap:6px;font-size:9px}
+.hl .r span:first-child{font-size:8px;color:var(--faint)}
+.hl .r span:last-child{font-weight:600;color:var(--muted)}
+.empty{font-size:9px;font-weight:500;color:var(--faint)}
+.note{font-size:12px;color:var(--muted)}
+code{font-size:12px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#16141F;--ink:#ECE9F5;--muted:#A49DB8;--faint:#7D7794;--card:#211E2E;--hair:#34304A;--track:#2C2840}
+  :root:not([data-theme="light"]) .pop{background:linear-gradient(180deg,#221F30,#1B1828)}
+  :root:not([data-theme="light"]) .card{background:rgba(255,255,255,.04)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Weekly recap</h1>
+    <p class="sub">On the All page, under the overview: <i>what did all of it add up to this week?</i> One card adds every provider's week up, in the one unit every provider offers — dollars when each one prices its days, tokens otherwise — against the week before. Built from <code>Recap(this:before:)</code>, its top model from <code>ModelMix</code> and its biggest day from <code>DayActivity</code>. Mock numbers only.</p>
+  </header>
+
+  <section>
+    <h2>(a) This week and last week</h2>
+    <div class="row">
+      <figure>
+        <div class="pop" id="interactive">
+          <div class="overview">
+            <div class="card">Claude · 72% left<div class="bar"><div style="width:72%"></div></div></div>
+            <div class="card">Codex · 55% left<div class="bar"><div style="width:55%"></div></div></div>
+          </div>
+          <div class="card" id="recap"></div>
+        </div>
+        <figcaption><span class="tag">interactive</span>Pick <i>Last week</i>: the card draws last week against the week before it, and says so under the change. Both weeks are read when the page opens, so switching reads nothing.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="pop">
+          <div class="card" id="recap-last"></div>
+        </div>
+        <figcaption><span class="tag">Last week</span>The change is always against the week before the one on screen — <i>vs the week before</i> here, <i>vs last week</i> on This week.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>(b) An empty week</h2>
+    <div class="row">
+      <figure>
+        <div class="pop"><div class="card" id="recap-empty"></div></div>
+        <figcaption><span class="tag">empty</span>A week that holds nothing says so — never zeros — and the range chips stay, so last week is one click away. With nothing in either week the card isn't drawn.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>(c) An unpriced provider in the mix</h2>
+    <div class="row">
+      <figure>
+        <div class="pop"><div class="card" id="recap-tokens"></div></div>
+        <figcaption><span class="tag">tokens</span>A provider whose logs price nothing would count as $0 in dollars, so the whole recap reads in tokens: the total, each share, the top model, the biggest day and the change. The token line beside the total is left out — it would only repeat it.</figcaption>
+      </figure>
+    </div>
+    <p class="note">Tokens are what the chart counts — input and output, not the cache — so the week and the chart never print two token totals for the same days.</p>
+  </section>
+</div>
+
+<script>
+const colors = ['#8E5BD6', '#2E9E62', '#3B82F6', '#F97316'];
+const weeks = {
+  this: { total: '$142.60', caption: 'spent', also: ['18.4M tokens', '21h 40m', '64 sessions'], change: '+12%', up: true, vs: 'vs last week',
+          parts: [['Claude', '$96.20', '67%'], ['Codex', '$38.10', '27%'], ['Mistral', '$8.30', '6%']],
+          top: 'opus-4-6', day: 'Tuesday, October 20', saved: '$41.80' },
+  last: { total: '$127.30', caption: 'spent', also: ['16.1M tokens', '19h 5m', '58 sessions'], change: '−4%', up: false, vs: 'vs the week before',
+          parts: [['Claude', '$88.00', '69%'], ['Codex', '$39.30', '31%']],
+          top: 'opus-4-6', day: 'Thursday, October 15', saved: '$37.20' },
+  tokens: { total: '22.7M', caption: 'tokens', also: ['25h 12m', '71 sessions'], change: '+31%', up: true, vs: 'vs last week',
+            parts: [['Claude', '14.1M', '62%'], ['OpenCode', '6.3M', '28%'], ['Codex', '2.3M', '10%']],
+            top: 'qwen3-coder', day: 'Wednesday, October 21', saved: '$29.40' },
+};
+
+function card(week, chosen, interactive) {
+  const chips = ['This week', 'Last week'].map((name) =>
+    `<button class="chip${name === chosen ? ' on' : ''}" ${interactive ? `data-range="${name}"` : 'disabled'}>${name}</button>`).join('');
+  const head = `<div class="head"><span class="t">&#128197; Weekly recap</span><span class="chips">${chips}</span></div>`;
+  if (!week) return head + `<div class="empty">Nothing ${chosen.toLowerCase()}.</div>`;
+  const change = week.change ? `<span class="change"><b class="${week.up ? 'up' : 'down'}">${week.change}</b><span>${week.vs}</span></span>` : '';
+  const lead = `<div class="lead"><b>${week.total}</b><span class="cap"><span>${week.caption}</span><span>${week.also.join(' · ')}</span></span>${change}</div>`;
+  const split = '<div class="split">' + week.parts.map((p, i) =>
+    `<div class="r"><i style="background:${colors[i % colors.length]}"></i><span class="n">${p[0]}</span><span class="v">${p[1]}</span><span class="p">${p[2]}</span></div>`).join('') + '</div>';
+  const hl = `<div class="hl"><div class="r"><span>Top model</span><span>${week.top}</span></div><div class="r"><span>Biggest day</span><span>${week.day}</span></div><div class="r"><span>Cache saved</span><span>${week.saved}</span></div></div>`;
+  return head + lead + split + hl;
+}
+
+function drawInteractive(chosen) {
+  const host = document.getElementById('recap');
+  host.innerHTML = card(chosen === 'This week' ? weeks.this : weeks.last, chosen, true);
+  host.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => drawInteractive(b.dataset.range)));
+}
+drawInteractive('This week');
+document.getElementById('recap-last').innerHTML = card(weeks.last, 'Last week', false);
+document.getElementById('recap-empty').innerHTML = card(null, 'This week', false);
+document.getElementById('recap-tokens').innerHTML = card(weeks.tokens, 'This week', false);
+</script>
+</body>
+</html>

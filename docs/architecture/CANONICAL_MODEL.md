@@ -235,8 +235,14 @@ Usage  ◇                                    "Fetching usage data…" — WHAT 
 │       │                                     money(Money, of: Money?)  "$12.40 remaining", "of $50"
 │       ├── window: Window?                 WHEN IT REFILLS — length + resetsAt. "Resets in 2h 5m".
 │       │                                   A prepaid balance has none
-│       ├── status                          DERIVED — Left × StatusPolicy (× Window, when pace-aware)
-│       └── pace                            DERIVED — needs a Window; otherwise unknown
+│       ├── rate: SpendRate?     DERIVED    HOW FAST IT IS SPENT — used share ÷ share of the window
+│       │                                   gone. nil without a length + reset, for a balance with
+│       │                                   no ceiling, and under 3% of the window (noise)
+│       ├── forecast: Forecast?  DERIVED    "Lasts until it resets" or "Runs out in 38m — 34m before
+│       │                                   it resets": the rate carried forward to zero. nil
+│       │                                   without a rate, and once the quota is used up
+│       ├── status                          DERIVED — Left × StatusPolicy (× rate, when pace-aware)
+│       └── pace                            DERIVED — reads the rate; otherwise unknown
 ├── cost: Cost?  ◇                          MONEY GONE — "API COST" or "EXTRA USAGE", over a period.
 │                                           Judged by a Budget, never by a Quota
 └── account facts                           email · organization · plan, when the data source learns them —
@@ -399,6 +405,8 @@ usage.quota(named:)                  → Quota?
 usage.isStale                        → Bool         older than 5 minutes
 quota.status(under: StatusPolicy)    → Status
 quota.pace                           → Pace         unknown without a window
+quota.rate                           → SpendRate?   how fast it is spent against its window
+quota.forecast                       → Forecast?    lasts until it resets, or runs out N before it
 quota.window?.timeUntilReset         → Duration?    "Resets in 2h 5m"
 account.budgetStatus                 → BudgetStatus? ON TRACK · NEAR LIMIT · OVER BUDGET —
                                                     usage.cost judged by account.budget
@@ -455,6 +463,11 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | money keeps its currency; two currencies are never added or compared | `Money` |
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
 | pace exists only inside a window with a reset; outside it is `unknown`, never `onPace` | `Quota.pace` |
+| **ONE rate per quota**: how fast it is spent against its window — one used share (from `left`, so a capped money quota by its money), one noise floor (3% of the window) — and pace, the pace tick, the pace-aware status and the forecast all read it, never their own copy | `SpendRate` · `Quota.rate` |
+| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of its window gone; within 5 either side it is on the line. ONE rule, read by Pace and the forecast | `SpendRate.runsOutBeforeReset` |
+| a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset unless it runs out first, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
+| no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
+| a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
 | depleted at 0, critical under 20 — ABSOLUTE, whatever the policy; pace-aware only decides WARNING vs HEALTHY between 20% and 50% left | `StatusPolicy` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
@@ -492,9 +505,13 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a day is THE SUM OF ITS LINES: one line per model, a line holding what the day holds — the model's tokens by kind and its cost. The log's own cost wins; otherwise cost is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission. Records with no model form one unnamed line, so the lines always add up to the day | `Day.lines` · `PriceList` |
 | a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit; which units it offers — so a view renders and tells. The unit is the view's choice (cost, tokens, cache), and COST is offered only when the log prices its records and a day holds a cost: a log that writes zero everywhere has nothing to say in dollars ; what caching saved over the range | `Days` |
 | two lines of one model add up to one line: every count and the cost, so a sum over days never drops a field | `ModelUsageLine` |
-| a range's mix is each model summed over it, largest first, the unnamed line included so the parts add up; each part carries its share — a page that needs a top model reads it here | `ModelMix` |
+| a range's mix is each model summed over it, largest first, the unnamed line included so the parts add up; each part carries its share — a page that needs a top model reads it here, and the unnamed line is never the top model | `ModelMix` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0. The shading band a heatmap draws is the App's | `DayActivity` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
+| a week is the calendar's week holding a day, from the calendar's own first weekday; the range before a range is the same length, one run earlier | `DateRange` (`week`, `before`) |
+| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
+| a RECAP is the one read that sums across logins, for the person's total, and names the providers it spans — two logins of one provider are one part; a login's own chart stays its own. It reads in the unit every range offers: cost only when every provider that used anything, this range or the one before, offers cost, tokens otherwise; its change is against the range before, in that unit, and none when nothing was used before; its top model is `ModelMix`'s and its biggest day `DayActivity`'s, over the providers' days merged | `Recap` |
+| the weekly recap is read again only when the week turned or a login's days were read again since its last read; the page tells it when usage was read and never decides | `WeeklyRecaps` |
 | a capability is declared by the definition — even one only a single product has (guest passes), whose runner the engine supplies — never chosen by a provider's name, never a vendor name in a module. Either way it is reached through the login's handle (`account.usageHistory`, `account.guestPasses`), `nil` when not offered | `Account` |
 | usage history is read when the popover opens, never in the background, and never carried on `Usage` | `UsageHistory` |
 | another app's usage on this Mac (Claude Desktop) is its OWN history under its own name: never summed with the login's days, never a data source, never a quota; the default login reads it; it is this Mac's, so an added login never does | `UsageHistory.otherApps` |
@@ -592,7 +609,7 @@ test first. Findings that need a decision first are in §9.
 | Context | The code today | Moves to |
 |---|---|---|
 | Quota | pace-aware `QuotaStatus.from` returns *critical* at 60% left and *warning* at 15%, breaking the absolute floor; the person's burn-rate threshold is never read | `StatusPolicy` owns status: the absolute bands first, pace decides only between 20% and 50%, against the threshold |
-| Quota | pace graded three ways (`UsagePace` ±5 points, `PaceLevel`'s six levels, the status's 0.7/0.9), so one quota can read *Room to spare*, a warm tick and WARNING at once | one `Pace` from the `Window`; the words and the tick are views of it |
+| Quota | one `SpendRate` is graded three ways (`UsagePace`'s words, `PaceLevel`'s six levels, the status's 0.7/0.9), so one quota can read *On track*, a warm tick and WARNING at once | one `Pace` from the rate; the words and the tick are views of it |
 | Quota | the share left of a money quota computed twice, once across currencies (`QuotaAlerts.lowestShare`); `<` compares `percentRemaining`, where a balance is 100 | `Left.share`, `nil` for a balance or mixed currencies, read by every comparison |
 | Quota · Providers | a login's status has two owners: `Account.status` / `Accounts.status` ignore the policy and hidden quotas, `QuotaMonitor.status(of:)` and `Overview` apply both | `accounts.status(under:)`; the Monitor and the overview delegate |
 | Monitoring | the menu-bar quota reads `snapshot` directly, so a hidden quota still colours the menu bar | read through the watched usage |

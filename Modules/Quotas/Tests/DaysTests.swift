@@ -112,4 +112,47 @@ struct DaysTests {
         #expect(last.stats.map(\.totalCost) == [2, 3])
         #expect(last.knowsCost)
     }
+
+    @Test func `should hold nothing when every day is empty`() {
+        let idle = DailyUsageStat.empty(for: date)
+
+        #expect(Days([idle], knowsCost: true).isEmpty)
+        #expect(!Days([idle, day(1, lines: [], tokens: 10)], knowsCost: true).isEmpty)
+    }
+
+    @Test func `should add up the working time and sessions of the range`() {
+        let worked = { (seconds: TimeInterval, sessions: Int) in
+            DailyUsageStat(date: self.date, totalCost: 0, totalTokens: 1, workingTime: seconds, sessionCount: sessions)
+        }
+
+        let days = Days([worked(3_600, 2), worked(600, 1)], knowsCost: true)
+
+        #expect(days.workingTime == 4_200)
+        #expect(days.sessions == 3)
+    }
+
+    /// Several ranges read as one: a date's days add up, every date kept once,
+    /// oldest first.
+    @Test func `should read several ranges as one, adding up each date`() {
+        let tomorrow = date.addingTimeInterval(86_400)
+        let first = Days([day(2, lines: [opus], tokens: 120),
+                          DailyUsageStat(date: tomorrow, totalCost: 1, totalTokens: 5, workingTime: 0, sessionCount: 1)],
+                         knowsCost: true)
+        let second = Days([day(3, lines: [sonnet], tokens: 400)], knowsCost: true)
+
+        let merged = Days.merged([first, second])
+
+        #expect(merged.stats.map(\.date) == [date, tomorrow])
+        #expect(merged.stats.map(\.totalCost) == [5, 1])
+        #expect(merged.stats[0].lines.map(\.model) == [opus.model, sonnet.model])
+        #expect(merged.knowsCost)
+    }
+
+    /// Cost speaks for the merged range only when every range prices.
+    @Test func `should know cost only when every range it reads prices its records`() {
+        let priced = Days([day(2, lines: [], tokens: 1)], knowsCost: true)
+        let unpriced = Days([day(0, lines: [], tokens: 1)], knowsCost: false)
+
+        #expect(!Days.merged([priced, unpriced]).knowsCost)
+    }
 }

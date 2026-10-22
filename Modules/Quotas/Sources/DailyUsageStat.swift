@@ -87,6 +87,30 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         lines = try container.decodeIfPresent([ModelUsageLine].self, forKey: .lines) ?? []
     }
 
+    /// Two days of one date as one: every count, the cost, the time and the
+    /// savings added, and each model's lines added into one line, in name
+    /// order — so several logins' days read as one never drop a field.
+    public static func + (lhs: DailyUsageStat, rhs: DailyUsageStat) -> DailyUsageStat {
+        precondition(lhs.date == rhs.date, "only days of one date add up")
+        var lines: [String: ModelUsageLine] = [:]
+        for line in lhs.lines + rhs.lines {
+            lines[line.model] = lines[line.model].map { $0 + line } ?? line
+        }
+        return DailyUsageStat(
+            date: lhs.date,
+            totalCost: lhs.totalCost + rhs.totalCost,
+            totalTokens: lhs.totalTokens + rhs.totalTokens,
+            workingTime: lhs.workingTime + rhs.workingTime,
+            sessionCount: lhs.sessionCount + rhs.sessionCount,
+            inputTokens: lhs.inputTokens + rhs.inputTokens,
+            outputTokens: lhs.outputTokens + rhs.outputTokens,
+            cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
+            cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
+            cachedSavings: lhs.cachedSavings + rhs.cachedSavings,
+            lines: lines.values.sorted { $0.model < $1.model }
+        )
+    }
+
     // MARK: - Formatting
 
     /// Formatted cost string (e.g., "$14.26")

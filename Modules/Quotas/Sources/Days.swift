@@ -88,4 +88,24 @@ public struct Days: Sendable, Equatable {
     public var cacheSavings: Decimal {
         stats.reduce(0) { $0 + $1.cachedSavings }
     }
+
+    /// Whether no day of the range holds anything.
+    public var isEmpty: Bool { stats.allSatisfy(\.isEmpty) }
+
+    /// The time worked over the range.
+    public var workingTime: TimeInterval { stats.reduce(0) { $0 + $1.workingTime } }
+
+    /// The sessions over the range.
+    public var sessions: Int { stats.reduce(0) { $0 + $1.sessionCount } }
+
+    /// Several ranges read as one: each date once, oldest first, its days
+    /// added up (`DailyUsageStat +`). Cost speaks for the whole only when every
+    /// range prices its records.
+    public static func merged(_ ranges: [Days]) -> Days {
+        var byDate: [Date: DailyUsageStat] = [:]
+        for day in ranges.flatMap(\.stats) {
+            byDate[day.date] = byDate[day.date].map { $0 + day } ?? day
+        }
+        return Days(byDate.values.sorted { $0.date < $1.date }, knowsCost: ranges.allSatisfy(\.knowsCost))
+    }
 }
