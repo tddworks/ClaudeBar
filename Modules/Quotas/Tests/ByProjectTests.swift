@@ -20,6 +20,11 @@ struct ByProjectTests {
                        projects: projects)
     }
 
+    /// A day whose log named no directory: totals without a split.
+    private func unsplitDay(_ date: Date, totalTokens: Int, cost: Decimal) -> DailyUsageStat {
+        DailyUsageStat(date: date, totalCost: cost, totalTokens: totalTokens, workingTime: 0, sessionCount: 1)
+    }
+
     @Test func `should sum each project over the range, largest first`() {
         let days = Days([day(monday, [marron, api]), day(tuesday, [api])], knowsCost: true)
 
@@ -42,6 +47,18 @@ struct ByProjectTests {
         let byProject = ByProject(of: days, in: .cost)
 
         #expect(byProject.parts.map(\.line.project) == ["marron", ""])
+        #expect(byProject.parts.reduce(0) { $0 + $1.value } == days.total(in: .cost))
+    }
+
+    /// A day whose records name no directory, on a range that names one, is
+    /// the unnamed part of the range — otherwise the parts would overstate
+    /// the named projects and not add up.
+    @Test func `should count a day that names no project as the unnamed part, so the parts add up`() {
+        let days = Days([day(monday, [marron, api]), unsplitDay(tuesday, totalTokens: 50, cost: 1)], knowsCost: true)
+
+        let byProject = ByProject(of: days, in: .cost)
+
+        #expect(byProject.parts.map(\.line.project) == ["marron", "api", ""])
         #expect(byProject.parts.reduce(0) { $0 + $1.value } == days.total(in: .cost))
     }
 

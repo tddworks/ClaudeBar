@@ -97,7 +97,9 @@ whose records names a directory carries no project lines at all — not an
 empty-named one — so the ledgers of the providers that don't capture stay as
 they were. On a day that *does*, the records without a directory form one
 unnamed part, so the parts add up to the day exactly as a day's model lines
-do ([insights §2](../insights/design.md)).
+do ([insights §2](../insights/design.md)); and a day that names none, inside
+a range that names one, is the unnamed part of the range — `ByProject` reads
+it in, so the parts add up to the range and no project's share overstates.
 
 ## 4 · The laws, each with one owner
 

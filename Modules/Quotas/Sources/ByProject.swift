@@ -23,11 +23,21 @@ public struct ByProject: Sendable, Equatable {
     /// part is a part, never a project, so it is never the top one.
     public var top: Part? { parts.first { !$0.line.project.isEmpty && $0.value > 0 } }
 
-    /// `range`'s project lines summed per project and read in `unit`.
+    /// `range`'s project lines summed per project and read in `unit`. A day
+    /// whose records name no directory, on a range that names one, is the
+    /// unnamed part too, so the parts add up to the range.
     public init(of range: Days, in unit: Days.Unit) {
         var sums: [String: ProjectUsageLine] = [:]
         for line in range.stats.flatMap(\.projects) {
             sums[line.project] = sums[line.project].map { $0 + line } ?? line
+        }
+        if range.hasProjects {
+            for stat in range.stats where stat.projects.isEmpty {
+                let unnamed = ProjectUsageLine(project: "", inputTokens: stat.inputTokens, outputTokens: stat.outputTokens,
+                                               cacheCreationTokens: stat.cacheCreationTokens, cacheReadTokens: stat.cacheReadTokens,
+                                               totalTokens: stat.totalTokens, cost: stat.totalCost)
+                sums[""] = sums[""].map { $0 + unnamed } ?? unnamed
+            }
         }
         let values = sums.values.map { (line: $0, value: range.value(of: $0, in: unit)) }
         let whole = values.reduce(0) { $0 + $1.value }
