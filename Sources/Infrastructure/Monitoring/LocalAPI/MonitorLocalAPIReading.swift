@@ -7,10 +7,10 @@ import Domain
 /// builds the JSON contract out of the answers. Read on the main actor,
 /// where the Monitor's state lives.
 @MainActor
-struct MonitorLocalAPIReading: LocalAPIReading {
+public struct MonitorLocalAPIReading: LocalAPIReading {
     private let monitor: QuotaMonitor
 
-    init(monitor: QuotaMonitor) {
+    public init(monitor: QuotaMonitor) {
         self.monitor = monitor
     }
 
