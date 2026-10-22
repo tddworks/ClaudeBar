@@ -53,6 +53,30 @@ struct URLSchemeActionTests {
         #expect(URLSchemeAction(url: url) == nil)
     }
 
+    // MARK: - enable: one click back on after auto-pause
+
+    @Test(arguments: [
+        ("claudebar://enable?provider=claude", "claude"),
+        ("claudebar:///enable?provider=codex", "codex"),
+    ])
+    func `should turn the named provider back on from an enable link`(string: String, provider: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == .enable(provider: provider))
+    }
+
+    @Test(arguments: [
+        "claudebar://enable",
+        "claudebar://enable?provider=",
+        "claudebar://enable?provider=claude&x=1",
+        "claudebar://enable?provider=claude&provider=codex",
+        "claudebar://enable?provider=../claude",
+        "claudebar://enable?provider=claude&account=work",
+        "claudebar://enable/extra?provider=claude",
+        "claudebar://enable?provider=claude#top",
+    ])
+    func `should ignore an enable link that isn't exactly one provider`(string: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == nil)
+    }
+
     // MARK: - use: which login new terminal sessions start with
 
     @Test(arguments: [

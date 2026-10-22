@@ -112,9 +112,11 @@ private struct ProviderListRow: View {
     let onSelect: () -> Void
 
     @Environment(\.appTheme) private var theme
+    @Environment(AutoPause.self) private var autoPause
     @State private var isHovering = false
 
     private var statusText: String {
+        if autoPause.isWaiting(tab.provider) { return "Waiting for a reset" }
         guard tab.isEnabled else { return "Disabled" }
         let updated = tab.logins.compactMap { $0.snapshot?.capturedAt }.max()
         let formatter = RelativeDateTimeFormatter()
@@ -266,6 +268,8 @@ private struct ProviderDetailView: View {
 
                     QuotaVisibilityCard(provider: provider, monitor: monitor)
 
+                    AutoPauseCard(product: tab.provider)
+
                     SettingsCard {
                         SettingsFieldLabel(text: "CUSTOM WEB CARD")
                             .padding(.bottom, 8)
@@ -333,6 +337,35 @@ private struct ProviderDetailView: View {
         case "claude": AnyView(ClaudeBudgetCard())
         case "deepseek": AnyView(DeepSeekConfigCard(monitor: monitor))
         default: nil
+        }
+    }
+}
+
+// MARK: - Auto-pause on empty
+
+/// *Turn off when empty* — the standing instruction: when every counted
+/// login of the product is depleted, ClaudeBar turns the switch off itself,
+/// and back on at the first refresh that shows room again. It renders and
+/// tells; `AutoPause` decides.
+private struct AutoPauseCard: View {
+    let product: Provider
+
+    @Environment(AutoPause.self) private var autoPause
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        SettingsCard {
+            SettingsRow(
+                title: "Turn off when empty",
+                subtitle: autoPause.isWaiting(product)
+                    ? "Waiting for a reset — the switch comes back on at the first refresh that shows room."
+                    : "When every login has run out, ClaudeBar turns this product off, and back on at the next reset."
+            ) {
+                SettingsSwitch(isOn: Binding(
+                    get: { autoPause.isOn(product) },
+                    set: { autoPause.turn($0, product: product) }
+                ))
+            }
         }
     }
 }

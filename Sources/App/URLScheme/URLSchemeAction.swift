@@ -6,9 +6,9 @@ import Foundation
 /// `claudebar://refresh`, `claudebar://settings`, and their three-slash
 /// spelling (`claudebar:///open`). The URL is compared as a whole string, so
 /// anything else, whether a parameter, a fragment, a user, a port or an extra
-/// path, is not an action. `claudebar://use?provider=claude&account=work`
-/// is the one with parameters: exactly those two, each once. See
-/// docs/features/app/url-schemes/README.md.
+/// path, is not an action. `claudebar://use?provider=claude&account=work` and
+/// `claudebar://enable?provider=claude` are the ones with parameters: exactly
+/// the documented ones, each once. See docs/features/app/url-schemes/README.md.
 enum URLSchemeAction: Equatable, Sendable {
     case open
     case refresh
@@ -16,6 +16,8 @@ enum URLSchemeAction: Equatable, Sendable {
     /// *In use* — new terminal sessions of `provider` start on `account`
     /// (its name, email or `default`).
     case use(provider: String, account: String)
+    /// *Auto-pause* — turn `provider` back on, one click.
+    case enable(provider: String)
 
     static let scheme = "claudebar"
 
@@ -28,6 +30,7 @@ enum URLSchemeAction: Equatable, Sendable {
         case .refresh: "refresh"
         case .settings: "settings"
         case .use: "use"
+        case .enable: "enable"
         }
     }
 
@@ -38,8 +41,8 @@ enum URLSchemeAction: Equatable, Sendable {
             self = action
             return
         }
-        guard let use = Self.use(string) else { return nil }
-        self = use
+        guard let parameterised = Self.use(string) ?? Self.enable(string) else { return nil }
+        self = parameterised
     }
 
     /// `claudebar://use?provider=<id>&account=<name>`, and nothing more.
@@ -57,5 +60,20 @@ enum URLSchemeAction: Equatable, Sendable {
               account.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
         else { return nil }
         return .use(provider: provider, account: account)
+    }
+
+    /// `claudebar://enable?provider=<id>`, and nothing more — *auto-pause*'s
+    /// one click back on.
+    private static func enable(_ string: String) -> URLSchemeAction? {
+        let prefixes = ["\(scheme)://enable?", "\(scheme):///enable?"]
+        guard let prefix = prefixes.first(where: { string.lowercased().hasPrefix($0) }),
+              !string.contains("#"),
+              let items = URLComponents(string: "x:?" + string.dropFirst(prefix.count))?.queryItems,
+              items.count == 1,
+              let provider = items.first(where: { $0.name == "provider" })?.value,
+              Set(items.map(\.name)) == ["provider"],
+              provider.range(of: "^[a-z0-9-]{1,32}$", options: .regularExpression) != nil
+        else { return nil }
+        return .enable(provider: provider)
     }
 }

@@ -29,6 +29,11 @@ struct ClaudeBarApp: App {
     /// *Quota alerts* — the person's own percentages (#68).
     @State private var quotaAlerts: QuotaAlerts
 
+    /// *Auto-pause on empty* — the products asked to turn their own switch
+    /// off when every login has run out, and the quiet loops watching for
+    /// their reset.
+    @State private var autoPause: AutoPause
+
     /// *Webhooks* — the person's URLs that hear every alert, beside this Mac.
     @State private var webhooks: Webhooks
 
@@ -161,8 +166,13 @@ struct ClaudeBarApp: App {
         let quotaAlerts = QuotaAlerts(settings: settingsRepository, destination: destinations)
         self.quotaAlerts = quotaAlerts
         quotaAlerts.follow(monitor)
-        // *Status alerts* follow every refresh: a login's status got worse under the policy.
+        // *Status alerts* follow every refresh too: a login's status got worse under the policy.
         StatusAlerts(destination: destinations).follow(monitor)
+        // *Auto-pause on empty* follows every refresh, and keeps one quiet
+        // loop per product it is holding off while they wait for a reset.
+        let autoPause = AutoPause(settings: settingsRepository, announcer: AutoPauseNotifications())
+        self.autoPause = autoPause
+        autoPause.follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()
@@ -354,6 +364,12 @@ struct ClaudeBarApp: App {
                 isMenuPresented = true
                 NSApp.activate(ignoringOtherApps: true)
             }
+        case let .enable(providerId):
+            if let tab = monitor.productTabs.first(where: { $0.id == providerId }) {
+                autoPause.turnBackOn(tab.provider)
+            } else {
+                AppLog.ui.info("claudebar://enable names no product that can be turned back on")
+            }
         }
     }
 
@@ -377,6 +393,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(autoPause)
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
             // image. The dropdown's lifecycle maps 1:1 to those flips, so
@@ -424,6 +441,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(autoPause)
             .environment(webhooks)
         }
         .windowStyle(.hiddenTitleBar)

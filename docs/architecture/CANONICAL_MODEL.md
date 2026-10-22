@@ -258,6 +258,10 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
+Auto-pause  ◆                               the products left the standing instruction *turn off when
+                                            empty*, and one quiet loop per product it holds off while
+                                            it waits for the reset. Follows refreshes through
+                                            `onRefreshed`; judges *empty* by `monitor.status(of: provider)`
 Destinations                                notifications · your quota alerts · status alerts · webhooks · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
@@ -363,6 +367,7 @@ Claude Code sessions (Activity); where settings and secrets are kept
 | The user does | The node is told | Notes |
 |---|---|---|
 | toggles a provider in Providers | `provider.enable()` · `disable()` | every login of it; the pane keeps its place |
+| turns on *Turn off when empty* (a product's page in Providers) | `autoPause.turn(_:product:)` | off by default, per product: the product turns its own switch off when every counted login is out, once, and back on at the first refresh that shows room ([design](../features/monitoring/auto-pause/design.md)) |
 | toggles one account | `monitor.pause(_:)` · `resume(_:)` → `account.pause()` · `resume()` | pauses that login — no refresh, no pill, no judgement — and keeps its settings. The popover's account menu and the Accounts card are two doors to the same one; the selection never lands on a login that is off the page |
 | drags the pane's order | `monitor.providers.move(_:to:)` | the lineup follows |
 | picks DATA SOURCE | `provider.use(_ kind:)` | one data source active at a time |
@@ -396,6 +401,8 @@ account.usage                        → Usage?       that login's latest — wh
 account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
 provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
+monitor.status(of: provider)         → Status?      the emptiest counted login, under the policy; nil with
+                                                    no usage — what auto-pause judges *empty* by
 provider.accounts.best               → Account?     the most left — "switch to work"
 provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
 provider.inUse?.login                → Account      the login new terminal sessions start with
@@ -452,7 +459,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a destination's secret (Notify!'s token, a webhook's URL) is never in `settings.json` or a log — webhooks keep the rest under `alerts.webhooks`; one the Keychain refuses falls back to the app credential store, read Keychain first, and the pane says so — one copy of that rule for every destination | `DestinationSecrets` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
 | a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isPaused` |
-| a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
+| a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened. One exception, asked for: a product left the standing instruction *turn off when empty* turns its own switch off when every counted login is out — once, marked as ClaudeBar's own, one click to undo, and on again at the first refresh that shows room ([design](../features/monitoring/auto-pause/design.md)) | `Provider.isEnabled` · `QuotaMonitor.tabs` · `AutoPause` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it stopped looking, which is not the same as having nothing to show | `ProviderBadgeState.paused` |
 | a failed refresh keeps the last usage and records the error beside it — what we saw is never erased by failing to look again | `Account.sync` |
 | at most one refresh per account is in flight | `Provider` |

@@ -529,6 +529,16 @@ public final class QuotaMonitor {
         usage(of: login)?.overallStatus(under: statusPolicy)
     }
 
+    /// A product's status as the person sees it — its emptiest counted
+    /// login's, each login's read under the policy with hidden quotas and
+    /// paused logins left out; `nil` while no unpaused login has usage. A
+    /// login without usage never stands for the product: *not set up*, or a
+    /// failed fetch, is not *empty* (CANONICAL §5) — the read *Auto-pause on
+    /// empty* judges emptiness with.
+    public func status(of product: Provider) -> QuotaStatus? {
+        product.accounts.unpaused.compactMap { status(of: $0) }.min()
+    }
+
     /// The selected tab's status: its healthiest unpaused login's, for a
     /// product's logins are interchangeable (CANONICAL §5); `nil` while no
     /// unpaused login has usage.

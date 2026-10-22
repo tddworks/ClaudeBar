@@ -66,6 +66,7 @@ the command that lands on the domain, and the node that answers.
 | 18 | Mia glances at her phone | the Lock Screen *ClaudeBar* Live Activity: the worst quota first, *% left*, the reset countdown | nothing | — (published on refresh) | a destination: Notify! |
 | 19 | Mia wants warning sooner than 20% | Settings → Sync & Alerts: *Quota alerts*, *Alert me below 35%*; later a notification: *Claude · work is below 35% — 34% left* | adds 35%, keeps working | `quotaAlerts.add(35)`; after a refresh `quotaAlerts.review(login)` | `QuotaAlerts` — a destination, outside the monitor |
 | 19a | Mia's team should hear it too | Settings → Sync & Alerts → *Webhooks*: *Add Webhook*, *Slack · JSON*, *Every login*, *Quota alerts · Status alerts*, *Send a test*, *Sent 2m ago*; in Slack: *Claude · work is below 35% — 34% left* | pastes the team's Slack URL, sends a test | `webhooks.add(url:…)` · `sendTest(_:)`; each alert → `webhooks.announce(alert)` | `Webhooks` — a destination; `QuotaAlerts` and `StatusAlerts` decide |
+| 20 | Mia's Claude plan empties for the afternoon | a notification: *Claude ran out*, with *Turn Back On*; the product's row in Settings reads *Waiting for a reset*; later, *Claude is back* | usually nothing — the switch turned itself off, and back on at the reset | `autoPause.turn(_:product:)` to ask; `claudebar://enable?provider=…` for the one click back | `AutoPause` — follows refreshes, outside the Monitor |
 
 ## 3 · What the journeys found
 
@@ -96,7 +97,8 @@ Thirteen findings; each is a word or a law the model must keep.
 *Symbol · colour* · *Save* · *Built in · Custom · Extension* · *Export* ·
 *Key needed* · *Couldn't read your key · Couldn't connect · Couldn't find the
 numbers* · *via API* · *ACCOUNTS* · *PAUSED* · *Pause* · *Resume* ·
-*All logins paused*.
+*All logins paused* · *Turn off when empty* · *Waiting for a reset* ·
+*Turn Back On*.
 
 ## 5 · Acceptance scenarios
 

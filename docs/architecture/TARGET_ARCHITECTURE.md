@@ -114,7 +114,11 @@ Providers  ◆                    THE PROVIDERS YOU KEEP — the Providers pane:
 - **The product's switch is its own setting**; each login's *Pause* is the
   login's. An older `providers.<id>.isEnabled` was the plain login's switch,
   so it is read once: off while another login of the product is on means the
-  plain login was paused; otherwise the product was off.
+  plain login was paused; otherwise the product was off. One asked-for
+  exception, *auto-pause on empty* ([CANONICAL §5](CANONICAL_MODEL.md#5--the-laws-each-one-one-owner)):
+  `AutoPause` — a follower of refreshes, outside the Monitor — turns the
+  switch off itself where the person left the standing instruction, marks the
+  off as its own, and turns it back on at the first refresh that shows room.
 - A product's tab in the popover exists while its switch is on, and holds
   **every login of it** — the watched ones as cards, the paused ones as *PAUSED*
   rows — so *Resume* is a click away and a paused login never vanishes

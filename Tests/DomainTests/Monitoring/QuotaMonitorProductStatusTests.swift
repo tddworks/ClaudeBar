@@ -1,0 +1,88 @@
+import Foundation
+import Testing
+@testable import Domain
+
+/// A product's status as the person sees it — the read *Auto-pause on empty*
+/// judges emptiness with: its emptiest counted login's, under the policy,
+/// with paused logins and logins without usage left out
+/// (docs/features/monitoring/auto-pause/design.md §2).
+@MainActor
+@Suite
+struct QuotaMonitorProductStatusTests {
+    private func quota(_ left: Double) -> UsageQuota {
+        UsageQuota(percentRemaining: left, quotaType: .session, providerId: "p")
+    }
+
+    private func snapshot(_ quotas: UsageQuota...) -> UsageSnapshot {
+        UsageSnapshot(providerId: "p", quotas: quotas, capturedAt: Date())
+    }
+
+    private func product(_ id: String, probe: any UsageProbe) -> (QuotaMonitor, Provider) {
+        let settings = MockRepositoryFactory.makeSettingsRepository()
+        let product = stubbedProduct(id, probe: probe, settings: settings)
+        return (QuotaMonitor(providers: kept([product])), product)
+    }
+
+    @Test
+    func `should read a product as its emptiest login when another has room`() async throws {
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(quota(80), quota(3)))
+        let (monitor, product) = product("claude", probe: probe)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(monitor.status(of: product) == .critical)
+    }
+
+    @Test
+    func `should read a product as depleted when every login with usage is out`() async throws {
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(quota(0)))
+        let (monitor, product) = product("claude", probe: probe)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(monitor.status(of: product) == .depleted)
+    }
+
+    @Test
+    func `should count a single login's product as depleted when it is out`() async throws {
+        // Mia's one Claude login is a whole product: it alone decides.
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(quota(0), quota(0)))
+        let (monitor, product) = product("claude", probe: probe)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(monitor.status(of: product) == .depleted)
+    }
+
+    @Test
+    func `should read no status for a product none of whose logins has usage`() async throws {
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willThrow(UsageError.executionFailed("not set up"))
+        let (monitor, product) = product("claude", probe: probe)
+
+        await monitor.refresh(providerId: "claude")
+
+        // *Not set up* — or a fetch that failed — is not *empty*.
+        #expect(monitor.status(of: product) == nil)
+    }
+
+    @Test
+    func `should leave a paused login out of the product's status`() async throws {
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(quota(80)))
+        let (monitor, product) = product("claude", probe: probe)
+        await monitor.refresh(providerId: "claude")
+
+        monitor.pause(product.defaultAccount)
+
+        #expect(monitor.status(of: product) == nil)
+    }
+}
