@@ -3,7 +3,7 @@ import Domain
 import Infrastructure
 
 /// General pane: startup behavior, popover overview, the usage sections the
-/// popover shows, and burn-rate warnings.
+/// popover shows, and whether a quota warns when it will run out before it resets.
 struct GeneralPane: View {
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
@@ -88,8 +88,8 @@ struct GeneralPane: View {
 
             SettingsCard {
                 SettingsRow(
-                    title: "Burn Rate Warnings",
-                    subtitle: "Color by projected usage at reset instead of current usage."
+                    title: "Warn when a quota will run out before it resets",
+                    subtitle: "Colours and alerts follow the forecast: a quota turns low when, at its pace, it runs out before it refills."
                 ) {
                     SettingsSwitch(isOn: $settings.burnRateWarningEnabled)
                 }

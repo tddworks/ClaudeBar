@@ -315,7 +315,10 @@ public final class JSONSettingsRepository:
         store.write(value: amount, key: "app.claudeApiBudget")
     }
 
-    // MARK: - Burn Rate Warning
+    // MARK: - Warn when a quota will run out before it resets
+    //
+    // `app.burnRateThreshold`, the retired multiplier, is no longer read or
+    // written: an old saved value is ignored.
 
     public func burnRateWarningEnabled() -> Bool {
         store.read(key: "app.burnRateWarningEnabled") ?? false
@@ -323,14 +326,6 @@ public final class JSONSettingsRepository:
 
     public func setBurnRateWarningEnabled(_ enabled: Bool) {
         store.write(value: enabled, key: "app.burnRateWarningEnabled")
-    }
-
-    public func burnRateThreshold() -> Double {
-        store.read(key: "app.burnRateThreshold") ?? 1.5
-    }
-
-    public func setBurnRateThreshold(_ threshold: Double) {
-        store.write(value: threshold, key: "app.burnRateThreshold")
     }
 
     // MARK: - Status Colors

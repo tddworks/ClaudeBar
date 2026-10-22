@@ -84,23 +84,22 @@ struct MenuBarDurationDisplayTests {
     // MARK: - Status threading
 
     @Test
-    func `should take the quota's own status when the burn-rate warning is off`() {
+    func `should take the quota's own status under absolute thresholds`() {
         let q = quota(percentRemaining: 15, resetsAt: Date().addingTimeInterval(3600))
-        let display = MenuBarDurationDisplay(quota: q, burnRateWarningEnabled: false)
+        let display = MenuBarDurationDisplay(quota: q, policy: .absolute)
         #expect(display.status == .critical)
     }
 
     @Test
-    func `should show an on-pace quota as healthy when the burn-rate warning is on`() {
-        // 40% remaining would be .warning under absolute thresholds, but 4.5h
-        // of a 5h session have elapsed (percentTimeElapsed = 90), so usage
-        // projects to 60/90 = 0.67 — under the 0.70 warning line. Pace-aware
-        // logic lifts the status back to .healthy.
+    func `should show a quota that lasts until its reset as healthy when the warning follows the forecast`() {
+        // 40% left would be .warning under absolute thresholds, but 4.5h of a
+        // 5h session have gone: 60% used at 90% of the window lasts until the
+        // reset, so the pace-aware status is .healthy.
         let q = quota(percentRemaining: 40, resetsAt: Date().addingTimeInterval(1800))
-        let display = MenuBarDurationDisplay(quota: q, burnRateWarningEnabled: true, burnRateThreshold: 1.5)
+        let display = MenuBarDurationDisplay(quota: q, policy: .paceAware)
         #expect(display.status == .healthy)
-        // Sanity-check: the absolute-threshold path on the same quota returns .warning,
-        // confirming this test actually exercises the pace-aware branch.
+        // The absolute reading of the same quota is .warning, so this
+        // exercises the pace-aware rule.
         #expect(q.status == .warning)
     }
 }

@@ -12,7 +12,7 @@ struct QuotaCardView: View {
         settings.usageDisplayMode
     }
 
-    /// Status considering burn rate setting
+    /// Status under the person's status policy
     private var effectiveStatus: QuotaStatus {
         quota.status(under: settings.statusPolicy)
     }

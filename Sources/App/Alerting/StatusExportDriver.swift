@@ -129,9 +129,7 @@ public final class StatusExportDriver {
             secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
             showPercentage: settings.menuBarPercentageEnabled,
             showDuration: settings.menuBarDurationEnabled,
-            mode: settings.usageDisplayMode,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
+            mode: settings.usageDisplayMode
         )
 
         let selected = monitor.selectedLogin

@@ -133,13 +133,11 @@ public protocol AppSettingsRepository: Sendable {
     func claudeApiBudget() -> Double
     func setClaudeApiBudget(_ amount: Double)
 
-    // MARK: - Burn Rate Warning
+    // MARK: - Warn when a quota will run out before it resets
 
+    /// Whether status follows the forecast (`StatusPolicy.paceAware`).
     func burnRateWarningEnabled() -> Bool
     func setBurnRateWarningEnabled(_ enabled: Bool)
-
-    func burnRateThreshold() -> Double
-    func setBurnRateThreshold(_ threshold: Double)
 
     /// Monochrome provider marks in the menu bar; opt-in, across all accounts.
     func nativeMenuBarIconsEnabled() -> Bool

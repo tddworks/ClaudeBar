@@ -394,19 +394,13 @@ public final class AppSettings {
         }
     }
 
-    // MARK: - Burn Rate Warning Settings
+    // MARK: - Warn when a quota will run out before it resets
 
-    /// Whether burn rate-based warnings are enabled (default: false, uses absolute thresholds)
+    /// Whether status follows the forecast: a quota turns low when, at its
+    /// pace, it runs out before it resets (default: false, absolute thresholds).
     public var burnRateWarningEnabled: Bool {
         didSet {
             repository.setBurnRateWarningEnabled(burnRateWarningEnabled)
-        }
-    }
-
-    /// The burn rate multiplier threshold above which warnings fire (default: 1.5)
-    public var burnRateThreshold: Double {
-        didSet {
-            repository.setBurnRateThreshold(burnRateThreshold)
         }
     }
 
@@ -434,7 +428,7 @@ public final class AppSettings {
     /// Reading this inside a view body or a sync's `read` tracks both settings.
     /// HOW STRICT TO BE — what every status on screen and every alert uses.
     public var statusPolicy: StatusPolicy {
-        .from(burnRateWarningEnabled: burnRateWarningEnabled, burnRateThreshold: burnRateThreshold)
+        .from(burnRateWarningEnabled: burnRateWarningEnabled)
     }
 
     public var statusColorPolicy: StatusColorPolicy {
@@ -498,7 +492,6 @@ public final class AppSettings {
         self.claudeApiBudget = Decimal(repository.claudeApiBudget())
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
-        self.burnRateThreshold = repository.burnRateThreshold()
         self.statusColorOverrides = repository.statusColorOverrides()
         self.nativeMenuBarIconsEnabled = repository.nativeMenuBarIconsEnabled()
         self.highContrastEnabled = repository.highContrastEnabled()

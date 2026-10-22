@@ -219,9 +219,7 @@ final class StatusItemLabelDriver {
             secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
             showPercentage: settings.menuBarPercentageEnabled,
             showDuration: settings.menuBarDurationEnabled,
-            mode: settings.usageDisplayMode,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
+            mode: settings.usageDisplayMode
         )
 
         let selection = [settings.menuBarPercentageProviderId,
@@ -236,9 +234,7 @@ final class StatusItemLabelDriver {
             configurations: settings.menuBarProviderSettings,
             showPercentage: settings.menuBarPercentageEnabled,
             showDuration: settings.menuBarDurationEnabled,
-            mode: settings.usageDisplayMode,
-            burnRateWarningEnabled: settings.burnRateWarningEnabled,
-            burnRateThreshold: settings.burnRateThreshold
+            mode: settings.usageDisplayMode
         )
         let hasCountdownColon = ([label].compactMap { $0 } + additionalLabels.map(\.label))
             .contains { !CountdownColon.ranges(in: $0.text).isEmpty }
@@ -297,7 +293,7 @@ final class StatusItemLabelDriver {
         return providerHasSnapshot ? previous : nil
     }
 
-    /// Status of the selected provider, considering the burn-rate setting.
+    /// Status of the selected provider under the person's status policy.
     /// Mirrors the dropdown's status logic for the icon-only fallback.
     private var effectiveSelectedProviderStatus: QuotaStatus {
         monitor.selectedLogin.flatMap { monitor.usage(of: $0) }?.overallStatus(under: settings.statusPolicy) ?? .healthy

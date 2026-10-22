@@ -58,14 +58,33 @@ struct StatusAlertsFollowingTheMonitorTests {
         #expect(told.alerts.isEmpty)
     }
 
-    @Test func `should not warn about an on-pace quota when status is pace-aware`() async {
-        // 40% left with 90% of the window gone: on pace, so healthy.
-        let monitor = monitor(claude(left: 40, resetsIn: 30 * 60), policy: .paceAware(burnRateThreshold: 1.5))
+    @Test func `should not warn about a quota that lasts until its reset when status follows the forecast`() async {
+        // 40% left with 90% of the window gone: it lasts until the reset, so healthy.
+        let monitor = monitor(claude(left: 40, resetsIn: 30 * 60), policy: .paceAware)
 
         await monitor.refresh(providerId: "claude")
 
         #expect(told.alerts.isEmpty)
         #expect(monitor.selectedProviderStatus == .healthy)
+    }
+
+    @Test func `should not warn about a quota on track with more than half left when status follows the forecast`() async {
+        // 58% left with 41% of a 5-hour window gone: On track.
+        let monitor = monitor(claude(left: 58, resetsIn: 0.59 * 5 * 3600), policy: .paceAware)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(told.alerts.isEmpty)
+        #expect(monitor.selectedProviderStatus == .healthy)
+    }
+
+    @Test func `should warn about a quota that runs out before its reset even with most of it left`() async {
+        // 60% left with 15% of a 5-hour window gone: it runs out first.
+        let monitor = monitor(claude(left: 60, resetsIn: 0.85 * 5 * 3600), policy: .paceAware)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(told.alerts.map(\.now) == [.warning])
     }
 
     @Test func `should warn about the same quota when status is absolute`() async {

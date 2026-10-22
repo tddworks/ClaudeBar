@@ -37,7 +37,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     /// Keywords beyond the title that the settings search matches against.
     var searchKeywords: [String] {
         switch self {
-        case .general: ["launch", "login", "overview", "daily usage", "burn rate", "threshold"]
+        case .general: ["launch", "login", "overview", "daily usage", "burn rate", "pace", "forecast", "run out"]
         case .appearance: ["theme", "dark", "light", "cli", "christmas", "import", "color", "contrast", "status", "high contrast", "native", "icon", "monochrome", "grayscale"]
         case .menuBar: ["percentage", "duration", "quota display", "stacked", "status bar", "account", "email", "label"]
         case .providers: ["claude", "codex", "gemini", "copilot", "zai", "bedrock", "kimi", "minimax", "enable"]

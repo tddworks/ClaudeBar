@@ -21,13 +21,10 @@ public struct MenuBarDurationDisplay: Sendable, Equatable {
 
     public init(
         quota: UsageQuota,
-        burnRateWarningEnabled: Bool = false,
-        burnRateThreshold: Double = 1.5
+        policy: StatusPolicy = .absolute
     ) {
         self.quota = quota
-        self.status = burnRateWarningEnabled
-            ? quota.paceAwareStatus(burnRateThreshold: burnRateThreshold)
-            : quota.status
+        self.status = quota.status(under: policy)
     }
 
     private static func compactResetText(_ resetText: String?) -> String? {

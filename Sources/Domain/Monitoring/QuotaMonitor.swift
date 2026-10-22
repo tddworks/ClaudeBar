@@ -293,9 +293,7 @@ public final class QuotaMonitor {
     public func menuBarPercentageDisplay(
         providerId: String,
         quotaKey: String,
-        mode: UsageDisplayMode,
-        burnRateWarningEnabled: Bool = false,
-        burnRateThreshold: Double = 1.5
+        mode: UsageDisplayMode
     ) -> MenuBarPercentageDisplay? {
         guard let quota = quota(providerId: providerId, quotaKey: quotaKey) else {
             return nil
@@ -304,8 +302,7 @@ public final class QuotaMonitor {
         return MenuBarPercentageDisplay(
             quota: quota,
             mode: mode,
-            burnRateWarningEnabled: burnRateWarningEnabled,
-            burnRateThreshold: burnRateThreshold
+            policy: statusPolicy
         )
     }
 
@@ -313,9 +310,7 @@ public final class QuotaMonitor {
     /// Sibling to `menuBarPercentageDisplay`; both use the same selectors.
     public func menuBarDurationDisplay(
         providerId: String,
-        quotaKey: String,
-        burnRateWarningEnabled: Bool = false,
-        burnRateThreshold: Double = 1.5
+        quotaKey: String
     ) -> MenuBarDurationDisplay? {
         guard let quota = quota(providerId: providerId, quotaKey: quotaKey) else {
             return nil
@@ -323,8 +318,7 @@ public final class QuotaMonitor {
 
         return MenuBarDurationDisplay(
             quota: quota,
-            burnRateWarningEnabled: burnRateWarningEnabled,
-            burnRateThreshold: burnRateThreshold
+            policy: statusPolicy
         )
     }
 
@@ -335,9 +329,7 @@ public final class QuotaMonitor {
         configurations: [String: MenuBarProviderSettings] = [:],
         showPercentage: Bool,
         showDuration: Bool,
-        mode: UsageDisplayMode,
-        burnRateWarningEnabled: Bool = false,
-        burnRateThreshold: Double = 1.5
+        mode: UsageDisplayMode
     ) -> [MenuBarProviderLabel] {
         guard showPercentage || showDuration else { return [] }
         var seen = Set<String>()
@@ -350,8 +342,7 @@ public final class QuotaMonitor {
                   let label = menuBarLabel(
                     providerId: id, primaryQuotaKey: key, secondaryQuotaKey: config.secondaryQuotaKey,
                     showPercentage: showPercentage, showDuration: showDuration,
-                    mode: mode, burnRateWarningEnabled: burnRateWarningEnabled,
-                    burnRateThreshold: burnRateThreshold
+                    mode: mode
                   ) else {
                 return MenuBarProviderLabel(providerId: id, providerName: lineupName(of: provider),
                                             label: MenuBarLabel(text: "—", status: .healthy))
@@ -381,9 +372,7 @@ public final class QuotaMonitor {
         secondaryQuotaKey: String = "",
         showPercentage: Bool,
         showDuration: Bool,
-        mode: UsageDisplayMode,
-        burnRateWarningEnabled: Bool = false,
-        burnRateThreshold: Double = 1.5
+        mode: UsageDisplayMode
     ) -> MenuBarLabel? {
         let primaryQuotaKey = primaryQuotaKey.isEmpty
             ? (lineup.first { $0.id == providerId }.flatMap { usage(of: $0) }?.quotas.first?.quotaType.quotaKey ?? "")
@@ -393,17 +382,13 @@ public final class QuotaMonitor {
                 ? menuBarPercentageDisplay(
                     providerId: providerId,
                     quotaKey: quotaKey,
-                    mode: mode,
-                    burnRateWarningEnabled: burnRateWarningEnabled,
-                    burnRateThreshold: burnRateThreshold
+                    mode: mode
                 )
                 : nil
             let duration = showDuration
                 ? menuBarDurationDisplay(
                     providerId: providerId,
-                    quotaKey: quotaKey,
-                    burnRateWarningEnabled: burnRateWarningEnabled,
-                    burnRateThreshold: burnRateThreshold
+                    quotaKey: quotaKey
                 )
                 : nil
 
