@@ -45,6 +45,9 @@ struct AutoPauseTests {
         func announce(_ notice: AutoPauseNotice) async { notices.append(notice) }
     }
 
+    /// Everything a test drives, together — and main-actor-bound, like the
+    /// domain it holds.
+    @MainActor
     private struct Rig {
         let monitor: QuotaMonitor
         let product: Provider
