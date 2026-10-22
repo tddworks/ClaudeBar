@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **OpenCode daily usage showed no output and a 30-day total of 0**: reasoning tokens now count as output, and the Tokens chip totals tokens rather than the (zero) cost. ([#566](https://github.com/tddworks/ClaudeBar/issues/566))
+- **Antigravity's quota shows while `agy` is open in a terminal**: ClaudeBar asks the running app, instead of failing with "Authentication required" when the `agy` session had started first. ([#594](https://github.com/tddworks/ClaudeBar/pull/594))
 
 ---
 
