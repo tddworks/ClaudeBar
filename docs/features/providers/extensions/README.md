@@ -6,6 +6,8 @@ description: Add your own quota source to ClaudeBar with a manifest.json and a s
 
 An extension adds a provider to ClaudeBar without changing the app. You create a folder in `~/.claudebar/extensions/` with a `manifest.json` and one or more scripts. Each script prints JSON, and ClaudeBar shows it as quota cards, a cost card, daily usage cards or metric cards, next to the built-in providers. A built-in health check can also ping a URL with no script at all.
 
+If the usage is one HTTP call, one command or one file, you don't need a script: write a [custom provider](../custom/README.md) in JSON instead.
+
 The full field reference is in [manifest.md](manifest.md). A working example with every section type is in [example-provider/](example-provider/).
 
 ## Quick start

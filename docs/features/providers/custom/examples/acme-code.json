@@ -1,0 +1,48 @@
+{
+  "profile": {
+    "id": "acme-code",
+    "name": "Acme Code",
+    "links": { "dashboard": "https://acme.example/usage" },
+    "look": { "symbol": "chevron.left.forwardslash.chevron.right" }
+  },
+  "settings": [
+    { "id": "apiKey", "label": "API key", "kind": "secret" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads the 5-hour and weekly limits.",
+      "credential": { "firstOf": [ { "environment": "ACME_API_KEY" }, { "setting": "apiKey" } ] },
+      "fetch": {
+        "http": {
+          "url": "https://api.acme.example/v1/usage",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
+          "timeout": 30
+        }
+      },
+      "mapping": {
+        "json": {
+          "quotas": [
+            {
+              "kind": "session",
+              "at": "$.five_hour",
+              "usedPercent": "used_percent",
+              "resetsAt": { "iso8601": "resets_at" },
+              "window": { "hours": 5 }
+            },
+            {
+              "kind": "weekly",
+              "at": "$.weekly",
+              "usedPercent": "used_percent",
+              "resetsAt": { "iso8601": "resets_at" },
+              "window": { "days": 7 }
+            }
+          ],
+          "whenEmpty": { "otherwise": "No limits in the answer" }
+        }
+      }
+    }
+  ]
+}

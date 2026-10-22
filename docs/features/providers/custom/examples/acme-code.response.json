@@ -1,0 +1,4 @@
+{
+  "five_hour": { "used_percent": 42, "resets_at": "2026-10-22T15:00:00Z" },
+  "weekly": { "used_percent": 10, "resets_at": "2026-10-27T00:00:00Z" }
+}
