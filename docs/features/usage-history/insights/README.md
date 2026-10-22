@@ -21,9 +21,9 @@ They appear for the same providers that keep local session logs (Claude Code, Mi
 
 ## How the numbers are worked out
 
-- **The year is read once.** The first time the insights appear, a year of the login's logs is read; after that the closed days are kept in `~/.claudebar/usage-history/` and only today's logs are read again. The cards' two days and the chart's thirty come from the same read.
+- **The year is read once.** The first time the insights appear, a year of the login's logs is read; after that the closed days are kept in `~/.claudebar/usage-history/` and only today's logs are read again. The chart's thirty days are the year's last thirty, not a second read.
 - **A day is a cell, always.** Every date of the year gets one — a day with nothing used is an empty cell, never a gap. Its shade is how full it is against the busiest day in the year: darker is fuller.
-- **The unit follows the login.** A priced login's insights are in dollars; an unpriced one's are in tokens, never a made-up $0 — the same rule the daily cards keep.
+- **The unit follows the login.** The insights open in dollars when a day of the login holds a cost, and in tokens when none does (a log that prices nothing, or writes $0 everywhere), never a made-up $0 — the same rule the daily chart keeps.
 - **What caching saved** is the prompt-cache saving summed over the year, shown only when there is one.
 - **The mix adds up.** A model's share is its part of the year's total. Records a log writes with no model form one unnamed line, shown in the mix too, so the parts always add up to the whole.
 
@@ -37,4 +37,4 @@ They appear for the same providers that keep local session logs (Claude Code, Mi
 
 ## See also
 
-[design.md](design.md) — the reads the insights add to a range of days · [daily usage](../daily-usage/README.md) — the cards and the chart the insights sit under · [Claude](../../../providers/claude/README.md)
+[design.md](design.md) — the values the insights build from a range of days · [daily usage](../daily-usage/README.md) — the cards and the chart the insights sit under · [Claude](../../../providers/claude/README.md)
