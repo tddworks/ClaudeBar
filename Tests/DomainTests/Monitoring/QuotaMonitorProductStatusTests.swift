@@ -26,7 +26,7 @@ struct QuotaMonitorProductStatusTests {
     }
 
     @Test
-    func `should read a product as its healthiest login when another is emptier`() async throws {
+    func `should read a product by its login's worst quota`() async throws {
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willReturn(snapshot(quota(80), quota(3)))
@@ -34,9 +34,11 @@ struct QuotaMonitorProductStatusTests {
 
         await monitor.refresh(providerId: "claude")
 
-        // One login with room keeps the whole product out of trouble —
-        // the 80% login's healthy covers the 3% login's critical.
-        #expect(monitor.status(of: product) == .healthy)
+        // One login holds a session with room and one nearly out: the login
+        // reads the worst of its quotas (CANONICAL §1), and the product
+        // reads its one login. A login with room beside an emptier one is
+        // the pool law — InterchangeableLoginsTests.
+        #expect(monitor.status(of: product) == .critical)
     }
 
     @Test
