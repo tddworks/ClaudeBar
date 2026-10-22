@@ -62,6 +62,11 @@ public final class Account: Identifiable {
 
     public internal(set) var isSyncing = false
     public internal(set) var snapshot: UsageSnapshot?
+    /// When this login's sign-in expires — what its data sources' credentials
+    /// said at the last successful refresh. `nil` when none of them declares
+    /// an expiry; a failed refresh never erases it
+    /// ([login expiry design](../../../docs/features/alerting/login-expiry/design.md)).
+    public internal(set) var loginExpiresAt: Date?
     /// Today's `UsageError`, so every screen that reads one keeps reading one.
     public internal(set) var lastError: Error?
     /// Which step failed last — lookup, fetch or mapping. `nil` after a success.
@@ -159,6 +164,14 @@ public final class Account: Identifiable {
         lastFailedStep = nil
         answeredBy = kind
         return usage
+    }
+
+    /// Notes when the login's sign-in expires, as a successful refresh read
+    /// it — the earliest its data sources said, or nothing, when none does
+    /// any more. A failed refresh never calls this: what we saw is never
+    /// erased by failing to look again (CANONICAL §5).
+    func noteLoginExpiry(_ expiresAt: Date?) {
+        loginExpiresAt = expiresAt
     }
 
     /// Some of its data sources failed while others answered (`together`):

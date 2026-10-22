@@ -549,7 +549,8 @@ public final class JSONSettingsRepository:
                 channel: channel,
                 scope: (row["provider"] as? String).map(Webhook.Scope.provider) ?? .everyLogin,
                 sends: Webhook.Sends(quotaAlerts: row["quotaAlerts"] as? Bool ?? true,
-                                     statusAlerts: row["statusAlerts"] as? Bool ?? false),
+                                     statusAlerts: row["statusAlerts"] as? Bool ?? false,
+                                     loginExpiryAlerts: row["loginExpiryAlerts"] as? Bool ?? false),
                 isOn: row["isOn"] as? Bool ?? true
             )
         }
@@ -563,7 +564,7 @@ public final class JSONSettingsRepository:
             }
             return ["id": webhook.id, "name": webhook.name, "channel": webhook.channel.rawValue, "provider": provider,
                     "quotaAlerts": webhook.sends.quotaAlerts, "statusAlerts": webhook.sends.statusAlerts,
-                    "isOn": webhook.isOn]
+                    "loginExpiryAlerts": webhook.sends.loginExpiryAlerts, "isOn": webhook.isOn]
         }
         store.write(value: rows, key: "alerts.webhooks")
     }

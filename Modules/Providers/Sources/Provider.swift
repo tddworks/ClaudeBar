@@ -255,6 +255,24 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
+        let usage = try await fetch(account, kind)
+        // A successful refresh has just looked at the login's credentials:
+        // note when its sign-in expires — the earliest any of its data
+        // sources can read — or that none says any more. A failed refresh
+        // lands above and keeps what we saw; a paused login is refused above
+        // and notes nothing ([login expiry design](../../../docs/features/alerting/login-expiry/design.md)).
+        account.noteLoginExpiry(loginExpiry(of: account))
+        return usage
+    }
+
+    /// When the login's sign-in expires: the earliest expiry any of its own
+    /// data sources can read. `nil` when none of them declares an expiry —
+    /// nothing is parsed by guessing a field's format.
+    private func loginExpiry(of account: Account) -> Date? {
+        dataSources(for: account).compactMap { $0.credentialExpiry() }.min()
+    }
+
+    private func fetch(_ account: Account, _ kind: RefreshKind) async throws -> UsageSnapshot {
         // A login the person paused is not fetched — said out loud, never
         // answered with a made-up snapshot (CANONICAL §5). The product's own
         // switch is a different fact: turning a product off hides it, and a

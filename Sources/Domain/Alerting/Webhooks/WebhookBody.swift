@@ -39,6 +39,7 @@ public struct WebhookBody: Sendable, Equatable {
         switch message {
         case .alert(.quota(let alert)): "\(alert.login) is below \(alert.below)% — \(alert.left)% left"
         case .alert(.status(let alert)): "\(alert.login) is \(alert.now.payloadName) — was \(alert.was.payloadName)"
+        case .alert(.loginExpiry(let alert)): "\(alert.login) login expires \(LoginExpiryWords.forDays(alert.days))"
         case .test: "ClaudeBar test — this webhook works. No quota was judged."
         }
     }
@@ -54,6 +55,7 @@ private struct JSONPayload: Encodable {
     let left: Int?
     let status: String?
     let was: String?
+    let days: Int?
     let sentAt: Date
 
     init(_ message: WebhookBody.Message, sentAt: Date) {
@@ -61,16 +63,20 @@ private struct JSONPayload: Encodable {
         switch message {
         case .alert(.quota(let alert)):
             type = "quota"; provider = alert.providerId; login = alert.login
-            below = alert.below; left = alert.left; status = nil; was = nil
+            below = alert.below; left = alert.left; status = nil; was = nil; days = nil
         case .alert(.status(let alert)):
             type = "status"; provider = alert.providerId; login = alert.login
-            below = nil; left = nil; status = alert.now.payloadName; was = alert.was.payloadName
+            below = nil; left = nil; status = alert.now.payloadName; was = alert.was.payloadName; days = nil
+        case .alert(.loginExpiry(let alert)):
+            type = "loginExpiry"; provider = alert.providerId; login = alert.login
+            below = nil; left = nil; status = nil; was = nil; days = alert.days
         case .test:
-            type = "test"; provider = nil; login = nil; below = nil; left = nil; status = nil; was = nil
+            type = "test"; provider = nil; login = nil
+            below = nil; left = nil; status = nil; was = nil; days = nil
         }
     }
 
-    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, sentAt }
+    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, days, sentAt }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -81,6 +87,7 @@ private struct JSONPayload: Encodable {
         try container.encode(left, forKey: .left)
         try container.encode(status, forKey: .status)
         try container.encode(was, forKey: .was)
+        try container.encode(days, forKey: .days)
         try container.encode(sentAt, forKey: .sentAt)
     }
 }
