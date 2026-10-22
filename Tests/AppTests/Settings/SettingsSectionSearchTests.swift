@@ -12,6 +12,11 @@ struct SettingsSectionSearchTests {
     func `should find Menu Bar when the person searches for account labels`(query: String) {
         #expect(SettingsSection.matching(filter: query).contains(.menuBar))
     }
+
+    @Test(arguments: ["mcp", "model context protocol", "localhost", "127.0.0.1"])
+    func `should find Local API when the person searches for the MCP server`(query: String) {
+        #expect(SettingsSection.matching(filter: query).contains(.localAPI))
+    }
 }
 
 extension SettingsSectionSearchTests {

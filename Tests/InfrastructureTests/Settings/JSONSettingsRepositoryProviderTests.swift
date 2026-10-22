@@ -313,4 +313,22 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.hookPort() == 8080)
     }
 
+    // MARK: - Local API Settings
+
+    @Test
+    func `should keep the local API off until asked`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.isLocalAPIEnabled() == false)
+    }
+
+    @Test
+    func `should remember the local API turned on`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setLocalAPIEnabled(true)
+        #expect(repo.isLocalAPIEnabled() == true)
+    }
 }

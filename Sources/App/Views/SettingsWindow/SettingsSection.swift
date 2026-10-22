@@ -10,6 +10,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case providers
     case syncAlerts
     case hooks
+    case localAPI
     case notify
     case leaderboard
     case updates
@@ -26,6 +27,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .providers: "Providers"
         case .syncAlerts: "Sync & Alerts"
         case .hooks: "Hooks"
+        case .localAPI: "Local API"
         case .notify: "Notify!"
         case .leaderboard: "Leaderboard"
         case .updates: "Updates"
@@ -43,6 +45,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .providers: ["claude", "codex", "gemini", "copilot", "zai", "bedrock", "kimi", "minimax", "enable"]
         case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "quota alert", "percent", "webhook", "slack", "json", "status alert"]
         case .hooks: ["claude code", "session", "install"]
+        case .localAPI: ["mcp", "model context protocol", "localhost", "127.0.0.1", "server", "port", "api", "agent", "curl"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
         case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete", "hide", "disable", "turn off", "pause", "opt out"]
         case .updates: ["sparkle", "beta", "version", "check"]
@@ -70,6 +73,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .providers: "cpu"
         case .syncAlerts: "arrow.triangle.2.circlepath"
         case .hooks: "antenna.radiowaves.left.and.right"
+        case .localAPI: "server.rack"
         case .notify: "iphone.radiowaves.left.and.right"
         case .leaderboard: "trophy.fill"
         case .updates: "arrow.down.circle.fill"
@@ -98,7 +102,7 @@ enum SettingsSectionGroup: String, CaseIterable, Identifiable {
     var sections: [SettingsSection] {
         switch self {
         case .app: [.general, .appearance, .menuBar]
-        case .monitoring: [.providers, .syncAlerts, .hooks, .notify, .leaderboard]
+        case .monitoring: [.providers, .syncAlerts, .hooks, .localAPI, .notify, .leaderboard]
         case .system: [.updates, .logs, .about]
         }
     }

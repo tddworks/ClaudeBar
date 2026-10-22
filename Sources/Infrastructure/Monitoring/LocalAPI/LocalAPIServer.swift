@@ -1,0 +1,243 @@
+import Foundation
+import Network
+import Domain
+
+/// The port file at `~/.claudebar/api-port` — the one place a launcher reads
+/// the real port from, as the hook scripts read theirs. Written on start
+/// (the real number, default or not), removed on stop, so a file that exists
+/// never lies.
+public enum LocalAPIPortFile {
+    /// The path of the port file.
+    public static var path: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return "\(home)/.claudebar/api-port"
+    }
+
+    /// Writes the port number, creating `~/.claudebar` if needed.
+    public static func write(_ port: Int) throws {
+        let directory = (path as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try "\(port)".write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// The port the file holds, or `nil` — no file, or nothing readable in it.
+    public static func read() -> Int? {
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        return Int(content.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Removes the file.
+    public static func remove() {
+        try? FileManager.default.removeItem(atPath: path)
+    }
+}
+
+/// THE ONLY SOCKET — an NWListener bound to 127.0.0.1, speaking exactly one
+/// request per connection: read the request whole (or refuse it by the caps),
+/// hand it to the router's answer, write the bytes back, close. No
+/// keep-alive, no TLS, no non-loopback peer. All mutable state lives on one
+/// serial queue — the listener's and the connections' callbacks run on it,
+/// and external callers hand work to it, so nothing locks.
+public final class LocalAPIServer: @unchecked Sendable {
+    private var listener: NWListener?
+    private let defaultPort: UInt16
+
+    /// The router's answer, installed at start. The server never knows the
+    /// routes; it moves bytes.
+    private var answer: (@Sendable (HTTPRequestResult) async -> HTTPResponse)?
+
+    /// Serial queue for all mutable state; NW callbacks run on it too.
+    private let queue = DispatchQueue(label: "com.tddworks.claudebar.localapi")
+
+    /// The port actually listening — the default, or the free port taken
+    /// when the default was busy.
+    public private(set) var actualPort: UInt16 = 0
+
+    public init(defaultPort: UInt16 = LocalAPIConstants.defaultPort) {
+        self.defaultPort = defaultPort
+    }
+
+    /// Starts listening and returns when the socket is ready. The default
+    /// port first; busy, a free one — the real number goes to the port file
+    /// either way.
+    public func start(answer: @escaping @Sendable (HTTPRequestResult) async -> HTTPResponse) async throws {
+        stopListener()
+        queue.async { self.answer = answer }
+
+        do {
+            try await listen(on: NWEndpoint.Port(rawValue: defaultPort) ?? .any)
+        } catch {
+            AppLog.network.info("Local API: port \(self.defaultPort) is taken; taking a free port")
+            try await listen(on: .any)
+        }
+    }
+
+    /// Stops listening and removes the port file. Off means no door: no
+    /// listener exists, and nothing says one does.
+    public func stop() {
+        queue.async { [self] in
+            stopListener()
+            answer = nil
+            LocalAPIPortFile.remove()
+            AppLog.network.info("Local API stopped")
+        }
+    }
+
+    // MARK: - The listener
+
+    private func stopListener() {
+        listener?.cancel()
+        listener = nil
+        actualPort = 0
+    }
+
+    /// Binds one listener and waits until it is ready or has failed. A busy
+    /// port surfaces here as a throw, so `start` can take a free one instead.
+    private func listen(on port: NWEndpoint.Port) async throws {
+        let parameters = NWParameters.tcp
+        parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: port)
+        let listener = try NWListener(using: parameters)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let once = Once()
+            listener.stateUpdateHandler = { [weak self] state in
+                guard let self else { return }
+                switch state {
+                case .ready:
+                    let actual = listener.port?.rawValue ?? defaultPort
+                    queue.async {
+                        self.actualPort = actual
+                        self.listener = listener
+                    }
+                    do {
+                        try LocalAPIPortFile.write(Int(actual))
+                        AppLog.network.info("Local API listening on 127.0.0.1:\(actual)")
+                    } catch {
+                        AppLog.network.error("Local API could not write its port file: \(error.localizedDescription)")
+                    }
+                    once.run { continuation.resume() }
+                case .failed(let error), .waiting(let error):
+                    listener.cancel()
+                    once.run { continuation.resume(throwing: error) }
+                case .cancelled:
+                    once.run { continuation.resume(throwing: CancellationError()) }
+                default:
+                    break
+                }
+            }
+            listener.newConnectionHandler = { [weak self] connection in
+                self?.handle(connection)
+            }
+            listener.start(queue: queue)
+        }
+    }
+
+    // MARK: - One connection, one request
+
+    /// Refuses any peer that is not this Mac, then reads the request whole.
+    private func handle(_ connection: NWConnection) {
+        guard isLoopback(connection) else {
+            AppLog.network.notice("Local API refused a non-loopback peer")
+            connection.cancel()
+            return
+        }
+        connection.start(queue: queue)
+        receive(connection, accumulated: Data())
+    }
+
+    /// The peer must be 127.0.0.1 or ::1 — the bind already keeps the door on
+    /// the loopback interface; this is the second look at who knocked.
+    private func isLoopback(_ connection: NWConnection) -> Bool {
+        let remote = connection.currentPath?.remoteEndpoint ?? connection.endpoint
+        guard case let .hostPort(host: host, port: _) = remote else { return false }
+        switch host {
+        case .ipv4(let address): return address == .loopback
+        case .ipv6(let address): return address == .loopback
+        default: return false
+        }
+    }
+
+    /// Accumulates bytes until the request is whole: the header block, then
+    /// its Content-Length of body. The caps refuse one that grows too big to
+    /// read; a peer that hangs up mid-request earns a refusal, never a guess.
+    private func receive(_ connection: NWConnection, accumulated: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            var buffer = accumulated
+            if let data { buffer.append(data) }
+
+            if let error {
+                AppLog.network.debug("Local API connection error: \(error.localizedDescription)")
+                connection.cancel()
+                return
+            }
+            if HTTPRequestParser.isHeaderOverCap(buffer) {
+                self.finish(connection, with: .failed(.oversized))
+                return
+            }
+            if let wanted = HTTPRequestParser.pendingBodyLength(headerBlockPrefix: buffer) {
+                if wanted > HTTPRequestParser.maxBodyBytes {
+                    self.finish(connection, with: .failed(.oversized))
+                    return
+                }
+                if let separator = buffer.range(of: HTTPRequestParser.headerSeparator),
+                   buffer.count - separator.upperBound >= wanted {
+                    let head = buffer.subdata(in: buffer.startIndex..<separator.lowerBound)
+                    let body = buffer.subdata(in: separator.upperBound..<buffer.index(separator.upperBound, offsetBy: wanted))
+                    self.finish(connection, with: self.request(headerBlock: head, body: body))
+                    return
+                }
+            }
+            if isComplete {
+                // The peer hung up before one whole request — nothing to serve.
+                connection.cancel()
+                return
+            }
+            self.receive(connection, accumulated: buffer)
+        }
+    }
+
+    /// A whole request's bytes, as a value — or the reason the parser
+    /// refused them.
+    private func request(headerBlock: Data, body: Data) -> HTTPRequestResult {
+        do {
+            return .request(try HTTPRequestParser.parse(headerBlock: headerBlock, body: body))
+        } catch let error as HTTPParseError {
+            return .failed(error)
+        } catch {
+            return .failed(.malformed)
+        }
+    }
+
+    /// One answer, then the connection is gone: send, close.
+    private func finish(_ connection: NWConnection, with result: HTTPRequestResult) {
+        guard let answer else {
+            connection.cancel()
+            return
+        }
+        Task {
+            let wire = HTTPResponseSerializer.serialize(await answer(result))
+            connection.send(
+                content: wire,
+                contentContext: .finalMessage,
+                isComplete: true,
+                completion: .contentProcessed { _ in connection.cancel() }
+            )
+        }
+    }
+}
+
+/// Runs its body at most once — the guard behind a continuation that two
+/// listener states could otherwise resume.
+private final class Once: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    func run(_ body: () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !done else { return }
+        done = true
+        body()
+    }
+}
