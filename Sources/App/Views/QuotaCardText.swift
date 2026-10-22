@@ -49,6 +49,15 @@ enum QuotaCardText {
         quota.forecast?.summary ?? Forecast.noForecast
     }
 
+    /// Whether a card prints a forecast row at all: only inside a window, and
+    /// never for a balance with no ceiling — which reports a reset, so it has
+    /// a `window`, but no share to project (CANONICAL_MODEL §5). A window too
+    /// young to read still prints its row, as *No forecast yet*; a balance
+    /// prints none.
+    static func showsForecast(for quota: UsageQuota) -> Bool {
+        quota.window != nil && !quota.isBalance
+    }
+
     /// A budget's status as a phrase under its amount ("On track"), not a badge.
     static func budgetPhrase(_ status: BudgetStatus) -> String {
         let words = status.badgeText.lowercased()

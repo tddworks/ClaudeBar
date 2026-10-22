@@ -73,6 +73,30 @@ struct QuotaCardTextTests {
         #expect(line.lead == "Renews monthly")
         #expect(line.time == nil)
     }
+
+    // MARK: - The forecast row
+
+    @Test func `should show a forecast row inside a window but none for a balance with no ceiling`() {
+        // A window to project in: the row prints, even before the rate reads
+        // (then it says "No forecast yet").
+        let session = UsageQuota(
+            percentRemaining: 40, quotaType: .session, providerId: "claude",
+            resetsAt: Date().addingTimeInterval(3_600), windowDuration: 5 * 3600
+        )
+        // No window at all: nothing to project, so no row.
+        let noWindow = UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "claude")
+        // A prepaid balance reports a reset, so it has a window, but no share
+        // to project: no row — never "No forecast yet".
+        let balance = UsageQuota(
+            percentRemaining: 100, quotaType: .timeLimit("Credits"), providerId: "vercel-gateway",
+            resetsAt: Date().addingTimeInterval(72 * 60), windowDuration: 5 * 3600,
+            dollarRemaining: 12.40
+        )
+
+        #expect(QuotaCardText.showsForecast(for: session))
+        #expect(!QuotaCardText.showsForecast(for: noWindow))
+        #expect(!QuotaCardText.showsForecast(for: balance))
+    }
 }
 
 /// The words on a budget card as an outlined theme (Pop) prints them.

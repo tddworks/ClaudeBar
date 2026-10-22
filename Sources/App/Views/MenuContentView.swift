@@ -1881,12 +1881,15 @@ struct WrappedStatCard: View {
             }
 
             // The forecast, under the reset countdown: when this window runs
-            // out at its average pace, against when it refills. A quota with
-            // no window (a prepaid balance) has nothing to project and keeps
-            // its card as it was. It is independent of `showsReset`: when a
-            // grid hoists the shared countdown above its cards, each card
-            // still prints its own run-out.
-            if quota.window != nil {
+            // out at its average pace, against when it refills. Two things
+            // have nothing to project and keep their card as it was: a quota
+            // with no window, and a balance with no ceiling — which reports a
+            // reset, so it has a window, but no share to project. A window
+            // still too young to read prints *No forecast yet*. It is
+            // independent of `showsReset`: when a grid hoists the shared
+            // countdown above its cards, each card still prints its own
+            // run-out.
+            if QuotaCardText.showsForecast(for: quota) {
                 forecastLine(QuotaCardText.forecastLine(for: quota))
             }
         }
