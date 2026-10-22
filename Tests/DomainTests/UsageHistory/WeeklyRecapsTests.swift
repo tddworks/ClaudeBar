@@ -113,6 +113,34 @@ struct WeeklyRecapsTests {
         #expect(recaps.recap(for: .thisWeek)?.total == 12)
     }
 
+    @Test func `should read again after a read that was cancelled`() async {
+        let log = Log([day(21, cost: 12)])
+        var cancelNext = true
+        let cancelling = RecapLogin(providerId: "a", lastRead: { log.lastRead }) { range in
+            if cancelNext { cancelNext = false; withUnsafeCurrentTask { $0?.cancel() } }
+            return Days(log.stats.filter { range.contains($0.date, calendar: self.calendar) }, knowsCost: true)
+        }
+        let recaps = recaps([cancelling]) { self.date(22) }
+        await Task { await recaps.readIfStale() }.value
+        #expect(recaps.recap(for: .thisWeek) == nil)
+
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(for: .thisWeek)?.total == 12)
+    }
+
+    @Test func `should read again when another provider takes a login's place, even with the same days`() async {
+        let days = [day(21, cost: 12)]
+        var lineup = [login("a", Log(days))]
+        let recaps = WeeklyRecaps(logins: { lineup }, now: { self.date(22) }, calendar: calendar)
+        await recaps.readIfStale()
+
+        lineup = [login("b", Log(days))]
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(for: .thisWeek)?.providers.map(\.provider) == ["b"])
+    }
+
     @Test func `should hold no recap before it is read`() {
         let recaps = recaps([login("a", Log([day(21, cost: 12)]))]) { self.date(22) }
 
