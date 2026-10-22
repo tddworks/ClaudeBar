@@ -41,7 +41,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .appearance: ["theme", "dark", "light", "cli", "christmas", "import", "color", "contrast", "status", "high contrast", "native", "icon", "monochrome", "grayscale"]
         case .menuBar: ["percentage", "duration", "quota display", "stacked", "status bar", "account", "email", "label"]
         case .providers: ["claude", "codex", "gemini", "copilot", "zai", "bedrock", "kimi", "minimax", "enable"]
-        case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "quota alert", "percent"]
+        case .syncAlerts: ["background", "refresh", "interval", "notification", "alert", "quota alert", "percent", "webhook", "slack", "json", "status alert"]
         case .hooks: ["claude code", "session", "install"]
         case .notify: ["iphone", "phone", "lock screen", "live activity", "widget", "gauge", "push", "device"]
         case .leaderboard: ["rank", "username", "tokens", "share", "board", "compete", "hide", "disable", "turn off", "pause", "opt out"]

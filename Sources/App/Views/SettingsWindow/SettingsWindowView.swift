@@ -103,7 +103,7 @@ struct SettingsWindowView: View {
         case .providers:
             ProvidersPane(monitor: monitor)
         case .syncAlerts:
-            SyncAlertsPane()
+            SyncAlertsPane(monitor: monitor)
         case .hooks:
             HooksPane()
         case .notify:

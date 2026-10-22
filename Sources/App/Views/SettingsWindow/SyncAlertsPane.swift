@@ -2,15 +2,18 @@ import SwiftUI
 import Domain
 import Infrastructure
 
-/// Sync & Alerts pane: background refresh cadence and the person's quota alerts.
+/// Sync & Alerts pane: background refresh cadence, the person's quota alerts,
+/// and the webhooks they are sent to.
 struct SyncAlertsPane: View {
+    let monitor: QuotaMonitor
+
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
 
     var body: some View {
         SettingsPane(
             title: "Sync & Alerts",
-            subtitle: "Background refresh cadence, and the quota alerts you choose."
+            subtitle: "Background refresh cadence, the quota alerts you choose, and where else they are sent."
         ) {
             SettingsCard {
                 SettingsRow(
@@ -36,6 +39,8 @@ struct SyncAlertsPane: View {
             }
 
             QuotaAlertsCard()
+
+            WebhooksCard(providers: monitor.providers.all)
         }
     }
 }

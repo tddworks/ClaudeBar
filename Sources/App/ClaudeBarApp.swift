@@ -29,6 +29,9 @@ struct ClaudeBarApp: App {
     /// *Quota alerts* — the person's own percentages (#68).
     @State private var quotaAlerts: QuotaAlerts
 
+    /// *Webhooks* — the person's URLs that hear every alert, beside this Mac.
+    @State private var webhooks: Webhooks
+
     /// Monitors Claude Code sessions via hook events
     @State private var sessionMonitor: SessionMonitor
 
@@ -146,8 +149,12 @@ struct ClaudeBarApp: App {
         self.monitor = monitor
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
+        // *Webhooks*: kept in settings.json, each URL a destination's secret.
+        let webhooks = Webhooks(settings: settingsRepository, secrets: settingsRepository.destinationSecrets,
+                                sender: WebhookClient())
+        self.webhooks = webhooks
         // Every alert goes to every destination; neither decider knows who hears it.
-        let destinations = AlertDestinations([notifications])
+        let destinations = AlertDestinations([notifications, webhooks])
         // *Quota alerts* follow every refresh too, on what the person sees.
         let quotaAlerts = QuotaAlerts(settings: settingsRepository, destination: destinations)
         self.quotaAlerts = quotaAlerts
@@ -411,6 +418,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(webhooks)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 980, height: 660)

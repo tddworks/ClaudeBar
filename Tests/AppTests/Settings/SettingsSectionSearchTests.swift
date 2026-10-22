@@ -13,3 +13,10 @@ struct SettingsSectionSearchTests {
         #expect(SettingsSection.matching(filter: query).contains(.menuBar))
     }
 }
+
+extension SettingsSectionSearchTests {
+    @Test(arguments: ["webhook", "slack", "json"])
+    func `should find Sync & Alerts when the person searches for webhooks`(query: String) {
+        #expect(SettingsSection.matching(filter: query).contains(.syncAlerts))
+    }
+}
