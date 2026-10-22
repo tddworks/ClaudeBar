@@ -21,10 +21,20 @@ struct SpendRateTests {
     }
 
     @Test
-    func `should outlast the window when spent no faster than it passes`() {
-        #expect(SpendRate(percentUsed: 50, percentTimeElapsed: 50)?.outlastsWindow == true)
-        #expect(SpendRate(percentUsed: 0, percentTimeElapsed: 50)?.outlastsWindow == true)
-        #expect(SpendRate(percentUsed: 52, percentTimeElapsed: 50)?.outlastsWindow == false)
+    func `should run out before the reset only when more than 5 points ahead of the time gone`() {
+        #expect(SpendRate(percentUsed: 56, percentTimeElapsed: 50)?.runsOutBeforeReset == true)
+        #expect(SpendRate(percentUsed: 55.1, percentTimeElapsed: 50)?.runsOutBeforeReset == true)
+        #expect(SpendRate(percentUsed: 55, percentTimeElapsed: 50)?.runsOutBeforeReset == false)
+        #expect(SpendRate(percentUsed: 52, percentTimeElapsed: 50)?.runsOutBeforeReset == false)
+        #expect(SpendRate(percentUsed: 0, percentTimeElapsed: 50)?.runsOutBeforeReset == false)
+    }
+
+    @Test
+    func `should have room to spare only when more than 5 points behind the time gone`() {
+        #expect(SpendRate(percentUsed: 44, percentTimeElapsed: 50)?.hasRoomToSpare == true)
+        #expect(SpendRate(percentUsed: 44.9, percentTimeElapsed: 50)?.hasRoomToSpare == true)
+        #expect(SpendRate(percentUsed: 45, percentTimeElapsed: 50)?.hasRoomToSpare == false)
+        #expect(SpendRate(percentUsed: 56, percentTimeElapsed: 50)?.hasRoomToSpare == false)
     }
 
     @Test

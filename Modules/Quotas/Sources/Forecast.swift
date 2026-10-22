@@ -7,7 +7,8 @@ import Foundation
 /// out 34 minutes before it refills). Both read the one rate, so they never
 /// disagree: `.runsOut` ⇔ `Pace` is *Running hot*.
 public enum Forecast: Sendable, Equatable, Hashable {
-    /// At this rate the quota is still there when the window refills.
+    /// At this rate the quota is still there when the window refills, or
+    /// within `SpendRate.margin` of it.
     case lastsUntilReset
     /// At this rate the quota reaches zero in `in`, `beforeReset` ahead of the
     /// window refilling.
@@ -23,7 +24,7 @@ public enum Forecast: Sendable, Equatable, Hashable {
               let untilReset = window.untilReset(at: now)
         else { return nil }
 
-        guard !rate.outlastsWindow else {
+        guard rate.runsOutBeforeReset else {
             self = .lastsUntilReset
             return
         }

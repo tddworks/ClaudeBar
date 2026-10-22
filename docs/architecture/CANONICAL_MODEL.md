@@ -456,7 +456,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
 | pace exists only inside a window with a reset; outside it is `unknown`, never `onPace` | `Quota.pace` |
 | **ONE rate per quota**: how fast it is spent against its window — one used share (from `left`, so a capped money quota by its money), one noise floor (3% of the window) — and pace, the pace tick, the pace-aware status and the forecast all read it, never their own copy | `SpendRate` · `Quota.rate` |
-| a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset ⇔ the rate is at most 1, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
+| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of its window gone; within 5 either side it is on the line. ONE rule, read by Pace and the forecast | `SpendRate.runsOutBeforeReset` |
+| a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset unless it runs out first, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
 | no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
 | depleted at 0, critical under 20 — ABSOLUTE, whatever the policy; pace-aware only decides WARNING vs HEALTHY between 20% and 50% left | `StatusPolicy` |

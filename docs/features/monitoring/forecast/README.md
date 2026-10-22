@@ -28,11 +28,11 @@ The forecast and the Pace badge read one rate: how fast the quota is spent again
 
 | Pace badge | Forecast |
 |---|---|
-| **Running hot** — spent faster than the window passes, even by a point | **Runs out in … before it resets** |
-| **On track** — up to 5 points under the time gone | **Lasts until it resets** |
+| **Running hot** — more than 5 points ahead of the time gone | **Runs out in … before it resets** |
+| **On track** — within 5 points of the time gone, either side | **Lasts until it resets** |
 | **Room to spare** | **Lasts until it resets** |
 
-52% used half way through a 5-hour window reads *Running hot* and *Runs out in 2h 18m — 11m before it resets*.
+52% used half way through a 5-hour window reads *On track* and *Lasts until it resets*; 60% reads *Running hot* and *Runs out in 1h 40m — 50m before it resets*.
 
 ## When a card shows no forecast line
 

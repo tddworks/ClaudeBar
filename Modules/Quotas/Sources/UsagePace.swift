@@ -2,9 +2,9 @@ import Foundation
 
 /// Represents the pace of quota consumption relative to expected usage over time.
 ///
-/// - `.onPace`: Usage trails the time gone by at most 5 points: it lasts until the reset
-/// - `.ahead`: Consuming faster than the window passes: it runs out before the reset
-/// - `.behind`: Consuming slower than expected (room to spare)
+/// - `.onPace`: Usage within `SpendRate.margin` (5 points) of the time gone: it lasts until the reset
+/// - `.ahead`: More than 5 points ahead: it runs out before the reset
+/// - `.behind`: More than 5 points behind (room to spare)
 /// - `.unknown`: No `SpendRate` (no window, or under its noise floor)
 ///
 /// - Note: Interim — today's shape, moved unchanged into the kernel.
@@ -15,10 +15,6 @@ public enum UsagePace: Sendable, Equatable {
     case ahead
     case behind
     case unknown
-
-    /// How far (in percentage points) usage can trail the time gone and still
-    /// be *On track*.
-    private static let onPaceThreshold: Double = 5.0
 
     // MARK: - Factory Methods
 
@@ -32,16 +28,16 @@ public enum UsagePace: Sendable, Equatable {
         SpendRate(percentUsed: percentUsed, percentTimeElapsed: percentTimeElapsed).map(UsagePace.init(rate:)) ?? .unknown
     }
 
-    /// The pace a rate reads: *Running hot* whenever it runs out before the
-    /// window refills (rate above 1) — the same law as `Forecast` — *On track*
-    /// up to 5 points under the time gone, *Room to spare* below that.
+    /// The pace a rate reads: *Running hot* exactly when it runs out before
+    /// the reset — the same rule `Forecast` reads — *Room to spare* when it
+    /// has room to spare, *On track* within the margin between.
     public init(rate: SpendRate) {
-        if !rate.outlastsWindow {
+        if rate.runsOutBeforeReset {
             self = .ahead
-        } else if rate.percentTimeElapsed - rate.percentUsed <= Self.onPaceThreshold {
-            self = .onPace
-        } else {
+        } else if rate.hasRoomToSpare {
             self = .behind
+        } else {
+            self = .onPace
         }
     }
 

@@ -32,8 +32,22 @@ public struct SpendRate: Sendable, Equatable, Hashable {
         max(0, percentUsed) / percentTimeElapsed
     }
 
-    /// Whether, at this rate, the quota is still there when the window refills.
-    public var outlastsWindow: Bool {
-        value <= 1
+    /// How many points the share used may sit either side of the share of the
+    /// window gone and still read as on the line: the margin Pace has always
+    /// had, so a point or two of drift is *On track*, not an alarm.
+    public static let margin: Double = 5
+
+    /// Whether, at this rate, the quota runs out before the window refills:
+    /// used more than `margin` points ahead of the share of the window gone.
+    /// Within the margin it reads as lasting until the reset. `Pace` (*Running
+    /// hot*) and `Forecast` (*Runs out…*) both read this, so they never disagree.
+    public var runsOutBeforeReset: Bool {
+        percentUsed - percentTimeElapsed > Self.margin
+    }
+
+    /// Whether it is spent more than `margin` points behind the share of the
+    /// window gone: *Room to spare*.
+    public var hasRoomToSpare: Bool {
+        percentTimeElapsed - percentUsed > Self.margin
     }
 }

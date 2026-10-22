@@ -114,8 +114,33 @@ struct ForecastTests {
     // MARK: - One rate: Pace and the forecast never contradict each other
 
     @Test
-    func `should run hot and run out when 52 percent is used half way through the window`() {
+    func `should be on track and last until it resets when 52 percent is used half way through the window`() {
+        // Within the 5-point margin: Pace and the forecast both say it lasts.
         let card = quota(left: 48, length: 5 * 3600, resetsIn: 2.5 * 3600)
+
+        #expect(card.pace(at: now) == .onPace)
+        #expect(card.forecast(at: now) == .lastsUntilReset)
+    }
+
+    @Test
+    func `should be on track and last until it resets when exactly 5 points ahead of the time gone`() {
+        let card = quota(left: 45, length: 5 * 3600, resetsIn: 2.5 * 3600)
+
+        #expect(card.pace(at: now) == .onPace)
+        #expect(card.forecast(at: now) == .lastsUntilReset)
+    }
+
+    @Test
+    func `should run hot and run out when 56 percent is used half way through the window`() {
+        let card = quota(left: 44, length: 5 * 3600, resetsIn: 2.5 * 3600)
+
+        #expect(card.pace(at: now) == .ahead)
+        #expect(card.forecast(at: now)?.outlastsReset == false)
+    }
+
+    @Test
+    func `should run hot and run out when 60 percent is used half way through the window`() {
+        let card = quota(left: 40, length: 5 * 3600, resetsIn: 2.5 * 3600)
 
         #expect(card.pace(at: now) == .ahead)
         #expect(card.forecast(at: now)?.outlastsReset == false)
@@ -126,6 +151,14 @@ struct ForecastTests {
         let card = quota(left: 52, length: 5 * 3600, resetsIn: 2.5 * 3600)
 
         #expect(card.pace(at: now) == .onPace)
+        #expect(card.forecast(at: now) == .lastsUntilReset)
+    }
+
+    @Test
+    func `should have room to spare and last until it resets when 44 percent is used half way through the window`() {
+        let card = quota(left: 56, length: 5 * 3600, resetsIn: 2.5 * 3600)
+
+        #expect(card.pace(at: now) == .behind)
         #expect(card.forecast(at: now) == .lastsUntilReset)
     }
 

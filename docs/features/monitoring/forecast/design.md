@@ -26,11 +26,16 @@ of the window gone. That one rate answers every question about speed:
 - **The pace-aware status** — whether to warn.
 - **The forecast** — whether it lasts until it resets, and when it runs out.
 
-A forecast is the rate carried forward to zero:
+A forecast is the rate carried forward to zero, with the 5-point margin Pace
+has always had:
 
-- `rate ≤ 1` → **lasts until it resets**.
-- `rate > 1` → **runs out** in `left × length ÷ (100 × rate)`, which is
+- `used − gone ≤ 5` → **lasts until it resets** — on the line or near enough.
+- `used − gone > 5` → **runs out** in `left × length ÷ (100 × rate)`, which is
   `length × (used − gone) ÷ used` before the reset.
+
+The margin is one rule, `SpendRate.runsOutBeforeReset`, so a point or two of
+drift reads *On track* and *Lasts until it resets* — never *On track* beside a
+run-out, nor *Running hot* beside *Lasts*.
 
 ## 2 · The one rate, and who reads it
 
@@ -39,14 +44,15 @@ Window            length · resetsAt            elapsed(at:) · untilReset(at:) 
 SpendRate         percentUsed ÷ percentTimeElapsed      the ONLY owner of how fast a quota is spent
   │                 one used share: from percentLeft (a capped money quota by its money)
   │                 one noise floor: 3% of the window gone; none once the window is over
+  │                 one margin: runsOutBeforeReset ⇔ used − gone > 5 · hasRoomToSpare ⇔ gone − used > 5
   ├ UsageQuota.rate        → SpendRate?     nil without a window length + reset, for a balance
   │                                         with no ceiling, under the floor
-  ├ UsagePace(rate:)       Running hot ⇔ rate > 1 · On track ≤ 5 points under · Room to spare
+  ├ UsagePace(rate:)       Running hot ⇔ runsOutBeforeReset · Room to spare ⇔ hasRoomToSpare · else On track
   ├ PaceLevel(rate:)       the tick's six grades
   ├ QuotaStatus.from(…)    projects from the rate once 15% of the window has gone
   └ Forecast(rate:window:at:)
                            nil once used up, or without a window length/reset
-                           .lastsUntilReset ⇔ rate ≤ 1
+                           .lastsUntilReset ⇔ !runsOutBeforeReset
                            .runsOut(in:, beforeReset:)
 QuotaCardText.forecastLine(for:)   the words, and only the words
 ```
@@ -75,9 +81,13 @@ louder than a word, so the pace-aware status keeps its absolute thresholds until
 
 | The quota | Rate | Pace | Forecast |
 |---|---|---|---|
-| 52% used, 50% of the window gone | 1.04 | *Running hot* | *Runs out in 2h 18m — 11m before it resets* (5h window) |
+| 60% used, 50% of the window gone | 1.2 | *Running hot* | *Runs out in 1h 40m — 50m before it resets* (5h window) |
+| 55.1% used, 50% gone (just past the margin) | 1.10 | *Running hot* | *Runs out in …* |
+| 55% used, 50% gone (exactly 5 ahead) | 1.1 | *On track* | *Lasts until it resets* |
+| 52% used, 50% gone | 1.04 | *On track* | *Lasts until it resets* — within the margin |
 | 50% used, 50% gone | 1 | *On track* | *Lasts until it resets* — it reaches zero as it refills |
-| 48% used, 50% gone | 0.96 | *On track* | *Lasts until it resets* |
+| 45% used, 50% gone (exactly 5 under) | 0.9 | *On track* | *Lasts until it resets* |
+| 44% used, 50% gone | 0.88 | *Room to spare* | *Lasts until it resets* |
 | nothing used | 0 | *Room to spare* | *Lasts until it resets* |
 | 1% used a minute into a week | none (under 3%) | `unknown` | none |
 | used up (0% or over) | — | *Running hot* | none — it has already run out |
@@ -85,9 +95,12 @@ louder than a word, so the pace-aware status keeps its absolute thresholds until
 | a balance with no ceiling | none | `unknown` | none — no share to project |
 | a capped money quota | from its money share | from its money share | from its money share |
 
-*On track* is the band that lasts: up to 5 points under the time gone. A quota
-even a point ahead of the window runs out before the reset, so it reads
-*Running hot* — the badge and the line never contradict each other.
+*On track* is the band within 5 points of the time gone, either side, and it
+lasts. More than 5 points ahead runs out before the reset and reads *Running
+hot*: the badge and the line read one rule, so they never contradict each
+other. Inside the margin the forecast is generous on purpose — 52% at half way
+would, strictly, run out 11 minutes early, but a point or two of drift is what
+*On track* has always meant.
 
 ## 4 · The words the card prints
 
@@ -130,9 +143,10 @@ quota.forecast                       → Forecast?    lasts until it resets, or 
 | Law | Owner |
 |---|---|
 | how fast a quota is spent against its window — one used share, one noise floor (3% of the window) — is ONE rate; pace, the tick, the pace-aware status and the forecast read it | `SpendRate` · `Quota.rate` |
-| a forecast lasts until the reset ⇔ the rate is at most 1; otherwise it runs out in `left × length ÷ (100 × rate)` | `Forecast` |
+| a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of the window gone (`SpendRate.margin`); within 5 either side it is on the line. ONE rule: Pace and the forecast read it, never their own threshold | `SpendRate.runsOutBeforeReset` |
+| a forecast lasts until the reset unless it runs out before it; then it runs out in `left × length ÷ (100 × rate)` | `Forecast` |
 | no forecast once the quota is used up, without a window length and reset, or without a rate | `Forecast` · `Quota.forecast` |
-| *Running hot* ⇔ the forecast runs out before the reset | `UsagePace` |
+| *Running hot* ⇔ it runs out before the reset; *Room to spare* ⇔ more than 5 points behind; otherwise *On track* | `UsagePace` (reads `SpendRate`) |
 | how a forecast is said on a card, and that it is said *at this pace* | `QuotaCardText` |
 
 ## 6 · The pieces
@@ -140,7 +154,7 @@ quota.forecast                       → Forecast?    lasts until it resets, or 
 | Piece | Module | One job | Changes when |
 |---|---|---|---|
 | `Window.elapsed(at:)` · `untilReset(at:)` | `Quotas` | the cycle as of a moment | never, short of a new kind of window |
-| `SpendRate` | `Quotas` | how fast, with the noise floor | the rate rule changes (weighted, measured) |
+| `SpendRate` | `Quotas` | how fast, with the noise floor and the 5-point margin | the rate rule or the margin changes |
 | `Forecast` | `Quotas` | the rate against the reset | the projection changes |
 | `QuotaCardText.forecastLine(for:)` · `duration(_:)` · `forecastQualifier` | `App` | the words | the wording changes |
 | `WrappedStatCard` | `App` | draw the line under the reset row | the layout changes |
@@ -177,6 +191,9 @@ No port, no repository, no setting.
 
 - **A rate of its own for the forecast.** A second "used" or a second floor
   lets the card print *On track* beside *Runs out before it resets*.
+- **No margin (`rate > 1` runs out).** Strictly true, but 51% at half way
+  would read *Running hot*: a point of drift becomes an alarm, and *On track*
+  loses the meaning it had. The margin stays, owned once by `SpendRate`.
 - **On `Usage`.** A forecast is about time passing; storing it would go stale
   between refreshes.
 - **A capability in the definition.** Nothing about a forecast is the
