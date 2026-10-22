@@ -61,8 +61,11 @@ public final class LocalAPIServer: @unchecked Sendable {
     /// port first; busy, a free one — the real number goes to the port file
     /// either way.
     public func start(answer: @escaping @Sendable (HTTPRequestResult) async -> HTTPResponse) async throws {
-        stopListener()
-        queue.async { self.answer = answer }
+        // Reset on the queue, where the listener's state lives.
+        queue.async { [self] in
+            stopListener()
+            self.answer = answer
+        }
 
         do {
             try await listen(on: NWEndpoint.Port(rawValue: defaultPort) ?? .any)
@@ -104,8 +107,8 @@ public final class LocalAPIServer: @unchecked Sendable {
                 guard let self else { return }
                 switch state {
                 case .ready:
-                    let actual = listener.port?.rawValue ?? defaultPort
-                    queue.async {
+                    let actual = listener.port?.rawValue ?? self.defaultPort
+                    self.queue.async {
                         self.actualPort = actual
                         self.listener = listener
                     }
@@ -128,7 +131,7 @@ public final class LocalAPIServer: @unchecked Sendable {
             listener.newConnectionHandler = { [weak self] connection in
                 self?.handle(connection)
             }
-            listener.start(queue: queue)
+            listener.start(queue: self.queue)
         }
     }
 
