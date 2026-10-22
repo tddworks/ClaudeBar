@@ -12,7 +12,7 @@ The answers are the ones the popover would give — the same statuses, the same 
 
 Settings → **Local API** → *Serve quota data on this Mac*. The pane shows the port and the two lines to copy. It stays off until you turn it on.
 
-The default port is **19848**. If something else on your Mac already holds it, ClaudeBar takes the next free port and writes the real number to `~/.claudebar/api-port` — the pane always shows the line that works right now.
+The default port is **19848**. If something else on your Mac already holds it, ClaudeBar takes the next free port and writes the real number to `~/.claudebar/api-port` — the pane always shows the line that works right now. The file is written whenever the switch is on and removed when it is off.
 
 ## Plain HTTP (curl, Raycast, scripts)
 
@@ -73,7 +73,7 @@ The server is stateless streamable HTTP: `initialize`, `tools/list`, `tools/call
 
 ## What it will not do
 
-No writes — the API cannot pause a login, switch the login new sessions start with, or trigger a refresh; those stay in the popover, Settings and the [`claudebar://` URL schemes](../app/url-schemes/README.md). No access from other machines — the listener is bound to `127.0.0.1` and refuses any peer that is not your Mac. Only `GET` and `POST` are served; anything else is refused.
+No writes — the API cannot pause a login, switch the login new sessions start with, or trigger a refresh; those stay in the popover, Settings and the [`claudebar://` URL schemes](../../app/url-schemes/README.md). No access from other machines — the listener is bound to `127.0.0.1` and refuses any peer that is not your Mac. Only `GET` and `POST` are served; anything else is refused.
 
 ## Not working?
 

@@ -88,10 +88,12 @@ no URL names: it takes an auto-assigned port, writes the real number to
 `~/.claudebar/api-port`, and the Settings pane builds its `claude mcp add`
 line from the port file, so the line it prints is the line that works. A
 launcher that wants the real port reads the file, as the hook installer's
-scripts do. The file is the same decision the hook server already made
-(`PortDiscovery`, `~/.claude/claudebar-hook-port`); this feature keeps its
-own small writer beside it rather than editing the hooks context, and the
-two fold into one when the hooks feature next changes.
+scripts do. The file is written on every start — default port or not — and
+removed on stop, so a file that exists never lies and a pane never prints a
+line for a server that is off. It is the same decision the hook server
+already made (`PortDiscovery`, `~/.claude/claudebar-hook-port`); this
+feature keeps its own small writer beside it rather than editing the hooks
+context, and the two fold into one when the hooks feature next changes.
 
 ## The words (the JSON contract)
 
