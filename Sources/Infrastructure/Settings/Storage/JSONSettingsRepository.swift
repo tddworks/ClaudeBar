@@ -188,12 +188,17 @@ public final class JSONSettingsRepository:
         store.write(value: quotaKey, key: "app.menuBarSecondaryQuotaKey")
     }
 
-    public func showDailyUsageCards() -> Bool {
-        store.read(key: "app.showDailyUsageCards") ?? true
+    /// `app.usageSections.<section>`. Unset, it is the section's default —
+    /// unless the person had turned the one old switch, *Daily Usage Cards*
+    /// (`app.showDailyUsageCards`), off: then every section stays hidden.
+    public func isShown(_ section: UsageSection) -> Bool {
+        if let shown: Bool = store.read(key: "app.usageSections.\(section.rawValue)") { return shown }
+        let dailyUsageCards: Bool? = store.read(key: "app.showDailyUsageCards")
+        return dailyUsageCards == false ? false : section.isShownByDefault
     }
 
-    public func setShowDailyUsageCards(_ show: Bool) {
-        store.write(value: show, key: "app.showDailyUsageCards")
+    public func setShown(_ section: UsageSection, _ shown: Bool) {
+        store.write(value: shown, key: "app.usageSections.\(section.rawValue)")
     }
 
     public func hideAccountEmail() -> Bool {

@@ -187,7 +187,9 @@ settings = {"providers": providers, "app": {
     "themeMode": theme,
     # Chosen, so the Christmas theme stays outside its season.
     "userHasChosenTheme": True,
-    "showDailyUsageCards": True,
+    # Every usage section, the year's two included, so screenshots show them all.
+    "usageSections": {"today": True, "lastThirtyDays": True, "lastYear": True,
+                      "modelMix": True, "weeklyRecap": True},
     "popoverTextSize": text_size,
     "popoverTitle": popover_title,
     "popoverOpensOn": opens_on,

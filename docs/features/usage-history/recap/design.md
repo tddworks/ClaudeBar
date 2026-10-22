@@ -124,7 +124,7 @@ chip names and *vs last week* are the App's words for it.
 | `RecapRange` | *This week* / *Last week*: the week it names (`DateRange.week`, or the week before) | `Sources/Domain/UsageHistory/` |
 | `RecapRange` words | the chip's name, what it is compared with, its empty note | `Sources/App/UsageHistory/RecapRange+Words.swift` |
 | `RecapCardView` | renders a recap and tells: the range chips, the total in `recap.unit`, the change and what it is against, each provider's part, the highlights | `Sources/App/UsageHistory/` |
-| the All page (`MenuContentView`) | shows the card while **Daily Usage Cards** is on, and tells `WeeklyRecaps` to read if stale when the card appears and after the logins' usage is read | `Sources/App/Views/` |
+| the All page (`MenuContentView`) | shows the card while the person shows the **Weekly recap** section (`UsageSection.weeklyRecap`, on by default, through `AppSettingsRepository.isShown`), and tells `WeeklyRecaps` to read if stale when the card appears and after the logins' usage is read | `Sources/App/Views/` |
 | `UsageFormat` | a value in a unit, a share, a change, a duration | `Sources/App/UsageHistory/` |
 
 ```
@@ -144,7 +144,9 @@ usage, and switching reads nothing. The change's label comes from the same
 one on screen. The days come from the ledger for closed days and from the logs
 only for the open ones (daily-usage), so reading three weeks costs little.
 
-The card is shown while **Daily Usage Cards** is on, and needs the All page,
+The card is shown while the **Weekly recap** usage section is: `UsageSection`
+owns its default (shown), the person's switch in Settings → General overrides
+it, and the settings repository keeps the choice. It needs the All page,
 which is offered from two providers.
 
 ## 6 · Is it easy to change?

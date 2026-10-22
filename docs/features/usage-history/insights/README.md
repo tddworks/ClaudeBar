@@ -15,7 +15,7 @@ Both read the days the daily cards already read — nothing new is fetched, and 
 
 ## Quick start
 
-The insights are **on by default** with the daily usage cards. Turn them off or on in Settings → **General** → **Daily Usage Cards**.
+The insights are **off by default**, so the popover stays short. Turn each on in Settings → **General** → **Usage in the popover**: **Last year** is the heatmap, **Model mix** the mix. A year of logs is read only while one of them is on.
 
 They appear for the same providers that keep local session logs (Claude Code, Mistral Vibe, Oh My Pi, OpenCode, and extensions). See [daily usage](../daily-usage/README.md) for the list.
 

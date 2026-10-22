@@ -218,11 +218,22 @@ public final class AppSettings {
         }
     }
 
-    /// Whether to show daily usage report cards (API Cost, Token Usage, Working Time)
-    public var showDailyUsageCards: Bool {
-        didSet {
-            repository.setShowDailyUsageCards(showDailyUsageCards)
-        }
+    /// The popover's usage sections the person shows (Settings → General);
+    /// each starts as `UsageSection.isShownByDefault` says.
+    public private(set) var shownUsageSections: Set<UsageSection>
+
+    public func isShown(_ section: UsageSection) -> Bool {
+        shownUsageSections.contains(section)
+    }
+
+    public func setShown(_ section: UsageSection, _ shown: Bool) {
+        if shown { shownUsageSections.insert(section) } else { shownUsageSections.remove(section) }
+        repository.setShown(section, shown)
+    }
+
+    /// Whether a shown section reads the year, so the year is read only then.
+    public var readsTheYear: Bool {
+        shownUsageSections.contains(where: \.readsTheYear)
     }
 
     /// Text size for the whole popover. Default is today's sizing; larger
@@ -491,7 +502,7 @@ public final class AppSettings {
         self.statusColorOverrides = repository.statusColorOverrides()
         self.nativeMenuBarIconsEnabled = repository.nativeMenuBarIconsEnabled()
         self.highContrastEnabled = repository.highContrastEnabled()
-        self.showDailyUsageCards = repository.showDailyUsageCards()
+        self.shownUsageSections = Set(UsageSection.allCases.filter(repository.isShown))
         self.hideAccountEmail = repository.hideAccountEmail()
         self.popoverTitle = PopoverTitle(repository.popoverTitle())
         self.hideLeaderboardCountry = repository.hideLeaderboardCountry()

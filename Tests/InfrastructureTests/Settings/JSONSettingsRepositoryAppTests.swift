@@ -278,14 +278,6 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `should show the daily usage cards when the person never chose`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.showDailyUsageCards() == true)
-    }
-
-    @Test
     func `should show a single readout's logo only once asked, and keep showing it`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
@@ -337,13 +329,76 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.hideLeaderboardName() == true)
     }
 
+    // MARK: - Usage sections
+
     @Test
-    func `should remember hiding the daily usage cards`() {
+    func `should show each usage section as it is by default when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        repo.setShowDailyUsageCards(false)
-        #expect(repo.showDailyUsageCards() == false)
+        for section in UsageSection.allCases {
+            #expect(repo.isShown(section) == section.isShownByDefault)
+        }
+    }
+
+    @Test(arguments: UsageSection.allCases)
+    func `should remember a usage section shown or hidden across restarts`(section: UsageSection) {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+
+        repo.setShown(section, !section.isShownByDefault)
+        let flipped = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(flipped.isShown(section) == !section.isShownByDefault)
+
+        flipped.setShown(section, section.isShownByDefault)
+        let back = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(back.isShown(section) == section.isShownByDefault)
+    }
+
+    @Test
+    func `should hide every usage section when the person had turned the daily usage cards off`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"showDailyUsageCards":false}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        for section in UsageSection.allCases {
+            #expect(!repo.isShown(section))
+        }
+    }
+
+    @Test
+    func `should show the default usage sections when the person had kept the daily usage cards on`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"showDailyUsageCards":true}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        for section in UsageSection.allCases {
+            #expect(repo.isShown(section) == section.isShownByDefault)
+        }
+    }
+
+    @Test
+    func `should show a usage section the person turned back on after hiding the daily usage cards`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"showDailyUsageCards":false}}"#.utf8).write(to: fileURL)
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        repo.setShown(.today, true)
+
+        #expect(repo.isShown(.today))
+        #expect(!repo.isShown(.lastThirtyDays))
     }
 
     // MARK: - Popover Text Size
@@ -551,7 +606,7 @@ struct JSONSettingsRepositoryAppTests {
         let store = JSONSettingsStore(fileURL: fileURL)
         let repo1 = JSONSettingsRepository(store: store)
         repo1.setThemeMode("cli")
-        repo1.setShowDailyUsageCards(false)
+        repo1.setShown(.today, false)
         repo1.setTouchBarEnabled(false)
         repo1.setPopoverOpensOn(.all)
         repo1.setMenuBarPercentageEnabled(true)
@@ -561,7 +616,7 @@ struct JSONSettingsRepositoryAppTests {
         // New repo, same store
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
-        #expect(repo2.showDailyUsageCards() == false)
+        #expect(repo2.isShown(.today) == false)
         #expect(repo2.touchBarEnabled() == false)
         #expect(repo2.popoverOpensOn() == .all)
         #expect(repo2.menuBarPercentageEnabled() == true)

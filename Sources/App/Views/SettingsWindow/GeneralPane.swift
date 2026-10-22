@@ -2,7 +2,8 @@ import SwiftUI
 import Domain
 import Infrastructure
 
-/// General pane: startup behavior, popover overview, and burn-rate warnings.
+/// General pane: startup behavior, popover overview, the usage sections the
+/// popover shows, and burn-rate warnings.
 struct GeneralPane: View {
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
@@ -49,15 +50,6 @@ struct GeneralPane: View {
                 SettingsRowDivider()
 
                 SettingsRow(
-                    title: "Daily Usage Cards",
-                    subtitle: "Show per-day usage summaries in the popover."
-                ) {
-                    SettingsSwitch(isOn: $settings.showDailyUsageCards)
-                }
-
-                SettingsRowDivider()
-
-                SettingsRow(
                     title: "Notch Live Activity",
                     subtitle: "Show session and quota state in the notch. Appears only while there is something to report."
                 ) {
@@ -76,6 +68,26 @@ struct GeneralPane: View {
 
             SettingsCard {
                 SettingsRow(
+                    title: "Usage in the popover",
+                    subtitle: "Choose which sections show under the quotas."
+                ) {
+                    EmptyView()
+                }
+
+                ForEach(UsageSection.allCases, id: \.self) { section in
+                    SettingsRowDivider()
+
+                    SettingsRow(title: section.title, subtitle: section.subtitle) {
+                        SettingsSwitch(isOn: Binding(
+                            get: { settings.isShown(section) },
+                            set: { settings.setShown(section, $0) }
+                        ))
+                    }
+                }
+            }
+
+            SettingsCard {
+                SettingsRow(
                     title: "Burn Rate Warnings",
                     subtitle: "Color by projected usage at reset instead of current usage."
                 ) {
@@ -83,6 +95,30 @@ struct GeneralPane: View {
                 }
 
             }
+        }
+    }
+}
+
+/// A usage section's name and line in Settings — the App's words, never the
+/// section's own.
+private extension UsageSection {
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .lastThirtyDays: "Last 30 days"
+        case .lastYear: "Last year"
+        case .modelMix: "Model mix"
+        case .weeklyRecap: "Weekly recap"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .today: "Cost, tokens and working time"
+        case .lastThirtyDays: "The daily chart"
+        case .lastYear: "The year as a heatmap"
+        case .modelMix: "Which models you lean on"
+        case .weeklyRecap: "The week's story, on the All page"
         }
     }
 }

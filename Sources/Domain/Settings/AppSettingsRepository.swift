@@ -69,8 +69,10 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarSecondaryQuotaKey() -> String
     func setMenuBarSecondaryQuotaKey(_ quotaKey: String)
 
-    func showDailyUsageCards() -> Bool
-    func setShowDailyUsageCards(_ show: Bool)
+    /// Whether a usage section shows in the popover: the person's choice, or
+    /// the section's own default (`UsageSection.isShownByDefault`).
+    func isShown(_ section: UsageSection) -> Bool
+    func setShown(_ section: UsageSection, _ shown: Bool)
 
     /// *Hide account email* (#375): emails show masked in the popover and menu bar.
     func hideAccountEmail() -> Bool

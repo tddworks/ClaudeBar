@@ -89,23 +89,30 @@ day gains is added by the line itself, never dropped by a field-by-field copy.
 | a day's shade is one of five bands by its share; a day with nothing is band 0 — a cell, never a gap | `UsageHeatmap` (App) |
 | a value is written once per unit: money for cost, a count for tokens and cache | `UsageFormat` (App), money through `MoneyFormat` |
 | a day with nothing is an empty day, not a missing one — a series has every date in its range (unchanged) | `UsageHistory.days(in:)` |
+| the heatmap (*Last year*) and the mix (*Model mix*) are two usage sections, each hidden until the person shows it; the year is read only while one of them is shown | `UsageSection` (its default, `readsTheYear`) · the settings repository (the person's switch) |
 
 ## 5 · The pieces
 
 | Piece | Job | Where |
 |---|---|---|
 | `ModelMix`, `DayActivity`, `DayValue` | the two questions, as values | `Modules/Quotas/Sources/` |
-| `UsageHistory.lastYear` | the year the insights read, once read and when any day holds usage; `lastThirtyDays` is its last thirty days | `Modules/Providers/Sources/UsageHistory.swift` |
+| `UsageHistory.lastYear` | the year the insights read, once read and when any day holds usage; `nil` until `readYear()` is asked for; `lastThirtyDays` is its last thirty days | `Modules/Providers/Sources/UsageHistory.swift` |
+| `UsageSection` | `.lastYear` and `.modelMix`: whether each shows until the person chooses (both hidden), and that both read the year | `Sources/Domain/Settings/` |
+| `AppSettingsRepository.isShown(_:)` | the person's switch per section, `app.usageSections.<section>` ([settings](../../../settings.md)) | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |
 | `UsageInsightsHeatmapView` | the year's cells, GitHub-style, with the year's total and what caching saved | `Sources/App/UsageHistory/` |
 | `UsageHeatmap` | the cells laid out a column a week, seven rows a week, and each day's band — pure, so it is tested without a screen | `Sources/App/UsageHistory/` |
 | `ModelMixView` | the mix as a bar and a row per model, largest first | `Sources/App/UsageHistory/` |
 | `UsageFormat` | a value in a unit, a share — the one spelling of a number on the page | `Sources/App/UsageHistory/` |
 | `ModelColors` | one palette, so a model keeps its colour between the chart and the mix | `Sources/App/UsageHistory/` |
 
-When the popover opens, `UsageHistory.read()` reads today and the thirty days
-first, so today's cards and the chart never wait on a long history; then
-`readYear()` reads the year. The thirty days come from the ledger, so the second
-read costs little. Each card holds `let unit = days.defaultUnit` and passes it in.
+When the popover opens, the Monitor tells each login's `UsageHistory.read()`
+to read today and the thirty days, and never the year. The year is read only
+while a section that shows it is on: the popover's usage area tells the login's
+history `readYear()` once per login and switch (`.task(id:)` keyed on the login
+and whether a shown section `readsTheYear`), and decides nothing else. Until
+then `lastYear` is `nil` — not read, never an empty year. The thirty days come
+from the ledger, so the year's read costs little beyond the first. Each card
+holds `let unit = days.defaultUnit` and passes it in.
 
 ## 6 · Is it easy to change?
 
@@ -142,7 +149,7 @@ mapping's path language, not a value over `Days`. Until a definition can say
 
 ## 8 · Open
 
-- **The first read of a year.** The first time the insights are shown, a year of
+- **The first read of a year.** The first time a year section is shown, a year of
   a login's logs is read (once per login); after that the ledger holds the closed
   days and only the open ones are read. A login whose log is a command or a
   database pays its query the same first time. If that proves slow on a large

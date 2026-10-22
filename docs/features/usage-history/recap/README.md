@@ -30,9 +30,10 @@ the one that is already about every provider at once, and the recap is the one
 read that adds them up. It needs **two or more providers** to appear, because
 that is when the All page is offered.
 
-It is shown only while **Daily Usage Cards** is on — Settings → **General** →
-**Daily Usage Cards** — because it reads the same logs, on the same cadence:
-when you open the popover, never in the background.
+It is **on by default**; turn it off or on in Settings → **General** →
+**Usage in the popover** → **Weekly recap**. It reads the same logs as the
+daily cards, on the same cadence: when you open the popover, never in the
+background.
 
 ## How the numbers are worked out
 
@@ -60,7 +61,7 @@ when you open the popover, never in the background.
 ## Gotchas
 
 - **No card at all**: nothing in *either* week (no sessions this week and none
-  last week), Daily Usage Cards is off, or you have only one provider and so
+  last week), **Weekly recap** is off, or you have only one provider and so
   no All page. One empty week on its own still shows the card.
 - **The week looks low early on**: *This week* is a week in progress. Compare
   it with *Last week* for a fair picture.

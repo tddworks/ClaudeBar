@@ -173,11 +173,10 @@ public final class QuotaMonitor {
         }
     }
 
-    /// Today and the thirty days first, so their cards never wait on the year.
+    /// Today and the thirty days. The year is read only when a section that
+    /// shows it is on screen, which tells the history itself (`readYear`).
     private static func read(_ history: UsageHistory?) async {
-        guard let history else { return }
-        await history.read()
-        await history.readYear()
+        await history?.read()
     }
 
     /// The logins, refreshed together — one place, whether it is the whole

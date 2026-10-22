@@ -373,7 +373,18 @@ already has:
   replacing `DailyUsageReport`/`Stat`, which already live there.
 
 Not in `Provider`'s refresh: usage history is not a meter and is read on its
-own cadence (popover open, never the background poll).
+own cadence (popover open, never the background poll). The Monitor reads today
+and the thirty days (`read()`); the year (`readYear()`) is read only while a
+year section is shown ([insights](../insights/design.md)).
+
+**What shows is the person's.** The popover's usage area is five usage
+sections — *Today* (the cards, and other apps' cards), *Last 30 days* (the
+chart), *Last year*, *Model mix* and *Weekly recap*. `UsageSection` owns each
+one's default (the year's two hidden, the rest shown); the person's switch in
+Settings → General overrides it, kept by `AppSettingsRepository.isShown(_:)` as
+`app.usageSections.<section>` ([settings](../../../settings.md)). The view
+renders a section only when shown, and heads them *TODAY'S USAGE* when any has
+something to show.
 
 | Piece | Job | From today's |
 |---|---|---|

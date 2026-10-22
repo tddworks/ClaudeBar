@@ -707,7 +707,7 @@ struct MenuContentView: View {
             // The week's story, across every provider at once — the one read
             // that adds logins up, so it lives on the one page that is about
             // them all. It reads the same days as the daily usage cards.
-            if settings.showDailyUsageCards {
+            if settings.isShown(.weeklyRecap) {
                 RecapCardView(recaps: weeklyRecaps.recaps) { monitor.providers.provider(id: $0)?.name ?? $0 }
                     .task { await weeklyRecaps.readIfStale() }
             }
@@ -718,7 +718,7 @@ struct MenuContentView: View {
     /// again only when the week turned or a login's days changed.
     private func readUsage() async {
         await monitor.readToday()
-        if settings.showDailyUsageCards { await weeklyRecaps.readIfStale() }
+        if settings.isShown(.weeklyRecap) { await weeklyRecaps.readIfStale() }
     }
 
     /// A tap on a card or a row opens the provider on its first login.
@@ -1243,22 +1243,26 @@ struct MenuContentView: View {
             }
         }
         .padding(.top, 4)
+        .readsTheYear(of: monitor.login(id: snapshot.providerId), when: settings.readsTheYear)
     }
 
-    /// *TODAY* — the login's own daily usage cards, a card per other app on
-    /// this Mac (Claude Desktop), and the thirty-day chart. Shown under the
-    /// limits, and under the setup card when there are none yet (#198).
-    /// `titled` heads it *TODAY'S USAGE*, in the quota sections' style.
+    /// *TODAY'S USAGE* — the usage sections the person shows (Settings →
+    /// General): the login's own daily usage cards and a card per other app
+    /// on this Mac (Claude Desktop), the thirty-day chart, the year's heatmap
+    /// and its model mix. Shown under the limits, and under the setup card
+    /// when there are none yet (#198). `titled` heads it *TODAY'S USAGE*, in
+    /// the quota sections' style, when any section has something to show.
     @ViewBuilder
     private func todaySection(account: Account?, fallback: DailyUsageReport?, after cards: Int,
                               titled: Bool = false) -> some View {
         let history = account?.usageHistory
-        let report = history?.report ?? fallback
-        let apps = history?.usedOtherApps ?? []
-        let lastThirtyDays = history?.lastThirtyDays
-        let lastYear = history?.lastYear
-        if titled, settings.showDailyUsageCards,
-           report != nil || !apps.isEmpty || lastThirtyDays != nil || lastYear != nil {
+        let report = settings.isShown(.today) ? history?.report ?? fallback : nil
+        let apps = settings.isShown(.today) ? history?.usedOtherApps ?? [] : []
+        let lastThirtyDays = settings.isShown(.lastThirtyDays) ? history?.lastThirtyDays : nil
+        let heatmapYear = settings.isShown(.lastYear) ? history?.lastYear : nil
+        let mixYear = settings.isShown(.modelMix) ? history?.lastYear.flatMap { $0.hasModels ? $0 : nil } : nil
+        if titled,
+           report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1266,7 +1270,7 @@ struct MenuContentView: View {
             .padding(.top, 6)
         }
 
-        if settings.showDailyUsageCards, let report {
+        if let report {
             let baseDelay = Double(cards + 1) * 0.08
             // A log that writes a cost of zero everywhere shows no cost rather
             // than a made-up $0.
@@ -1285,7 +1289,7 @@ struct MenuContentView: View {
 
         // Other apps on this Mac that use the same plan (Claude Desktop):
         // a tokens card each, shown even when the login's own logs are empty.
-        if settings.showDailyUsageCards, !apps.isEmpty {
+        if !apps.isEmpty {
             let appDelay = Double(cards + 3) * 0.08
             TwoColumnCardGrid(items: apps, id: \.label) { app in
                 if let report = app.report {
@@ -1295,17 +1299,18 @@ struct MenuContentView: View {
         }
 
         // The same login's last thirty days, as a chart.
-        if settings.showDailyUsageCards, let lastThirtyDays {
+        if let lastThirtyDays {
             UsageHistoryChartView(days: lastThirtyDays)
         }
 
         // …and the shape of the last year: the heatmap, and the models it
-        // leans on. Both read the same range, `Days` answering.
-        if settings.showDailyUsageCards, let lastYear {
-            UsageInsightsHeatmapView(days: lastYear)
-            if lastYear.hasModels {
-                ModelMixView(days: lastYear)
-            }
+        // leans on. Both read the same range, `Days` answering; the year is
+        // read only while one of them is shown (`readsTheYear(of:when:)`).
+        if let heatmapYear {
+            UsageInsightsHeatmapView(days: heatmapYear)
+        }
+        if let mixYear {
+            ModelMixView(days: mixYear)
         }
     }
 
@@ -1324,6 +1329,7 @@ struct MenuContentView: View {
             setupCard(account)
             todaySection(account: account, fallback: nil, after: 0)
         }
+        .readsTheYear(of: account, when: settings.readsTheYear)
     }
 
     private func setupCard(_ account: Account) -> some View {
@@ -2326,4 +2332,20 @@ struct UpdateBadge: View {
     }
 }
 
+private extension View {
+    /// Tells the login's history to read the year while a section that shows
+    /// it is on — again when the login or the switches change. It decides
+    /// nothing: whether the year is wanted is the settings' to say.
+    func readsTheYear(of login: Account?, when wanted: Bool) -> some View {
+        task(id: YearRead(login: login?.id, wanted: wanted)) {
+            guard wanted else { return }
+            await login?.usageHistory?.readYear()
+        }
+    }
+}
 
+/// What the year's read is keyed on: which login, and whether it is wanted.
+private struct YearRead: Equatable {
+    let login: String?
+    let wanted: Bool
+}

@@ -9,7 +9,7 @@ import Foundation
 @MainActor
 func stubbedProduct(_ id: String, name: String? = nil, probe: any UsageProbe,
                settings: any ProviderSettingsRepository, available: Bool = true,
-               backgroundRefreshFloor: Duration? = nil) -> Provider {
+               backgroundRefreshFloor: Duration? = nil, usageHistory: UsageHistory? = nil) -> Provider {
     // A data source with a cache sets the background floor, as Claude's API does.
     let cache = backgroundRefreshFloor.map { #","cache":{"ttl":\#($0.components.seconds)}"# } ?? ""
     let json = """
@@ -25,7 +25,7 @@ func stubbedProduct(_ id: String, name: String? = nil, probe: any UsageProbe,
                          makeTransport: { _, _, _, _ in throw UsageError.executionFailed("no RPC in a stub") },
                          environment: { $0 == "STUB_READY" && available ? "ready" : nil },
                          homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
-    })
+    }, usageHistory: usageHistory)
     return provider
 }
 

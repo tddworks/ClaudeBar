@@ -18,6 +18,7 @@ public final class UsageHistory {
     public private(set) var lastThirtyDays: Quotas.Days?
     /// *USAGE INSIGHTS*: the last year ending today, oldest first, once read
     /// and when any of them holds usage — the heatmap's range and the mix's.
+    /// `nil` until `readYear()`, which only a shown year section asks for.
     public private(set) var lastYear: Quotas.Days?
 
     /// Whether a day's cost means anything; without it only tokens do.
@@ -107,8 +108,9 @@ public final class UsageHistory {
         lastThirtyDays = month.stats.allSatisfy(\.isEmpty) ? nil : month
     }
 
-    /// Reads the last year, for the insights — after `read()`, since a first
-    /// read of a long history goes through every log of the year.
+    /// Reads the last year, for the insights — asked for only while the
+    /// *Last year* or *Model mix* section is shown, since a first read of a
+    /// long history goes through every log of the year.
     public func readYear() async {
         let year = await days(in: .last(365, endingOn: log.currentTime, calendar: log.calendar))
         lastYear = year.stats.allSatisfy(\.isEmpty) ? nil : year

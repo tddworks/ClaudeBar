@@ -18,7 +18,7 @@ Below them, **Daily usage — last 30 days** charts the same login's last thirty
 
 ## Quick start
 
-The cards are **on by default**. Turn them off or on in Settings → **General** → **Daily Usage Cards**.
+The cards and the chart are **on by default**. Turn each off or on in Settings → **General** → **Usage in the popover**: **Today** is the cards, **Last 30 days** the chart.
 
 They appear for providers that keep local session logs:
 
