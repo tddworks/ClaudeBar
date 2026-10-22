@@ -23,6 +23,17 @@ struct LocalAPIRequestTests {
         #expect(request.body.isEmpty)
     }
 
+    @Test func `should skip a query pair that is only an equals sign`() throws {
+        let crasher = Data("GET /status?= HTTP/1.1\r\n\r\n".utf8)
+        let emptyValue = Data("GET /status?=x HTTP/1.1\r\n\r\n".utf8)
+
+        let refused = try LocalAPIRequestParser.parse(headerBlock: crasher, body: Data())
+        let asked = try LocalAPIRequestParser.parse(headerBlock: emptyValue, body: Data())
+
+        #expect(refused.query.isEmpty)
+        #expect(asked.query.isEmpty)
+    }
+
     @Test func `should keep the first of repeated headers under one lowercased name`() throws {
         let head = Data("GET / HTTP/1.1\r\nX-Trace: first\r\nx-trace: second\r\n\r\n".utf8)
 
@@ -83,22 +94,52 @@ struct LocalAPIRequestTests {
         }
     }
 
-    @Test func `should want no body when the header block names no length`() {
+    @Test func `should want no body when the header block names no length`() throws {
         let head = Data("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n".utf8)
 
-        #expect(LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head) == 0)
+        #expect(try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head) == 0)
     }
 
-    @Test func `should read the wanted body length from content length`() {
+    @Test func `should read the wanted body length from content length`() throws {
         let head = Data("POST /mcp HTTP/1.1\r\nContent-Length: 42\r\n\r\n".utf8)
 
-        #expect(LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head) == 42)
+        #expect(try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head) == 42)
     }
 
-    @Test func `should want nothing while the header block is still arriving`() {
+    @Test func `should read one body length from content lengths that agree`() throws {
+        let head = Data("POST /mcp HTTP/1.1\r\nContent-Length: 42\r\nContent-Length: 42\r\n\r\n".utf8)
+
+        #expect(try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head) == 42)
+    }
+
+    @Test func `should want nothing while the header block is still arriving`() throws {
         let partial = Data("POST /mcp HTTP/1.1\r\nContent-Length: 42\r\n".utf8)
 
-        #expect(LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: partial) == nil)
+        #expect(try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: partial) == nil)
+    }
+
+    @Test func `should refuse a content length that is not a number`() {
+        let head = Data("POST /mcp HTTP/1.1\r\nContent-Length: abc\r\n\r\n".utf8)
+
+        #expect(throws: LocalAPIParseError.malformed) {
+            try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head)
+        }
+    }
+
+    @Test func `should refuse a negative content length`() {
+        let head = Data("POST /mcp HTTP/1.1\r\nContent-Length: -5\r\n\r\n".utf8)
+
+        #expect(throws: LocalAPIParseError.malformed) {
+            try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head)
+        }
+    }
+
+    @Test func `should refuse content lengths that disagree`() {
+        let head = Data("POST /mcp HTTP/1.1\r\nContent-Length: 42\r\nContent-Length: 7\r\n\r\n".utf8)
+
+        #expect(throws: LocalAPIParseError.malformed) {
+            try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: head)
+        }
     }
 
     @Test func `should call a header block over the cap while it is still arriving`() {

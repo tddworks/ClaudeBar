@@ -157,6 +157,44 @@ struct LocalAPIRouterTests {
         #expect(gotten.headers["Allow"] == "POST")
     }
 
+    // MARK: - Who may ask
+
+    @Test func `should refuse a request whose host names another machine`() async throws {
+        let (router, _) = makeRouter()
+
+        let foreign = LocalAPIRequest(method: "GET", path: "/status", headers: ["host": "evil.example:19848"])
+        let rebinding = LocalAPIRequest(method: "GET", path: "/status", headers: ["host": "127.0.0.1.nip.io:19848"])
+
+        for request in [foreign, rebinding] {
+            let response = await router.answer(request)
+            #expect(response.status == 403)
+            #expect(try object(response)["error"] as? String == "forbidden")
+        }
+    }
+
+    @Test func `should refuse an origin that is not this Mac`() async throws {
+        let (router, _) = makeRouter()
+
+        let response = await router.answer(
+            LocalAPIRequest(method: "GET", path: "/status", headers: ["origin": "https://evil.example"])
+        )
+
+        #expect(response.status == 403)
+    }
+
+    @Test func `should answer a request that names this Mac as its host or origin`() async throws {
+        let (router, _) = makeRouter()
+
+        let withPort = LocalAPIRequest(method: "GET", path: "/status", headers: ["host": "127.0.0.1:19848"])
+        let ipv6 = LocalAPIRequest(method: "GET", path: "/status", headers: ["host": "[::1]:19848"])
+        let named = LocalAPIRequest(method: "GET", path: "/status", headers: ["host": "localhost", "origin": "http://localhost:19848"])
+
+        for request in [withPort, ipv6, named] {
+            let response = await router.answer(request)
+            #expect(response.status == 200)
+        }
+    }
+
     // MARK: - The parse refusals
 
     @Test func `should answer each unreadable request with its one code`() async throws {

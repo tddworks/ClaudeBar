@@ -16,6 +16,11 @@ extension Notification.Name {
     /// the hooks toggle takes.
     static let localAPISettingsChanged = Notification.Name("com.tddworks.claudebar.localAPISettingsChanged")
 
+    /// Posted by the composition root once the Local API's socket is ready.
+    /// The pane re-reads the port file then — the file the server wrote with
+    /// the real number, so the copied commands name the port that answers.
+    static let localAPIPortChanged = Notification.Name("com.tddworks.claudebar.localAPIPortChanged")
+
     /// Posted by the Notify! pane when the device link or a stored surface
     /// handle changes. Those live outside observable state, so nothing the
     /// publish driver watches would otherwise tell it to try again.
@@ -318,6 +323,9 @@ struct ClaudeBarApp: App {
                 try await localAPIServer.start { result in
                     await router.answer(result)
                 }
+                // The socket is ready and the port file written; the pane
+                // re-reads it, so what it shows and copies is what answers.
+                NotificationCenter.default.post(name: .localAPIPortChanged, object: nil)
             } catch {
                 AppLog.network.error("Failed to start local API: \(error.localizedDescription)")
             }

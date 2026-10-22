@@ -183,7 +183,15 @@ public final class LocalAPIServer: @unchecked Sendable {
                 self.finish(connection, with: .failed(.oversized))
                 return
             }
-            if let wanted = LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: buffer) {
+            let wanted: Int?
+            do {
+                wanted = try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: buffer)
+            } catch {
+                // A length that cannot be read is refused, not waited on.
+                self.finish(connection, with: .failed(.malformed))
+                return
+            }
+            if let wanted {
                 if wanted > LocalAPIRequestParser.maxBodyBytes {
                     self.finish(connection, with: .failed(.oversized))
                     return

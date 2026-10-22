@@ -47,7 +47,7 @@ payloads; there is no second system.
 | a quota with no share reports no percentage — a balance with no ceiling is never dressed as 100% | `QuotaReport` (reads `quota.left`) |
 | **read-only**: the route table is closed and holds no mutation; pause, switch, refresh and settings stay behind the person's hands (URL schemes, the Settings window) | `LocalAPIRouter` |
 | the socket exists only while the person's switch is on; off means no listener, not a quiet one | `LocalAPISettingsRepository` · the composition root (`ClaudeBarApp`) |
-| **loopback only**: the listener binds `127.0.0.1`, and a connection whose peer is not a loopback address is cancelled before a byte is read | `LocalAPIServer` |
+| **loopback only**: the listener binds `127.0.0.1`, and a connection whose peer is not a loopback address is cancelled before a byte is read; a request whose `Host` or `Origin` names another host is refused with *403* — a rebinding browser may not read | `LocalAPIServer` · `LocalAPIRouter` |
 | only GET and POST are served; anything else is refused with *405* and an `Allow` header. Bodies are capped (1 MiB) and header blocks (64 KiB) — an oversized or unparseable request is refused, never half-served | `LocalAPIRequestParser` · `LocalAPIRouter` |
 | one MCP tool per question, and each tool answers with the same payload its HTTP route answers — the tool list is the route list | `LocalAPIRouter` (the tool table it hands `MCPKernel`) |
 | the protocol handling is socket-free: bytes in, values out. Every decision on the wire is testable without a socket | `LocalAPIRequestParser` · `LocalAPIResponseSerializer` · `MCPKernel` · `LocalAPIRouter` |
@@ -185,7 +185,10 @@ body that is not JSON is `-32700` at `400`.
 posts `.localAPISettingsChanged`, and the composition root starts the server
 (the same notification→closure path the hooks toggle uses). Off: the listener
 is cancelled and the port file removed. At launch the composition root starts
-it when the switch is on.
+it when the switch is on. When the socket is ready the server has written the
+port file — the real number, default or not — and the composition root
+announces it; the pane re-reads the file then, so the lines it shows and
+copies name the port that actually answers.
 
 **Usage days.** An explicit ask, like a popover opening: the reading asks each
 watched login's `usageHistory` for `.last(n)` days. Never in the background;
@@ -197,14 +200,16 @@ the Monitor's cadence is untouched.
 school — the kernels are fed raw bytes and values, no socket:
 
 - `LocalAPIRequestTests` — a real request's bytes become a value; bad request
-  lines, oversized bodies and header blocks are refused; a value becomes
-  bytes a client can read (`LocalAPIRequestParser` and
-  `LocalAPIResponseSerializer` share the wire's one file).
+  lines, oversized bodies and header blocks are refused, and so is a
+  `Content-Length` that cannot be read; a value becomes bytes a client can
+  read (`LocalAPIRequestParser` and `LocalAPIResponseSerializer` share the
+  wire's one file).
 - `LocalAPIPayloadTests` — the JSON contract over hand-built `Quotas`
   values: a share, a balance with no percentage, a capped money quota, a
   forecast that runs out, one that lasts, a day series with empty days.
 - `LocalAPIRouterTests` — the closed table: 200s, `404`, `405` + `Allow`,
-  `n` clamped, and a full bytes→router→bytes round trip.
+  `403` for a `Host` or `Origin` from another host, `n` clamped, and a full
+  bytes→router→bytes round trip.
 - `MCPKernelTests` — the handshake, the notification's silence, the tool
   list, a tool call's text content, the three error codes, the version echo.
 - `api.enabled` reads false before it is set and is remembered when turned

@@ -112,16 +112,20 @@ public enum LocalAPIRequestParser {
 
     /// How many body bytes the request wants, once its header block is whole:
     /// its `Content-Length`, or none. `nil` while the header block is still
-    /// arriving.
-    public static func pendingBodyLength(headerBlockPrefix: Data) -> Int? {
+    /// arriving. A length that cannot be read — not a number, negative, or
+    /// said twice with two different numbers — is refused, never guessed.
+    public static func pendingBodyLength(headerBlockPrefix: Data) throws -> Int? {
         guard let range = headerBlockPrefix.range(of: headerSeparator) else { return nil }
         let headers = String(decoding: headerBlockPrefix[..<range.lowerBound], as: UTF8.self)
+        var length: Int?
         for line in headers.split(separator: "\r\n").dropFirst() {
             let parts = line.split(separator: ":", maxSplits: 1)
             guard parts.count == 2, parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length" else { continue }
-            return Int(parts[1].trimmingCharacters(in: .whitespaces))
+            guard let said = Int(parts[1].trimmingCharacters(in: .whitespaces)), said >= 0, length == nil || length == said
+            else { throw LocalAPIParseError.malformed }
+            length = said
         }
-        return 0
+        return length ?? 0
     }
 
     /// Whether the header block is already over the cap while still arriving —
@@ -167,10 +171,12 @@ public enum LocalAPIRequestParser {
     }
 
     /// The query string's pairs, undecoded; a key with no `=` reads as empty.
+    /// Empty parts are kept, so a pair of just `=` reads as no key and is
+    /// skipped — never an index out of bounds.
     static func query(_ raw: String) -> [String: String] {
         var pairs: [String: String] = [:]
         for pair in raw.split(separator: "&") {
-            let parts = pair.split(separator: "=", maxSplits: 1)
+            let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             let key = String(parts[0])
             guard !key.isEmpty else { continue }
             pairs[key] = parts.count > 1 ? String(parts[1]) : ""
@@ -207,6 +213,7 @@ public enum LocalAPIResponseSerializer {
         case 200: "OK"
         case 202: "Accepted"
         case 400: "Bad Request"
+        case 403: "Forbidden"
         case 404: "Not Found"
         case 405: "Method Not Allowed"
         case 411: "Length Required"

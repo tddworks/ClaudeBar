@@ -68,6 +68,11 @@ struct LocalAPIPane: View {
             apiEnabled = settings.localAPI.isLocalAPIEnabled()
             port = LocalAPIPortFile.read() ?? Int(LocalAPIConstants.defaultPort)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .localAPIPortChanged).receive(on: DispatchQueue.main)) { _ in
+            // The server says its socket is ready — the file now names the
+            // port that actually answers, default or moved.
+            port = LocalAPIPortFile.read() ?? port
+        }
     }
 
     private var baseURL: String {

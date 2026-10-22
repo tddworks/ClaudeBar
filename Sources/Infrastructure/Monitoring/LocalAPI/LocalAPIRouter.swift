@@ -57,6 +57,9 @@ public struct LocalAPIRouter: Sendable {
 
     /// Answers one parsed request from the closed route table.
     public func answer(_ request: LocalAPIRequest) async -> LocalAPIResponse {
+        guard Self.isLocalOrigin(request) else {
+            return LocalAPIResponse.error(403, "forbidden")
+        }
         switch (request.method, request.path) {
         case ("GET", "/"):
             return Self.index(version: version)
@@ -171,6 +174,26 @@ public struct LocalAPIRouter: Sendable {
             "endpoints": .array(["/status", "/providers", "/forecast", "/usage/days?n=30"].map { .string($0) }),
             "mcp": .string("/mcp"),
         ]))
+    }
+
+    /// Whether the request names this Mac: a `Host` or `Origin` that is
+    /// present must be loopback. The peer check stops other machines, not a
+    /// browser — a web page can rebind a hostname it owns to `127.0.0.1` and
+    /// read the answers same-origin. A header left out is curl's way of
+    /// asking; only a named foreign host is turned away.
+    static func isLocalOrigin(_ request: LocalAPIRequest) -> Bool {
+        func loopback(_ host: String) -> Bool {
+            switch host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]")) {
+            case "127.0.0.1", "localhost", "::1": return true
+            default: return false
+            }
+        }
+        // `Host` is an authority (host[:port]); `Origin` is a whole URL.
+        if let host = request.header("host"),
+           !loopback(URL(string: "http://\(host)")?.host ?? host) { return false }
+        if let origin = request.header("origin"),
+           !loopback(URL(string: origin)?.host ?? origin) { return false }
+        return true
     }
 
     static func methodNotAllowed(allowed: String) -> LocalAPIResponse {
