@@ -119,7 +119,7 @@ do ([insights §2](../insights/design.md)).
 |---|---|---|
 | `UsageLog.Shape.project`, `LogRecord.project`, `DayAggregator`'s split | the capture: a definition's word, the record's raw directory, the day's split | `Modules/DataSources/Sources/` |
 | `ProjectUsageLine`, `ByProject`, `Days`' reads | the kernel values, siblings of the model line and the mix | `Modules/Quotas/Sources/` |
-| `claude.json`'s `"project": "cwd"` | Claude Code attributes its records — the one provider whose log writes the directory on every line it reads | `Modules/Providers/Resources/Providers/` |
+| `claude.json`'s `"project": "$.cwd"` | Claude Code attributes its records — the one provider whose log writes the directory on every line it reads | `Modules/Providers/Resources/Providers/` |
 | `UsageSection.projectMix`, the settings switch | the person's choice, hidden by default beside *Model mix* | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |
 | `ProjectMixView`, `ModelColors` | the card and the palette it reads | `Sources/App/UsageHistory/` |
 

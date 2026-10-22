@@ -131,8 +131,8 @@ struct DayAggregatorTests {
         ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
 
         #expect(stat.projects == [
-            ProjectUsageLine(project: "marron", inputTokens: 1_000, outputTokens: 200, totalTokens: 1_200, cost: 1.5),
             ProjectUsageLine(project: "api", inputTokens: 300, outputTokens: 100, totalTokens: 400, cost: 0.25),
+            ProjectUsageLine(project: "marron", inputTokens: 1_000, outputTokens: 200, totalTokens: 1_200, cost: 1.5),
         ])
     }
 
