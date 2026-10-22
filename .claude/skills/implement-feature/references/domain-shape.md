@@ -13,7 +13,7 @@ Names come from the screen and the person ([CANONICAL_MODEL](../../../../docs/ar
 
 **2. Does the thing decide about itself, and is it the only one that does?**
 A rule lives on the thing it is about; callers tell it, they don't read its state and decide. *`QuotaAlerts.add(_:)` checks every rule and throws a `Refusal` Settings prints; `Setting.value(from:)` instead of `setting.default ?? options.first` at each caller.*
-**Before you write a rule, search for it.** How fast a quota is spent, a threshold crossed once, the unit a range is counted in, the worst quota of a login: each already has one owner (CANONICAL §5). A second copy drifts, and the screen then contradicts itself. Use the owner, or move the rule to one owner in the same change. *Every reading of how fast a quota is spent (pace, status, a forecast) reads `UsageQuota`'s one rate, so a card can't say "on track" and "runs out" at once.*
+**Before you write a rule, search for it.** How fast a quota is spent, a threshold crossed once, the unit a range is counted in, the worst quota of a login: each already has one owner (CANONICAL §5). A second copy drifts, and the screen then contradicts itself. Use the owner, or move the rule to one owner in the same change. *Every reading of how fast a quota is spent (pace, status, a forecast) is a read of one rate on `UsageQuota`, so a card can never say "on track" and "runs out" at once.*
 
 **3. Can you see every state?**
 Each state the person can meet is a case, carrying its data; one value never means two things. *"Not read yet" and "nothing used" are two cases, never one `nil`, so a view can tell "on its way" from "none".*
