@@ -3,76 +3,58 @@ import Foundation
 import Domain
 @testable import ClaudeBar
 
-/// The recap is the one read that spans logins: it picks each week out of
-/// every login's days, adds them up for the person's total, and names the
-/// providers it spans (CANONICAL §5, `Recap`).
+/// The page asks each login for its days in a week and the week before, and
+/// hands them to `Recap` by provider — two logins of one provider as one
+/// (CANONICAL §5, `Recap`).
+@MainActor
 @Suite
 struct RecapBuilderTests {
-    private let calendar = DataSources.calendar()
+    private let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.firstWeekday = 2
+        return calendar
+    }()
 
-    /// A day `offset` days from a fixed base, so a range's first and last day
-    /// both hold it whatever the zone.
-    private func date(_ offset: Int) -> Date {
-        let base = Date(timeIntervalSince1970: 1_760_000_000)
-        return calendar.date(byAdding: .day, value: offset, to: base) ?? base
+    private func date(_ day: Int) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 10, day: day))!
     }
 
-    private var thisWeek: DateRange { DateRange(first: date(0), last: date(6), calendar: calendar) }
-
-    /// A day priced (and optionally tokenised) on a fixed offset.
-    private func day(_ cost: Decimal, on offset: Int, tokens: Int = 0) -> DailyUsageStat {
-        DailyUsageStat(date: date(offset), totalCost: cost, totalTokens: tokens,
-                       workingTime: 0, sessionCount: 1)
+    /// A login whose log holds `stats`, answering each range with the days
+    /// that fall in it — as `UsageHistory.days(in:)` does.
+    private func login(_ provider: String, _ stats: [DailyUsageStat], knowsCost: Bool = true) -> RecapLogin {
+        RecapLogin(providerId: provider) { range in
+            Days(stats.filter { range.contains($0.date, calendar: self.calendar) }, knowsCost: knowsCost)
+        }
     }
 
-    /// One login's days, as the builder takes them.
-    private func login(_ provider: String, _ days: [DailyUsageStat], knowsCost: Bool = true) -> RecapLogin {
-        RecapLogin(providerId: provider, days: Days(days, knowsCost: knowsCost))
+    private func day(_ day: Int, cost: Decimal) -> DailyUsageStat {
+        DailyUsageStat(date: date(day), totalCost: cost, totalTokens: 10, workingTime: 0, sessionCount: 1)
     }
 
-    /// One provider, however many logins, is one share.
-    @Test func `should add two logins of one provider into that provider's one share`() {
-        let recap = RecapBuilder.build([login("claude", [day(4, on: 1)]), login("claude", [day(6, on: 2)])],
-                                       in: thisWeek, calendar: calendar)
+    @Test func `should add two logins of one provider into that provider's one part`() async {
+        let recaps = await RecapBuilder.recaps(of: [login("a", [day(20, cost: 4)]), login("a", [day(21, cost: 6)])],
+                                               at: date(22), calendar: calendar)
 
-        #expect(recap.providers.count == 1)
-        #expect(recap.providers[0].cost == 10)
-        #expect(recap.totals.cost == 10)
+        #expect(recaps[.thisWeek]?.providers == [Recap.Part(provider: "a", value: 10, share: 1)])
     }
 
-    /// The split names each provider, largest first.
-    @Test func `should name every provider the recap spans, largest first`() {
-        let recap = RecapBuilder.build([login("claude", [day(4, on: 1)]), login("codex", [day(6, on: 2)])],
-                                       in: thisWeek, calendar: calendar)
+    /// This week is compared with last week, and last week with the week before.
+    @Test func `should compare each week with the week before it`() async {
+        let recaps = await RecapBuilder.recaps(of: [login("a", [day(21, cost: 12), day(14, cost: 10), day(7, cost: 5)])],
+                                               at: date(22), calendar: calendar)
 
-        #expect(recap.providers.map(\.provider) == ["codex", "claude"])
+        #expect(recaps[.thisWeek]?.total == 12)
+        #expect(recaps[.thisWeek]?.change == 0.2)
+        #expect(recaps[.lastWeek]?.total == 10)
+        #expect(recaps[.lastWeek]?.change == 1)
     }
 
-    /// A day outside the range is another range's, and is left out.
-    @Test func `should count only the days that fall in the range`() {
-        let recap = RecapBuilder.build([login("claude", [day(12, on: 1), day(10, on: -3), day(9, on: -40)])],
-                                       in: thisWeek, calendar: calendar)
+    /// A quiet week is still a recap, so the page can say it held nothing.
+    @Test func `should read an empty week as an empty recap`() async {
+        let recaps = await RecapBuilder.recaps(of: [login("a", [day(14, cost: 10)])], at: date(22), calendar: calendar)
 
-        #expect(recap.totals.cost == 12)
-        #expect(recap.providers[0].cost == 12)
-    }
-
-    /// The change is the range against the one before it.
-    @Test func `should compare the range with the one before it`() {
-        let recap = RecapBuilder.build([login("claude", [day(12, on: 1), day(10, on: -3)])],
-                                       in: thisWeek, calendar: calendar)
-
-        #expect(recap.previous?.cost == 10)
-        #expect(recap.changePercent == 20)
-    }
-
-    /// One priced login makes cost the unit for them all.
-    @Test func `should lead with cost when any login is priced`() {
-        let recap = RecapBuilder.build([login("claude", [day(4, on: 1)]),
-                                        login("ollama", [day(0, on: 2, tokens: 500)], knowsCost: false)],
-                                       in: thisWeek, calendar: calendar)
-
-        #expect(recap.knowsCost)
-        #expect(recap.totals.tokens == 500)
+        #expect(recaps[.thisWeek]?.isEmpty == true)
+        #expect(recaps[.lastWeek]?.isEmpty == false)
     }
 }

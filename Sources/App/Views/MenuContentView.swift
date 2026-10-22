@@ -49,6 +49,8 @@ struct MenuContentView: View {
     @State private var hiddenAccountIds: Set<String> = []
     /// The page under the pills: All, the Leaderboard, or the selected provider.
     @State private var page: PopoverPage = .provider
+    /// *WEEKLY RECAP*'s two weeks, read with the All page.
+    @State private var weeklyRecaps: [RecapRange: Recap] = [:]
 
     /// Every provider in the lineup as a card, for the All page.
     private var overview: Overview { Overview(monitor) }
@@ -706,9 +708,22 @@ struct MenuContentView: View {
             // that adds logins up, so it lives on the one page that is about
             // them all. It reads the same days as the daily usage cards.
             if settings.showDailyUsageCards {
-                RecapCardView(monitor: monitor)
+                RecapCardView(recaps: weeklyRecaps) { monitor.providers.provider(id: $0)?.name ?? $0 }
             }
         }
+        .task(id: recapReload) {
+            guard settings.showDailyUsageCards else { return }
+            let calendar = DataSources.calendar()
+            weeklyRecaps = await RecapBuilder.recaps(of: RecapBuilder.logins(of: monitor), at: Date(), calendar: calendar)
+        }
+    }
+
+    /// What the recap is read again on: the week turning, the setting, and
+    /// any login's days read again (usage changed).
+    private var recapReload: RecapReload {
+        RecapReload(week: DateRange.week(containing: Date(), calendar: DataSources.calendar()),
+                    isOn: settings.showDailyUsageCards,
+                    usage: monitor.lineup.map { $0.usageHistory?.lastThirtyDays })
     }
 
     /// A tap on a card or a row opens the provider on its first login.

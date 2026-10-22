@@ -4,33 +4,20 @@ import Domain
 /// *WEEKLY RECAP* — the week's story across every provider: the total, the
 /// split by provider, the top model, the biggest day, what caching saved, and
 /// the week before it. A range choice picks the week. It renders what `Recap`
-/// says and never counts; a week that holds nothing says so, and the choice
-/// stays reachable as long as either week has something.
+/// says, in the recap's own unit, and never counts; a week that holds nothing
+/// says so, and the choice stays while either week has something.
 struct RecapCardView: View {
-    let monitor: QuotaMonitor
-    var calendar: Calendar = DataSources.calendar()
+    /// Both weeks the card offers, read by the page.
+    let recaps: [RecapRange: Recap]
+    /// A provider's name, from its id.
+    let name: (String) -> String
 
     @Environment(\.appTheme) private var theme
     @State private var range: RecapRange = .thisWeek
 
     var body: some View {
-        let thisWeek = recap(of: .thisWeek)
-        let lastWeek = recap(of: .lastWeek)
-        if !thisWeek.isEmpty || !lastWeek.isEmpty {
-            card(range == .thisWeek ? thisWeek : lastWeek)
-        }
-    }
-
-    /// The recap of a range, built from every login's days as they were read.
-    private func recap(of range: RecapRange) -> Recap {
-        RecapBuilder.build(logins, in: range.range(containing: Date(), calendar: calendar), calendar: calendar)
-    }
-
-    /// Every login's days, already read — the thirty days the login keeps. A
-    /// login with none is left out; the days themselves are the record.
-    private var logins: [RecapLogin] {
-        monitor.lineup.compactMap { login in
-            login.usageHistory?.lastThirtyDays.map { RecapLogin(providerId: login.providerId, days: $0) }
+        if recaps.values.contains(where: { !$0.isEmpty }), let recap = recaps[range] {
+            card(recap)
         }
     }
 
@@ -90,7 +77,7 @@ struct RecapCardView: View {
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { range = choice }
         } label: {
-            Text(choice.rawValue)
+            Text(choice.title)
                 .font(theme.font(size: 9, weight: isOn ? .bold : .medium))
                 .foregroundStyle(isOn ? theme.textPrimary : theme.textTertiary)
                 .padding(.horizontal, 8)
@@ -101,17 +88,17 @@ struct RecapCardView: View {
         .buttonStyle(.plain)
     }
 
-    /// The range's total, in the unit in force, and the comparison with the
-    /// range before it.
+    /// The range's total in the recap's unit, and the change against the week
+    /// before it.
     private func lead(_ recap: Recap) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(recap.knowsCost ? recap.formattedCost : recap.formattedTokens)
+            Text(UsageFormat.value(recap.total, in: recap.unit))
                 .popoverDisplayFont(26)
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             VStack(alignment: .leading, spacing: 1) {
-                Text(recap.knowsCost ? "spent" : "tokens")
+                Text(recap.unit.caption)
                     .popoverFont(9, weight: .medium)
                     .foregroundStyle(theme.textTertiary)
                 Text(subline(recap))
@@ -120,20 +107,20 @@ struct RecapCardView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            if let change = recap.formattedChange {
-                changeBadge(change, up: (recap.changePercent ?? 0) > 0)
+            if let change = recap.change {
+                changeBadge(UsageFormat.change(change), up: change > 0)
             }
         }
     }
 
-    /// The tokens, time and sessions under the total — or that there is nothing
-    /// yet.
+    /// The tokens beside a total in another unit, the time worked and the
+    /// sessions — each when the week holds it.
     private func subline(_ recap: Recap) -> String {
         var parts: [String] = []
-        if recap.knowsCost { parts.append("\(recap.formattedTokens) tokens") }
-        if recap.totals.workingTime > 0 { parts.append(recap.formattedWorkingTime) }
-        if recap.totals.sessions > 0 { parts.append("\(recap.totals.sessions) sessions") }
-        return parts.isEmpty ? "nothing yet" : parts.joined(separator: " · ")
+        if let tokens = recap.tokens { parts.append("\(UsageFormat.count(Int(tokens))) tokens") }
+        if recap.workingTime > 0 { parts.append(UsageFormat.duration(recap.workingTime)) }
+        if recap.sessions > 0 { parts.append("\(recap.sessions) sessions") }
+        return parts.joined(separator: " · ")
     }
 
     /// The change against the range before, coloured by its direction, over
@@ -149,53 +136,57 @@ struct RecapCardView: View {
         }
     }
 
-    /// The providers the range spans, largest first — the sum is never a
-    /// mystery.
+    /// The providers the week spans, largest first, each with its total and
+    /// share — the sum is never a mystery.
     private func split(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(recap.providers.enumerated()), id: \.element.id) { index, provider in
+            ForEach(Array(recap.providers.enumerated()), id: \.element.provider) { index, part in
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Self.palette[index % Self.palette.count])
                         .frame(width: 6, height: 6)
-                    Text(name(of: provider.provider))
+                    Text(name(part.provider))
                         .popoverFont(9, weight: .medium)
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                     Spacer(minLength: 4)
-                    Text(recap.formattedShare(of: provider))
+                    Text(UsageFormat.value(part.value, in: recap.unit))
+                        .popoverFont(9, weight: .medium)
+                        .foregroundStyle(theme.textTertiary)
+                    Text(UsageFormat.share(part.share))
                         .popoverFont(9, weight: .semibold)
                         .foregroundStyle(theme.textPrimary)
+                        .frame(minWidth: 28, alignment: .trailing)
                 }
             }
         }
     }
 
-    /// The top model, the biggest day and the cache savings, when the range has
-    /// them.
+    /// The top model, the biggest day and the cache savings, when the week has
+    /// them. The day is written in the person's own locale.
     @ViewBuilder
     private func highlights(_ recap: Recap) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             if let model = recap.topModel {
-                highlight("Top model", model.displayName)
+                highlight("Top model", Text(model.line.displayName))
             }
             if let day = recap.biggestDay {
-                highlight("Biggest day", day.formattedDate)
+                highlight("Biggest day", Text(day.date, format: .dateTime.weekday(.wide).month(.wide).day()))
             }
             if recap.cacheSavings > 0 {
-                highlight("Cache saved", recap.formattedSavings)
+                highlight("Cache saved", Text(UsageFormat.money(recap.cacheSavings)))
             }
         }
     }
 
     /// One titled line of the highlights.
-    private func highlight(_ title: String, _ value: String) -> some View {
+    private func highlight(_ title: String, _ value: Text) -> some View {
         HStack(spacing: 4) {
             Text(title)
                 .popoverFont(8, weight: .medium)
                 .foregroundStyle(theme.textTertiary)
             Spacer(minLength: 4)
-            Text(value)
+            value
                 .popoverFont(9, weight: .semibold)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
@@ -205,10 +196,4 @@ struct RecapCardView: View {
     /// The providers' colours — hues far apart, cycled when the range spans
     /// more providers than the palette holds.
     private static let palette: [Color] = [.purple, .green, .blue, .orange, .pink, .cyan, .indigo, .mint, .red]
-
-    /// A provider's display name, or its id capitalised when the lineup doesn't
-    /// know it.
-    private func name(of provider: String) -> String {
-        monitor.providers.provider(id: provider)?.name ?? provider.capitalized
-    }
 }

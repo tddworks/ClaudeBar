@@ -2,153 +2,153 @@ import Foundation
 import Testing
 @testable import Quotas
 
-/// A recap is a read of a range, told as a few highlights — the total, the
-/// split by provider, the top model, the biggest day, the savings, and the
-/// range before it. The one read that may sum across logins (CANONICAL §5,
-/// `Recap`).
+/// A recap is what a range added up to across every provider, read in the one
+/// unit every range offers, against the range before it. The one read that
+/// sums across logins (CANONICAL §5, `Recap`).
 @Suite
 struct RecapTests {
-    private let day0 = Date(timeIntervalSince1970: 1_760_000_000)
-    private let day1 = Date(timeIntervalSince1970: 1_760_086_400)
-    private let day2 = Date(timeIntervalSince1970: 1_760_172_800)
+    private let monday = Date(timeIntervalSince1970: 1_760_000_000)
+    private let tuesday = Date(timeIntervalSince1970: 1_760_086_400)
+
+    private let large = ModelUsageLine(model: "acme-large-2", totalTokens: 100, cost: 12)
+    private let small = ModelUsageLine(model: "acme-small-1", totalTokens: 400, cost: 2)
 
     /// A day with only the fields a test names set.
-    private func day(_ date: Date, cost: Decimal = 0, tokens: Int = 0, cacheWrite: Int = 0,
-                     cacheRead: Int = 0, workingTime: TimeInterval = 0, sessions: Int = 1,
-                     savings: Decimal = 0, lines: [ModelUsageLine] = []) -> DailyUsageStat {
+    private func day(_ date: Date, cost: Decimal = 0, tokens: Int = 0, workingTime: TimeInterval = 0,
+                     sessions: Int = 1, savings: Decimal = 0, lines: [ModelUsageLine] = []) -> DailyUsageStat {
         DailyUsageStat(date: date, totalCost: cost, totalTokens: tokens, workingTime: workingTime,
-                       sessionCount: sessions, cacheCreationTokens: cacheWrite, cacheReadTokens: cacheRead,
-                       cachedSavings: savings, lines: lines)
+                       sessionCount: sessions, cachedSavings: savings, lines: lines)
     }
 
-    /// A provider's days as one span.
-    private func span(_ provider: String, _ days: [DailyUsageStat]) -> Recap.Span {
-        Recap.Span(provider: provider, days: days)
+    private func priced(_ stats: DailyUsageStat...) -> Days { Days(stats, knowsCost: true) }
+    private func unpriced(_ stats: DailyUsageStat...) -> Days { Days(stats, knowsCost: false) }
+
+    // MARK: - The unit
+
+    @Test func `should read in cost when every provider prices its days`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 10, tokens: 100)),
+                                 "b": priced(day(monday, cost: 5, tokens: 900))], before: [:])
+
+        #expect(recap.unit == .cost)
+        #expect(recap.total == 15)
     }
 
-    private let opus = ModelUsageLine(model: "claude-opus-4-6", totalTokens: 100, cost: 12)
-    private let sonnet = ModelUsageLine(model: "claude-sonnet-5", totalTokens: 400, cost: 2)
+    /// One unpriced provider would count as $0 in dollars, so the whole recap
+    /// reads in tokens.
+    @Test func `should read in tokens when one provider prices nothing`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 10, tokens: 100)),
+                                 "b": unpriced(day(monday, tokens: 900))], before: [:])
 
-    /// Every login's days land in one total.
-    @Test func `should add the week up across every login's days`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 10, tokens: 1_000, workingTime: 3_600, sessions: 2)]),
-            span("codex", [day(day0, cost: 5, tokens: 2_000, workingTime: 1_800, sessions: 1),
-                           day(day1, cost: 2, tokens: 500, workingTime: 600, sessions: 1)]),
-        ], knowsCost: true)
-
-        #expect(recap.totals.cost == 17)
-        #expect(recap.totals.tokens == 3_500)
-        #expect(recap.totals.workingTime == 6_000)
-        #expect(recap.totals.sessions == 4)
+        #expect(recap.unit == .tokens)
+        #expect(recap.total == 1_000)
     }
 
-    /// The split names each provider and orders it by its part.
-    @Test func `should name the providers it spans, largest first`() {
-        let recap = Recap(spans: [
-            span("codex", [day(day0, cost: 5, tokens: 2_000)]),
-            span("claude", [day(day0, cost: 15, tokens: 1_000)]),
-        ], knowsCost: true)
+    /// A priced provider that was idle this week has nothing to say, and
+    /// doesn't take dollars away from the ones that were used.
+    @Test func `should keep cost when an idle provider has no cost this week`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 10, tokens: 100)),
+                                 "b": priced(DailyUsageStat.empty(for: monday))], before: [:])
 
-        #expect(recap.providers.map(\.provider) == ["claude", "codex"])
-        #expect(recap.formattedShare(of: recap.providers[0]) == "75%")
+        #expect(recap.unit == .cost)
     }
 
-    /// One provider, however many logins, is one share.
-    @Test func `should add two logins of one provider into one share`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 4, tokens: 100)]),
-            span("claude", [day(day0, cost: 6, tokens: 200)]),
-        ], knowsCost: true)
+    /// The total and the week before are read in one unit, so an unpriced
+    /// provider used only the week before still turns the recap to tokens.
+    @Test func `should read the week before in the same unit as the week`() {
+        let recap = Recap(this: ["a": priced(day(tuesday, cost: 10, tokens: 100))],
+                          before: ["b": unpriced(day(monday, tokens: 50))])
 
-        #expect(recap.providers.count == 1)
-        #expect(recap.providers[0].cost == 10)
-        #expect(recap.providers[0].tokens == 300)
+        #expect(recap.unit == .tokens)
+        #expect(recap.change == 1)
     }
 
-    /// The top model is the one whose lines spent the most.
-    @Test func `should find the model that spent the most`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, lines: [opus, sonnet]), day(day1, lines: [sonnet])]),
-        ], knowsCost: true)
+    /// Tokens mean what the chart means: input and output, never the cache.
+    @Test func `should count tokens as the chart does, cache apart`() {
+        let cached = DailyUsageStat(date: monday, totalCost: 0, totalTokens: 100, workingTime: 0, sessionCount: 1,
+                                    cacheCreationTokens: 50, cacheReadTokens: 5_000)
 
-        #expect(recap.topModel?.model == "claude-opus-4-6")
-        #expect(recap.topModel?.displayName == "opus-4-6")
+        #expect(Recap(this: ["a": unpriced(cached)], before: [:]).total == 100)
     }
 
-    /// The biggest day is the one day every provider adds up to most.
-    @Test func `should find the day that added up to the most, across providers`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 3), day(day1, cost: 4)]),
-            span("codex", [day(day1, cost: 5)]),
-        ], knowsCost: true)
+    /// Beside a dollar total, the tokens are told too; beside a token total
+    /// they would only repeat it.
+    @Test func `should tell the tokens beside a total in dollars, and not repeat them beside tokens`() {
+        let dollars = Recap(this: ["a": priced(day(monday, cost: 10, tokens: 100))], before: [:])
+        let tokens = Recap(this: ["a": unpriced(day(monday, tokens: 100))], before: [:])
 
-        #expect(recap.biggestDay?.date == day1)
-        #expect(recap.biggestDay?.cost == 9)
+        #expect(dollars.tokens == 100)
+        #expect(tokens.tokens == nil)
     }
 
-    /// The savings are the range's own, summed over its days.
-    @Test func `should sum what caching saved across the range`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 1, savings: Decimal(string: "2.50")!),
-                            day(day1, cost: 1, savings: Decimal(string: "1.25")!)]),
-        ], knowsCost: true)
+    // MARK: - The change
 
-        #expect(recap.cacheSavings == Decimal(string: "3.75")!)
-        #expect(recap.formattedSavings == "$3.75")
+    @Test func `should compare the week with the one before it`() {
+        let recap = Recap(this: ["a": priced(day(tuesday, cost: 12))], before: ["a": priced(day(monday, cost: 10))])
+
+        #expect(recap.change == 0.2)
     }
 
-    /// The change is the range against the one before it.
-    @Test func `should compare the range with the one before it`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 12)]),
-        ], previous: [
-            span("claude", [day(day0, cost: 10)]),
-        ], knowsCost: true)
+    @Test func `should have no change when nothing was used the week before`() {
+        let recap = Recap(this: ["a": priced(day(tuesday, cost: 12))],
+                          before: ["a": priced(DailyUsageStat.empty(for: monday))])
 
-        #expect(recap.previous?.cost == 10)
-        #expect(recap.changePercent == 20)
-        #expect(recap.formattedChange == "+20%")
+        #expect(recap.change == nil)
     }
 
-    /// Nothing before means no change to show, never a minus hundred percent.
-    @Test func `should offer no comparison when the range before held nothing`() {
-        let recap = Recap(spans: [span("claude", [day(day0, cost: 12)])],
-                          previous: [span("claude", [day(day0)])], knowsCost: true)
+    // MARK: - The providers
 
-        #expect(recap.previous == nil)
-        #expect(recap.changePercent == nil)
-        #expect(recap.formattedChange == nil)
+    @Test func `should name each provider with its share, largest first`() {
+        let recap = Recap(this: ["b": priced(day(monday, cost: 5)), "a": priced(day(monday, cost: 15))], before: [:])
+
+        #expect(recap.providers == [Recap.Part(provider: "a", value: 15, share: 0.75),
+                                    Recap.Part(provider: "b", value: 5, share: 0.25)])
     }
 
-    /// An empty range is empty, so the card can stay away.
-    @Test func `should show nothing rather than zeros when the range holds nothing`() {
-        let empty = Recap(spans: [span("claude", [day(day0), day(day1)])], knowsCost: true)
-        #expect(empty.isEmpty)
+    @Test func `should leave out a provider that used nothing in the week`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 15)), "b": priced(DailyUsageStat.empty(for: monday))],
+                          before: [:])
 
-        let some = Recap(spans: [span("claude", [day(day0, tokens: 1)])], knowsCost: true)
-        #expect(!some.isEmpty)
+        #expect(recap.providers.map(\.provider) == ["a"])
     }
 
-    /// When nothing is priced, tokens are the unit.
-    @Test func `should lead with tokens when no login is priced`() {
-        let recap = Recap(spans: [
-            span("codex", [day(day0, cost: 0, tokens: 1_000)]),
-            span("claude", [day(day0, cost: 0, tokens: 500)]),
-        ], knowsCost: false)
+    // MARK: - The highlights, read across every provider
 
-        #expect(recap.value == 1_500)
-        #expect(recap.providers.map(\.provider) == ["codex", "claude"])
-        #expect(recap.formattedShare(of: recap.providers[0]) == "67%")
+    /// The top model is the mix's, read over every provider's days at once.
+    @Test func `should name the model that spent the most across every provider`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 2, tokens: 400, lines: [small])),
+                                 "b": priced(day(monday, cost: 12, tokens: 100, lines: [large]))], before: [:])
+
+        #expect(recap.topModel?.line.model == large.model)
     }
 
-    /// The token total counts cache writes and reads too.
-    @Test func `should count every token, cache included`() {
-        let recap = Recap(spans: [
-            span("claude", [day(day0, cost: 1, tokens: 1_000, cacheWrite: 200, cacheRead: 800)]),
-        ], knowsCost: true)
+    /// The biggest day adds every provider's day up before it compares.
+    @Test func `should name the day that added up to the most across every provider`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 8), day(tuesday, cost: 6)),
+                                 "b": priced(day(monday, cost: 1), day(tuesday, cost: 5))], before: [:])
 
-        #expect(recap.totals.tokens == 2_000)
-        #expect(recap.formattedTokens == "2.0K")
+        #expect(recap.biggestDay?.date == tuesday)
+        #expect(recap.biggestDay?.value == 11)
+    }
+
+    @Test func `should add up the cache savings, working time and sessions of every provider`() {
+        let recap = Recap(this: ["a": priced(day(monday, cost: 1, workingTime: 3_600, sessions: 2, savings: 3)),
+                                 "b": priced(day(monday, cost: 1, workingTime: 600, sessions: 1, savings: 1))],
+                          before: [:])
+
+        #expect(recap.cacheSavings == 4)
+        #expect(recap.workingTime == 4_200)
+        #expect(recap.sessions == 3)
+    }
+
+    // MARK: - Nothing
+
+    @Test func `should hold nothing when no provider used anything in the week`() {
+        let recap = Recap(this: ["a": priced(DailyUsageStat.empty(for: monday))], before: [:])
+
+        #expect(recap.isEmpty)
+        #expect(recap.providers.isEmpty)
+        #expect(recap.topModel == nil)
+        #expect(recap.biggestDay == nil)
+        #expect(Recap(this: [:], before: [:]).isEmpty)
     }
 }
