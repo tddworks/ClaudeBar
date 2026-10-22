@@ -16,14 +16,14 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
 
     /// `GET /status` — the one line: the worst quota across the watched
     /// logins, under the person's policy.
-    func statusSummary() -> StatusSummary {
+    public func statusSummary() -> StatusSummary {
         StatusSummary(status: monitor.overallStatus, lowest: lowestQuota(), providers: monitor.lineup.count)
     }
 
     /// `GET /providers` — every watched login: what it last said, its status,
     /// which login has the most left, which one new sessions start with.
     /// One product at a time, in the lineup's order.
-    func providersReport() -> ProvidersReport {
+    public func providersReport() -> ProvidersReport {
         var order: [String] = []
         var byProduct: [String: [Account]] = [:]
         for login in monitor.lineup {
@@ -45,7 +45,7 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     /// `GET /forecast` — every quota that has a forecast line, the card's
     /// hourglass row as data. A quota without a forecast is left out, as its
     /// card leaves the line out.
-    func forecastReport() -> ForecastReport {
+    public func forecastReport() -> ForecastReport {
         var forecasts: [ForecastLine] = []
         for login in monitor.lineup {
             guard let snapshot = monitor.usage(of: login) else { continue }
@@ -66,7 +66,7 @@ public struct MonitorLocalAPIReading: LocalAPIReading {
     /// `GET /usage/days?n=` — per login, day by day. An explicit ask, like a
     /// popover opening: each watched login's history is read here and never
     /// in the background; a login with no history has no series.
-    func usageDays(count: Int) async -> UsageDaysReport {
+    public func usageDays(count: Int) async -> UsageDaysReport {
         let calendar = DataSources.calendar()
         var logins: [LoginDaySeries] = []
         for login in monitor.lineup {
