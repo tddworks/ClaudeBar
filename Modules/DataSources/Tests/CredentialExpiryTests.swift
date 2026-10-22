@@ -20,15 +20,15 @@ struct CredentialExpiryTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
-    /// Claude's shape: `expiresAt` in milliseconds beside the token.
+    /// A store that holds the expiry in milliseconds beside the token.
     private func writeMilliseconds(_ expiresIn: TimeInterval) throws {
         let expiresAt = String(Int64((Date(timeIntervalSinceNow: expiresIn)).timeIntervalSince1970 * 1000))
         try file(#"""
-        { "claudeAiOauth": { "accessToken": "token-1", "refreshToken": "refresh-1", "expiresAt": \#(expiresAt) } }
+        { "oauth": { "accessToken": "token-1", "refreshToken": "refresh-1", "expiresAt": \#(expiresAt) } }
         """#)
     }
 
-    /// Grok's shape: `expires_at` as ISO-8601.
+    /// A store that holds the expiry as ISO-8601.
     private func writeISO8601(_ expiresIn: TimeInterval) throws {
         let stamp = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: expiresIn))
         try file(#"""
@@ -45,7 +45,7 @@ struct CredentialExpiryTests {
     private func source(unit: String, field: String = "expiresAt") throws -> DataSourceDefinition {
         try JSONDecoder().decode(DataSourceDefinition.self, from: Data(#"""
         { "kind": "api",
-          "credential": { "firstOf": [ { "jsonFile": { "path": "\#(folder.path)/credentials.json", "token": "$.claudeAiOauth.accessToken", "expiresAt": "$.claudeAiOauth.expiresAt" } } ],
+          "credential": { "firstOf": [ { "jsonFile": { "path": "\#(folder.path)/credentials.json", "token": "$.oauth.accessToken", "expiresAt": "$.oauth.expiresAt" } } ],
                           "refresh": { "oauth2": { "tokenURL": "https://auth.example.com/token", "clientId": "client-1",
                                                     "dueWhen": { "expiresAt": "\#(field)", "unit": "\#(unit)", "skew": 300 } } } },
           "fetch": { "http": { "url": "https://api.example.com/usage" } },
@@ -58,7 +58,7 @@ struct CredentialExpiryTests {
         let response = HTTPURLResponse(url: URL(string: "https://api.example.com")!, statusCode: 200, httpVersion: nil, headerFields: [:])!
         given(network).request(.any).willReturn((Data("{}".utf8), response))
         return DataSources.make(
-            definition, providerId: "claude", cliExecutor: MockCLIExecutor(), network: network,
+            definition, providerId: "acme", cliExecutor: MockCLIExecutor(), network: network,
             makeTransport: { _, _, _, _ in MockRPCTransport() }, environment: { _ in nil },
             homeDirectory: FileManager.default.temporaryDirectory, now: { Date() }
         )
@@ -97,7 +97,7 @@ struct CredentialExpiryTests {
 
     @Test
     func `should say nothing when the store holds no expiry`() throws {
-        try file(#"{ "claudeAiOauth": { "accessToken": "token-1" } }"#)
+        try file(#"{ "oauth": { "accessToken": "token-1" } }"#)
 
         #expect(try make(source(unit: "milliseconds")).credentialExpiry() == nil)
     }
@@ -107,7 +107,7 @@ struct CredentialExpiryTests {
         try writeMilliseconds(3 * 24 * 3600)
         let definition = try JSONDecoder().decode(DataSourceDefinition.self, from: Data(#"""
         { "kind": "api",
-          "credential": { "jsonFile": { "path": "\#(folder.path)/credentials.json", "token": "$.claudeAiOauth.accessToken", "expiresAt": "$.claudeAiOauth.expiresAt" } },
+          "credential": { "jsonFile": { "path": "\#(folder.path)/credentials.json", "token": "$.oauth.accessToken", "expiresAt": "$.oauth.expiresAt" } },
           "fetch": { "http": { "url": "https://api.example.com/usage" } },
           "mapping": { "json": { "quotas": [] } } }
         """#.utf8))
@@ -118,7 +118,7 @@ struct CredentialExpiryTests {
     @Test
     func `should say nothing when the data source names no credential`() throws {
         let definition = try JSONDecoder().decode(DataSourceDefinition.self, from: Data(#"""
-        { "kind": "cli", "fetch": { "cli": { "cli": "claude", "args": ["/usage"] } }, "mapping": { "json": { "quotas": [] } } }
+        { "kind": "cli", "fetch": { "cli": { "cli": "acme", "args": ["/usage"] } }, "mapping": { "json": { "quotas": [] } } }
         """#.utf8))
 
         #expect(try make(definition).credentialExpiry() == nil)
