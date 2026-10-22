@@ -7,13 +7,10 @@ import Foundation
 public struct Days: Sendable, Equatable {
     /// What a range is counted in — the one choice a view makes about it.
     /// `cost` is offered only when a day holds one (daily-usage design §1).
-    /// The raw value is the name a chip shows.
-    public enum Unit: String, Sendable, Equatable, CaseIterable, Identifiable {
-        case cost = "Cost"
-        case tokens = "Tokens"
-        case cache = "Cache"
-
-        public var id: String { rawValue }
+    public enum Unit: Sendable, Equatable, CaseIterable {
+        case cost
+        case tokens
+        case cache
     }
 
     /// Every date of the range, empty days included.

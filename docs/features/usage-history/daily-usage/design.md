@@ -34,7 +34,10 @@ day's value and each model's value in that one unit, so a chart's chosen
 count drives everything it shows. Cost is offered only when the log prices
 its records **and a day holds a cost** — a log that writes a cost of zero
 everywhere (free models, OpenCode's `cost: 0`) has nothing to say in
-dollars, so the page counts tokens instead.
+dollars, so the page counts tokens instead. The *Cost* card asks the same
+question of the same days — `UsageHistory.hasCost` is the last thirty days'
+`hasCost` — so an idle day or two never hides a priced login's Cost card,
+and the card and the chart never disagree.
 
 Today two vendor-named analyzers answer only the last two days, and each one
 hard-codes the same five jobs:

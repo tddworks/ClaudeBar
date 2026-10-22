@@ -36,6 +36,26 @@ struct UsageHistoryTests {
     // MARK: - Reading
 
     @Test
+    func `should offer cost when a day of the last thirty holds one, even if today and yesterday were idle`() async throws {
+        try log([("14", 5)])
+        let history = history()
+
+        await history.read()
+
+        #expect(history.hasCost)
+    }
+
+    @Test
+    func `should offer no cost when every day prices at zero`() async throws {
+        try log([("0", 0), ("0", 1), ("0", 7)])
+        let history = history()
+
+        await history.read()
+
+        #expect(!history.hasCost)
+    }
+
+    @Test
     func `should show today's usage against yesterday's`() async throws {
         try log([("14", 0), ("41", 1)])
         let history = history()

@@ -65,7 +65,7 @@ struct UsageHistoryChartView: View {
             header
             HStack(spacing: 4) {
                 if theme.isOutlined {
-                    InkSegmentedPicker(title: "Count", options: counts, selection: countSelection, label: \.rawValue)
+                    InkSegmentedPicker(title: "Count", options: counts, selection: countSelection, label: \.label)
                     if days.hasModels {
                         InkSegmentedPicker(title: "Split", options: splits, selection: splitSelection, label: \.rawValue)
                     }
@@ -271,7 +271,7 @@ struct UsageHistoryChartView: View {
         Chart(segments) { segment in
             BarMark(
                 x: .value("Day", segment.date, unit: .day),
-                y: .value(shownCount.rawValue, segment.value)
+                y: .value(shownCount.label, segment.value)
             )
             .foregroundStyle(by: .value("Kind", segment.kind))
             .opacity(selectedDate == nil || Calendar.current.isDate(segment.date, inSameDayAs: selectedDate!) ? 1 : 0.35)
@@ -349,4 +349,18 @@ struct UsageHistoryChartView: View {
         let text = String(format: "%.1f", value)
         return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
     }
+}
+
+/// A unit's name on a chip and on the chart's axis — the page's words, not
+/// the kernel's.
+extension Days.Unit: @retroactive Identifiable {
+    var label: String {
+        switch self {
+        case .cost: "Cost"
+        case .tokens: "Tokens"
+        case .cache: "Cache"
+        }
+    }
+
+    public var id: String { label }
 }

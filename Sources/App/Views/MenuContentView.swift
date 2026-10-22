@@ -1251,7 +1251,7 @@ struct MenuContentView: View {
             // A log that writes a cost of zero everywhere shows no cost rather
             // than a made-up $0.
             HStack(spacing: 10) {
-                if report.hasCost {
+                if history?.hasCost ?? true {
                     DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
                         .frame(maxWidth: .infinity)
                 }

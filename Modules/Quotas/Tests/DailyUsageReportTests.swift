@@ -194,14 +194,4 @@ struct DailyUsageReportTests {
         #expect(!DailyUsageReport(today: empty, previous: empty).hasWorkingTime)
         #expect(DailyUsageReport(today: empty, previous: worked).hasWorkingTime)
     }
-
-    @Test
-    func `should show cost only when either day holds one`() {
-        let free = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 10, workingTime: 0, sessionCount: 1)
-        let paid = DailyUsageStat(date: Date(), totalCost: Decimal(string: "0.02")!, totalTokens: 10,
-                                  workingTime: 0, sessionCount: 1)
-        #expect(!DailyUsageReport(today: free, previous: free).hasCost)
-        #expect(DailyUsageReport(today: free, previous: paid).hasCost)
-        #expect(DailyUsageReport(today: paid, previous: free).hasCost)
-    }
 }
