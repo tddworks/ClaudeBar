@@ -118,8 +118,8 @@ struct ClaudeUsageHistoryTests {
     // MARK: - Quota by project (the record's cwd)
 
     @Test func `should attribute today's records to the projects they were spent in`() async throws {
-        try write([Self.line(cwd: "/Users/me/workspaces/ClaudeBar/marron", message: "a", request: "1"),
-                   Self.line(cwd: "/Users/me/workspaces/api", message: "b", request: "2"),
+        try write([Self.line(message: "a", request: "1", cwd: "/Users/me/workspaces/ClaudeBar/marron"),
+                   Self.line(message: "b", request: "2", cwd: "/Users/me/workspaces/api"),
                    Self.line(message: "c", request: "3")].joined(separator: "\n"))
         let today = try await report().today
 
