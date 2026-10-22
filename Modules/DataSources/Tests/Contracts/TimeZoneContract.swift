@@ -24,6 +24,18 @@ struct TimeZoneContract {
         }
         #expect(wrong.isEmpty, "\(wrong.count) instants differ, first: \(wrong.prefix(3))")
     }
+
+    /// A day is named by writing a date out in the person's zone, so a zone
+    /// this platform's Foundation can't format in is the adapter's to keep out.
+    @Test func `should give a zone a date can be written in`() {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        formatter.timeZone = Platform.current.timeZone.current()
+        let instant = Date(timeIntervalSince1970: 1_784_116_800)
+        let text = formatter.string(from: instant)
+        #expect(formatter.date(from: text) == instant, "\(formatter.timeZone.identifier) wrote \(text)")
+    }
 }
 
 /// The OS's own offset from UTC at an instant, read without Foundation.

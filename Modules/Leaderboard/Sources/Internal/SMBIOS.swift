@@ -2,8 +2,9 @@ import Foundation
 
 /// The SMBIOS table's system UUID (type 1, *System Information*, offset 8):
 /// a PC's hardware UUID, kept by its firmware, as `wmic csproduct get uuid`
-/// shows it. Pure bytes, so it builds and is tested everywhere, though only
-/// `WindowsMachineIdentity` reads a table.
+/// shows it. Pure bytes, so it builds and is tested everywhere: Windows reads
+/// the table (`WindowsMachineIdentity`), Linux the UUID alone from `/sys`
+/// (`LinuxMachineIdentity`), and both ask it what a placeholder is.
 ///
 /// The table as `GetSystemFirmwareTable('RSMB')` answers it: an 8-byte header
 /// (calling method, major, minor, DMI revision, length) and then the
@@ -27,6 +28,13 @@ enum SMBIOS {
         "03000200-0400-0500-0006-000700080009",
     ]
 
+    /// Whether `uuid` is one of them, and so names no machine. Linux reads the
+    /// same value from `/sys` and asks this, so both platforms agree on what a
+    /// placeholder is.
+    static func isPlaceholder(_ uuid: String) -> Bool {
+        placeholders.contains(uuid.uppercased())
+    }
+
     /// The system UUID in `table`, formatted as the firmware's maker and
     /// Windows show it; `nil` when the table has no type 1 structure long
     /// enough to hold one (SMBIOS before 2.1), or holds a placeholder.
@@ -39,7 +47,7 @@ enum SMBIOS {
             guard length >= 4, type != endOfTable else { return nil }
             if type == systemInformation, length >= uuidOffset + uuidLength, at + uuidOffset + uuidLength <= bytes.count {
                 let uuid = format(Array(bytes[(at + uuidOffset)..<(at + uuidOffset + uuidLength)]))
-                return placeholders.contains(uuid) ? nil : uuid
+                return isPlaceholder(uuid) ? nil : uuid
             }
             // Past the formatted area, then past the strings: they end at a double NUL.
             var end = at + length

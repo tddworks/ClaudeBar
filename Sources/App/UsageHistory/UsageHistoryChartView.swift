@@ -194,8 +194,9 @@ struct UsageHistoryChartView: View {
         selectedDay?.formattedDate ?? "30-day total"
     }
 
+    /// The value in the unit on show — money when cost, tokens otherwise.
     private func unit(_ value: Double) -> String {
-        shownCount == .cost ? Self.money(Decimal(value)) : Self.count(Int(value))
+        UsageFormat.value(value, in: shownCount)
     }
 
     // MARK: - Chart
@@ -232,19 +233,13 @@ struct UsageHistoryChartView: View {
 
     /// The models' colours — hues far apart, cycled when the log names more
     /// models than the palette holds. The unnamed line is grey.
-    private static let modelPalette: [Color] = [.purple, .green, .blue, .orange, .pink, .cyan, .indigo, .mint, .red]
-
     private var modelColors: [Color] {
-        modelKinds.map { kind in
-            guard let index = days.models.firstIndex(of: kind) else { return Color.gray }
-            return Self.modelPalette[index % Self.modelPalette.count]
-        }
+        modelKinds.map { ModelColors.color(of: $0, in: days) }
     }
 
     /// The colour the chart gives `model` — its place among the days' models.
     private func color(of model: String) -> Color {
-        guard let index = days.models.firstIndex(of: model) else { return Color.gray }
-        return Self.modelPalette[index % Self.modelPalette.count]
+        ModelColors.color(of: model, in: days)
     }
 
     private var segments: [Segment] {
@@ -291,7 +286,7 @@ struct UsageHistoryChartView: View {
                 AxisGridLine().foregroundStyle(theme.progressTrack)
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text(shownCount == .cost ? Self.money(Decimal(amount), whole: true) : Self.count(Int(amount)))
+                        Text(UsageFormat.value(amount, in: shownCount, whole: true))
                             .font(theme.font(size: 7))
                             .foregroundStyle(theme.textTertiary)
                     }
@@ -324,31 +319,6 @@ struct UsageHistoryChartView: View {
         }
         .padding(.top, 2)
     }
-
-    static func money(_ amount: Decimal, whole: Bool = false) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.maximumFractionDigits = whole ? 0 : 2
-        formatter.minimumFractionDigits = whole ? 0 : 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$\(amount)"
-    }
-
-    static func count(_ tokens: Int) -> String {
-        switch tokens {
-        case 1_000_000_000...: short(Double(tokens) / 1_000_000_000) + "B"
-        case 1_000_000...: short(Double(tokens) / 1_000_000) + "M"
-        case 1_000...: short(Double(tokens) / 1_000) + "K"
-        default: "\(tokens)"
-        }
-    }
-
-    /// One decimal, without a trailing ".0" — "2.5", "500".
-    private static func short(_ value: Double) -> String {
-        let text = String(format: "%.1f", value)
-        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
-    }
 }
 
 /// A unit's name on a chip and on the chart's axis — the page's words, not
@@ -359,6 +329,15 @@ extension Days.Unit: @retroactive Identifiable {
         case .cost: "Cost"
         case .tokens: "Tokens"
         case .cache: "Cache"
+        }
+    }
+
+    /// The word under a card's total — what the number is.
+    var caption: String {
+        switch self {
+        case .cost: "spent"
+        case .tokens: "tokens"
+        case .cache: "cache tokens"
         }
     }
 

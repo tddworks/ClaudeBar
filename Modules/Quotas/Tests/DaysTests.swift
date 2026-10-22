@@ -92,4 +92,24 @@ struct DaysTests {
         #expect(!days.hasCost)
         #expect(days.units == [.tokens, .cache])
     }
+
+    @Test func `should add up what the cache saved over the range`() {
+        let saved = { (savings: String) in
+            DailyUsageStat(date: self.date, totalCost: 1, totalTokens: 0, workingTime: 0, sessionCount: 1,
+                           cachedSavings: Decimal(string: savings)!)
+        }
+
+        #expect(Days([saved("0.25"), saved("1.75")], knowsCost: true).cacheSavings == 2)
+    }
+
+    @Test func `should keep the last days of a range, oldest first`() {
+        let older = day(1, lines: [], tokens: 1)
+        let newer = day(2, lines: [], tokens: 2)
+        let newest = day(3, lines: [], tokens: 3)
+
+        let last = Days([older, newer, newest], knowsCost: true).last(2)
+
+        #expect(last.stats.map(\.totalCost) == [2, 3])
+        #expect(last.knowsCost)
+    }
 }
