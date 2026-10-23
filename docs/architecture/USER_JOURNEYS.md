@@ -96,7 +96,7 @@ Thirteen findings; each is a word or a law the model must keep.
 *Symbol · colour* · *Save* · *Built in · Custom · Extension* · *Export* ·
 *Key needed* · *Couldn't read your key · Couldn't connect · Couldn't find the
 numbers* · *via API* · *ACCOUNTS* · *PAUSED* · *Pause* · *Resume* ·
-*All logins paused* · *340% left across 3 logins*.
+*All logins paused* · *N% left across N logins*.
 
 ## 5 · Acceptance scenarios
 

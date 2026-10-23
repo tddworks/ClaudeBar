@@ -39,9 +39,9 @@ let package = Package(
         // freeze after system sleep (issue #192).
         .package(url: "https://github.com/orchetect/MenuBarExtraAccess", from: "1.3.0"),
         // Structured-concurrency process spawning for the pipe-based probes.
-        // The PTY runners (InteractiveRunner, PersistentSession) still use
-        // Foundation.Process — Subprocess has no pseudo-terminal support as of
-        // 1.0.0 (swiftlang/swift-subprocess#227 is post-1.0).
+        // The terminal runner (InteractiveRunner) starts its program in a
+        // pseudo-terminal instead — Subprocess has no pseudo-terminal support
+        // as of 1.0.0 (swiftlang/swift-subprocess#227 is post-1.0).
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
         // Dot-matrix loaders. Custom licence: commercial use is granted, but
         // republishing the components as a reusable library is not — fine for

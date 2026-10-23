@@ -3,8 +3,8 @@ import Darwin
 import Foundation
 
 /// The Mac's pty: `openpty` of the asked size, its program started on it as
-/// `PtySession` does, and a session environment whose `PATH` is the person's
-/// login shell's, so a CLI is found where their terminal finds it.
+/// `PtySession` does, and a session `PATH` that is the person's login
+/// shell's, so a CLI is found where their terminal finds it.
 struct MacPty: PseudoTerminal {
     func start(_ launch: TerminalLaunch) throws -> any TerminalSession {
         try PtySession.start(launch, on: open(rows: launch.rows, cols: launch.cols))
@@ -26,23 +26,11 @@ struct MacPty: PseudoTerminal {
         return PtyEnds(session: session, child: child)
     }
 
-    func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
-        // Remove excluded keys before setting defaults
-        for key in change.unset {
-            environment.removeValue(forKey: key)
-        }
-        environment["PATH"] = Self.withCommonPaths(BinaryLocator.shellPath())
-        environment["HOME"] = environment["HOME"] ?? NSHomeDirectory()
-        environment["TERM"] = environment["TERM"] ?? "xterm-256color"
-        environment["COLORTERM"] = environment["COLORTERM"] ?? "truecolor"
-        environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
-        environment["CI"] = environment["CI"] ?? "0"
-        for (key, value) in change.set {
-            environment[key] = value
-        }
-        return environment
+    func sessionPath() -> String? {
+        Self.withCommonPaths(BinaryLocator.shellPath())
     }
+
+    var fallbackLocale: String? { "en_US.UTF-8" }
 
     /// Ensures common tool paths are included in `PATH`.
     ///

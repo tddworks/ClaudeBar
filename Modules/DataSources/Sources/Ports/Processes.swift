@@ -33,10 +33,19 @@ protocol LoginShell: Sendable {
 @Mockable
 protocol ChildLaunch: Sendable {
     /// The environment the program at `path` starts with: the app's, with
-    /// `change` applied.
+    /// `change` applied under this OS's name rule.
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String]
 
-    /// How a child a conversation started is ended once the conversation
-    /// is closed, before a last kill; a step gives the child its time.
-    var teardown: [TeardownStep] { get }
+    /// How long a child is given to stop once asked, before a last kill;
+    /// `nil` where the OS has no step a GUI app should take first, and the
+    /// child is killed at once. A conversation's end and a terminal
+    /// session's end both read it.
+    var stopGrace: Duration? { get }
+}
+
+extension ChildLaunch {
+    /// `stopGrace` as Subprocess' teardown sequence, for a conversation's end.
+    var teardown: [TeardownStep] {
+        stopGrace.map { [.gracefulShutDown(allowedDurationToNextStep: $0)] } ?? []
+    }
 }

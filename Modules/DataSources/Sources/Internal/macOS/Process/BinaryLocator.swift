@@ -310,7 +310,7 @@ public struct BinaryLocator: Sendable {
     /// Stops a shell that ran out of time: asked first, then made to, and
     /// left if it's still there, so the lookup's deadline holds.
     private static func stop(_ proc: Process) {
-        ChildTeardown.end(proc, named: "login shell", grace: 1)
+        ChildTeardown.end(proc, named: "login shell", grace: .seconds(1))
     }
 
     /// Searches for a tool in common installation paths.

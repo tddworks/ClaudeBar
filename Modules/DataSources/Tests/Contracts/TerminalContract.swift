@@ -56,6 +56,23 @@ struct TerminalContract {
         #endif
     }
 
+    /// A CLI that says the terminal variables it started with.
+    private func sayingTerminal() throws -> String {
+        #if os(Windows)
+        try script(named: "terminal-cli.cmd", """
+        @echo off\r
+        echo TERM=%TERM% COLORTERM=%COLORTERM% PROBE=%CLAUDEBAR_PROBE%\r
+
+        """)
+        #else
+        try script(named: "terminal-cli.sh", """
+        #!/bin/sh
+        printf 'TERM=%s COLORTERM=%s PROBE=%s\\n' "$TERM" "$COLORTERM" "$CLAUDEBAR_PROBE"
+
+        """)
+        #endif
+    }
+
     private func script(named name: String, _ text: String) throws -> String {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = folder.appendingPathComponent(name)
@@ -66,9 +83,9 @@ struct TerminalContract {
         return file.path
     }
 
-    private func executor() throws -> any CLIExecutor {
+    private func executor(_ environment: ProcessEnvironment = ProcessEnvironment()) throws -> any CLIExecutor {
         let make = try #require(Platform.current.runCLI, "\(Platform.current.name) has no terminal")
-        return make(CLICall(cli: "contract-cli"))
+        return make(CLICall(cli: "contract-cli", environment: environment))
     }
 
     private func render() throws -> (String) -> String {
@@ -98,6 +115,20 @@ struct TerminalContract {
         )
 
         #expect(try render()(result.output).contains("You typed: /usage"))
+    }
+
+    @Test
+    func `should start a CLI as a terminal would, with the call's additions winning`() async throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        // The app's own TERM is removed, so the terminal's default shows,
+        // whatever the machine running the tests has set.
+        let change = ProcessEnvironment(unset: ["TERM"], set: ["COLORTERM": "24bit", "CLAUDEBAR_PROBE": "1"])
+        let result = try await executor(change).execute(
+            binary: try sayingTerminal(), args: [], input: "", timeout: 20,
+            workingDirectory: nil, autoResponses: [:]
+        )
+
+        #expect(try render()(result.output).contains("TERM=xterm-256color COLORTERM=24bit PROBE=1"))
     }
 
     @Test

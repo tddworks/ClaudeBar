@@ -19,7 +19,7 @@ enum PlatformTerminal {
         #endif
     }()
 
-    static let installed: any InstalledPrograms = {
+    static let programs: any InstalledPrograms & ChildLaunch = {
         #if canImport(Darwin)
         return MacProcesses()
         #elseif os(Windows)
@@ -31,7 +31,7 @@ enum PlatformTerminal {
 
     /// The screen a person would see for `output`, as a fetch renders it.
     static func screen(_ output: String) -> String {
-        TerminalRenderer(cols: 160, rows: 50).render(output)
+        TerminalRenderer().render(output)
     }
 }
 
