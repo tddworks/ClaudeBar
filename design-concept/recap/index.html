@@ -27,10 +27,10 @@ figcaption{font-size:12px;color:var(--muted);max-width:400px}
 
 .head{display:flex;align-items:center;gap:6px}
 .head .t{font-size:8px;font-weight:500;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:5px}
-.chips{margin-left:auto;display:flex;gap:4px}
+.chips{display:flex;gap:4px}
 .chip{font-size:9px;font-weight:500;color:var(--faint);border:1px solid var(--hair);border-radius:999px;padding:2px 8px;background:none;cursor:pointer;font-family:inherit}
 .chip.on{font-weight:700;color:var(--ink);background:var(--track);border-color:transparent}
-.chip.export{margin-left:4px;color:var(--faint)}
+.export{margin-left:auto;font-size:10px;color:var(--faint);padding:0 6px;cursor:pointer}
 .lead{display:flex;align-items:baseline;gap:8px}
 .lead b{font:700 26px/1 "SF Pro Rounded",-apple-system,system-ui}
 .lead .cap{display:flex;flex-direction:column;font-size:9px;font-weight:500;color:var(--faint);line-height:1.3}
@@ -132,7 +132,10 @@ const weeks = {
 function card(week, chosen, interactive) {
   const chips = ['This week', 'Last week', 'This month', 'Last month'].map((name) =>
     `<button class="chip${name === chosen ? ' on' : ''}" ${interactive ? `data-range="${name}"` : 'disabled'}>${name}</button>`).join('');
-  const head = `<div class="head"><span class="t">&#128197; Recap</span><span class="chips">${chips}<span class="chip export" title="Save as HTML report">&#8599;</span></span></div>`;
+  // The export sits beside the title, only while the chosen range holds something;
+  // four chips need the card's full width, so they take their own row.
+  const exportIcon = week ? '<span class="export" title="Save as HTML report">&#11014;&#xFE0E;</span>' : '';
+  const head = `<div class="head"><span class="t">&#128197; Recap</span>${exportIcon}</div><div class="chips">${chips}</div>`;
   if (!week) return head + `<div class="empty">Nothing ${chosen.toLowerCase()}.</div>`;
   const change = week.change ? `<span class="change"><b class="${week.up ? 'up' : 'down'}">${week.change}</b><span>${week.vs}</span></span>` : '';
   const lead = `<div class="lead"><b>${week.total}</b><span class="cap"><span>${week.caption}</span><span>${week.also.join(' · ')}</span></span>${change}</div>`;

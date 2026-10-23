@@ -1,5 +1,5 @@
 ---
-description: Post the weekly recap to your Slack or JSON webhooks each week — the same numbers the All page's Weekly Recap card reads, sent once when your calendar's week turns. Use when the recap doesn't arrive or you want to stop it.
+description: Post the weekly recap to your Slack or JSON webhooks each week — the same numbers as Last week on the All page's Recap card, sent once when your calendar's week turns. Use when the recap doesn't arrive or you want to stop it.
 ---
 
 # Recap webhooks
@@ -10,7 +10,7 @@ alone: your team's channel can hear it too. Tick **Weekly recap** on a
 turn, usually Monday — ClaudeBar sends the week that closed to that webhook:
 the total, how it compares with the week before, each provider's part, the
 top model, the biggest day, what caching saved. The same numbers the
-[Weekly recap card](../../usage-history/recap/README.md) reads, from the same
+[Recap card](../../usage-history/recap/README.md) reads, from the same
 local logs.
 
 ## Set it up
@@ -46,7 +46,7 @@ the recap lands within a refresh or two of that first midnight.
   heard it; only a fresh install sends the closed week at once.
 
 It rides the same refreshes the alerts do — with background refresh off, it
-waits for the first interactive refresh. Turning the popover's *Weekly recap*
+waits for the first interactive refresh. Turning the popover's *Recap*
 section off does not stop the webhook: the webhook's tick is the whole
 choice.
 
@@ -93,5 +93,5 @@ only when every provider you used can be priced. `workingTime` is seconds.
 
 [design.md](design.md) — how the moment is decided, and its laws ·
 [Webhooks](../webhooks/README.md) — the list, the URL, the deliveries ·
-[Weekly recap](../../usage-history/recap/README.md) — the card, and how the
+[Recap](../../usage-history/recap/README.md) — the card, and how the
 numbers are worked out

@@ -379,7 +379,7 @@ year section is shown ([insights](../insights/design.md)).
 
 **What shows is the person's.** The popover's usage area is five usage
 sections — *Today* (the cards, and other apps' cards), *Last 30 days* (the
-chart), *Last year*, *Model mix* and *Weekly recap*. `UsageSection` owns each
+chart), *Last year*, *Model mix* and *Recap*. `UsageSection` owns each
 one's default (the year's two hidden, the rest shown); the person's switch in
 Settings → General overrides it, kept by `AppSettingsRepository.isShown(_:)` as
 `app.usageSections.<section>` ([settings](../../../settings.md)). The view

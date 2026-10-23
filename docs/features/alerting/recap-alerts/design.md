@@ -31,7 +31,7 @@ worked.
 | The part | Already owned by |
 |---|---|
 | what the week added up to, in one unit, against the week before | `Recap` ([design](../../usage-history/recap/design.md)) |
-| reading both weeks across the lineup | `WeeklyRecaps` |
+| reading both weeks across the lineup | `Recaps` |
 | where a week starts | the person's calendar, through `DateRange.week` |
 | who hears what was decided | `Webhooks`, a destination ([design](../webhooks/design.md)) |
 | the moment a decision is told | the decider following `QuotaMonitor.onRefreshed`, as `QuotaAlerts` and `StatusAlerts` do |
@@ -59,8 +59,8 @@ QuotaMonitor.onRefreshed(login) ─► RecapAlerts.review()                 (fol
     │     nil while the week of the last send is still the week holding now;
     │     otherwise the week that closed (the one before now's)
     │
-    ├─ WeeklyRecaps.readIfStale()          the one read — the card's own
-    ├─ WeeklyRecaps.recap(of: due.week)    nil while its read covers other weeks
+    ├─ Recaps.readIfStale()          the one read — the card's own
+    ├─ Recaps.recap(of: due.week)          nil unless last week's recap.range is due.week
     ├─ memory.setLastSent(now)             the week has had its moment
     └─ !recap.isEmpty → RecapDestination.announce(RecapAlert) ◇
           recap · week · calendar · names
@@ -76,7 +76,7 @@ Saved: settings.json  alerts.recapSentAt        ← RecapSentRepository (JSONSet
 |---|---|
 | a week's recap is due from the first moment of the calendar week that isn't the week the last send was for — the calendar's own first weekday, never a fixed Monday; the recap due is of the week that closed | `RecapDue` |
 | the due answer is pure: `now`, the last send and the calendar decide, nothing is remembered and no timer runs; the decider asks at every refresh | `RecapDue` · `RecapAlerts` |
-| the recap sent is read by `WeeklyRecaps`, the card's own read — never a second read of the logs; a read that didn't finish this week's read sends nothing and waits for the next refresh | `RecapAlerts` (through `WeeklyRecaps.readIfStale`, `recap(of:)`) |
+| the recap sent is read by `Recaps`, the card's own read — never a second read of the logs; a read that didn't finish this week's read sends nothing and waits for the next refresh | `RecapAlerts` (through `Recaps.readIfStale`, `recap(of:)`) |
 | a week is sent for once: its moment is marked when the recap has been read, whether or not a webhook wanted it or a POST arrived — the next week is the next recap, and a relaunch inside the week sends again never. The mark is the week's, not a webhook's: a webhook that starts sending recaps mid-week hears the next week that closes; only never sent (a fresh install) is due at once | `RecapAlerts` · `RecapSentRepository` |
 | a week that added up to nothing says nothing — silence, not a message of zeros; the Mac that slept all week stays quiet | `RecapAlerts` |
 | no backlog: after an absence the return sends the week that closed last — one recap — never the weeks missed | `RecapDue` |
@@ -94,9 +94,9 @@ Saved: settings.json  alerts.recapSentAt        ← RecapSentRepository (JSONSet
 | `RecapDue` ◇ | `Domain/Alerting/RecapAlerts` | `week(containing:lastSentAt:calendar:) → RecapDue?` — the once-per-calendar-week answer, pure | **built** |
 | `RecapAlert` ◇ | `Domain/Alerting/RecapAlerts` | the week that closed, told: the `Recap`, its week, the calendar the week was read in, the providers named as the lineup names them | **built** |
 | `RecapDestination` (port, `@Mockable`) | `Domain/Alerting/RecapAlerts` | `announce(_ recap: RecapAlert) async` — who hears the week's recap | **built** |
-| `RecapAlerts` ◆ | `Domain/Alerting/RecapAlerts` | `review() async`, `follow(_ monitor:)` — asks `RecapDue` at every refresh, reads through `WeeklyRecaps`, marks the week sent, tells the destination | **built** |
+| `RecapAlerts` ◆ | `Domain/Alerting/RecapAlerts` | `review() async`, `follow(_ monitor:)` — asks `RecapDue` at every refresh, reads through `Recaps`, marks the week sent, tells the destination | **built** |
 | `RecapSentRepository` (port, `@Mockable`) · `JSONSettingsRepository` | `Domain/Alerting/RecapAlerts` · `Infrastructure/Settings` | when the last recap went out — `alerts.recapSentAt` in `settings.json`, so a relaunch inside the week sends again never | **built** |
-| `WeeklyRecaps.recap(of:)` | `Domain/UsageHistory` | the recap of a week that closed before the read, or nil while the read covers other weeks — `WeeklyRecaps` says whether its read is fresh, the sender never judges it | **built** |
+| `Recaps.recap(of:)` | `Domain/UsageHistory` | the recap of a week that closed before the read — last week's recap, when its `range` is that week — or nil while the read covers other weeks; `Recaps` says whether its read is fresh, the sender never judges it | **built** |
 | `Webhook.Sends.recap` · `WebhookBody.Message.recap` | `Domain/Alerting/Webhooks` | the third kind of send: a field in the webhook and a case in the body, and nothing else moves ([webhooks design](../webhooks/design.md)) | **built** |
 | `Webhooks` | `Domain/Alerting/Webhooks` | an `AlertDestination` and now a `RecapDestination`: delivers the recap body to the webhooks that want it | **built** |
 | `QuotaMonitor` | `Domain/Monitoring` | refreshes; every decider follows through `onRefreshed` | built |
@@ -174,7 +174,7 @@ sent recaps unasked. `recapSentAt` is a timestamp; the week it falls in is
 | sending the empty week, as the card says *Nothing this week* | the card speaks because the person is looking; a push that says "$0.00" is noise, and the Mac that slept all week would spam zeros on return. Silence is the honest empty |
 | a backlog of missed weeks after an absence | the recap answers *what did last week add up to* — a cadence, not a queue; webhooks already refuse queues ("one POST, no retry"), and a return from three weeks away would flood the channel |
 | sending only what the popover's *Weekly recap* section shows | that switch shapes the popover, not the webhook; the webhook's tick is the whole choice |
-| the decider reading the logs itself | `WeeklyRecaps` is the one read; a second read of the same logs is a second truth, and the card and the sender could disagree |
+| the decider reading the logs itself | `Recaps` is the one read; a second read of the same logs is a second truth, and the card and the sender could disagree |
 
 ## Not in it
 

@@ -30,7 +30,8 @@ The export button (top right of the card) writes the recap you are looking at
 out as **one HTML file**: the total, the change, the split, a bar for every
 day, the models, and the highlights — styled on its own, in light or dark to
 match the reader's system, with no script and nothing to install. Pick where
-to save it; the file opens in your browser when saved. It carries the card's
+to save it; the file opens in your browser when saved, and if it can't be
+written the card says why. It carries the card's
 numbers and then the detail the card only summarises — a bar for every day
 and a row for every named model — and the app never reads it back.
 
