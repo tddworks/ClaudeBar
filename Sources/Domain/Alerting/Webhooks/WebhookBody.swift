@@ -5,8 +5,8 @@ import Quotas
 /// its channel. Slack gets one line, the words of the Mac's notification; a
 /// recap gets its own message, built from the same `Recap` the card reads;
 /// JSON gets every key of its kind on every send, `null` where there is no
-/// value. A test says it is a test and is never shaped like an alert, a
-/// recap, or a login-expiry warning.
+/// value. A test says it is a test and is never shaped like an alert or a
+/// recap.
 public struct WebhookBody: Sendable, Equatable {
     /// What is being sent.
     public enum Message: Sendable, Equatable {
@@ -45,19 +45,19 @@ public struct WebhookBody: Sendable, Equatable {
         switch message {
         case .alert(.quota(let alert)):
             AlertPayload(type: "quota", provider: alert.providerId, login: alert.login,
-                         below: alert.below, left: alert.left, status: nil, was: nil, days: nil, sentAt: sentAt)
+                         below: alert.below, left: alert.left, status: nil, was: nil, hint: nil, sentAt: sentAt)
         case .alert(.status(let alert)):
             AlertPayload(type: "status", provider: alert.providerId, login: alert.login,
                          below: nil, left: nil, status: alert.now.payloadName, was: alert.was.payloadName,
-                         days: nil, sentAt: sentAt)
-        case .alert(.loginExpiry(let alert)):
-            AlertPayload(type: "loginExpiry", provider: alert.providerId, login: alert.login,
-                         below: nil, left: nil, status: nil, was: nil, days: alert.days, sentAt: sentAt)
+                         hint: nil, sentAt: sentAt)
+        case .alert(.signedOut(let alert)):
+            AlertPayload(type: "signedOut", provider: alert.providerId, login: alert.login,
+                         below: nil, left: nil, status: nil, was: nil, hint: alert.hint, sentAt: sentAt)
         case .recap(let alert):
             RecapPayload(alert, sentAt: sentAt)
         case .test:
             AlertPayload(type: "test", provider: nil, login: nil, below: nil, left: nil,
-                         status: nil, was: nil, days: nil, sentAt: sentAt)
+                         status: nil, was: nil, hint: nil, sentAt: sentAt)
         }
     }
 
@@ -66,7 +66,8 @@ public struct WebhookBody: Sendable, Equatable {
         switch message {
         case .alert(.quota(let alert)): "\(alert.login) is below \(alert.below)% — \(alert.left)% left"
         case .alert(.status(let alert)): "\(alert.login) is \(alert.now.payloadName) — was \(alert.was.payloadName)"
-        case .alert(.loginExpiry(let alert)): "\(alert.login) login expires \(LoginExpiryWords.forDays(alert.days))"
+        case .alert(.signedOut(let alert)):
+            "\(alert.login) signed out: sign in again" + (alert.hint.map { " — \($0)" } ?? "")
         case .recap(let alert): RecapLine(alert).text
         case .test: "ClaudeBar test — this webhook works. No quota was judged."
         }
@@ -84,10 +85,10 @@ private struct AlertPayload: Encodable {
     let left: Int?
     let status: String?
     let was: String?
-    let days: Int?
+    let hint: String?
     let sentAt: Date
 
-    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, days, sentAt }
+    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, hint, sentAt }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -98,7 +99,7 @@ private struct AlertPayload: Encodable {
         try container.encode(left, forKey: .left)
         try container.encode(status, forKey: .status)
         try container.encode(was, forKey: .was)
-        try container.encode(days, forKey: .days)
+        try container.encode(hint, forKey: .hint)
         try container.encode(sentAt, forKey: .sentAt)
     }
 }

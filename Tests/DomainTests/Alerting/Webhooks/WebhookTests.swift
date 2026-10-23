@@ -16,7 +16,7 @@ struct WebhookTests {
 
     private let quota = Alert.quota(QuotaAlert(login: "Claude · work", providerId: "claude", below: 35, left: 34))
     private let status = Alert.status(StatusAlert(login: "Codex", providerId: "codex", was: .warning, now: .critical))
-    private let expiry = Alert.loginExpiry(LoginExpiryAlert(login: "Claude · work", providerId: "claude", days: 3))
+    private let signedOut = Alert.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude", hint: nil))
 
     private let recap: RecapAlert = {
         let calendar = Calendar(identifier: .gregorian)
@@ -30,11 +30,11 @@ struct WebhookTests {
     }()
 
     private func webhook(scope: Webhook.Scope = .everyLogin, quotaAlerts: Bool = true,
-                         statusAlerts: Bool = true, recap: Bool = false, loginExpiryAlerts: Bool = true,
+                         statusAlerts: Bool = true, recap: Bool = false, signedOutAlerts: Bool = true,
                          isOn: Bool = true) -> Webhook {
         Webhook(id: "1", name: "#ai-quota", channel: .slack, scope: scope,
                 sends: Webhook.Sends(quotaAlerts: quotaAlerts, statusAlerts: statusAlerts, recap: recap,
-                                     loginExpiryAlerts: loginExpiryAlerts),
+                                     signedOutAlerts: signedOutAlerts),
                 isOn: isOn)
     }
 
@@ -52,24 +52,13 @@ struct WebhookTests {
         #expect(!webhook(quotaAlerts: false).wants(quota))
         #expect(webhook(quotaAlerts: false).wants(status))
         #expect(!webhook(statusAlerts: false).wants(status))
-        #expect(webhook(statusAlerts: false).wants(expiry))
-        #expect(!webhook(loginExpiryAlerts: false).wants(expiry))
-    }
-
-    @Test func `should send none of the kinds it was saved without until they are ticked`() throws {
-        let saved = try JSONDecoder().decode(Webhook.Sends.self,
-                                             from: Data(#"{"quotaAlerts":true,"statusAlerts":true}"#.utf8))
-
-        #expect(saved.quotaAlerts)
-        #expect(saved.statusAlerts)
-        #expect(!saved.recap)
-        #expect(!saved.loginExpiryAlerts)
-        #expect(!saved.isNothing)
+        #expect(webhook(statusAlerts: false).wants(signedOut))
+        #expect(!webhook(signedOutAlerts: false).wants(signedOut))
     }
 
     @Test func `should be nothing while it sends no kind at all`() {
-        #expect(webhook(quotaAlerts: false, statusAlerts: false, loginExpiryAlerts: false).sends.isNothing)
-        #expect(!webhook(quotaAlerts: false, statusAlerts: false, loginExpiryAlerts: true).sends.isNothing)
+        #expect(webhook(quotaAlerts: false, statusAlerts: false, signedOutAlerts: false).sends.isNothing)
+        #expect(!webhook(quotaAlerts: false, statusAlerts: false, signedOutAlerts: true).sends.isNothing)
     }
 
     @Test func `should want only alerts about its provider's logins`() {

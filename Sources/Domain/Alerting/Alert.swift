@@ -8,14 +8,14 @@ import Mockable
 public enum Alert: Sendable, Equatable {
     case quota(QuotaAlert)
     case status(StatusAlert)
-    case loginExpiry(LoginExpiryAlert)
+    case signedOut(SignedOutAlert)
 
     /// The login, as the lineup names it.
     public var login: String {
         switch self {
         case .quota(let alert): alert.login
         case .status(let alert): alert.login
-        case .loginExpiry(let alert): alert.login
+        case .signedOut(let alert): alert.login
         }
     }
 
@@ -24,7 +24,7 @@ public enum Alert: Sendable, Equatable {
         switch self {
         case .quota(let alert): alert.providerId
         case .status(let alert): alert.providerId
-        case .loginExpiry(let alert): alert.providerId
+        case .signedOut(let alert): alert.providerId
         }
     }
 }

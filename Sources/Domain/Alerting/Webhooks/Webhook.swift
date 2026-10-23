@@ -40,8 +40,8 @@ public enum WebhookDelivery: Sendable, Equatable {
 
 /// One URL the person owns, with how and what it is sent. It has no percent of
 /// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide, the
-/// week's recap when `RecapAlerts` says it is due, and a login-expiry warning
-/// when `LoginExpiryAlerts` reaches a step
+/// week's recap when `RecapAlerts` says it is due, and a sign-out
+/// `SignedOutAlerts` tells
 /// ([design](docs/features/alerting/webhooks/design.md)).
 public struct Webhook: Sendable, Equatable, Identifiable {
     /// Which logins' alerts it sends.
@@ -52,36 +52,25 @@ public struct Webhook: Sendable, Equatable, Identifiable {
     }
 
     /// Which kinds of send it carries.
-    public struct Sends: Sendable, Equatable, Codable {
+    public struct Sends: Sendable, Equatable {
         public var quotaAlerts: Bool
         public var statusAlerts: Bool
         /// The week that closed, each calendar week turn — a new kind of send
         /// is a field here and a case in `WebhookBody`, and nothing else
         /// moves ([recap alerts](docs/features/alerting/recap-alerts/design.md)).
         public var recap: Bool
-        /// A webhook saved before login expiry existed sends none of it until
-        /// the person ticks it — the kinds are the person's to choose.
-        public var loginExpiryAlerts: Bool
+        /// A login whose sign-in ended ([signed out](docs/features/alerting/signed-out/design.md)).
+        public var signedOutAlerts: Bool
 
-        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false, loginExpiryAlerts: Bool = false) {
+        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false, signedOutAlerts: Bool = false) {
             self.quotaAlerts = quotaAlerts
             self.statusAlerts = statusAlerts
             self.recap = recap
-            self.loginExpiryAlerts = loginExpiryAlerts
+            self.signedOutAlerts = signedOutAlerts
         }
-
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            quotaAlerts = try container.decodeIfPresent(Bool.self, forKey: .quotaAlerts) ?? false
-            statusAlerts = try container.decodeIfPresent(Bool.self, forKey: .statusAlerts) ?? false
-            recap = try container.decodeIfPresent(Bool.self, forKey: .recap) ?? false
-            loginExpiryAlerts = try container.decodeIfPresent(Bool.self, forKey: .loginExpiryAlerts) ?? false
-        }
-
-        private enum CodingKeys: String, CodingKey { case quotaAlerts, statusAlerts, recap, loginExpiryAlerts }
 
         /// No kind at all: a webhook that would never send.
-        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap && !loginExpiryAlerts }
+        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap && !signedOutAlerts }
     }
 
     public let id: String
@@ -116,7 +105,7 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         let sendsKind = switch alert {
         case .quota: sends.quotaAlerts
         case .status: sends.statusAlerts
-        case .loginExpiry: sends.loginExpiryAlerts
+        case .signedOut: sends.signedOutAlerts
         }
         guard sendsKind else { return false }
         return switch scope {
