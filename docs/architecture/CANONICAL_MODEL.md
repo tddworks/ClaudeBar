@@ -165,11 +165,6 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           Waiting for the person, not failing: the popover shows the
 │       │       │                           definition's `setup` (title · text · a button to its url) and
 │       │       │                           whatever usage history it can read
-│       │       ├── loginExpiresAt: Date?  ◇   WHAT THE SIGN-IN SAYS — when this login's
-│       │       │                           credential expires, as its data sources read it
-│       │       │                           at the last successful refresh; `nil` when none
-│       │       │                           declares an expiry. A failed refresh never
-│       │       │                           erases it ([login expiry design](../features/alerting/login-expiry/design.md))
 │       │       ├── budget: Budget?  ◇      THE USER'S OWN CEILING on this login's Cost — a Daily
 │       │       │                           Budget, the Claude API Budget. The vendor sets quotas;
 │       │       │                           the user sets budgets. Set in the provider's form
@@ -267,7 +262,7 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
-Destinations                                notifications · your quota alerts · status alerts · login expiry · webhooks · Notify! · live activity · status export
+Destinations                                notifications · your quota alerts · status alerts · signed out · webhooks · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
 MenuBarLabel · display mode (left/used) · countdown colon · popover height · theme ·
@@ -450,14 +445,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **a CLI is wrapped once**, however many products run it: two products on `claude` share its record, and the last choice wins | `NewSessions` (its commands, each once) · `ShellSetup` |
 | a choice waits for the shell lines, and the plain login never waits; turning off removes the lines and puts every CLI back on its plain login | `NewSessions` |
 | *Switch when low* is off until turned on, moves only below its threshold, only to a ticked login with more left, and never touches a running session; a login worth switching to is told once per low | `SwitchWhenLow` · `InUse.review` |
-| the Monitor knows nothing that follows a refresh: In use, and anything after it, observes through `onRefreshed` | `QuotaMonitor` |
+| the Monitor knows nothing that follows a refresh: In use, and anything after it, observes through `onRefreshed` — or `onRefreshFailed` for a refresh that failed, never a paused login's | `QuotaMonitor` |
 | a quota alert says once that a login fell below one of the person's percentages, and again only after it climbed back a point above it | `QuotaAlerts` |
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | a status alert says when a login's status got worse under the policy and is not healthy, once per worsening; the first status seen is compared with healthy ([design](../features/alerting/status-alerts/design.md)) | `StatusAlerts` |
-| a login's expiry is what its own data sources' credentials say, earliest first, read only as the definition declares (`dueWhen`) — nothing is parsed by guessing a field's format | `DataSource.credentialExpiry()` · `Provider.loginExpiry(of:)` |
-| the expiry is noted only on a successful refresh; a failed one keeps what we saw, a paused login is never noted, and a refresh that finds nothing forgets it ([design](../features/alerting/login-expiry/design.md)) | `Provider.refresh` · `Account.loginExpiresAt` |
-| a login whose sign-in expires is told once per step — 7 days, 3 days, today — a new expiry instant resetting the ladder, the past quiet, and a login with no knowable expiry never told or shown ([design](../features/alerting/login-expiry/design.md)) | `LoginExpiryAlerts` |
+| a login is SIGNED OUT when a refresh failed with `sessionExpired` (its last error, as the card shows it) — told once per sign-out, forgotten at the next refresh with no error; never a forecast, since no store records when a sign-in will end ([design](../features/alerting/signed-out/design.md)) | `SignedOutAlerts` |
 | an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestinations` |
 | a webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope; it has no percent of its own ([design](../features/alerting/webhooks/design.md)) | `Webhook` |
 | how an alert or a test reads in Slack and as JSON; a test is never shaped like an alert | `WebhookBody` |
@@ -572,8 +565,8 @@ its factory.
 | **Quota** | **shared kernel** | *how much is left, when does it refill, and is that OK?* | values: `Quota`, `Left`, `Window`, `Status`, `StatusPolicy`, `Pace` | — it imports nothing |
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
-| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, login expiry, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `LoginExpiryAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and when its sign-in expires |
+| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed` · `onRefreshFailed`: whatever follows a refresh observes it |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, signed out, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `SignedOutAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and its last refresh error |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |
