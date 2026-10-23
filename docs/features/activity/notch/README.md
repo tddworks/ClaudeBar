@@ -4,14 +4,16 @@ description: Show quota and live Claude Code session state (working, subagents, 
 
 # Notch Live Activity
 
-ClaudeBar draws a small live status in the MacBook notch, like a Dynamic Island for your quota and your Claude Code session. On a display without a notch it draws a virtual one at the top centre. It shows only while it has something to report, and hovering over it opens a panel with more detail.
+ClaudeBar draws a small live status in the MacBook notch, like a Dynamic Island for your quota and your Claude Code session. On a display without a notch it draws a virtual one at the top centre. It shows only while it has something to report (the quota counts, unless you choose to hide it when nothing's happening), and hovering over it opens a panel with more detail.
 
-Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activity.html)
+Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activity.html), and [notch-when-idle](../../../../design-concept/notch-when-idle/index.html) for When Nothing's Happening.
 
 ## Setup
 
 1. **Settings → General → Notch Live Activity**. It's off by default.
 2. For session states, also turn on **Settings → Hooks → Claude Code Hooks** ([session hooks](../session-hooks/README.md)). That installs ClaudeBar's hooks into Claude Code, which report when a session starts, finishes a turn or waits for you. Without hooks, the notch shows quota only.
+
+3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota drops under 20%.
 
 The notch follows the provider that's selected in the popover. Pick a different provider there to watch a different quota.
 
@@ -26,7 +28,7 @@ When several states apply at once, the one that needs you most wins:
 | 3 | **Quota low**: a quota of the selected provider is under 20% left | That quota's name, % left, bar and reset time | The quota recovers |
 | 4 | **Agents working**: subagents are running | The repo, "N agents", elapsed time | The subagents finish |
 | 5 | **Working**: Claude Code is on a turn | A green dot, the repo, elapsed time | The turn ends |
-| 6 | **Quota glance**: nothing else is happening | The selected provider's lowest quota: % left, bar, reset time | — |
+| 6 | **Quota glance**: nothing else is happening | The selected provider's lowest quota: % left, bar, reset time. Hidden instead when **When Nothing's Happening** is **Hide** | — |
 
 The session states also show the lowest quota at the right, so you don't lose sight of how much is left.
 
@@ -46,6 +48,7 @@ Move the pointer away to close the panel.
 
 ## Gotchas
 
+- **With Hide and no hooks, the notch is mostly away.** Without [session hooks](../session-hooks/README.md) (for example with Codex or Gemini) nothing tells ClaudeBar an agent is busy, so under **Hide** the notch shows only a quota under 20%. Keep **Show the Quota** if that's your setup.
 - **Only session states need hooks.** If the notch shows quota but never "Working", check **Settings → Hooks**. The hooks are installed in Claude Code's own settings file.
 - **One session at a time.** ClaudeBar follows the most recently started Claude Code session. Starting a second one moves the notch to it and puts the first in the finished list.
 - **Which display.** The notch goes on the first display with a physical notch. Without one, it goes on the main display as a virtual notch the height of the menu bar.

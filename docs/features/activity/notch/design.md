@@ -4,7 +4,7 @@ description: Contributor research behind the notch Live Activity. Covers why the
 
 # Notch Live Activity: design
 
-User guide: [README.md](README.md). Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activity.html).
+User guide: [README.md](README.md). Mockups: [notch-live-activity.html](../../../../design-concept/notch-live-activity.html), [notch-when-idle](../../../../design-concept/notch-when-idle/index.html).
 
 The notch is a **view**, not a new source of truth. `QuotaMonitor` and `SessionMonitor` stay authoritative, per [the canonical model](../../../architecture/CANONICAL_MODEL.md#1--the-tree): one tree, read by every surface, none adding a rule to it.
 
@@ -26,7 +26,7 @@ The gap is specific and daily: **you start Claude in a repo, switch to a browser
 
 ## Rules
 
-What the notch shows is decided in one pure function, `NotchActivityResolver.resolve(sessions:quotas:headlineQuota:now:)`, which touches no AppKit. It returns one `NotchActivity`, or nil to hide the notch. Activities rank by severity:
+What the notch shows is decided in one pure function, `NotchActivityResolver.resolve(sessions:quotas:headlineQuota:whenIdle:now:)`, which touches no AppKit. It returns one `NotchActivity`, or nil to hide the notch. Activities rank by severity:
 
 | Severity | Activity | From |
 |---|---|---|
@@ -35,7 +35,7 @@ What the notch shows is decided in one pure function, `NotchActivityResolver.res
 | 3 | `quotaThreshold` | The most depleted quota whose `QuotaStatus.from(percentRemaining:)` is `.critical` or `.depleted` (under 20% left) |
 | 2 | `agentsWorking` | Phase `.subagentsWorking` |
 | 1 | `working` | Phase `.active` |
-| 0 | `quotaGlance` | The headline quota: the selected provider's `lowestQuota` |
+| 0 | `quotaGlance` | The headline quota: the selected provider's `lowestQuota`. Only while `NotchWhenIdle` is `.showQuota` |
 
 Rules that follow (the resolver's are pinned by `NotchActivityResolverTests`):
 
@@ -43,7 +43,7 @@ Rules that follow (the resolver's are pinned by `NotchActivityResolverTests`):
 - **"Done" briefly interrupts ambient state without ever hiding a blocked session.** It ranks above a quota alert but below `awaitingInput`, and after 4 s it gives way to whatever is next.
 - **Ties go to the session waiting longest** (earliest `startedAt`).
 - **Only `.critical` and `.depleted` take over the notch.** `.warning` is real but not urgent, and a notch that lights up at half a tank stops meaning anything.
-- **The resting state is the quota, not blank.** A notch that goes blank between sessions has no reason to be on screen at all. The session states still carry the headline quota as a small gauge on the right.
+- **The resting state is the person's choice; the quota by default.** What the notch shows when nothing louder is happening is `NotchWhenIdle`, saved as `app.notchWhenIdle` (**Settings → General → When Nothing's Happening**). `.showQuota`, the default, keeps the glance: for most people a notch that goes blank between sessions has no reason to be on screen. `.hide` is for someone who wants the notch only while work is going on ([#627](https://github.com/tddworks/ClaudeBar/issues/627)): the resolver drops the `quotaGlance` candidate, so the notch hides until a session, a *Done* flash or a quota under its threshold has something to say. The owner is `NotchActivityResolver`, which takes the choice in `resolve(…, whenIdle:)`; the driver passes the saved value and decides nothing. The session states still carry the headline quota as a small gauge on the right, under either choice.
 
 ### Scoped to the selected provider
 
@@ -122,9 +122,9 @@ Both reference apps replace the HUD, and that only works if they're always on to
 
 ## Architecture
 
-- **Domain** (`Sources/Domain/Activity/Notch/`): `NotchActivity`, `NotchActivityResolver` and `NotchMetrics`, all pure and all unit-tested.
+- **Domain** (`Sources/Domain/Activity/Notch/`): `NotchActivity`, `NotchActivityResolver`, `NotchWhenIdle` and `NotchMetrics`, all pure and all unit-tested.
 - **Infrastructure**: `NSScreen+NotchMetrics` feeds raw `NSScreen` values into `NotchMetrics.measure(...)` and picks `preferredNotchScreen`, the first screen with a physical notch, else `main`.
-- **App** (`Sources/App/Activity/Notch/`): `NotchWindowDriver` watches `app.notchEnabled` and, while it's on, reads `QuotaMonitor` + `SessionMonitor` through `ObservationRenderSync` and pushes `NotchContent` to `NotchWindowController`, which owns the `NotchWindow` panel and a SwiftUI root view.
+- **App** (`Sources/App/Activity/Notch/`): `NotchWindowDriver` watches `app.notchEnabled` and, while it's on, reads `QuotaMonitor`, `SessionMonitor` and `app.notchWhenIdle` through `ObservationRenderSync` and pushes `NotchContent` to `NotchWindowController`, which owns the `NotchWindow` panel and a SwiftUI root view.
 
 It's the same pattern as `StatusItemLabelDriver`: SwiftUI's `MenuBarExtra` hosting doesn't drive it, because that hosting has gone quiet after sleep before (#192).
 
@@ -155,4 +155,6 @@ Both reference apps force `darkAqua`. ClaudeBar's notch region is always black, 
 - **Multiple live sessions**: see [One session, not many](#one-session-not-many).
 - **Hide from screen recordings** with `sharingType = .none`. It's one line; the open part is whether it should be the default or a setting.
 - **Focusing a session's terminal** from the panel needs Accessibility permission, which a sandboxed MAS build can't have. Keep it an optional non-MAS extra, not something the feature depends on.
+- **Recently spending as something happening** ([#627](https://github.com/tddworks/ClaudeBar/issues/627)). Someone using agents without session hooks (Codex, Gemini…) gets no session states, so under *Hide* the notch shows only a quota under its threshold. The idea: show the glance while the headline quota went down in the last N minutes. The one owner of how fast a quota is spent is `UsageQuota.rate` (`SpendRate`, CANONICAL §5), but it is the window's average, used share over window gone; it can't say *spent in the last N minutes*. That needs the previous reading of the same quota and when it was read, and the app keeps only each login's latest snapshot. Open: whether a login (or its `UsageQuota`) should keep its last change, and then whether that is a third choice (`showWhileSpending`) or what *Hide* means.
+- **Refresh faster while the notch is live.** Also from #627: while it shows, quotas could refresh more often. That is Monitoring's refresh interval, not the notch's, so it waits for a change there.
 - **Menu bar auto-hide.** Whether the notch should stay when the menu bar hides. Proposal: yes while an activity is live, otherwise no.

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notch When Idle</title>
+<style>
+  :root { --bg:#f4f1f8; --ink:#1d1630; --muted:#6b6380; --accent:#e86e8c; --line:#eee6f6; }
+  body { margin:0; padding:32px 16px; background:var(--bg); color:var(--ink);
+         font:14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; } p.lede { color:var(--muted); margin:0 0 28px; }
+  .label { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+
+  /* settings card, as GeneralPane's SettingsCard */
+  .settings { width:520px; max-width:100%; background:#fff; border:1px solid #e6dcf3; border-radius:14px; padding:4px 16px; box-sizing:border-box; }
+  .srow { display:flex; gap:16px; align-items:center; padding:12px 0; }
+  .srow + .srow { border-top:1px solid var(--line); }
+  .stitle { font-weight:600; font-size:13px; } .ssub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .ctl { margin-left:auto; flex-shrink:0; }
+  mark { background:none; color:inherit; outline:2px dashed var(--accent); outline-offset:4px; border-radius:8px; }
+
+  /* SettingsSwitch */
+  .switch { width:38px; height:22px; border-radius:99px; background:#d9d0e6; position:relative; cursor:pointer; border:none; }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .15s; }
+  .switch.on { background:var(--accent); } .switch.on::after { left:19px; }
+
+  /* SettingsSegmentedControl */
+  .seg { display:flex; background:#f3edf9; border:1px solid #e6dcf3; border-radius:9px; padding:2px; }
+  .seg button { font:600 11px -apple-system, sans-serif; padding:5px 10px; border:none; border-radius:7px; background:none; color:var(--muted); cursor:pointer; }
+  .seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(29,22,48,.15); }
+
+  /* the notch */
+  .stage { width:520px; max-width:100%; height:86px; margin-top:8px; border-radius:14px; background:linear-gradient(180deg,#cfd8ea,#e9edf6);
+           position:relative; overflow:hidden; }
+  .menubar { height:24px; background:rgba(255,255,255,.55); }
+  .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); background:#000; color:#fff; border-radius:0 0 14px 14px;
+           height:24px; min-width:150px; display:flex; align-items:center; gap:8px; padding:0 14px; font-size:11px; font-weight:600; white-space:nowrap; }
+  .notch.away { display:none; }
+  .bar { width:46px; height:5px; border-radius:3px; background:#333; overflow:hidden; } .bar i { display:block; height:100%; width:62%; background:#3ccf7a; }
+  .dot { width:7px; height:7px; border-radius:50%; background:#3ccf7a; }
+  .scen { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .scen button { font:600 11px -apple-system, sans-serif; padding:5px 10px; border-radius:99px; border:1px solid #e0d6ee; background:#fff; cursor:pointer; }
+  .scen button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .caption { font-size:12px; color:var(--muted); margin-top:8px; }
+  .notes { max-width:820px; margin-top:28px; color:var(--muted); font-size:12px; } .notes li { margin:4px 0; }
+  @media (max-width:520px){ .srow{flex-wrap:wrap} .ctl{margin-left:0} }
+</style>
+</head>
+<body>
+  <h1>Notch When Idle</h1>
+  <p class="lede">What the notch does when nothing is happening becomes the person's choice (#627). Mock data only.</p>
+
+  <p class="label">Settings → General</p>
+  <div class="settings">
+    <div class="srow">
+      <div><div class="stitle">Notch Live Activity</div>
+        <div class="ssub">Show session and quota state in the notch. Appears only while there is something to report.</div></div>
+      <div class="ctl"><button class="switch on" id="enabled" aria-label="Notch Live Activity"></button></div>
+    </div>
+    <div class="srow" id="idleRow">
+      <div><div class="stitle">When Nothing's Happening</div>
+        <div class="ssub">Keep the quota in the notch, or hide it until a session works, waits for you or a quota runs low.</div></div>
+      <div class="ctl"><mark><span class="seg" id="seg">
+        <button data-v="showQuota" class="on">Show the Quota</button><button data-v="hide">Hide</button>
+      </span></mark></div>
+    </div>
+    <div class="srow">
+      <div><div class="stitle">Touch Bar</div><div class="ssub">Show persistent quota and status on the MacBook Touch Bar.</div></div>
+      <div class="ctl"><button class="switch on" aria-label="Touch Bar"></button></div>
+    </div>
+  </div>
+
+  <p class="label" style="margin-top:28px">The notch</p>
+  <div class="stage"><div class="menubar"></div><div class="notch" id="notch"></div></div>
+  <div class="scen" id="scen">
+    <button data-s="idle" class="on">Nothing happening</button><button data-s="working">Working</button><button data-s="low">Quota under 20%</button>
+  </div>
+  <div class="caption" id="caption"></div>
+
+  <ul class="notes">
+    <li>The row sits right under the notch switch and shows only while the notch is on.</li>
+    <li><b>Show the Quota</b> is the default: nothing changes for anyone who doesn't pick.</li>
+    <li><b>Hide</b> drops only the quota glance. Working, agents working, Needs you, Done and a quota under 20% still show.</li>
+    <li>Without session hooks (Codex, Gemini), Hide leaves only the low-quota state.</li>
+  </ul>
+<script>
+  let choice = 'showQuota', scene = 'idle', on = true;
+  const notch = document.getElementById('notch'), cap = document.getElementById('caption');
+  const draw = () => {
+    document.getElementById('idleRow').style.display = on ? '' : 'none';
+    document.getElementById('enabled').classList.toggle('on', on);
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === choice));
+    document.querySelectorAll('#scen button').forEach(b => b.classList.toggle('on', b.dataset.s === scene));
+    let html = null, text;
+    if (!on) { text = 'The notch is off.'; }
+    else if (scene === 'working') { html = '<span class="dot"></span>claudebar · 2m 14s'; text = 'A session is working: it shows under either choice.'; }
+    else if (scene === 'low') { html = 'Session 12% <span class="bar"><i style="width:12%;background:#e5484d"></i></span> 1h 05m'; text = 'A quota under 20% shows under either choice.'; }
+    else if (choice === 'showQuota') { html = 'Session 62% <span class="bar"><i></i></span> 2h 40m'; text = 'Show the Quota: the glance stays up.'; }
+    else { text = 'Hide: nothing to report, so the notch is away.'; }
+    notch.classList.toggle('away', !html); if (html) notch.innerHTML = html; cap.textContent = text;
+  };
+  document.getElementById('seg').addEventListener('click', e => { if (e.target.dataset.v) { choice = e.target.dataset.v; draw(); } });
+  document.getElementById('scen').addEventListener('click', e => { if (e.target.dataset.s) { scene = e.target.dataset.s; draw(); } });
+  document.getElementById('enabled').addEventListener('click', () => { on = !on; draw(); });
+  draw();
+</script>
+</body>
+</html>
