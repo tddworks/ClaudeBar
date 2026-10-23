@@ -61,10 +61,9 @@ public final class RecapAlerts {
         let date = now()
         guard let due = RecapDue.week(containing: date, lastSentAt: memory.lastSent(), calendar: calendar) else { return }
         await recaps.readIfStale()
-        // A read that didn't finish leaves the previous read standing — not
-        // this week's. Wait for a refresh whose read completes.
-        guard recaps.weekShown == DateRange.week(containing: date, calendar: calendar),
-              let recap = recaps.recap(for: .lastWeek) else { return }
+        // A read that didn't finish leaves the previous read standing, which
+        // holds no recap of the closed week. Wait for a refresh whose read completes.
+        guard let recap = recaps.recap(of: due.week) else { return }
         memory.setLastSent(date)
         // A week that added up to nothing says nothing: silence, not zeros.
         guard !recap.isEmpty else { return }

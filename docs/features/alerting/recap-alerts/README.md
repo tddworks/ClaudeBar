@@ -41,6 +41,9 @@ the recap lands within a refresh or two of that first midnight.
   of zeros.
 - **One per week, ever**: the sent week is remembered in `settings.json`, so
   relaunching never sends it twice.
+- **You ticked Weekly recap mid-week**: the first recap comes at the next week
+  turn. This week's recap already had its moment, whether or not a webhook
+  heard it; only a fresh install sends the closed week at once.
 
 It rides the same refreshes the alerts do — with background refresh off, it
 waits for the first interactive refresh. Turning the popover's *Weekly recap*

@@ -60,6 +60,7 @@ QuotaMonitor.onRefreshed(login) ─► RecapAlerts.review()                 (fol
     │     otherwise the week that closed (the one before now's)
     │
     ├─ WeeklyRecaps.readIfStale()          the one read — the card's own
+    ├─ WeeklyRecaps.recap(of: due.week)    nil while its read covers other weeks
     ├─ memory.setLastSent(now)             the week has had its moment
     └─ !recap.isEmpty → RecapDestination.announce(RecapAlert) ◇
           recap · week · calendar · names
@@ -75,8 +76,8 @@ Saved: settings.json  alerts.recapSentAt        ← RecapSentRepository (JSONSet
 |---|---|
 | a week's recap is due from the first moment of the calendar week that isn't the week the last send was for — the calendar's own first weekday, never a fixed Monday; the recap due is of the week that closed | `RecapDue` |
 | the due answer is pure: `now`, the last send and the calendar decide, nothing is remembered and no timer runs; the decider asks at every refresh | `RecapDue` · `RecapAlerts` |
-| the recap sent is read by `WeeklyRecaps`, the card's own read — never a second read of the logs; a read that didn't finish this week's read sends nothing and waits for the next refresh | `RecapAlerts` (through `WeeklyRecaps.readIfStale`, `weekShown`) |
-| a week is sent for once: its moment is marked when the recap has been read, whether or not a webhook wanted it or a POST arrived — the next week is the next recap, and a relaunch inside the week sends again never | `RecapAlerts` · `RecapSentRepository` |
+| the recap sent is read by `WeeklyRecaps`, the card's own read — never a second read of the logs; a read that didn't finish this week's read sends nothing and waits for the next refresh | `RecapAlerts` (through `WeeklyRecaps.readIfStale`, `recap(of:)`) |
+| a week is sent for once: its moment is marked when the recap has been read, whether or not a webhook wanted it or a POST arrived — the next week is the next recap, and a relaunch inside the week sends again never. The mark is the week's, not a webhook's: a webhook that starts sending recaps mid-week hears the next week that closes; only never sent (a fresh install) is due at once | `RecapAlerts` · `RecapSentRepository` |
 | a week that added up to nothing says nothing — silence, not a message of zeros; the Mac that slept all week stays quiet | `RecapAlerts` |
 | no backlog: after an absence the return sends the week that closed last — one recap — never the weeks missed | `RecapDue` |
 | a week that closed while the Mac was off goes out at the first refresh after launch — the days are kept in the ledger, so the closed week still reads whole | `RecapAlerts` |
@@ -95,7 +96,7 @@ Saved: settings.json  alerts.recapSentAt        ← RecapSentRepository (JSONSet
 | `RecapDestination` (port, `@Mockable`) | `Domain/Alerting/RecapAlerts` | `announce(_ recap: RecapAlert) async` — who hears the week's recap | **built** |
 | `RecapAlerts` ◆ | `Domain/Alerting/RecapAlerts` | `review() async`, `follow(_ monitor:)` — asks `RecapDue` at every refresh, reads through `WeeklyRecaps`, marks the week sent, tells the destination | **built** |
 | `RecapSentRepository` (port, `@Mockable`) · `JSONSettingsRepository` | `Domain/Alerting/RecapAlerts` · `Infrastructure/Settings` | when the last recap went out — `alerts.recapSentAt` in `settings.json`, so a relaunch inside the week sends again never | **built** |
-| `WeeklyRecaps.weekShown` | `Domain/UsageHistory` | the week the shown recaps were read for — how the sender tells this week's read from one left standing | **built** |
+| `WeeklyRecaps.recap(of:)` | `Domain/UsageHistory` | the recap of a week that closed before the read, or nil while the read covers other weeks — `WeeklyRecaps` says whether its read is fresh, the sender never judges it | **built** |
 | `Webhook.Sends.recap` · `WebhookBody.Message.recap` | `Domain/Alerting/Webhooks` | the third kind of send: a field in the webhook and a case in the body, and nothing else moves ([webhooks design](../webhooks/design.md)) | **built** |
 | `Webhooks` | `Domain/Alerting/Webhooks` | an `AlertDestination` and now a `RecapDestination`: delivers the recap body to the webhooks that want it | **built** |
 | `QuotaMonitor` | `Domain/Monitoring` | refreshes; every decider follows through `onRefreshed` | built |
@@ -108,8 +109,7 @@ recapAlerts.follow(monitor)                                          (compositio
 onRefreshed(login) → RecapAlerts.review()
   guard let due = RecapDue.week(containing: now(), lastSentAt: memory.lastSent(), calendar:)  // nil → nothing
   await recaps.readIfStale()                                   // the card's read; cheap when it is fresh
-  guard recaps.weekShown == week(containing: now()),           // a read left standing is not this week's
-        let recap = recaps.recap(for: .lastWeek) else { return }   // .lastWeek is the week that closed
+  guard let recap = recaps.recap(of: due.week) else { return }  // nil while the read left standing covers other weeks
   memory.setLastSent(now())                                    // the week has had its moment
   guard !recap.isEmpty else { return }                         // nothing added up: silence
   await destination.announce(RecapAlert(recap:, week: due.week, calendar:, names:))
@@ -140,8 +140,8 @@ Top model claude-sonnet-4-5 · biggest day Nov 5 · cache saved $1.02.
 
 Clauses the week doesn't have are left out of the Slack message; `change` and
 `tokens` are `null` in JSON when there is no change or the total already reads
-in tokens. Money reads through the kernel's `MoneyFormat`; counts spell like
-the chart's (K · M · B). The dates are written Gregorian in the week's zone —
+in tokens. Money reads through the kernel's `MoneyFormat`; counts, shares and
+changes through its `UsageNumberFormat`, the chart's own (K · M · B). The dates are written Gregorian in the week's zone —
 the person's calendar holds the week's boundaries, the numbers on the page stay
 Gregorian whatever calendar they keep — so a body never guesses a zone. What
 leaves the Mac: the totals, the
