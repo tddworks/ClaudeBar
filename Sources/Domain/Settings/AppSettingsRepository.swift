@@ -101,6 +101,10 @@ public protocol AppSettingsRepository: Sendable {
     func notchEnabled() -> Bool
     func setNotchEnabled(_ enabled: Bool)
 
+    /// What the notch does when nothing is happening (default: shows the quota).
+    func notchWhenIdle() -> NotchWhenIdle
+    func setNotchWhenIdle(_ whenIdle: NotchWhenIdle)
+
     // MARK: - Touch Bar
 
     /// Whether Touch Bar status integration is enabled (default: true).

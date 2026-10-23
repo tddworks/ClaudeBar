@@ -183,6 +183,69 @@ struct NotchActivityResolverTests {
         #expect(resolver.resolve(sessions: [], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
+    // MARK: - When nothing's happening (#627)
+
+    @Test
+    func `should hide the notch when nothing is happening and the person chose to hide it`() {
+        let headline = quota(86)
+
+        let result = resolver.resolve(
+            sessions: [],
+            quotas: [headline],
+            headlineQuota: headline,
+            whenIdle: .hide,
+            now: now
+        )
+
+        #expect(result == nil)
+    }
+
+    @Test
+    func `should still show a working session when the person chose to hide the notch when idle`() {
+        let headline = quota(86)
+
+        let result = resolver.resolve(
+            sessions: [running("claudebar")],
+            quotas: [headline],
+            headlineQuota: headline,
+            whenIdle: .hide,
+            now: now
+        )
+
+        #expect(result == .working(running("claudebar")))
+    }
+
+    @Test
+    func `should still show a quota past the threshold when the person chose to hide the notch when idle`() {
+        let headline = quota(86, provider: "claude")
+        let critical = quota(4, provider: "codex")
+
+        let result = resolver.resolve(
+            sessions: [],
+            quotas: [headline, critical],
+            headlineQuota: headline,
+            whenIdle: .hide,
+            now: now
+        )
+
+        #expect(result == .quotaThreshold(critical))
+    }
+
+    @Test
+    func `should still flash a finished session when the person chose to hide the notch when idle`() {
+        var session = running("claudebar")
+        session.stop(at: now.addingTimeInterval(-1))
+
+        let result = resolver.resolve(sessions: [session], quotas: [], headlineQuota: quota(86), whenIdle: .hide, now: now)
+
+        #expect(result == .finished(session))
+    }
+
+    @Test
+    func `should show the quota when nothing is happening until the person chooses otherwise`() {
+        #expect(NotchWhenIdle.default == .showQuota)
+    }
+
     // MARK: - The finished flash
 
     @Test

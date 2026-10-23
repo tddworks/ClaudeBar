@@ -445,6 +445,36 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.touchBarEnabled() == false)
     }
 
+    @Test
+    func `should keep the quota in the notch when nothing is happening until the person chooses to hide it`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.notchWhenIdle() == .showQuota)
+    }
+
+    @Test
+    func `should remember hiding the notch when nothing is happening`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setNotchWhenIdle(.hide)
+        #expect(repo.notchWhenIdle() == .hide)
+    }
+
+    @Test
+    func `should keep the quota in the notch when the stored choice is unknown`() throws {
+        let (_, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{"app":{"notchWhenIdle":"dim"}}"#.utf8).write(to: fileURL)
+
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+
+        #expect(repo.notchWhenIdle() == .showQuota)
+    }
+
     // MARK: - Overview
 
     @Test

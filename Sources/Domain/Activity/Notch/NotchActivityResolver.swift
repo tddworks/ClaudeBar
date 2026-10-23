@@ -27,12 +27,15 @@ public struct NotchActivityResolver: Sendable {
     ///   - quotas: Every provider quota currently known.
     ///   - headlineQuota: The quota the user chose to watch, shown whenever
     ///     nothing louder is happening. Nil before the first probe returns.
+    ///   - whenIdle: What the person chose for when nothing louder is
+    ///     happening: the glance, or a hidden notch.
     ///   - now: The reference time, so the "done" flash can expire deterministically.
     /// - Returns: The winning activity, or nil when the notch should stay hidden.
     public func resolve(
         sessions: [ClaudeSession],
         quotas: [UsageQuota],
         headlineQuota: UsageQuota?,
+        whenIdle: NotchWhenIdle = .default,
         now: Date
     ) -> NotchActivity? {
         var candidates = sessions.compactMap { activity(for: $0, now: now) }
@@ -41,7 +44,7 @@ public struct NotchActivityResolver: Sendable {
             candidates.append(.quotaThreshold(quota))
         }
 
-        if let headlineQuota {
+        if let headlineQuota, whenIdle == .showQuota {
             candidates.append(.quotaGlance(headlineQuota))
         }
 

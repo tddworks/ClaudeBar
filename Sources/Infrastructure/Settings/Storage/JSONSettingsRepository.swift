@@ -250,6 +250,17 @@ public final class JSONSettingsRepository:
         store.write(value: enabled, key: "app.notchEnabled")
     }
 
+    public func notchWhenIdle() -> NotchWhenIdle {
+        // Unset, or a choice from a newer build: the quota, so nobody's notch
+        // goes away after updating.
+        guard let saved: String = store.read(key: "app.notchWhenIdle") else { return .default }
+        return NotchWhenIdle(rawValue: saved) ?? .default
+    }
+
+    public func setNotchWhenIdle(_ whenIdle: NotchWhenIdle) {
+        store.write(value: whenIdle.rawValue, key: "app.notchWhenIdle")
+    }
+
     public func touchBarEnabled() -> Bool {
         store.read(key: "app.touchBarEnabled") ?? true
     }

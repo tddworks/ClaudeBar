@@ -256,6 +256,13 @@ public final class AppSettings {
         }
     }
 
+    /// *When Nothing's Happening*: the quota glance, or a hidden notch.
+    public var notchWhenIdle: NotchWhenIdle {
+        didSet {
+            repository.setNotchWhenIdle(notchWhenIdle)
+        }
+    }
+
     // MARK: - Touch Bar Settings
 
     /// Whether Touch Bar status integration is enabled (default: true).
@@ -505,6 +512,7 @@ public final class AppSettings {
         // leaving the popover at a size this build cannot draw.
         self.popoverTextSize = PopoverTextSize(storedRawValue: repository.popoverTextSize())
         self.notchEnabled = repository.notchEnabled()
+        self.notchWhenIdle = repository.notchWhenIdle()
         self.touchBarEnabled = repository.touchBarEnabled()
         self.notifyEnabled = repository.isNotifyEnabled()
         self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()

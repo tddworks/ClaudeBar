@@ -16,8 +16,8 @@ public enum NotchActivity: Sendable, Equatable {
     /// Nothing is happening, so the notch does the job ClaudeBar exists for:
     /// shows how much of the quota the user chose to watch is left.
     ///
-    /// This is the resting state, not an absence of one. A notch that goes
-    /// blank between sessions has no reason to be on screen at all.
+    /// This is the resting state by default. The person can choose a hidden
+    /// notch instead (`NotchWhenIdle.hide`), and then this never wins.
     case quotaGlance(UsageQuota)
 
     /// Claude Code is working on a turn.

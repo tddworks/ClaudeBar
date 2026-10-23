@@ -56,6 +56,21 @@ struct GeneralPane: View {
                     SettingsSwitch(isOn: $settings.notchEnabled)
                 }
 
+                if settings.notchEnabled {
+                    SettingsRowDivider()
+
+                    SettingsRow(
+                        title: "When Nothing's Happening",
+                        subtitle: "Keep the quota in the notch, or hide it until a session works, waits for you or a quota runs low."
+                    ) {
+                        SettingsSegmentedControl(
+                            options: NotchWhenIdle.allCases,
+                            label: { $0 == .hide ? "Hide" : "Show the Quota" },
+                            selection: $settings.notchWhenIdle
+                        )
+                    }
+                }
+
                 SettingsRowDivider()
 
                 SettingsRow(
