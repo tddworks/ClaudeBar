@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rest when empty — design</title>
+<style>
+:root{--g-bg:linear-gradient(135deg,#20222B,#2B2033);--g-card:rgba(255,255,255,.09);--g-border:rgba(255,255,255,.22);
+  --g-text:#F5F0FF;--g-muted:rgba(245,240,255,.62);--g-faint:rgba(245,240,255,.42);
+  --ok:#5BD98A;--warn:#FFD84D;--bad:#FF6B6B;--accent:#B58CFF}
+@media (prefers-color-scheme: light){:root{--g-bg:linear-gradient(135deg,#EEF1F6,#E7E3F0);--g-card:rgba(255,255,255,.75);
+  --g-border:rgba(30,27,46,.16);--g-text:#1E1B2E;--g-muted:rgba(30,27,46,.62);--g-faint:rgba(30,27,46,.45);--accent:#7A4DD8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--g-bg);color:var(--g-text);font:500 15px/1.5 -apple-system,system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;gap:28px;padding:40px 16px 64px}
+h1{font-size:24px;font-weight:800;letter-spacing:-.01em;margin:0}
+h2{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--g-faint);margin:0}
+p.note{max-width:640px;margin:0;color:var(--g-muted);font-size:13px;text-align:center}
+.tab{max-width:390px;width:100%;background:var(--g-card);border:1px solid var(--g-border);border-radius:18px;
+  padding:16px;display:flex;flex-direction:column;gap:12px}
+.bar{max-width:390px;width:100%;display:flex;justify-content:flex-end;gap:10px;align-items:center;font-size:12px;font-weight:700;
+  background:var(--g-card);border:1px solid var(--g-border);border-radius:8px;padding:4px 10px}
+.bar .r{display:flex;gap:4px;align-items:center}
+.bar .r.rest{opacity:.4}
+.logo{width:14px;height:14px;border-radius:4px;display:inline-block}
+.pills{display:flex;gap:6px}
+.pill{display:flex;align-items:center;gap:5px;height:26px;padding:0 11px;border-radius:13px;border:1px solid var(--g-border);
+  font-size:11px;font-weight:700}
+.pill.sel{background:var(--g-card)}
+.pill.rest{opacity:.45}
+.restline{display:flex;align-items:center;gap:8px;border:1px solid var(--g-border);border-radius:10px;padding:8px 10px}
+.restline .w{font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--g-faint)}
+.restline .d{font-size:11px;color:var(--g-faint)}
+.restline .go{margin-left:auto;color:var(--accent);font-weight:700;font-size:11px}
+.card{border:1px solid var(--g-border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;opacity:.45}
+.card .who{display:flex;justify-content:space-between;align-items:baseline}
+.card .who b{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.card .who .st{font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--bad)}
+.row{display:flex;gap:8px}
+.q{flex:1;border:1px solid var(--g-border);border-radius:9px;padding:7px 9px}
+.q .n{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--g-faint);text-transform:uppercase}
+.q .v{font-size:14px;font-weight:800}
+.set{display:flex;align-items:center;gap:12px}
+.set .t{font-size:13px;font-weight:700}
+.set .s{font-size:11px;color:var(--g-muted)}
+.sw{margin-left:auto;width:34px;height:20px;border-radius:10px;background:var(--accent);position:relative;flex:none}
+.sw:after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:8px;background:#fff}
+.srow{display:flex;justify-content:space-between;font-size:12px}
+.srow .s{color:var(--g-muted)}
+.notice{max-width:390px;width:100%;background:var(--g-card);border:1px solid var(--g-border);border-radius:14px;padding:10px 12px;font-size:12px}
+.notice b{display:block;font-size:13px}
+.notice .btn{display:inline-block;margin-top:6px;font-weight:700;color:var(--accent)}
+.rule{max-width:640px;color:var(--g-muted);font-size:12px;text-align:center}
+code{font:600 12px/1.4 ui-monospace,Menlo,monospace;color:var(--g-text)}
+</style>
+</head>
+<body>
+<h1>Rest when empty</h1>
+<p class="note">While every login of a product is out, it rests: dimmed and labelled, never hidden and never switched off.
+The views render <code>restWhenEmpty.isResting(product)</code> and tell <code>showAnyway</code>; they decide nothing.</p>
+
+<h2>Menu bar</h2>
+<div class="bar">
+  <span class="r"><span class="logo" style="background:#5BD98A"></span>64%</span>
+  <span class="r rest" title="Claude 0% · resting"><span class="logo" style="background:#D97757"></span>0%</span>
+</div>
+
+<h2>Popover · the resting product's page</h2>
+<div class="tab">
+  <div class="pills">
+    <span class="pill">Codex</span>
+    <span class="pill sel rest">Claude</span>
+    <span class="pill">Gemini</span>
+  </div>
+  <div class="restline">
+    <span class="w">RESTING</span>
+    <span class="d">Every login is out · since 2:14 PM</span>
+    <span class="go">Show anyway</span>
+  </div>
+  <div class="card">
+    <div class="who"><b>Claude</b><span class="st">DEPLETED</span></div>
+    <div class="row">
+      <div class="q"><div class="n">Session</div><div class="v">0%</div></div>
+      <div class="q"><div class="n">Weekly</div><div class="v">38%</div></div>
+    </div>
+  </div>
+</div>
+
+<h2>Settings → Providers</h2>
+<div class="tab">
+  <div class="srow"><b>Claude</b><span class="s">Resting until the reset</span></div>
+  <div class="set">
+    <div><div class="t">Rest when empty</div>
+      <div class="s">When every login has run out, dim this product until a refresh shows room. Its switch stays on.</div></div>
+    <span class="sw"></span>
+  </div>
+</div>
+
+<h2>Notifications</h2>
+<div class="notice"><b>Claude is resting</b>Every login has run out, so it is dimmed until a refresh shows room.
+  <span class="btn">Show anyway</span></div>
+<div class="notice"><b>Claude is back</b>A reset gave it room again.</div>
+
+<div class="rule">
+  The laws: the product's switch is the person's alone; <strong>where a product is</strong>
+  (watching, resting since a moment, shown anyway) is one saved value, moved by an observed refresh or by the person.
+  A failed fetch neither rests nor wakes it; <em>Show anyway</em> holds until it has had room, across a relaunch.
+</div>
+</body>
+</html>

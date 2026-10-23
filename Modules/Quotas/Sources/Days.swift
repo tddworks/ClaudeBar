@@ -52,16 +52,12 @@ public struct Days: Sendable, Equatable {
     /// A day's lines, largest part first in `unit` — the unnamed line among
     /// them, so they add up to the day.
     public func lines(of day: DailyUsageStat, in unit: Unit) -> [ModelUsageLine] {
-        day.lines.sorted { value(of: $0, in: unit) > value(of: $1, in: unit) }
+        day.lines.sorted { $0.spend.value(in: unit) > $1.spend.value(in: unit) }
     }
 
     /// A day's total in `unit`.
     public func value(of day: DailyUsageStat, in unit: Unit) -> Double {
-        switch unit {
-        case .cost: NSDecimalNumber(decimal: day.totalCost).doubleValue
-        case .tokens: Double(day.totalTokens)
-        case .cache: Double(day.totalCacheTokens)
-        }
+        day.spend.value(in: unit)
     }
 
     /// The range's total in `unit`.
@@ -69,14 +65,6 @@ public struct Days: Sendable, Equatable {
         stats.reduce(0) { $0 + value(of: $1, in: unit) }
     }
 
-    /// A line's part in `unit`.
-    public func value(of line: ModelUsageLine, in unit: Unit) -> Double {
-        switch unit {
-        case .cost: NSDecimalNumber(decimal: line.cost).doubleValue
-        case .tokens: Double(line.totalTokens)
-        case .cache: Double(line.cacheCreationTokens + line.cacheReadTokens)
-        }
-    }
 
     /// What caching saved over the range.
     public var cacheSavings: Decimal {

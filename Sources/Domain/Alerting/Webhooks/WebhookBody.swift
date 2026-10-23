@@ -45,16 +45,19 @@ public struct WebhookBody: Sendable, Equatable {
         switch message {
         case .alert(.quota(let alert)):
             AlertPayload(type: "quota", provider: alert.providerId, login: alert.login,
-                         below: alert.below, left: alert.left, status: nil, was: nil, sentAt: sentAt)
+                         below: alert.below, left: alert.left, status: nil, was: nil, hint: nil, sentAt: sentAt)
         case .alert(.status(let alert)):
             AlertPayload(type: "status", provider: alert.providerId, login: alert.login,
                          below: nil, left: nil, status: alert.now.payloadName, was: alert.was.payloadName,
-                         sentAt: sentAt)
+                         hint: nil, sentAt: sentAt)
+        case .alert(.signedOut(let alert)):
+            AlertPayload(type: "signedOut", provider: alert.providerId, login: alert.login,
+                         below: nil, left: nil, status: nil, was: nil, hint: alert.hint, sentAt: sentAt)
         case .recap(let alert):
             RecapPayload(alert, sentAt: sentAt)
         case .test:
             AlertPayload(type: "test", provider: nil, login: nil, below: nil, left: nil,
-                         status: nil, was: nil, sentAt: sentAt)
+                         status: nil, was: nil, hint: nil, sentAt: sentAt)
         }
     }
 
@@ -63,6 +66,8 @@ public struct WebhookBody: Sendable, Equatable {
         switch message {
         case .alert(.quota(let alert)): "\(alert.login) is below \(alert.below)% — \(alert.left)% left"
         case .alert(.status(let alert)): "\(alert.login) is \(alert.now.payloadName) — was \(alert.was.payloadName)"
+        case .alert(.signedOut(let alert)):
+            "\(alert.login) signed out: sign in again" + (alert.hint.map { " — \($0)" } ?? "")
         case .recap(let alert): RecapLine(alert).text
         case .test: "ClaudeBar test — this webhook works. No quota was judged."
         }
@@ -80,9 +85,10 @@ private struct AlertPayload: Encodable {
     let left: Int?
     let status: String?
     let was: String?
+    let hint: String?
     let sentAt: Date
 
-    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, sentAt }
+    enum CodingKeys: String, CodingKey { case type, provider, login, below, left, status, was, hint, sentAt }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -93,6 +99,7 @@ private struct AlertPayload: Encodable {
         try container.encode(left, forKey: .left)
         try container.encode(status, forKey: .status)
         try container.encode(was, forKey: .was)
+        try container.encode(hint, forKey: .hint)
         try container.encode(sentAt, forKey: .sentAt)
     }
 }

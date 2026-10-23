@@ -115,7 +115,10 @@ Providers  ◆                    THE PROVIDERS YOU KEEP — the Providers pane:
 - **The product's switch is its own setting**; each login's *Pause* is the
   login's. An older `providers.<id>.isEnabled` was the plain login's switch,
   so it is read once: off while another login of the product is on means the
-  plain login was paused; otherwise the product was off.
+  plain login was paused; otherwise the product was off. Nothing else writes
+  the switch: *rest when empty* ([CANONICAL §5](CANONICAL_MODEL.md#5--the-laws-each-one-one-owner))
+  dims a product that is out instead, from its own saved `WhenEmpty`, and the
+  product stays in the lineup, so the Monitor's own loop sees the reset.
 - A product's tab in the popover exists while its switch is on, and holds
   **every login of it** — the watched ones as cards, the paused ones as *PAUSED*
   rows — so *Resume* is a click away and a paused login never vanishes
@@ -338,7 +341,9 @@ the rest load.
 (refreshing it when the lookup says so), fetch, map. On failure the provider
 tries the active data source's `fallback` once. Success replaces `snapshot`
 and clears `lastError`; failure sets `lastError` and **keeps `snapshot`**. After
-a success the Monitor tells its refresh observers (`onRefreshed`) — its one
+a success the Monitor tells its refresh observers (`onRefreshed`), and after a
+failure of a login that isn't paused, its failure observers (`onRefreshFailed`,
+which [Signed out](../features/alerting/signed-out/design.md) reads) — its
 extension point, so a feature that follows refreshes (In use, §11) never edits
 the Monitor.
 

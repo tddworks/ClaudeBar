@@ -112,10 +112,12 @@ private struct ProviderListRow: View {
     let onSelect: () -> Void
 
     @Environment(\.appTheme) private var theme
+    @Environment(RestWhenEmpty.self) private var restWhenEmpty
     @State private var isHovering = false
 
     private var statusText: String {
         guard tab.isEnabled else { return "Disabled" }
+        if restWhenEmpty.isResting(tab.provider) { return RestText.row }
         let updated = tab.logins.compactMap { $0.snapshot?.capturedAt }.max()
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
@@ -266,6 +268,8 @@ private struct ProviderDetailView: View {
 
                     QuotaVisibilityCard(provider: provider, monitor: monitor)
 
+                    RestWhenEmptyCard(product: tab.provider)
+
                     SettingsCard {
                         SettingsFieldLabel(text: "CUSTOM WEB CARD")
                             .padding(.bottom, 8)
@@ -333,6 +337,28 @@ private struct ProviderDetailView: View {
         case "claude": AnyView(ClaudeBudgetCard())
         case "deepseek": AnyView(DeepSeekConfigCard(monitor: monitor))
         default: nil
+        }
+    }
+}
+
+// MARK: - Rest when empty
+
+/// *Rest when empty* — while every counted login of the product is out, it
+/// is dimmed until a refresh shows room. Its switch is never touched. It
+/// renders and tells; `RestWhenEmpty` decides.
+private struct RestWhenEmptyCard: View {
+    let product: Provider
+
+    @Environment(RestWhenEmpty.self) private var restWhenEmpty
+
+    var body: some View {
+        SettingsCard {
+            SettingsRow(title: RestText.cardTitle, subtitle: RestText.cardSubtitle) {
+                SettingsSwitch(isOn: Binding(
+                    get: { restWhenEmpty.isOn(product) },
+                    set: { restWhenEmpty.turn($0, product: product) }
+                ))
+            }
         }
     }
 }

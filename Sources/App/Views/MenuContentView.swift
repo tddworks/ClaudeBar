@@ -22,6 +22,7 @@ struct MenuContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(NewSessions.self) private var newSessions
+    @Environment(RestWhenEmpty.self) private var restWhenEmpty
     /// The user's Text Size choice, injected where the popover is hosted. The
     /// popover's fonts and its width both resolve against this value, so they
     /// can never disagree about how big the popover is.
@@ -628,7 +629,8 @@ struct MenuContentView: View {
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
                         isSelected: shownPage == .provider && tab.contains(selectedProviderId),
-                        hasData: tab.unpaused.contains { $0.snapshot != nil }
+                        hasData: tab.unpaused.contains { $0.snapshot != nil },
+                        isResting: restWhenEmpty.isResting(tab.provider)
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
                         page = .provider
@@ -740,7 +742,22 @@ struct MenuContentView: View {
             allPage
                 .opacity(animateIn ? 1 : 0)
                 .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
-        } else if let tab = monitor.selectedTab, tab.showsAccountPages {
+        } else if let tab = monitor.selectedTab, let since = restWhenEmpty.state(of: tab.provider)?.restingSince {
+            // *Rest when empty*: the page stays, quieter, under the word that says why.
+            VStack(spacing: 12) {
+                restingNotice(tab, since: since)
+                productPage
+                    .opacity(0.45)
+            }
+        } else {
+            productPage
+        }
+    }
+
+    /// The selected product's own page: its logins, or its one login's card.
+    @ViewBuilder
+    private var productPage: some View {
+        if let tab = monitor.selectedTab, tab.showsAccountPages {
             accountsContent(tab)
         } else if let provider = selectedLogin, let snapshot = monitor.usage(of: provider) {
             let report = RefreshReport.of(provider)
@@ -879,6 +896,31 @@ struct MenuContentView: View {
         let when = "last seen \(snapshot.ageDescription)"
         guard let lowest = snapshot.lowestQuota else { return when }
         return "\(when) · \(Int(lowest.percentRemaining))% \(lowest.quotaType.displayName)"
+    }
+
+    /// *RESTING*: every login is out, so the product is dimmed until a
+    /// refresh shows room; *Show anyway* draws it as usual.
+    private func restingNotice(_ tab: ProductTab, since: Date) -> some View {
+        HStack(spacing: 8) {
+            Text(RestText.label)
+                .popoverFont(9, weight: .semibold)
+                .foregroundStyle(theme.textTertiary)
+            Text(RestText.line(since: since))
+                .popoverFont(10)
+                .foregroundStyle(theme.textTertiary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Button(RestText.showAnyway) {
+                withAnimation(.easeInOut(duration: 0.2)) { restWhenEmpty.showAnyway(tab.provider) }
+            }
+            .buttonStyle(.plain)
+            .popoverFont(11, weight: .semibold)
+            .foregroundStyle(theme.accentPrimary)
+            .accessibilityLabel("\(RestText.showAnyway): \(settings.shown(tab.name))")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(theme.glassBackground.opacity(0.4)))
     }
 
     /// Every login paused: the product is still on, so its page says so instead
@@ -1276,8 +1318,9 @@ struct MenuContentView: View {
         let lastThirtyDays = settings.isShown(.lastThirtyDays) ? history?.lastThirtyDays : nil
         let heatmapYear = settings.isShown(.lastYear) ? history?.lastYear : nil
         let mixYear = settings.isShown(.modelMix) ? history?.lastYear.flatMap { $0.hasModels ? $0 : nil } : nil
+        let projectYear = settings.isShown(.projectMix) ? history?.lastYear.flatMap { ByProject(of: $0, in: $0.defaultUnit).isEmpty ? nil : $0 } : nil
         if titled,
-           report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil {
+           report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil || projectYear != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1318,14 +1361,18 @@ struct MenuContentView: View {
             UsageHistoryChartView(days: lastThirtyDays)
         }
 
-        // …and the shape of the last year: the heatmap, and the models it
-        // leans on. Both read the same range, `Days` answering; the year is
-        // read only while one of them is shown (`readsTheYear(of:when:)`).
+        // …and the shape of the last year: the heatmap, the models it
+        // leans on, and the projects the work went to. All read the same
+        // range, `Days` answering; the year is read only while one of them
+        // is shown (`readsTheYear(of:when:)`).
         if let heatmapYear {
             UsageInsightsHeatmapView(days: heatmapYear)
         }
         if let mixYear {
             ModelMixView(days: mixYear)
+        }
+        if let projectYear {
+            ProjectMixView(days: projectYear)
         }
     }
 
@@ -1570,6 +1617,8 @@ struct ProviderPill: View {
     let providerName: String
     let isSelected: Bool
     let hasData: Bool
+    /// *Rest when empty*: a resting product's pill stays, dimmed.
+    var isResting: Bool = false
     /// A symbol of its own, for a tab that isn't a provider.
     var symbol: String? = nil
     let action: () -> Void
@@ -1589,6 +1638,7 @@ struct ProviderPill: View {
                     .lineLimit(1)
                     .fixedSize()
             }
+            .opacity(isResting ? 0.45 : 1)
             .foregroundStyle(isSelected ? theme.textOnAccent : theme.textPrimary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)

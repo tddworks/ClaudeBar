@@ -43,6 +43,10 @@ struct WebhookWordsTests {
     @Test func `should list what a webhook sends`() {
         #expect(WebhookWords.sends(Webhook.Sends(quotaAlerts: true, statusAlerts: true)) == "Quota alerts · Status alerts")
         #expect(WebhookWords.sends(Webhook.Sends(quotaAlerts: false, statusAlerts: true)) == "Status alerts")
+        #expect(WebhookWords.sends(Webhook.Sends(quotaAlerts: false, statusAlerts: true, signedOutAlerts: true))
+                == "Status alerts · Signed-out alerts")
+        #expect(WebhookWords.sends(Webhook.Sends(quotaAlerts: false, statusAlerts: false, recap: true,
+                                                 signedOutAlerts: true)) == "Weekly recap · Signed-out alerts")
     }
 
     @Test func `should name each channel as the card prints it`() {

@@ -13,22 +13,24 @@ public enum UsageSection: String, Sendable, CaseIterable {
     case lastYear
     /// The year's model mix.
     case modelMix
+    /// The year's projects — where the work went.
+    case projectMix
     /// The weekly recap on the All page.
     case weeklyRecap
 
-    /// Shown until the person hides it. The year's two sections start
+    /// Shown until the person hides it. The year's sections start
     /// hidden: they read a year of logs, and keep the popover short.
     public var isShownByDefault: Bool {
         switch self {
         case .today, .lastThirtyDays, .weeklyRecap: true
-        case .lastYear, .modelMix: false
+        case .lastYear, .modelMix, .projectMix: false
         }
     }
 
     /// Whether the section reads the year of usage (`UsageHistory.readYear`).
     public var readsTheYear: Bool {
         switch self {
-        case .lastYear, .modelMix: true
+        case .lastYear, .modelMix, .projectMix: true
         case .today, .lastThirtyDays, .weeklyRecap: false
         }
     }

@@ -35,7 +35,7 @@ and never changes state is the same kind of thing as the status export, so
 it sits in **Alerting** beside it ([CANONICAL §7](../../../architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)):
 `Sources/Infrastructure/Alerting/LocalAPI`, its tests beside it, this
 document under `docs/features/alerting/`. The journey moment is
-[USER_JOURNEYS #20](../../../architecture/USER_JOURNEYS.md#beyond-the-menu-bar).
+[USER_JOURNEYS #21](../../../architecture/USER_JOURNEYS.md#beyond-the-menu-bar).
 
 ```text
 QuotaMonitor ─▶ Overview(monitor) ─▶ LocalAPIRouter encodes ─▶ JSON · MCP text
