@@ -75,7 +75,7 @@ code{font-size:12px}
           </div>
           <div class="card" id="recap"></div>
         </div>
-        <figcaption><span class="tag">interactive</span>Pick <i>Last week</i>: the card draws last week against the week before it, and says so under the change. Both weeks are read when the page opens, so switching reads nothing.</figcaption>
+        <figcaption><span class="tag">interactive</span>Pick a chip — <i>Last week</i>, <i>This month</i>, <i>Last month</i>: the card draws that range against the one before it, and says so under the change. Every range is read when the page opens, so switching reads nothing.</figcaption>
       </figure>
 
       <figure>
@@ -121,6 +121,12 @@ const weeks = {
   tokens: { total: '22.7M', caption: 'tokens', also: ['25h 12m', '71 sessions'], change: '+31%', up: true, vs: 'vs last week',
             parts: [['Claude', '14.1M', '62%'], ['OpenCode', '6.3M', '28%'], ['Codex', '2.3M', '10%']],
             top: 'qwen3-coder', day: 'Wednesday, October 21', saved: '$29.40' },
+  month: { total: '$406.10', caption: 'spent', also: ['52.6M tokens', '63h 20m', '187 sessions'], change: '+9%', up: true, vs: 'vs last month',
+           parts: [['Claude', '$271.40', '67%'], ['Codex', '$112.60', '28%'], ['Mistral', '$22.10', '5%']],
+           top: 'opus-4-6', day: 'Tuesday, October 6', saved: '$118.60' },
+  lastMonth: { total: '$372.90', caption: 'spent', also: ['48.9M tokens', '59h 45m', '176 sessions'], change: '+21%', up: true, vs: 'vs the month before',
+               parts: [['Claude', '$246.50', '66%'], ['Codex', '$104.20', '28%'], ['Mistral', '$22.20', '6%']],
+               top: 'opus-4-6', day: 'Thursday, September 11', saved: '$109.30' },
 };
 
 function card(week, chosen, interactive) {
@@ -138,7 +144,8 @@ function card(week, chosen, interactive) {
 
 function drawInteractive(chosen) {
   const host = document.getElementById('recap');
-  host.innerHTML = card(chosen === 'This week' ? weeks.this : weeks.last, chosen, true);
+  const weeks_ = { 'This week': weeks.this, 'Last week': weeks.last, 'This month': weeks.month, 'Last month': weeks.lastMonth };
+  host.innerHTML = card(weeks_[chosen] ?? weeks.this, chosen, true);
   host.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => drawInteractive(b.dataset.range)));
 }
 drawInteractive('This week');

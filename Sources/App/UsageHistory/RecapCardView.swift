@@ -20,6 +20,9 @@ struct RecapCardView: View {
 
     @Environment(\.appTheme) private var theme
     @State private var range: RecapRange = .thisWeek
+    /// Why the last export failed, if it did — said to the person, not only
+    /// to the log.
+    @State private var saveError: String?
 
     var body: some View {
         if recaps.values.contains(where: { !$0.isEmpty }), let recap = recaps[range] {
@@ -56,6 +59,14 @@ struct RecapCardView: View {
             }
         )
         .themeRivets()
+        .alert("The report could not be saved", isPresented: Binding(
+            get: { saveError != nil },
+            set: { if !$0 { saveError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveError ?? "")
+        }
     }
 
     private var header: some View {
@@ -117,6 +128,7 @@ struct RecapCardView: View {
                 NSWorkspace.shared.open(url)
             } catch {
                 AppLog.ui.error("The recap report could not be written: \(error.localizedDescription)")
+                saveError = error.localizedDescription
             }
         }
     }
