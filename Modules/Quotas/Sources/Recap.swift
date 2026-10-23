@@ -42,8 +42,9 @@ public struct Recap: Sendable, Equatable {
     /// The day that added up to the most across every provider, or nil when
     /// nothing was used.
     public let biggestDay: DayValue?
-    /// Every day of the merged range, oldest first — the activity's read, for
-    /// the report's day by day.
+    /// Every day the merged range held, oldest first — the activity's read,
+    /// for the report's day by day. None when the range held nothing: an
+    /// empty range says so, never zeros.
     public let days: [DayValue]
     /// What caching saved over the range.
     public let cacheSavings: Decimal
@@ -79,7 +80,7 @@ public struct Recap: Sendable, Equatable {
         topModel = mix.top
         models = mix.parts
         biggestDay = activity.busiest
-        days = activity.days
+        days = week.isEmpty ? [] : activity.days
         cacheSavings = week.cacheSavings
         workingTime = week.workingTime
         sessions = week.sessions
