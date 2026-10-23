@@ -3,9 +3,9 @@ import Foundation
 /// Default CLIExecutor that uses InteractiveRunner on this platform's terminal,
 /// and finds the CLI as this platform finds a program.
 public struct DefaultCLIExecutor: CLIExecutor {
-    /// Finds the CLI, as this OS finds a program.
-    private let installed: any InstalledPrograms
-    private let launch: any ChildLaunch
+    /// Finds the CLI, as this OS finds a program, and gives it the
+    /// environment any program this OS starts gets.
+    private let programs: any InstalledPrograms & ChildLaunch
 
     /// The terminal a CLI session here runs in.
     private let terminal: any PseudoTerminal
@@ -31,16 +31,14 @@ public struct DefaultCLIExecutor: CLIExecutor {
     public let inputDelay: TimeInterval
 
     init(
-        installed: any InstalledPrograms,
-        launch: any ChildLaunch,
+        programs: any InstalledPrograms & ChildLaunch,
         terminal: any PseudoTerminal,
         environmentExclusions: [String] = [],
         environmentAdditions: [String: String] = [:],
         completionRule: CLICompletionRule? = nil,
         inputDelay: TimeInterval = 0.4
     ) {
-        self.installed = installed
-        self.launch = launch
+        self.programs = programs
         self.terminal = terminal
         self.environmentExclusions = environmentExclusions
         self.environmentAdditions = environmentAdditions
@@ -49,7 +47,7 @@ public struct DefaultCLIExecutor: CLIExecutor {
     }
 
     public func locate(_ binary: String) -> String? {
-        installed.find(binary)
+        programs.find(binary)
     }
 
     public func execute(
@@ -60,7 +58,7 @@ public struct DefaultCLIExecutor: CLIExecutor {
         workingDirectory: URL?,
         autoResponses: [String: String]
     ) async throws -> CLIResult {
-        let runner = InteractiveRunner(terminal: terminal, installed: installed, launch: launch)
+        let runner = InteractiveRunner(terminal: terminal, programs: programs)
         // Built here, on the task, so the `qualityOfService` default argument
         // reads the ambient `FetchContext` task local before we hop
         // off the cooperative pool below (task locals do not cross that hop).
@@ -112,11 +110,10 @@ public struct DefaultCLIExecutor: CLIExecutor {
 
 extension CLIFetcher {
     /// The real terminal: `DefaultCLIExecutor` with the session's environment and ready markers.
-    static func system(installed: any InstalledPrograms, launch: any ChildLaunch, terminal: any PseudoTerminal) -> MakeExecutor {
+    static func system(programs: any InstalledPrograms & ChildLaunch, terminal: any PseudoTerminal) -> MakeExecutor {
         { call in
             DefaultCLIExecutor(
-                installed: installed,
-                launch: launch,
+                programs: programs,
                 terminal: terminal,
                 environmentExclusions: call.environment.unset,
                 environmentAdditions: call.environment.set,

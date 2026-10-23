@@ -385,7 +385,7 @@ extension ProcessEnvironment {
             guard let value = Template.fill(template, with: credential) else { throw UsageError.authenticationRequired }
             values[name] = value
         }
-        return ProcessEnvironment(unset: unset, set: values)
+        return ProcessEnvironment(unset: unset, defaults: defaults, set: values)
     }
 }
 

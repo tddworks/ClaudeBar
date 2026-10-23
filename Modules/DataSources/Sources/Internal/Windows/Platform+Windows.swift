@@ -8,7 +8,7 @@ extension Platform {
     static let current = Platform(
         name: "Windows",
         timeZone: WindowsTimeZone(),
-        runCLI: CLIFetcher.system(installed: WindowsProcesses(), launch: WindowsProcesses(), terminal: ConPty()),
+        runCLI: CLIFetcher.system(programs: WindowsProcesses(), terminal: ConPty()),
         processes: Processes(WindowsProcesses()),
         localServers: LocalServers(WindowsLocalServers()),
         screenRenderer: { TerminalRenderer().render($0) },

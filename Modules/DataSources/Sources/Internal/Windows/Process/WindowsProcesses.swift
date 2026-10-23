@@ -32,14 +32,17 @@ struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch
     // GUI app shouldn't do.
     var teardown: [TeardownStep] { [] }
 
-    /// The app's environment with the call's changes. Windows' variable names
-    /// ignore case, so a change replaces or removes a name however it is spelled.
+    /// The app's environment with the call's change. Windows' variable names
+    /// ignore case, so a change finds a name however it is spelled.
     static func environment(_ change: ProcessEnvironment,
                             base: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
-        let removed = Set(change.unset.map { $0.uppercased() }).union(change.set.keys.map { $0.uppercased() })
-        var environment = base.filter { !removed.contains($0.key.uppercased()) }
-        environment.merge(change.set) { _, value in value }
-        return environment
+        change.applied(to: base) { Self.name($0) }
+    }
+
+    /// The one spelling of a variable's name that Windows matches it by: names
+    /// that differ only in case are the same variable.
+    static func name(_ name: String) -> String {
+        name.uppercased()
     }
 }
 #endif

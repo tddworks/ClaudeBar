@@ -8,7 +8,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should show what a CLI printed and its success`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         let echo = ShellProgram(sh: "echo hello", powershell: "'hello'")
         let result = try runner.run(
             binary: echo.binary,
@@ -22,7 +22,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should fail when the CLI isn't installed`() {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         #expect(throws: InteractiveRunner.RunError.self) {
             try runner.run(binary: "unknown-binary-xyz-123", input: "")
         }
@@ -44,7 +44,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI without the environment values it is told to drop`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // Set a test env var that we'll verify is excluded
         let testKey = "CLAUDEBAR_TEST_EXCLUSION_VAR"
         setEnvironmentVariable(testKey, "should_be_stripped")
@@ -63,7 +63,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI with this app's environment values when none are dropped`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         let testKey = "CLAUDEBAR_TEST_PRESERVE_VAR"
         setEnvironmentVariable(testKey, "should_be_present")
         defer { setEnvironmentVariable(testKey, nil) }
@@ -88,7 +88,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI with the extra environment values it is given (#222)`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
 
         let env = ShellProgram(sh: "env", powershell: "'CLAUDEBAR_PROBE=' + $env:CLAUDEBAR_PROBE")
         let result = try runner.run(
@@ -115,7 +115,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should keep waiting past a quiet spell while Claude's usage screen shows only its placeholder (#271)`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // Paints a placeholder, then goes quiet for longer than the 3s idle
         // cutoff before the real content arrives — exactly how `claude /usage`
         // fills its quota bars in asynchronously.
@@ -141,7 +141,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should keep waiting past a quiet spell while the CLI is still booting (#317)`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // The probe launches `claude /usage`, but the CLI only submits the command
         // once it has finished booting. For a few seconds the screen is the boot
         // screen — `/usage` still unsubmitted in the input box, SessionStart hooks
@@ -183,7 +183,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should stop at once on a finished usage screen rather than wait out the timeout`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // Over-waiting is its own failure: a finished screen must still stop the
         // capture at the idle cutoff instead of blocking for the whole timeout.
         // `exitCode` is -1 while the process is still running, so this proves the
@@ -213,7 +213,7 @@ struct InteractiveRunnerTests {
 @Suite("hasMeaningfulContent")
 struct HasMeaningfulContentTests {
     
-    let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.programs, launch: PlatformTerminal.programs)
+    let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
     
     // MARK: - Empty and Basic Cases
     

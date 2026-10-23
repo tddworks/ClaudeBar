@@ -17,7 +17,7 @@ struct DefaultCLIExecutorTests {
     @Test
     func `should show what a CLI printed and its success in a terminal`() async throws {
         let echo = ShellProgram(sh: "echo pty-hello", powershell: "'pty-hello'")
-        let result = try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
+        let result = try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
             binary: echo.binary,
             args: echo.arguments,
             input: "",
@@ -38,7 +38,7 @@ struct DefaultCLIExecutorTests {
             sh: "printf 'Loading usage data...'; sleep 5; printf 'Current session 1%% used'",
             powershell: "[Console]::Write('Loading usage data...'); Start-Sleep 5; [Console]::Write('Current session 1% used')"
         )
-        let result = try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal, completionRule: .claudeUsage).execute(
+        let result = try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal, completionRule: .claudeUsage).execute(
             binary: program.binary,
             args: program.arguments,
             input: "",
@@ -55,7 +55,7 @@ struct DefaultCLIExecutorTests {
         // The program echoes back the line it reads; the delay must not lose
         // the input, and the session must stay open long enough to receive it.
         let echo = ShellProgram(sh: "cat", powershell: "'got ' + [Console]::ReadLine()")
-        let result = try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal, inputDelay: 1.0).execute(
+        let result = try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal, inputDelay: 1.0).execute(
             binary: echo.binary,
             args: echo.arguments,
             input: "delayed-hello",
@@ -70,7 +70,7 @@ struct DefaultCLIExecutorTests {
     @Test
     func `should fail when the CLI can't be found`() async {
         await #expect(throws: (any Error).self) {
-            try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
+            try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
                 binary: "claudebar-missing-cli-xyz",
                 args: [],
                 input: "",
@@ -89,7 +89,7 @@ struct DefaultCLIExecutorTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         let pwd = ShellProgram(sh: "pwd", powershell: "(Get-Location).Path")
 
-        let result = try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
+        let result = try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
             binary: pwd.binary,
             args: pwd.arguments,
             input: "",
@@ -108,7 +108,7 @@ struct DefaultCLIExecutorTests {
             powershell: "if ($env:CLAUDEBAR_PROBE -eq 1) { 'marked' }"
         )
         let result = try await DefaultCLIExecutor(
-            installed: PlatformTerminal.programs, launch: PlatformTerminal.programs,
+            programs: PlatformTerminal.programs,
             terminal: PlatformTerminal.terminal,
             environmentAdditions: ["CLAUDEBAR_PROBE": "1"]
         ).execute(
@@ -137,7 +137,7 @@ struct DefaultCLIExecutorTests {
                 group.addTask {
                     let began = nowSeconds()
                     let program = ShellProgram(sh: "sleep 1; echo done", powershell: "Start-Sleep 1; 'done'")
-                    let result = try await DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
+                    let result = try await DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal).execute(
                         binary: program.binary,
                         args: program.arguments,
                         input: "",

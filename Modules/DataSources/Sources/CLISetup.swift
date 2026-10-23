@@ -29,12 +29,13 @@ public struct CLISetup: Sendable, Equatable, Codable {
 
 extension ProcessEnvironment {
     /// This environment with `other` laid over it: both remove what they
-    /// unset, `other`'s values win, and a variable either sets is never unset.
+    /// unset, `other`'s values and defaults win, and a variable either sets is
+    /// never unset.
     public func overlaid(with other: ProcessEnvironment) -> ProcessEnvironment {
         let set = self.set.merging(other.set) { _, new in new }
         var seen = Set<String>()
         let unset = (self.unset + other.unset).filter { set[$0] == nil && seen.insert($0).inserted }
-        return ProcessEnvironment(unset: unset, set: set)
+        return ProcessEnvironment(unset: unset, defaults: defaults.merging(other.defaults) { _, new in new }, set: set)
     }
 }
 

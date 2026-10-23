@@ -8,7 +8,7 @@ extension Platform {
         return Platform(
             name: "macOS",
             timeZone: SystemTimeZone(),
-            runCLI: CLIFetcher.system(installed: mac, launch: mac, terminal: MacPty()),
+            runCLI: CLIFetcher.system(programs: mac, terminal: MacPty()),
             processes: Processes(mac),
             keychain: KeychainReader.system,
             browserCookies: SystemBrowserCookies(),

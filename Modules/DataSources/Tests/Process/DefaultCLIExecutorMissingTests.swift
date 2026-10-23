@@ -8,7 +8,7 @@ import Testing
 struct DefaultCLIExecutorMissingTests {
     @Test
     func `should report the CLI as not found when it isn't installed`() async throws {
-        let executor = DefaultCLIExecutor(installed: PlatformTerminal.programs, launch: PlatformTerminal.programs, terminal: PlatformTerminal.terminal)
+        let executor = DefaultCLIExecutor(programs: PlatformTerminal.programs, terminal: PlatformTerminal.terminal)
 
         await #expect(throws: UsageError.cliNotFound("claudebar-no-such-cli")) {
             _ = try await executor.execute(binary: "claudebar-no-such-cli", args: [], input: nil, timeout: 1,

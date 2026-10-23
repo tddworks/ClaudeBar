@@ -290,7 +290,7 @@ final class ConPtySession: TerminalSession, @unchecked Sendable {
     /// `KEY=value` strings, each ended by a null and the block by another,
     /// sorted by name ignoring case, as `CreateProcessW` wants them.
     static func environmentBlock(_ environment: [String: String]) -> [WCHAR] {
-        let entries = environment.sorted { $0.key.uppercased() < $1.key.uppercased() }
+        let entries = environment.sorted { WindowsProcesses.name($0.key) < WindowsProcesses.name($1.key) }
         var block: [WCHAR] = []
         for (key, value) in entries {
             block += Array("\(key)=\(value)".utf16) + [0]

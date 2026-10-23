@@ -26,7 +26,7 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
 
     /// The app's environment with a PATH that finds tools outside a login
     /// shell — an app started by launchd gets a minimal one, which breaks a
-    /// script whose shebang is `/usr/bin/env node` — then the call's changes.
+    /// script whose shebang is `/usr/bin/env node` — then the call's change.
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
         var entries = (environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin").split(separator: ":").map(String.init)
@@ -36,9 +36,8 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
             entries.append(directory)
         }
         environment["PATH"] = entries.joined(separator: ":")
-        for name in change.unset { environment.removeValue(forKey: name) }
-        environment.merge(change.set) { _, value in value }
-        return environment
+        // POSIX names are matched exactly: `Path` is not `PATH`.
+        return change.applied(to: environment) { $0 }
     }
 
     // Asked to stop (`SIGTERM`), then killed after two seconds (#550).

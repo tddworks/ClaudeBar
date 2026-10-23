@@ -13,7 +13,7 @@ struct PathBinaryLocator: Sendable {
         let environment = environment()
         // Windows' variable names ignore case: `Path` is the usual spelling.
         func variable(_ name: String) -> String? {
-            environment.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
+            environment.first { WindowsProcesses.name($0.key) == WindowsProcesses.name(name) }?.value
         }
         let extensions = (variable("PATHEXT") ?? ".COM;.EXE;.BAT;.CMD").split(separator: ";").map(String.init)
         let names = URL(fileURLWithPath: cli).pathExtension.isEmpty ? extensions.map { cli + $0.lowercased() } : [cli]

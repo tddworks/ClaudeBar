@@ -10,7 +10,7 @@ extension Platform {
         return Platform(
             name: "Linux",
             timeZone: LinuxTimeZone(),
-            runCLI: CLIFetcher.system(installed: linux, launch: linux, terminal: LinuxPty()),
+            runCLI: CLIFetcher.system(programs: linux, terminal: LinuxPty()),
             processes: Processes(linux),
             screenRenderer: { TerminalRenderer().render($0) },
             applicationData: { home, environment in

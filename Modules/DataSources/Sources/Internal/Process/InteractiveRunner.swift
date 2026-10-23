@@ -20,7 +20,7 @@ private func nowSeconds() -> Double { Date.timeIntervalSinceReferenceDate }
 ///
 /// Usage:
 /// ```swift
-/// let runner = InteractiveRunner(terminal: MacPty(), installed: MacProcesses(), launch: MacProcesses())
+/// let runner = InteractiveRunner(terminal: MacPty(), programs: MacProcesses())
 /// let result = try runner.run(binary: "claude", input: "/usage")
 /// print(result.output)
 /// ```
@@ -28,10 +28,9 @@ public struct InteractiveRunner: Sendable {
 
     /// The terminal this session runs in.
     private let terminal: any PseudoTerminal
-    /// Finds the CLI, as this OS finds a program.
-    private let installed: any InstalledPrograms
-    /// The environment the CLI starts with, as any program this OS starts.
-    private let launch: any ChildLaunch
+    /// Finds the CLI, as this OS finds a program, and gives it the
+    /// environment any program this OS starts gets.
+    private let programs: any InstalledPrograms & ChildLaunch
 
     /// The result of running a command.
     public struct Result: Sendable {
@@ -124,10 +123,9 @@ public struct InteractiveRunner: Sendable {
         }
     }
 
-    init(terminal: any PseudoTerminal, installed: any InstalledPrograms, launch: any ChildLaunch) {
+    init(terminal: any PseudoTerminal, programs: any InstalledPrograms & ChildLaunch) {
         self.terminal = terminal
-        self.installed = installed
-        self.launch = launch
+        self.programs = programs
     }
 
     /// Runs a command and captures its output.
@@ -183,7 +181,7 @@ public struct InteractiveRunner: Sendable {
         if FileManager.default.isExecutableFile(atPath: binary) {
             return binary
         }
-        if let found = installed.find(binary) {
+        if let found = programs.find(binary) {
             return found
         }
         throw RunError.binaryNotFound(binary)
@@ -194,10 +192,7 @@ public struct InteractiveRunner: Sendable {
         let launch = TerminalLaunch(
             executable: executablePath,
             arguments: options.arguments,
-            environment: sessionEnvironment(
-                for: executablePath,
-                ProcessEnvironment(unset: options.environmentExclusions, set: options.environmentAdditions)
-            ),
+            environment: sessionEnvironment(for: executablePath, options),
             directory: options.workingDirectory,
             rows: UInt16(TerminalRenderer.rows),
             cols: UInt16(TerminalRenderer.cols),
@@ -215,31 +210,16 @@ public struct InteractiveRunner: Sendable {
     }
 
     /// A session's environment, each part with one owner: the program's
-    /// (`ChildLaunch`: the app's, with the call's changes), then what this
-    /// OS's terminal differs in, then the terminal defaults every CLI gets
-    /// where the app has none, and the call's additions last, so they win.
-    /// A name is matched as the OS matches it: exactly on POSIX, in any case
-    /// on Windows, whose names ignore case.
-    private func sessionEnvironment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = launch.environment(for: path, change)
-        func named(_ name: String) -> String? {
-            #if os(Windows)
-            environment.keys.first { $0.caseInsensitiveCompare(name) == .orderedSame }
-            #else
-            environment[name] == nil ? nil : name
-            #endif
-        }
-        func set(_ name: String, _ value: String) {
-            environment[named(name) ?? name] = value
-        }
-        if let path = terminal.sessionPath() { set("PATH", path) }
+    /// (`ChildLaunch`: the app's, the call's exclusions removed), then the
+    /// terminal defaults every CLI gets where it has none, then this OS's
+    /// terminal `PATH`, and the call's additions last, so they win. The change
+    /// goes to `ChildLaunch` whole, which matches a name as its OS does.
+    private func sessionEnvironment(for path: String, _ options: Options) -> [String: String] {
         var defaults = ["HOME": NSHomeDirectory(), "TERM": "xterm-256color", "COLORTERM": "truecolor", "CI": "0"]
         defaults["LANG"] = terminal.fallbackLocale
-        for (name, value) in defaults where named(name) == nil {
-            environment[name] = value
-        }
-        for (name, value) in change.set { set(name, value) }
-        return environment
+        var set = terminal.sessionPath().map { ["PATH": $0] } ?? [:]
+        set.merge(options.environmentAdditions) { _, addition in addition }
+        return programs.environment(for: path, ProcessEnvironment(unset: options.environmentExclusions, defaults: defaults, set: set))
     }
 
     /// Sends input text to the running command.

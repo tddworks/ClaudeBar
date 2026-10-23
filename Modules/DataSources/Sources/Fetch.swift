@@ -557,22 +557,47 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
     }
 }
 
-/// Variables to remove from, and add to, a CLI's environment. Each process
-/// gets its own; the app's is never changed. `{{token}}` in a value is filled
-/// when a `command` starts.
+/// Variables to remove from, give where absent, and add to, a CLI's
+/// environment. Each process gets its own; the app's is never changed.
+/// `{{token}}` in a value is filled when a `command` starts.
+///
+/// The change is made in that order: `unset` removes, `defaults` fills a
+/// name the environment then lacks, and `set` wins over both. Which names
+/// count as the same is the OS's fact: the `ChildLaunch` that makes the change
+/// matches them as its OS does. A definition says `unset` and `set`; the
+/// defaults are what ClaudeBar's own runners give, never a definition's.
 public struct ProcessEnvironment: Sendable, Equatable, Codable {
     public let unset: [String]
+    public let defaults: [String: String]
     public let set: [String: String]
 
-    public init(unset: [String] = [], set: [String: String] = [:]) {
+    public init(unset: [String] = [], defaults: [String: String] = [:], set: [String: String] = [:]) {
         self.unset = unset
+        self.defaults = defaults
         self.set = set
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         unset = try container.decodeIfPresent([String].self, forKey: .unset) ?? []
+        defaults = [:]
         set = try container.decodeIfPresent([String: String].self, forKey: .set) ?? [:]
+    }
+
+    private enum CodingKeys: String, CodingKey { case unset, set }
+
+    /// `base` with this change made, two names the same variable when `key`
+    /// answers the same for them: the OS's rule, which its `ChildLaunch` hands
+    /// in. A value set replaces the variable however `base` spells it.
+    func applied(to base: [String: String], key: (String) -> String) -> [String: String] {
+        let replaced = Set(unset.map(key)).union(set.keys.map(key))
+        var environment = base.filter { !replaced.contains(key($0.key)) }
+        var present = Set(environment.keys.map(key)).union(set.keys.map(key))
+        for (name, value) in defaults where present.insert(key(name)).inserted {
+            environment[name] = value
+        }
+        environment.merge(set) { _, value in value }
+        return environment
     }
 }
 

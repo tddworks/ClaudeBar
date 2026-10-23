@@ -397,8 +397,9 @@ PORTS, Ports/Processes.swift: what each OS answers, one question each
   InstalledPrograms   find(name) → path?          login PATH + tool folders │ PATH + PATHEXT
   ScriptStart         command(path) → argv        sh 'exec "$1"'            │ the file itself
   LoginShell          command(printing:between:)  $SHELL -l -i              │ PowerShell profile
-  ChildLaunch         environment(for:) ·         PATH + tool folders,      │ names ignoring case,
-                      teardown                    SIGTERM, kill after 2s    │ TerminateProcess
+  ChildLaunch         environment(for:, change) · PATH + tool folders,      │ names ignoring case,
+                      teardown                    names exact; SIGTERM,     │ TerminateProcess
+                                                  kill after 2s             │
 ```
 
 - **Each piece changes for one reason.** How a CLI is found changes
@@ -409,6 +410,12 @@ PORTS, Ports/Processes.swift: what each OS answers, one question each
   them (`MacProcesses`, `WindowsProcesses`), and passes `ProcessesContract`.
   Nothing above the ports is edited. A fetch kind that runs a program uses
   `Program` and edits no adapter.
+- **Which names are the same variable is the OS's.** A `ProcessEnvironment`
+  is one change, made in one order: `unset` removes, `defaults` fill a name
+  the environment then lacks, `set` wins. `ChildLaunch` makes it under its
+  OS's rule (exact on POSIX, any case on Windows); nothing above the port
+  compares a name. A definition says `unset` and `set`; `defaults` are the
+  runners' own.
 - **A worker never sees argv, `PATH` or a pipe.** `CommandFetcher`,
   `ScriptFetcher` and `JSONRPCFetcher` find a `Program` and tell it to run
   or talk; `LoginShellEnvironment` owns its markers and hands `LoginShell`
@@ -464,9 +471,9 @@ it reads and writes through what it started:
 NEUTRAL, one copy
   DefaultCLIExecutor   off the cooperative pool, the call's environment and ready markers
   InteractiveRunner    the input delay, autoResponses, the quiet spell, readyWhen;
-                       the session's environment: ChildLaunch's, then the terminal's
-                       PATH, then HOME TERM COLORTERM CI (and LANG) where the app has
-                       none, then the call's additions
+                       the session's environment, handed to ChildLaunch as one change:
+                       defaults HOME TERM COLORTERM CI (and LANG), set the terminal's
+                       PATH, then the call's additions, which win
   TerminalRenderer     SwiftTerm's headless screen, and the screen's size (160×50) the
                        runner opens the terminal at
   ChildTeardown        ask, wait, kill, wait: a child's end within a bound
