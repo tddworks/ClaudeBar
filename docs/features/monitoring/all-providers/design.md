@@ -57,8 +57,8 @@ today). The divider shows when either of them does.
 | Piece | Where | One job |
 |---|---|---|
 | `PopoverPage` | `Sources/Domain/Monitoring/PopoverPage.swift` | the page under the pills: `.all`, `.leaderboard`, `.provider`. Replaces `MenuContentView`'s `showsLeaderboard` flag, so a third page is a case, not a second flag. The provider itself stays `monitor.selectedProviderId` |
-| `Overview` | `Sources/Domain/Monitoring/Overview.swift` | built from the tabs and the Monitor's usage: `isOffered` (two or more products), `cards` in pill order, the header's `badge`, and the `critical` / `warning` / `healthy` counts |
-| `OverviewCard` | same file | one product: `tab`, `badge` (`ProviderBadgeState` of its logins), `tightest` and `next` quota, `tightestLogin` when there are several, `loginCount` |
+| `Overview` | `Sources/Domain/Monitoring/Overview.swift` | built from the tabs and the Monitor's usage: `isOffered` (two or more products), `cards` in pill order, the header's `badge` and `status` (the worst card's, `nil` while none has numbers), the `critical` / `warning` / `healthy` counts, and `tightestCard` (the card whose ring runs out first). The [local API](../../alerting/local-api/design.md) answers from it too |
+| `OverviewCard` | same file | one product: `tab`, `badge` (`ProviderBadgeState` of its logins), `login` (the one the card reads), `tightest` and `next` quota, `tightestLogin` when there are several, `loginCount`; the product's `best` and `inUse` logins, as `Accounts.best` and `InUse` answer; each login's `source` and `usageHistory` |
 | `PopoverOpensOn` | `Sources/Domain/App/PopoverOpensOn.swift` | `.whereILeftIt` / `.all`, and the page an open lands on |
 | `AppSettingsRepository.popoverOpensOn()` / `setPopoverOpensOn(_:)` | Domain port, `JSONSettingsRepository` | keeps it at `app.popoverOpensOn`; unset with the old `app.overviewModeEnabled` on reads `.all` |
 | `AppSettings.popoverOpensOn` | `Sources/App/Settings/AppSettings.swift` | the observed setting; replaces `overviewModeEnabled` |

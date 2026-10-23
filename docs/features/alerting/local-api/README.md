@@ -52,7 +52,9 @@ curl -s "http://127.0.0.1:19848/usage/days?n=30"
 }
 ```
 
-A `null` means what it means on screen: a prepaid balance has no `percentLeft`, a quota with no pace has no forecast. Dates are ISO 8601.
+`lowest` is the quota the popover's *All* page leads with: each product is read by its login with the most room, so one empty login never stops an agent that could switch. `providers` counts products, not logins.
+
+A `null` means what it means on screen: a prepaid balance has no `percentLeft`, a quota with no pace has no forecast, and a login with no numbers yet has no `status` (it is still syncing, or it failed). Dates are ISO 8601.
 
 ## MCP (Claude Code, opencode)
 

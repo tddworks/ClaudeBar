@@ -262,7 +262,8 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
-Destinations                                notifications · your quota alerts · status alerts · webhooks · Notify! · live activity · status export
+Destinations                                notifications · your quota alerts · status alerts · webhooks · Notify! · live activity · status export ·
+                                            the local API (asked, not told: it reads the All page's Overview)
 
     NOT IN THE MODEL (the page's)
 MenuBarLabel · display mode (left/used) · countdown colon · popover height · theme ·
@@ -477,7 +478,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
 | depleted at 0, critical under 20 — ABSOLUTE, whatever the policy | `StatusPolicy` |
 | a quota's status under the pace-aware policy warns exactly when it runs out before its reset, from 20% left up; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `SpendRate` |
-| ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
+| ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export, the local API and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
 | usage is stale 5 minutes after it was updated | `Usage` |
 | a background refresh is never faster than the slowest provider's floor, and slower on battery | `Monitor` |
@@ -565,7 +566,7 @@ its factory.
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
 | **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
+| **Alerting** | generic | *who needs to hear it?* — told when it changed: notifications, your quota alerts, status alerts, the week's recap, webhooks, Notify!, live activity, status export; or asking when it wants: the [local API](../features/alerting/local-api/design.md), a destination that reads and never changes state | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy; the local API reads Monitoring's `Overview(monitor)`, the All page's read, and decides nothing |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |
