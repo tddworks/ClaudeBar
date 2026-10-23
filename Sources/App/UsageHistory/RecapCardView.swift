@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Domain
+import Diagnostics
 import UniformTypeIdentifiers
 
 /// *RECAP* — the week's or month's story across every provider: the total,
