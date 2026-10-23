@@ -1,29 +1,23 @@
-import AppKit
 import SwiftUI
 import Domain
-import Diagnostics
-import UniformTypeIdentifiers
 
 /// *RECAP* — the week's or month's story across every provider: the total,
 /// the split by provider, the top model, the biggest day, what caching saved,
 /// and the range before it. A range choice picks the range. It renders what
 /// `Recap` says, in the recap's own unit, and never counts; a range that holds
 /// nothing says so, and the choice stays while any range has something. The
-/// export button writes the recap out as one HTML report, where the person
-/// saves it.
+/// export button tells `ReportSaver` to save the recap as one HTML report, and
+/// the card shows a save that failed.
 struct RecapCardView: View {
     /// Every range the card offers, read by the page.
     let recaps: [RecapRange: Recap]
-    /// The dates each recap was read for — what a report writes in its header.
-    let dates: [RecapRange: DateRange]
     /// A provider's name, from its id.
     let name: (String) -> String
 
     @Environment(\.appTheme) private var theme
-    @State private var range: RecapRange = .thisWeek
-    /// Why the last export failed, if it did — said to the person, not only
-    /// to the log.
-    @State private var saveError: String?
+    @State private var range: RecapRange = .this(.week)
+    /// Where a report leaves the app; it holds a save that failed.
+    @State private var saver = ReportSaver()
 
     var body: some View {
         if recaps.values.contains(where: { !$0.isEmpty }), let recap = recaps[range] {
@@ -61,12 +55,12 @@ struct RecapCardView: View {
         )
         .themeRivets()
         .alert("The report could not be saved", isPresented: Binding(
-            get: { saveError != nil },
-            set: { if !$0 { saveError = nil } }
+            get: { saver.failure != nil },
+            set: { if !$0 { saver.dismissFailure() } }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(saveError ?? "")
+            Text(saver.failure ?? "")
         }
     }
 
@@ -97,11 +91,12 @@ struct RecapCardView: View {
         }
     }
 
-    /// The person's one gesture: the recap written out as an HTML report,
-    /// saved where they say, opened when saved.
+    /// The person's one gesture: the recap on screen, told to the saver as
+    /// an HTML report.
     private var exportButton: some View {
         Button {
-            exportReport()
+            guard let recap = recaps[range] else { return }
+            saver.save(RecapHTMLReport(recap: recap, range: range, name: name))
         } label: {
             Image(systemName: "square.and.arrow.up")
                 .popoverFont(9, weight: .medium)
@@ -112,26 +107,6 @@ struct RecapCardView: View {
         }
         .buttonStyle(.plain)
         .help("Save as HTML report")
-    }
-
-    /// The save panel, the atomic write, the file opened — the report holds
-    /// what the card holds; the app never reads it back.
-    private func exportReport() {
-        guard let recap = recaps[range] else { return }
-        let report = RecapHTMLReport(recap: recap, range: range, dates: dates[range], name: name)
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.html]
-        panel.nameFieldStringValue = "Usage recap — \(range.title)"
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            do {
-                try report.html.write(to: url, atomically: true, encoding: .utf8)
-                NSWorkspace.shared.open(url)
-            } catch {
-                AppLog.ui.error("The recap report could not be written: \(error.localizedDescription)")
-                saveError = error.localizedDescription
-            }
-        }
     }
 
     /// One range choice, drawn on when it is the one chosen.
@@ -206,7 +181,7 @@ struct RecapCardView: View {
             ForEach(Array(recap.providers.enumerated()), id: \.element.provider) { index, part in
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Self.palette[index % Self.palette.count])
+                        .fill(ModelColors.color(at: index))
                         .frame(width: 6, height: 6)
                     Text(name(part.provider))
                         .popoverFont(9, weight: .medium)
@@ -255,8 +230,4 @@ struct RecapCardView: View {
                 .lineLimit(1)
         }
     }
-
-    /// The providers' colours — hues far apart, cycled when the range spans
-    /// more providers than the palette holds.
-    private static let palette: [Color] = [.purple, .green, .blue, .orange, .pink, .cyan, .indigo, .mint, .red]
 }

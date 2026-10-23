@@ -5,31 +5,32 @@ import Domain
 /// opens anywhere. It holds what the card holds — the total, the change, the
 /// split, the highlights — in the card's own words (`UsageFormat`,
 /// `RecapRange`'s), plus the shape behind them: the day by day is `Recap.days`
-/// and the model by model `Recap.models`, never a second count. Its own
-/// stylesheet, no script, the system's light or dark — the file travels alone.
-/// Written only when the person saves it; the app never reads it back.
+/// and the model by model `Recap.models`, never a second count. The dates are
+/// the recap's own (`Recap.range`), the peak its biggest day, the colours
+/// `ModelColors`'. Its own stylesheet, no script, the system's light or dark
+/// — the file travels alone. Written only when the person saves it
+/// (`ReportSaver`); the app never reads it back.
 struct RecapHTMLReport {
     /// The recap on screen, in the range the person chose.
     let recap: Recap
-    /// The range the recap was read for: its words, and the chart's rhythm.
+    /// The range the recap was read for: its words, and its period the
+    /// chart's rhythm.
     let range: RecapRange
-    /// The dates the recap was read for — the header's *when*. nil before the
-    /// recaps are read, which is when the card's export button is absent too.
-    let dates: DateRange?
     /// A provider's name, from its id — the card's.
     let name: (String) -> String
 
     /// The moment the report was written, said in its stamp.
     private let written: Date
 
-    init(recap: Recap, range: RecapRange, dates: DateRange?, name: @escaping (String) -> String,
-         written: Date = Date()) {
+    init(recap: Recap, range: RecapRange, name: @escaping (String) -> String, written: Date = Date()) {
         self.recap = recap
         self.range = range
-        self.dates = dates
         self.name = name
         self.written = written
     }
+
+    /// The name the save panel offers.
+    var fileName: String { "Usage recap — \(range.title)" }
 
     /// The whole page.
     var html: String {
@@ -54,7 +55,7 @@ struct RecapHTMLReport {
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>\(Self.escape("Usage recap — \(range.title)")) · ClaudeBar</title>
+        <title>\(Self.escape(fileName)) · ClaudeBar</title>
         <style>\(Self.stylesheet)</style>
         </head>
         <body>
@@ -73,12 +74,10 @@ struct RecapHTMLReport {
         ].joined(separator: "\n")
     }
 
-    /// The range's dates when they are known, what the change is against when
-    /// they are not.
+    /// The days the recap sums, first to last.
     private var when: String {
-        guard let dates else { return Self.escape(range.comparedWith) }
         let style = Date.FormatStyle().weekday(.wide).month(.wide).day()
-        return Self.escape("\(dates.first.formatted(style)) – \(dates.last.formatted(style.year()))")
+        return Self.escape("\(recap.range.first.formatted(style)) – \(recap.range.last.formatted(style.year()))")
     }
 
     /// A range that held nothing is said, never shown as zeros.
@@ -106,7 +105,7 @@ struct RecapHTMLReport {
         if recap.workingTime > 0 { subline.append(UsageFormat.duration(recap.workingTime)) }
         if recap.sessions > 0 { subline.append("\(recap.sessions) sessions") }
 
-        var lead = #"  <section><h2>The \#(kindWord)</h2>"#
+        var lead = #"  <section><h2>The \#(range.period.word)</h2>"#
         lead += #"<div class="lead"><span class="total">\#(UsageFormat.value(recap.total, in: recap.unit))</span>"#
         lead += #"<span class="cap">\#(recap.unit.caption)</span>"#
         if let change = recap.change {
@@ -127,33 +126,46 @@ struct RecapHTMLReport {
         let stack = "<div class=\"stack\">"
             + recap.providers
             .enumerated()
-            .map { index, part in #"<div class="c\#(index % Self.palette.count + 1)" style="width:\#(Int(part.share * 100))%"></div>"# }
+            .map { index, part in #"<div class="\#(Self.hue(index))" style="width:\#(Int(part.share * 100))%"></div>"# }
             .joined() + "</div>"
         let rows = recap.providers.enumerated().map { index, part in
-            row(color: index, label: name(part.provider), value: UsageFormat.value(part.value, in: recap.unit),
+            row(hue: Self.hue(index), label: name(part.provider), value: UsageFormat.value(part.value, in: recap.unit),
                 share: UsageFormat.share(part.share))
         }
         return stack + "<div class=\"rows\">" + rows.joined(separator: "\n") + "</div>"
     }
 
-    /// Every day of the range, each a share of the busiest. A month's thirty
-    /// days are drawn quieter than a week's seven: a value only on the peak,
-    /// a day-number label.
+    /// Every day of the range, each a share of the busiest; the peak is the
+    /// recap's biggest day. A month's thirty days are drawn quieter than a
+    /// week's seven: a value only on the peak, a day-number label.
     private var daysMarkup: String {
         let bars = recap.days.map { day in
-            let value = !range.isMonth || day.share == 1 ? #"<span class="v">\#(UsageFormat.value(day.value, in: recap.unit))</span>"# : ""
-            let label = range.isMonth ? day.date.formatted(.dateTime.day()) : day.date.formatted(.dateTime.weekday(.abbreviated))
-            let peak = day.share == 1 ? " peak" : ""
+            let isPeak = day.date == recap.biggestDay?.date
+            let value: String
+            let label: String
+            switch range.period {
+            case .week:
+                value = UsageFormat.value(day.value, in: recap.unit)
+                label = day.date.formatted(.dateTime.weekday(.abbreviated))
+            case .month:
+                value = isPeak ? UsageFormat.value(day.value, in: recap.unit) : ""
+                label = day.date.formatted(.dateTime.day())
+            }
+            let shown = value.isEmpty ? "" : #"<span class="v">\#(value)</span>"#
+            let peak = isPeak ? " peak" : ""
             let height = max(Int(day.share * 100), day.value > 0 ? 2 : 0)
-            return #"<div class="day\#(peak)">\#(value)<div class="bar" style="height:\#(height)%"></div><span class="l">\#(Self.escape(label))</span></div>"#
+            return #"<div class="day\#(peak)">\#(shown)<div class="bar" style="height:\#(height)%"></div><span class="l">\#(Self.escape(label))</span></div>"#
         }
         return "<div class=\"chart\">" + bars.joined(separator: "\n") + "</div>"
     }
 
-    /// Every model the mix reads, largest first.
+    /// Every model the mix reads, largest first, each in the colour the app
+    /// gives it (`ModelColors`).
     private var modelsMarkup: String {
-        "<div class=\"rows\">" + recap.models.enumerated().map { index, part in
-            row(color: index, label: part.line.displayName, value: UsageFormat.value(part.value, in: recap.unit),
+        let names = recap.models.map(\.line.model)
+        return "<div class=\"rows\">" + recap.models.map { part in
+            row(hue: ModelColors.index(of: part.line.model, among: names).map(Self.hue) ?? "cu",
+                label: part.line.displayName, value: UsageFormat.value(part.value, in: recap.unit),
                 share: UsageFormat.share(part.share))
         }.joined(separator: "\n") + "</div>"
     }
@@ -173,12 +185,8 @@ struct RecapHTMLReport {
     }
 
     private var footer: String {
-        #"  <footer>Written by <strong>ClaudeBar</strong> from your local usage logs — a read of the \#(kindWord), never stored.</footer>"#
+        #"  <footer>Written by <strong>ClaudeBar</strong> from your local usage logs — a read of the \#(range.period.word), never stored.</footer>"#
     }
-
-    /// The word for the range's kind, in the pieces that say *the week* or
-    /// *the month*.
-    private var kindWord: String { range.isMonth ? "month" : "week" }
 
     // MARK: - Helpers
 
@@ -189,8 +197,11 @@ struct RecapHTMLReport {
         return #"  <section><h2>\#(title)</h2>\#(content)</section>"#
     }
 
-    private func row(color: Int, label: String, value: String, share: String) -> String {
-        #"<div class="row"><span class="dot c\#(color % Self.palette.count + 1)"></span><span class="name">\#(Self.escape(label))</span><span class="val">\#(value)</span><span class="share">\#(share)</span></div>"#
+    /// The stylesheet's class for the palette's hue at `index`, cycled.
+    private static func hue(_ index: Int) -> String { "c\(index % ModelColors.palette.count + 1)" }
+
+    private func row(hue: String, label: String, value: String, share: String) -> String {
+        #"<div class="row"><span class="dot \#(hue)"></span><span class="name">\#(Self.escape(label))</span><span class="val">\#(value)</span><span class="share">\#(share)</span></div>"#
     }
 
     private func tile(_ title: String, _ value: String) -> String {
@@ -206,14 +217,16 @@ struct RecapHTMLReport {
             .replacingOccurrences(of: "\"", with: "&quot;")
     }
 
-    /// The providers' colours — the card's palette, hues far apart.
-    private static let palette = ["#BF5AF2", "#30D158", "#0A84FF", "#FF9F0A", "#FF375F", "#64D2FF", "#5E5CE6", "#63E6C2", "#FF453A"]
-
     /// The stylesheet: light by the page's own palette, dark when the system
     /// asks — the file travels alone, so no theme follows it.
     private static let stylesheet: String = {
-        let colors = palette.enumerated().map { index, hex in ".c\(index + 1){background:\(hex)}" }
-            .joined(separator: "\n")
+        // The app's palette, written out in each appearance; `cu` the unnamed line.
+        func hues(dark: Bool) -> String {
+            (ModelColors.palette.enumerated().map { index, color in
+                ".c\(index + 1){background:\(ModelColors.hex(color, dark: dark))}"
+            } + [".cu{background:\(ModelColors.hex(ModelColors.unnamed, dark: dark))}"]).joined()
+        }
+        let colors = "\(hues(dark: false))\n@media (prefers-color-scheme:dark){\(hues(dark: true))}"
         return """
         :root{--bg:#F6F4FA;--wash:#EDE8F6;--card:#FFFFFF;--hair:#E6E1F0;--ink:#1D1B2E;--muted:#6B6580;--faint:#9A93AE;--track:#ECE6F5;--up:#C46A00;--down:#1F8A4D;--glow:rgba(140,110,220,.10)}
         @media (prefers-color-scheme:dark){:root{--bg:#0C0D12;--wash:#14151D;--card:rgba(255,255,255,.045);--hair:rgba(255,255,255,.09);--ink:#F2F2F5;--muted:#A8A8B3;--faint:#6E6E7A;--track:rgba(255,255,255,.07);--up:#FF9F0A;--down:#30D158;--glow:rgba(120,90,220,.16)}}
