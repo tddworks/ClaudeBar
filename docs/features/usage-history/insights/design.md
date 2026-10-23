@@ -53,18 +53,22 @@ mix adds up to the range exactly as a day's lines add up to the day.
 UsageHistory.lastYear ──► Days   (the range: stats · units · defaultUnit · value(of:in:) · total(in:) · cacheSavings · last(n))
                            │
                            ├─► ModelMix(of: days, in: unit)      parts: [Part]   Part = line · value · share   · top
+                           │     = UsageMix<ModelUsageLine>      the one mix, ByProject its project key
                            │
                            └─► DayActivity(of: days, in: unit)   days: [DayValue] DayValue = date · value · share · busiest
 
-ModelUsageLine + ModelUsageLine         a line owns its own sum
+ModelUsageLine = model + Spend          a line is its key and what it spent (UsageLine)
+UsageLine + UsageLine                   two lines of one name add their spends
+Spend.value(in: unit)                   a spend reads itself in a unit
 UsageHeatmap.level(of: DayValue)        the App's shading band, 0…4
 ```
 
 | Type | Answers | Where |
 |---|---|---|
-| `Days` | the range: its days, the units it offers, a day's or a line's value in a unit, the total, what caching saved, its last `n` days | `Modules/Quotas/Sources/Days.swift` |
-| `ModelUsageLine` `+` | two lines of one model as one: every count and the cost added | `Modules/Quotas/Sources/ModelUsageLine.swift` |
-| `ModelMix` | each model summed over the range, largest first (ties by name), each `Part` with its value and share; `top` | `Modules/Quotas/Sources/ModelMix.swift` |
+| `Days` | the range: its days, the units it offers, a day's value in a unit, the total, what caching saved, its last `n` days | `Modules/Quotas/Sources/Days.swift` |
+| `Spend` | tokens by kind and their cost: `+`, `−`, its value in a unit | `Modules/Quotas/Sources/Spend.swift` |
+| `UsageLine` | a line of a day's split, a name and a `Spend` (`ModelUsageLine`, `ProjectUsageLine`); `+` | `Modules/Quotas/Sources/UsageLine.swift` |
+| `UsageMix` (`ModelMix`) | each line summed over the range, largest first (ties by name), each `Part` with its value and share; `top`, `names`, `isEmpty` | `Modules/Quotas/Sources/UsageMix.swift` |
 | `DayActivity` | every date with its value and its share of the busiest day; `busiest` | `Modules/Quotas/Sources/DayActivity.swift` |
 | `DayValue` | one day: date, value, share | `Modules/Quotas/Sources/DayValue.swift` |
 
@@ -75,16 +79,18 @@ palette in the App. An **empty day is a value of 0**, never a missing one — th
 same law a range keeps about its dates — and a range with nothing used has no
 busiest day, so every share is 0.
 
-**A line owns its sum.** `ModelMix` adds a model's lines with `+`, so a field a
-day gains is added by the line itself, never dropped by a field-by-field copy.
+**A spend owns its sum.** `ModelMix` adds a model's lines with `+`, which adds
+their `Spend`s, so a field a day gains is added once, by the spend, never
+dropped by a field-by-field copy — for model lines and project lines alike.
 
 ## 4 · The laws, each with one owner
 
 | Law | Owner |
 |---|---|
-| a range offers its units and names the one a view opens on; a day's, a line's and the range's value in a unit; what caching saved over the range | `Days` |
-| two lines of one model add up to one line: every count and the cost | `ModelUsageLine` (`+`) |
-| the mix is each model summed over the range, largest first, ties by name, the unnamed line included so the parts add up; each part carries its share; the top model is the largest named one, never the unnamed line | `ModelMix` |
+| a range offers its units and names the one a view opens on; a day's and the range's value in a unit; what caching saved over the range | `Days` |
+| what a part spent adds up field by field and reads itself in a unit | `Spend` |
+| two lines of one model add up to one line: their spends added | `UsageLine` (`+`) |
+| the mix is each model summed over the range, largest first, ties by name, the unnamed line included so the parts add up; each part carries its share; the top model is the largest named one, never the unnamed line | `UsageMix` (`ModelMix`) |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0 | `DayActivity` |
 | a day's shade is one of five bands by its share; a day with nothing is band 0 — a cell, never a gap | `UsageHeatmap` (App) |
 | a value is written once per unit: money for cost, a count for tokens and cache | `UsageFormat` (App), money through `MoneyFormat`, counts, shares and changes through `UsageNumberFormat` (the kernel's, shared with the recap webhook) |
@@ -95,7 +101,7 @@ day gains is added by the line itself, never dropped by a field-by-field copy.
 
 | Piece | Job | Where |
 |---|---|---|
-| `ModelMix`, `DayActivity`, `DayValue` | the two questions, as values | `Modules/Quotas/Sources/` |
+| `UsageMix` (`ModelMix`), `DayActivity`, `DayValue` | the two questions, as values | `Modules/Quotas/Sources/` |
 | `UsageHistory.lastYear` | the year the insights read, once read and when any day holds usage; `nil` until `readYear()` is asked for; `lastThirtyDays` is its last thirty days | `Modules/Providers/Sources/UsageHistory.swift` |
 | `UsageSection` | `.lastYear` and `.modelMix`: whether each shows until the person chooses (both hidden), and that both read the year | `Sources/Domain/Settings/` |
 | `AppSettingsRepository.isShown(_:)` | the person's switch per section, `app.usageSections.<section>` ([settings](../../../settings.md)) | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |

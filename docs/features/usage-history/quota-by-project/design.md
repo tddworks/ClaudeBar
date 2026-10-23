@@ -4,8 +4,8 @@
 > the words and laws are the model's ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
 > this says how it runs. Users: [README.md](README.md). The days it reads, and
 > how a login's logs become them: [daily-usage](../daily-usage/design.md).
-> The values it reuses — `Days`, and `ModelMix` as the shape it mirrors:
-> [insights](../insights/design.md).
+> The values it reuses — `Days`, `Spend`, and `UsageMix`, the one mix
+> `ModelMix` is too: [insights](../insights/design.md).
 
 > **Status: BUILT** (Claude Code only, see §7). Mockup:
 > [design-concept/quota-by-project](../../../../design-concept/quota-by-project/index.html).
@@ -52,7 +52,8 @@ ByProject(of: year, in: unit).parts                // "where did my usage go"
 |---|---|---|
 | a **project** | the working directory a record was spent in, named by its last path component — *marron*, *api* | an absolute path (never stored, never rendered); a git repo by name |
 | a record's **project** | what the shape's `project` field reads — the raw directory; a record whose log writes none is **unnamed** | inferred from a file path or a prompt |
-| a day's **project lines** | one line per project, what that project's records spent — the day's project split | a second day total |
+| a day's **project lines** | one line per *named* project, what that project's records spent — kept with the day | a second day total; the unnamed part, which is never kept |
+| a day's **project split** | the named lines and, when they leave some of the day, the **remainder** — the unnamed part, worked out by the day as the day less its named lines | a list the aggregator or the read rebuilds |
 | the **by-project** read | each project summed over a range, largest first, the unnamed part among them so the parts add up | a kept report; a quota |
 | a **part** | one project's value in the unit, and its share of the range | a login: the read stays one login's own, as every Usage History read is |
 | the **top project** | the largest *named* one — never the unnamed part | necessarily the one the person calls their main project |
@@ -69,37 +70,48 @@ read; the unnamed part is the records whose log wrote no directory at all.
 the log's line ──► UsageLog.Shape.project    the one new word: the field of the working directory   DataSources
       │
       ▼
-LogRecord.project? ──► DayAggregator         names it (ProjectUsageLine.name(of:)) and tallies the
-      │                                      day's project split, one line per project
+LogRecord.project? ──► DayAggregator         names it (ProjectUsageLine.name(of:)) and adds each
+      │                                      named record's Spend to its project
       ▼
-DailyUsageStat.projects: [ProjectUsageLine]  the day's split, kept with the day (the ledger's)
+DailyUsageStat.projects: [ProjectUsageLine]  the NAMED lines, kept with the day (the ledger's)
+DailyUsageStat.projectSplit                  named + remainder (the day less its named lines) — the day's own read
       │
-Days (projects · hasProjects · value(of:in:))  the range answers, as it does for models
-      │
-      └─► ByProject(of: days, in: unit)      parts: [Part]   Part = line · value · share   · top
+Days ──► ByProject = UsageMix<ProjectUsageLine>(of: days, in: unit)
+                                             parts: [Part]   Part = line · value · share   · top · names · isEmpty
 
-ProjectUsageLine + ProjectUsageLine          a line owns its own sum
+ProjectUsageLine = project + Spend           the line is a name and what it spent
+Spend + Spend · Spend − Spend · value(in:)   the spend owns its sum and its value in a unit
 ```
+
+`ProjectUsageLine` and `ModelUsageLine` are one idea, *the day split by
+something*: each is its key and a `Spend`, and both are a `UsageLine`, so
+`UsageMix` — summed, largest first, with shares, the unnamed part never the
+top — is written once and `ModelMix` and `ByProject` are it with their own
+key.
 
 | Type | Answers | Where |
 |---|---|---|
 | `UsageLog.Shape.project` | the field a log writes the record's working directory in — one optional path, read like `model` | `Modules/DataSources/Sources/UsageLog.swift` |
 | `LogRecord.project` | the record's raw directory, as the reader found it | `Modules/DataSources/Sources/Internal/Logs/LogRecord.swift` |
-| `ProjectUsageLine` | one project's share of a day: its tokens by kind and cost; its **name** — the last path component of the directory; `+` | `Modules/Quotas/Sources/ProjectUsageLine.swift` |
-| `DailyUsageStat.projects` | the day's split, one line per project, unnamed last — decoded empty from days kept before | `Modules/Quotas/Sources/DailyUsageStat.swift` |
-| `Days.projects` · `hasProjects` · `value(of:in:)` | the range's named projects in order; whether any day names one; a project line's value in a unit | `Modules/Quotas/Sources/Days.swift` |
-| `ByProject` | each project summed over the range, largest first in a unit, each part with its share; `top` | `Modules/Quotas/Sources/ByProject.swift` |
+| `Spend` | tokens by kind and their cost; `+`, `−` and its value in a unit — encoded flat inside its line, so kept days read as before | `Modules/Quotas/Sources/Spend.swift` |
+| `UsageLine` | a line of a day's split: a name (`""` the unnamed part) and a `Spend`; the split it takes from a day; `+` and lines summed per name | `Modules/Quotas/Sources/UsageLine.swift` |
+| `ProjectUsageLine` | `project` + `Spend`; the project's **name** — the last path component of the directory | `Modules/Quotas/Sources/ProjectUsageLine.swift` |
+| `DailyUsageStat.projects` · `projectSplit` | the named lines, in name order — decoded empty from days kept before; the split: those and the remainder | `Modules/Quotas/Sources/DailyUsageStat.swift` |
+| `UsageMix` (`ByProject`) | each line summed over the range, largest first in a unit, each part with its share; `top`; `names`, the named parts in name order; `isEmpty`, whether it names none | `Modules/Quotas/Sources/UsageMix.swift` |
 | `UsageSection.projectMix` | whether the popover shows the projects card — hidden until the person shows it, and it reads the year | `Sources/Domain/Settings/UsageSection.swift` |
 | `ProjectMixView` | the split as one bar and a row per project, largest first | `Sources/App/UsageHistory/` |
 
-**A day carries a split only when its log names projects.** A day none of
-whose records names a directory carries no project lines at all — not an
-empty-named one — so the ledgers of the providers that don't capture stay as
-they were. On a day that *does*, the records without a directory form one
-unnamed part, so the parts add up to the day exactly as a day's model lines
-do ([insights §2](../insights/design.md)); and a day that names none, inside
-a range that names one, is the unnamed part of the range — `ByProject` reads
-it in, so the parts add up to the range and no project's share overstates.
+**A day carries a split only when its log names projects, and the day owns
+it.** A day keeps its *named* project lines only. A day none of whose records
+names a directory keeps none — so the ledgers of the providers that don't
+capture stay byte for byte as they were — and its split is empty. On a day
+that does, `projectSplit` is the named lines and the **remainder**, the day
+less its named lines, whenever that is anything; so the parts add up to the
+day exactly as a day's model lines do ([insights §2](../insights/design.md)).
+Nothing else rebuilds the unnamed part: two days of one date added up
+(`DailyUsageStat +`, so `Days.merged` and the recap) add their named lines and
+their totals, and the sum's remainder holds what a day without a split spent;
+`ByProject` only sums the days' splits.
 
 ## 4 · The laws, each with one owner
 
@@ -107,27 +119,27 @@ it in, so the parts add up to the range and no project's share overstates.
 |---|---|
 | a log's record may name its project — the field that holds the working directory — read like the model, one more word in the shape's path language | `UsageLog.Shape` |
 | a record's project is named once, at aggregation: the last path component of the working directory; a path that names no component names itself; a record that names nothing is unnamed | `ProjectUsageLine.name(of:)` · `DayAggregator` |
-| a day's project split is one line per project — named lines in name order, the unnamed part last — and exists only when the day's records name at least one project | `DayAggregator` · `DailyUsageStat.projects` |
-| two lines of one project add up to one line: every count and the cost | `ProjectUsageLine` (`+`) |
-| the by-project read is each project summed over the range, largest first, ties by name, the unnamed part included so the parts add up; each part carries its share; the top project is the largest named one, never the unnamed part | `ByProject` |
-| a range answers whether any day names a project, and a project line's value in a unit — the same questions it answers for models | `Days` |
+| a day keeps its named project lines only, in name order; its split is those and the remainder — the day less its named lines, when that is anything — so the parts add up to the day, and a day that names no project has no split | `DailyUsageStat` (`projects`, `projectSplit`) |
+| what a part spent adds up field by field, and reads itself in a unit (cost, tokens, cache) | `Spend` |
+| two lines of one name add up to one line: their spends added | `UsageLine` (`+`) |
+| a mix is each line summed over the range, largest first, ties by name, the unnamed part included so the parts add up; each part carries its share; the top is the largest named one, never the unnamed part; it names its named parts and says whether it names any | `UsageMix` (`ByProject` for projects) |
 | an absolute working directory is never kept or shown: the ledger holds project lines under their last component | `ProjectUsageLine` (naming at aggregation) |
 | whether the projects card shows is the person's section choice, hidden until shown, and it reads the year only while a year section is on | `UsageSection.projectMix` |
-| a project keeps its colour between views of one range — the one palette, by the project's place among the range's projects; the unnamed part is grey | `ModelColors` (App) |
+| a project keeps its colour between views of one range — the one palette, by the project's place among the mix's names; the unnamed part is grey | `ModelColors` (App) |
 
 ## 5 · The pieces
 
 | Piece | Job | Where |
 |---|---|---|
 | `UsageLog.Shape.project`, `LogRecord.project`, `DayAggregator`'s split | the capture: a definition's word, the record's raw directory, the day's split | `Modules/DataSources/Sources/` |
-| `ProjectUsageLine`, `ByProject`, `Days`' reads | the kernel values, siblings of the model line and the mix | `Modules/Quotas/Sources/` |
+| `Spend`, `UsageLine`, `UsageMix`, `ProjectUsageLine`, `DailyUsageStat.projectSplit` | the kernel values, shared with the model line and the mix | `Modules/Quotas/Sources/` |
 | `claude.json`'s `"project": "$.cwd"` | Claude Code attributes its records — the one provider whose log writes the directory on every line it reads | `Modules/Providers/Resources/Providers/` |
 | `UsageSection.projectMix`, the settings switch | the person's choice, hidden by default beside *Model mix* | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |
 | `ProjectMixView`, `ModelColors` | the card and the palette it reads | `Sources/App/UsageHistory/` |
 
 The card sits in the popover's usage area beside the heatmap and the model
 mix, reads the same `lastYear` they read, and shows only when the range names
-a project (`Days.hasProjects`) — a provider whose log writes no directory
+a project (`ByProject` is not `isEmpty`) — a provider whose log writes no directory
 shows no card rather than a split of one unnamed part. The heading is the
 page's to word, as the mix's is.
 
