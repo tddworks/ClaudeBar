@@ -38,9 +38,12 @@ struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch
                             base: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
         let removed = Set(change.unset.map { $0.uppercased() }).union(change.set.keys.map { $0.uppercased() })
         var environment = base.filter { !removed.contains($0.key.uppercased()) }
-        // A name `set` also gives is left to it, so no two spellings remain.
-        let present = Set(environment.keys.map { $0.uppercased() }).union(change.set.keys.map { $0.uppercased() })
-        for (name, value) in change.defaults where !present.contains(name.uppercased()) { environment[name] = value }
+        // A name `set` also gives is left to it, and a default given in two
+        // spellings is applied once, so no two spellings remain.
+        var present = Set(environment.keys.map { $0.uppercased() }).union(change.set.keys.map { $0.uppercased() })
+        for (name, value) in change.defaults where present.insert(name.uppercased()).inserted {
+            environment[name] = value
+        }
         environment.merge(change.set) { _, value in value }
         return environment
     }
