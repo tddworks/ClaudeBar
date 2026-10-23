@@ -23,9 +23,7 @@ extension DataSources {
     }
 
     static func localServerCommands(for call: LocalServerCall, platform: Platform = .current) -> [[String]] {
-        guard platform.localServer != nil, platform.processes != nil, platform.localNetwork != nil,
-              let commands = platform.localServerCommands else { return [] }
-        return commands(call.process)
+        platform.localServers?.commands(for: call.process) ?? []
     }
 
     /// Keep the app-owned folder's name: CLIs have already trusted it.

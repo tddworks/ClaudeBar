@@ -25,6 +25,8 @@ enum WebhookWords {
     static let quotaAlerts = "Quota alerts"
     static let statusAlerts = "Status alerts"
     static let statusAlertsHint = "When a login gets worse: running low, critically low, depleted"
+    static let recap = "Weekly recap"
+    static let recapHint = "When your week turns: the week that closed, across every provider"
     static let loginExpiryAlerts = "Login expiry alerts"
     static let loginExpiryAlertsHint = "Before a sign-in expires: 7 days, 3 days, and the day itself"
     static let inKeychain = "Stored in the Keychain — a Slack URL carries a token. Never written to settings.json or a log."
@@ -54,6 +56,7 @@ enum WebhookWords {
 
     static func sends(_ sends: Webhook.Sends) -> String {
         [sends.quotaAlerts ? quotaAlerts : nil, sends.statusAlerts ? statusAlerts : nil,
+         sends.recap ? recap : nil,
          sends.loginExpiryAlerts ? loginExpiryAlerts : nil]
             .compactMap { $0 }.joined(separator: " · ")
     }

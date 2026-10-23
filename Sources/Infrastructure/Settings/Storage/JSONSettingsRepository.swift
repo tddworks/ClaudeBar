@@ -16,6 +16,7 @@ public final class JSONSettingsRepository:
     NotifySettingsRepository,
     QuotaAlertSettingsRepository,
     WebhookSettingsRepository,
+    RecapSentRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -537,7 +538,8 @@ public final class JSONSettingsRepository:
 
     /// `alerts.webhooks`: everything but the URL, which is a secret, and the
     /// host and last delivery, which aren't saved. A row with a channel this
-    /// version doesn't know is skipped.
+    /// version doesn't know is skipped. A row saved before the recap or the
+    /// login-expiry kind existed reads as sending neither.
     public func webhooks() -> [Webhook] {
         let rows: [[String: Any]] = store.read(key: "alerts.webhooks") ?? []
         return rows.compactMap { row in
@@ -550,6 +552,7 @@ public final class JSONSettingsRepository:
                 scope: (row["provider"] as? String).map(Webhook.Scope.provider) ?? .everyLogin,
                 sends: Webhook.Sends(quotaAlerts: row["quotaAlerts"] as? Bool ?? true,
                                      statusAlerts: row["statusAlerts"] as? Bool ?? false,
+                                     recap: row["recap"] as? Bool ?? false,
                                      loginExpiryAlerts: row["loginExpiryAlerts"] as? Bool ?? false),
                 isOn: row["isOn"] as? Bool ?? true
             )
@@ -564,9 +567,23 @@ public final class JSONSettingsRepository:
             }
             return ["id": webhook.id, "name": webhook.name, "channel": webhook.channel.rawValue, "provider": provider,
                     "quotaAlerts": webhook.sends.quotaAlerts, "statusAlerts": webhook.sends.statusAlerts,
-                    "loginExpiryAlerts": webhook.sends.loginExpiryAlerts, "isOn": webhook.isOn]
+                    "recap": webhook.sends.recap, "loginExpiryAlerts": webhook.sends.loginExpiryAlerts,
+                    "isOn": webhook.isOn]
         }
         store.write(value: rows, key: "alerts.webhooks")
+    }
+
+    // MARK: - RecapSentRepository
+
+    /// `alerts.recapSentAt`: when the last recap went out, as seconds since
+    /// the reference date — the store speaks numbers and strings, never dates.
+    /// Absent means no recap has gone out yet.
+    public func lastSent() -> Date? {
+        (store.read(key: "alerts.recapSentAt") as Double?).map(Date.init(timeIntervalSince1970:))
+    }
+
+    public func setLastSent(_ date: Date) {
+        store.write(value: date.timeIntervalSince1970, key: "alerts.recapSentAt")
     }
 
     // MARK: - HookSettingsRepository

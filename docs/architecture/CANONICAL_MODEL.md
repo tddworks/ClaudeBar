@@ -141,6 +141,10 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── best → Account?             DERIVED — the unpaused login with the most left: "switch to work"
 │       │   ├── cause → Account?            DERIVED — best, while it isn't healthy: the callout's subject
 │       │   │                               ("Home is at 18% Weekly — causing Warning")
+│       │   ├── pool → Pool?  ◇             DERIVED — the logins' shares, summed: "340% left across 3
+│       │   │                               logins" — a SUM OF SHARES, never a forecast, never a
+│       │   │                               percentage of a bigger whole; nil below two unpaused logins
+│       │   │                               ([pool design](../features/providers/quota-pools/design.md))
 │       │   └── Account  ◆                  A LOGIN YOU PAY FOR — who, and what we last saw. No behaviour
 │       │       ├── id: Account.ID          `<provider>` for the default, `<provider>.<acct>` for an added one
 │       │       ├── providerId          its product, by id — a value, never a reference
@@ -403,6 +407,7 @@ account.sync.lastError               → DataSourceError?  FETCH HEALTH: which s
 provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
 provider.accounts.best               → Account?     the most left — "switch to work"
 provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
+provider.accounts.pool               → Pool?        the logins' shares summed — "340% left across 3 logins"
 provider.inUse?.login                → Account      the login new terminal sessions start with
 account.isInUse · account.canBeInUse → Bool         the chip's mark; whether it can be chosen
 newSessions.state(of: provider)      → State?       the strip: waiting for setup · worth switching · in use
@@ -439,6 +444,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **an account shows only what its own sign-in reaches** ([USER_JOURNEYS F13](USER_JOURNEYS.md)): a definition is written once, for any account. The default account is signed in on this Mac — its folder is `folder.default`, and every read is reached. An added account is signed in through its folder or key: a read that names nothing of it — an environment variable, a fixed path or Keychain name, browser cookies, a local database or log — is not reached, whatever its definition forgets ([multi-account design](../features/providers/multi-account/design.md#what-an-accounts-sign-in-reaches)) | `ProviderDefinition.dataSources(for:)` — the definition read for one account |
 | status is QUOTA health, derived from usage; a failed fetch is FETCH health, in `sync` — a key that expired never turns the menu bar red | `Account.status` · `Account.sync` |
 | **a product's logins are INTERCHANGEABLE** — a pool: the product reads its healthiest unpaused login (min), so one empty login never holds its product at DEPLETED while another has room; it reads DEPLETED only when every one is empty. Products are not: one product's room never covers another's, so the menu bar reads the worst product (max). Every login keeps its own truth — its row, pill and alert say its own status and when it resets. A login with no usage yet never stands for its product | `Accounts.status` · `Monitor.overallStatus` |
+| **the pool's total is a SUM OF SHARES** — each unpaused login brings the share it already shows (its tightest window's); a login with nothing seen, or with only a balance and no ceiling, brings nothing, and is never guessed at zero or a hundred. Over 100 is fine and meaningful — the logins refill independently — and the sum is never a forecast and never a percentage of a bigger whole; it exists from two unpaused logins ([pool design](../features/providers/quota-pools/design.md)) | `Pool` · `Accounts.pool` |
 | *in use* is the TERMINAL's choice, not the monitor's: every enabled login is still fetched and shown; only new `claude` / `codex` sessions start on the login in use. It is not the `active` account the law above rules out | `InUse` |
 | the login in use is the plain login or a folder login of the same product; only its folder is recorded, nowhere else, **under its CLI's name** (`in-use/claude`) — the shell starts a CLI, not a product; nothing recorded, or a folder no login has, is the plain login; removing it goes back to the plain login | `InUse` · `LoginsInUse` |
 | **a CLI is wrapped once**, however many products run it: two products on `claude` share its record, and the last choice wins | `NewSessions` (its commands, each once) · `ShellSetup` |
@@ -455,6 +461,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestinations` |
 | a webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope; it has no percent of its own ([design](../features/alerting/webhooks/design.md)) | `Webhook` |
 | how an alert or a test reads in Slack and as JSON; a test is never shaped like an alert | `WebhookBody` |
+| how the week's recap reads in Slack and as JSON, from the same `Recap` the card reads ([design](../features/alerting/recap-alerts/design.md)) | `WebhookBody` |
 | a webhook URL is https, or http only to a loopback or LAN host | `WebhookAddress` |
 | one POST per alert, no retry; a redirect stays on the URL's origin; nothing that could carry the URL reaches a log or the pane | `WebhookClient` |
 | a destination's secret (Notify!'s token, a webhook's URL) is never in `settings.json` or a log — webhooks keep the rest under `alerts.webhooks`; one the Keychain refuses falls back to the app credential store, read Keychain first, and the pane says so — one copy of that rule for every destination | `DestinationSecrets` |
@@ -521,6 +528,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | two days of one date add up to one day: every count, the cost, the time, the savings, one line per model — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
 | a RECAP is the one read that sums across logins, for the person's total, and names the providers it spans — two logins of one provider are one part; a login's own chart stays its own. It reads in the unit every range offers: cost only when every provider that used anything, this range or the one before, offers cost, tokens otherwise; its change is against the range before, in that unit, and none when nothing was used before; its top model is `ModelMix`'s and its biggest day `DayActivity`'s, over the providers' days merged | `Recap` |
 | the weekly recap is read again only when the week turned or a login's days were read again since its last read; the page tells it when usage was read and never decides | `WeeklyRecaps` |
+| a week's recap goes out once, at the first refresh after the calendar's week turned, for the week that closed; the due answer is pure (`now`, the last send, the calendar), the send is read through `WeeklyRecaps`, and a week that added up to nothing says nothing ([design](../features/alerting/recap-alerts/design.md)) | `RecapDue` · `RecapAlerts` |
+| the week's recap is not an `Alert` — an alert names a login and its provider, the recap names the week; it goes to its own destination port, and a webhook wants it when it is on and sends recaps, scope unjudged | `RecapAlert` · `RecapDestination` · `Webhook.wants` |
 | a capability is declared by the definition — even one only a single product has (guest passes), whose runner the engine supplies — never chosen by a provider's name, never a vendor name in a module. Either way it is reached through the login's handle (`account.usageHistory`, `account.guestPasses`), `nil` when not offered | `Account` |
 | usage history is read when the popover opens, never in the background, and never carried on `Usage`; the year only while a section that shows it is on | `UsageHistory` |
 | which usage sections the popover shows — *Today*, *Last 30 days*, *Last year*, *Model mix*, *Weekly recap* — and their defaults: the year's two hidden, the rest shown, until the person chooses | `UsageSection` · `AppSettingsRepository` |
@@ -564,7 +573,7 @@ its factory.
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
 | **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, login expiry, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `LoginExpiryAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and when its sign-in expires |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, login expiry, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `LoginExpiryAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and when its sign-in expires |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |
@@ -642,7 +651,6 @@ test first. Findings that need a decision first are in §9.
 | Data Sources | `Connection` means a payload's disclosures and a platform port; `[*]` ends a path in `JSONPath` and fans out in `LocalEndpoint` | one word each; one path dialect |
 | Data Sources | failures worded by workers (*No file at*, *Network error*, OAuth's *Token refresh failed*), retry decided by `tag == "executionFailed"`, `Unavailable` returns text, a missing CloudWatch client words its own | wider `ErrorFact` (`network`, `fileMissing`, `unavailable`, …), one table of failure names |
 | Data Sources | `DataSource` reads the refresher's state to decide renewal; the secret field names are a set on the aggregate | the refresher is told and answers a renewal; `Credential` knows its secrets |
-| Data Sources | a local server's flow (find the app, try ports and paths, word failures) inside the Mac adapter, between `pgrep` and `lsof` parsing | a neutral worker over a `LocalNetwork` port (phase 5, slice 3) |
 | SDK clients | Bedrock's prices and model names in `AWSClients`' Swift | a price file in the definition |
 | Activity | the hooks installed are a list beside `SessionEvent.EventName`, without `Notification`, so *Needs you* never comes | the installer registers every `EventName` |
 | Activity | "ClaudeBar's own CLI run" decided in four places; `CLAUDEBAR_PROBE` written by hand in `claude.json` and the guest-pass runner | Data Sources marks every child it starts and answers "is this one of my runs" |

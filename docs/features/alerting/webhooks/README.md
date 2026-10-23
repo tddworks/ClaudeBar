@@ -4,9 +4,9 @@ description: Send ClaudeBar's quota alerts, status alerts and login-expiry warni
 
 # Webhooks
 
-[Quota alerts](../quota-alerts/README.md) and the [status alerts](../status-alerts/README.md) tell *you*, on this Mac. A webhook sends the same alerts somewhere else: a Slack channel your team watches, a script on a home server, a monitoring service.
+[Quota alerts](../quota-alerts/README.md) and the [status alerts](../status-alerts/README.md) tell *you*, on this Mac. A webhook sends the same alerts somewhere else: a Slack channel your team watches, a script on a home server, a monitoring service. It can also send the [weekly recap](../recap-alerts/README.md) — the week across every provider, once a week.
 
-A webhook has no percent of its own. It sends the percents you already chose under Quota alerts, and, if you tick it, every status that got worse (low, critical, empty) and every login-expiry warning.
+A webhook has no percent of its own. It sends the percents you already chose under Quota alerts and, if you tick it, every status that got worse (low, critical, empty), the week that closed, and every login-expiry warning.
 
 ## Set up
 
@@ -15,7 +15,7 @@ A webhook has no percent of its own. It sends the percents you already chose und
 1. Paste the **URL**. It must be `https://`, except for a host on this Mac or your network (`localhost`, `192.168.…`, `*.local`).
 2. Pick the **channel**: **Slack** for a Slack incoming webhook, **JSON** for anything else.
 3. Pick **For**: **Every login**, or one provider.
-4. Tick what it **sends**: **Quota alerts**, **Status alerts**, **Login expiry alerts**, or any of them.
+4. Tick what it **sends**: **Quota alerts**, **Status alerts**, the **Weekly recap**, **Login expiry alerts**, or any mix. The recap sends the week that closed each time your calendar's week turns — see [recap webhooks](../recap-alerts/README.md).
 5. Press **Add**, then **Send a test**.
 
 Each webhook shows its name (the URL's host until you type one), its channel and scope, an on/off switch, and its last delivery: *Sent 2m ago*, *Failed — 404*, or *Nothing sent yet*.
@@ -38,7 +38,7 @@ Each webhook shows its name (the URL's host until you type one), its channel and
   "sentAt": "2026-10-22T09:41:00Z" }
 ```
 
-`type` is `quota`, `status`, `loginExpiry` or `test`. A status alert fills `status` and `was` (`warning`, `critical`, `depleted`) instead of `below` and `left`. A login-expiry alert fills `days` — calendar days left, `0` on the day.
+`type` is `quota`, `status`, `loginExpiry`, `recap` or `test`. A status alert fills `status` and `was` (`warning`, `critical`, `depleted`) instead of `below` and `left`. A login-expiry alert fills `days` — calendar days left, `0` on the day. A webhook that also sends the **Weekly recap** gets its own message, `"type": "recap"`, with the week's total, change, split by provider, top model, biggest day and cache savings — [recap webhooks](../recap-alerts/README.md) has the fields and the timing.
 
 **Send a test** sends a message that says it is a test (`"type": "test"`), never a made-up alert.
 
@@ -57,4 +57,4 @@ What leaves your Mac: the provider, the login's name as the menu shows it, the p
 
 ## See also
 
-[design.md](design.md) · [Quota alerts](../quota-alerts/README.md) · [Status alerts](../status-alerts/README.md) · [settings.md](../../../settings.md)
+[design.md](design.md) · [Quota alerts](../quota-alerts/README.md) · [Status alerts](../status-alerts/README.md) · [Recap webhooks](../recap-alerts/README.md) · [settings.md](../../../settings.md)

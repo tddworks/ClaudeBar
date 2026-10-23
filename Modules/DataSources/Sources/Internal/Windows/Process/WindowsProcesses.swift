@@ -1,13 +1,12 @@
 #if os(Windows)
 import Foundation
 import Subprocess
-import WinSDK
 
 /// What Windows answers about programs: a CLI found on `PATH` with
 /// `PATHEXT`, a script run as the file itself, a variable read through the
-/// person's PowerShell profile, a child in the app's environment ended with
-/// `TerminateProcess`, and the kernel's process list.
-struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, RunningPrograms {
+/// person's PowerShell profile, and a child in the app's environment ended
+/// with `TerminateProcess`.
+struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     func find(_ name: String) -> String? {
         PathBinaryLocator().locate(name)
     }
@@ -32,30 +31,6 @@ struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch
     // once. Windows' graceful step attaches to the child's console, which a
     // GUI app shouldn't do.
     var teardown: [TeardownStep] { [] }
-
-    /// The executable paths of the processes running now. A process this user
-    /// can't open (a service, the system) is left out.
-    func paths() -> [String] {
-        var ids = [DWORD](repeating: 0, count: 4096)
-        var returned: DWORD = 0
-        while true {
-            let size = DWORD(ids.count * MemoryLayout<DWORD>.size)
-            guard K32EnumProcesses(&ids, size, &returned) else { return [] }
-            if returned < size { break }
-            ids = [DWORD](repeating: 0, count: ids.count * 2)
-        }
-        var paths: [String] = []
-        var buffer = [WCHAR](repeating: 0, count: 32_768)
-        for id in ids.prefix(Int(returned) / MemoryLayout<DWORD>.size) where id != 0 {
-            guard let process = OpenProcess(DWORD(PROCESS_QUERY_LIMITED_INFORMATION), false, id) else { continue }
-            defer { CloseHandle(process) }
-            var length = DWORD(buffer.count)
-            if QueryFullProcessImageNameW(process, 0, &buffer, &length) {
-                paths.append(String(decoding: buffer.prefix(Int(length)), as: UTF16.self))
-            }
-        }
-        return paths
-    }
 
     /// The app's environment with the call's changes. Windows' variable names
     /// ignore case, so a change replaces or removes a name however it is spelled.

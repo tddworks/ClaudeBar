@@ -4,9 +4,9 @@ import Subprocess
 
 /// What the Mac answers about programs: a CLI found through the login shell's
 /// `PATH`, a script started by `sh`, a variable read from the person's login
-/// shell, a child given the tool folders and ended with `SIGTERM` then
-/// `SIGKILL`, and the kernel's process table.
-struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, RunningPrograms {
+/// shell, and a child given the tool folders and ended with `SIGTERM` then
+/// `SIGKILL`.
+struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     func find(_ name: String) -> String? {
         BinaryLocator.which(name)
     }
@@ -44,10 +44,6 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, Ru
     // Asked to stop (`SIGTERM`), then killed after two seconds (#550).
     var teardown: [TeardownStep] {
         [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
-    }
-
-    func paths() -> [String] {
-        RunningProcesses.system()
     }
 }
 #endif

@@ -39,7 +39,9 @@ public enum WebhookDelivery: Sendable, Equatable {
 }
 
 /// One URL the person owns, with how and what it is sent. It has no percent of
-/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide
+/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide, the
+/// week's recap when `RecapAlerts` says it is due, and a login-expiry warning
+/// when `LoginExpiryAlerts` reaches a step
 /// ([design](docs/features/alerting/webhooks/design.md)).
 public struct Webhook: Sendable, Equatable, Identifiable {
     /// Which logins' alerts it sends.
@@ -49,17 +51,22 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         case provider(String)
     }
 
-    /// Which kinds of alert it sends.
+    /// Which kinds of send it carries.
     public struct Sends: Sendable, Equatable, Codable {
         public var quotaAlerts: Bool
         public var statusAlerts: Bool
+        /// The week that closed, each calendar week turn — a new kind of send
+        /// is a field here and a case in `WebhookBody`, and nothing else
+        /// moves ([recap alerts](docs/features/alerting/recap-alerts/design.md)).
+        public var recap: Bool
         /// A webhook saved before login expiry existed sends none of it until
         /// the person ticks it — the kinds are the person's to choose.
         public var loginExpiryAlerts: Bool
 
-        public init(quotaAlerts: Bool, statusAlerts: Bool, loginExpiryAlerts: Bool = false) {
+        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false, loginExpiryAlerts: Bool = false) {
             self.quotaAlerts = quotaAlerts
             self.statusAlerts = statusAlerts
+            self.recap = recap
             self.loginExpiryAlerts = loginExpiryAlerts
         }
 
@@ -67,13 +74,14 @@ public struct Webhook: Sendable, Equatable, Identifiable {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             quotaAlerts = try container.decodeIfPresent(Bool.self, forKey: .quotaAlerts) ?? false
             statusAlerts = try container.decodeIfPresent(Bool.self, forKey: .statusAlerts) ?? false
+            recap = try container.decodeIfPresent(Bool.self, forKey: .recap) ?? false
             loginExpiryAlerts = try container.decodeIfPresent(Bool.self, forKey: .loginExpiryAlerts) ?? false
         }
 
-        private enum CodingKeys: String, CodingKey { case quotaAlerts, statusAlerts, loginExpiryAlerts }
+        private enum CodingKeys: String, CodingKey { case quotaAlerts, statusAlerts, recap, loginExpiryAlerts }
 
         /// No kind at all: a webhook that would never send.
-        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !loginExpiryAlerts }
+        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap && !loginExpiryAlerts }
     }
 
     public let id: String
@@ -115,5 +123,12 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         case .everyLogin: true
         case .provider(let id): alert.providerId == id
         }
+    }
+
+    /// Whether it sends the week's recap: it is on and sends recaps. Scope is
+    /// never judged — the recap is one read across every provider, so no
+    /// login and no provider is in or out of it.
+    public func wants(_ recap: RecapAlert) -> Bool {
+        isOn && sends.recap
     }
 }

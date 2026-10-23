@@ -1,0 +1,5 @@
+module CWinHTTP [system] {
+    header "shim.h"
+    link "winhttp"
+    export *
+}

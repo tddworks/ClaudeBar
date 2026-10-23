@@ -165,9 +165,9 @@ Modules/DataSources/
 │       │              log source, each knowing its own) · LogFileFinder (behind the file
 │       │              readers) · DayAggregator · PriceList · LocalEndpoint
 │       ├── Process/   PipeCLIExecutor · PipeConversation · SubprocessSupport ·
-│       │              DefaultCLIExecutor · InteractiveRunner · BinaryLocator ·
+│       │              DefaultCLIExecutor · InteractiveRunner · PtySession · BinaryLocator ·
 │       │              LoginShellEnvironment · RunningProcesses · TerminalRenderer
-│       └── Network/   URLSessionNetworkClient · InsecureLocalhostNetworkClient
+│       └── Network/   URLSessionNetworkClient · LocalServers · LoopbackClient
 └── Tests/
     ├── Fetch/JSONRPCFetcherTests.swift
     ├── Mapping/JSONMapperTests.swift  one test per mapping feature
@@ -360,26 +360,26 @@ there, and the ports whose slice hasn't come (`Terminal`, `Secrets`,
   suite in `Tests/Contracts/` that runs against `Platform.current`'s adapter.
   The fields a port takes over leave `Platform`:
 
-| Port | Takes over today's | Mac adapter | Windows adapter |
-|---|---|---|---|
-| `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
-| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `proc_listallpids`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, `EnumProcesses`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers five facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) |
-| `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | the trusted-localhost client, `lsof` / `pgrep` | the same client; the listener table |
-| `Terminal` | `runCLI` · `screenRenderer` | SwiftTerm on a pty | the console's pseudo-terminal (ConPTY) |
-| `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 |
-| `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) |
+| Port | Takes over today's | Mac adapter | Windows adapter | Linux adapter |
+|---|---|---|---|---|
+| `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) | the zone Foundation reads from `/etc/localtime`: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
+| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers four facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) | `PATH`, `/bin/sh` for a script, `SIGTERM` then `SIGKILL` after 2 s: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
+| `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | `proc_listallpids`, `pgrep`, `lsof`, `URLSession` trusting this machine's certificate | `EnumProcesses`, each process's command line from its process information, the TCP listener table, WinHTTP with the certificate checks off on that request: built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)). The OS answers four facts; finding the app and asking it are one neutral copy ([below](#localnetwork-an-apps-own-server)) | not yet: `/proc/<pid>/cmdline` and `/proc/net/tcp` with socket inodes, its own follow-up; `LocalNetworkContract` is skipped, saying why |
+| `Terminal` | `runCLI` · `screenRenderer` | a pty (`openpty`, one at a time), its CLI started and read by `PtySession`; SwiftTerm renders | a pseudo console (ConPTY), the CLI created attached to it in a job that ends its whole tree; SwiftTerm renders: built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)). The OS starts the CLI in its terminal; typing, reading until the screen settles and rendering are one neutral copy ([below](#terminal-a-clis-screen)) | a pty (`posix_openpt`) through the same `PtySession`, and SwiftTerm's core |
+| `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 | `secret-tool`, the way the leaderboard's key store proved; cookies and storage `Unavailable` |
+| `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) | `$XDG_DATA_HOME`, else `~/.local/share`, `/`: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
 
 #### Processes: a program the person has
 
 A data source asks for a program in the person's words: *run the CLI they
 installed*, *talk to it*, *run their own script*, *what does their login
-set*, *is that app running*. Pipes, argv, `PATH` and signals are how, and
+set*. Pipes, argv, `PATH` and signals are how, and
 stay below. So the port is split by what each fact answers, and the
 business is one neutral copy above it:
 
 ```text
 DOMAIN, neutral, one copy
-  Processes        the programs on this machine, from the five facts below
+  Processes        the programs on this machine, from the four facts below
     .program(named:)  → Program?      an installed CLI, found
     .script(at:)      → Program?      the person's script file, when it is there
     .loginEnvironment → LoginShellEnvironment
@@ -397,14 +397,13 @@ PORTS, Ports/Processes.swift: what each OS answers, one question each
   LoginShell          command(printing:between:)  $SHELL -l -i              │ PowerShell profile
   ChildLaunch         environment(for:) ·         PATH + tool folders,      │ names ignoring case,
                       teardown                    SIGTERM, kill after 2s    │ TerminateProcess
-  RunningPrograms     paths()                     proc_listallpids          │ EnumProcesses
 ```
 
 - **Each piece changes for one reason.** How a CLI is found changes
   `InstalledPrograms`; a new kind of script changes `ScriptStart`; a login
   shell changes `LoginShell`; a timeout changes `PipeCLIExecutor`; how a
   failed run is worded changes `Program`.
-- **A new platform answers the five facts**, in one adapter that conforms to
+- **A new platform answers the four facts**, in one adapter that conforms to
   them (`MacProcesses`, `WindowsProcesses`), and passes `ProcessesContract`.
   Nothing above the ports is edited. A fetch kind that runs a program uses
   `Program` and edits no adapter.
@@ -415,8 +414,73 @@ PORTS, Ports/Processes.swift: what each OS answers, one question each
 - **A test hands in the running, not the facts.** `Processes.with(pipes:…)`
   keeps this OS's facts and runs programs on what the test gives, so the
   factory's stubbed `make` and a provider's test say the same thing.
-- `RunningPrograms` answers a local server's question; it moves to
-  `LocalNetwork` with slice 3.
+
+#### LocalNetwork: an app's own server
+
+A `localServer` fetch asks for an app in the person's words: *is it
+running*, *what was it started with*, *where does it listen*, *ask it*.
+The flow (find the app, read its values, try its ports and paths, word the
+failure) is one neutral copy; the OS answers four facts
+([#588](https://github.com/tddworks/ClaudeBar/issues/588)):
+
+```text
+DOMAIN, neutral, one copy
+  LocalServers         the four facts below, and a client that asks only here
+    .fetcher(for:)   → LocalServerFetcher   find, read values, try ports and paths
+    .commands(for:)  → what Import discloses: the programs reading the facts runs
+  LoopbackClient       refuses an address off this machine before sending; follows
+                       a redirect only within the same scheme, host and port
+PORTS, Ports/LocalNetwork.swift                    Mac                     │ Windows
+  RunningPrograms      paths()                     proc_listallpids        │ EnumProcesses
+  ProgramCommandLines  commandLines(naming:)       pgrep -a -lf            │ NtQueryInformationProcess
+  ListeningPorts       ports(of:)                  lsof -iTCP -sTCP:LISTEN │ GetExtendedTcpTable
+  LoopbackRequests     send(_:) → no redirect      URLSession, any cert    │ WinHTTP, cert checks off
+                       followed                    on 127.0.0.1            │ on that request
+```
+
+- **Windows runs no program to find an app.** Its command lines and ports
+  come from the kernel, so Import discloses nothing for them there.
+- **`URLSession` can't be the Windows client.** swift-corelibs-foundation
+  has no server trust (`URLProtectionSpace.serverTrust` is unsupported), and
+  its one way to skip the check is a process-wide variable read on Android
+  only. WinHTTP turns the checks off on one request; the SDK's `WinSDK`
+  module leaves `winhttp.h` out, so a two-line system-library module
+  (`CWinHTTP`) brings it in, on Windows only.
+- **A test hands in the running, not the facts.** The stubbed `make` takes
+  `running: [RunningProgram]` (path, command line, ports), so Antigravity's
+  tests run on every platform.
+
+#### Terminal: a CLI's screen
+
+A `cli` fetch runs a TUI as a person would, types into it and reads the
+screen it draws. A POSIX pty is two file descriptors the child is given as
+its standard files; a Windows pseudo console is attached to the child as it
+is created. So starting the child is the OS's answer, and the session above
+it reads and writes through what it started:
+
+```text
+NEUTRAL, one copy
+  DefaultCLIExecutor   off the cooperative pool, the call's environment and ready markers
+  InteractiveRunner    the input delay, autoResponses, the quiet spell, readyWhen
+  TerminalRenderer     SwiftTerm's headless screen
+PORT, Ports/Terminal.swift
+  PseudoTerminal   start(launch) → TerminalSession · environment(for:)
+  TerminalSession  read() · write(_:) · isRunning · exitCode · end()
+                   Mac, Linux: PtySession over openpty │ posix_openpt, SIGTERM then SIGKILL
+                   Windows:    ConPtySession — CreatePseudoConsole, CreateProcessW with
+                               null standard handles, a job, a thread draining the output
+```
+
+- **The child gets the console and nothing else.** An app whose own standard
+  files are redirected (a GUI app, a test runner) would hand them to the
+  child, which then writes past the console; null standard handles keep it
+  in the console.
+- **A session runs until its last frame is in.** The console paints after
+  the program writes, so a Windows session counts as running until it has
+  been quiet for 300 ms after the program ended.
+- **The whole tree ends.** `claude.cmd` starts `node`: the child starts
+  suspended and joins a job before it runs, and ending the session ends the
+  job.
 
 ### The shape
 
@@ -431,12 +495,12 @@ Modules/<Context>/
 │       ├── *.swift        implementations that need no platform
 │       ├── macOS/         #if os(macOS): the Mac's adapters for the ports
 │       │                  (Keychain, OSLog, IOKit, Darwin processes,
-│       │                  SwiftTerm, SweetCookieKit)
+│       │                  SweetCookieKit)
 │       ├── Windows/       #if os(Windows): the same ports, one slice at a
 │       │                  time (Credential Manager, WinSDK processes, the
 │       │                  console's pseudo-terminal)
 │       └── Linux/         #if os(Linux): the same ports, one slice at a time
-│                          (libsecret, /proc, glibc's stat); no client yet
+│                          (libsecret, glibc's stat, the pty); no client yet
 Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
                            SQLite, CLDR; changed only by scripts/bump-vendor.sh
 ├── Resources/
@@ -503,9 +567,12 @@ Modules/DataSources/Sources/
 │   ├── TimeZoneSource.swift   the person's zone, and DataSources.timeZone() ·
 │   │                          .calendar(), the one public way to it (#567)
 │   ├── Processes.swift        InstalledPrograms · ScriptStart · LoginShell ·
-│   │                          ChildLaunch · RunningPrograms: what an OS
-│   │                          answers about programs (#579)
-│   └── Terminal · Secrets · LocalNetwork   (slices 3–5)
+│   │                          ChildLaunch: what an OS answers about
+│   │                          programs (#579)
+│   ├── LocalNetwork.swift     RunningPrograms · ProgramCommandLines ·
+│   │                          ListeningPorts · LoopbackRequests: what an OS
+│   │                          answers about an app's own server (#588)
+│   └── Terminal · Secrets     (slices 4–5)
 └── Internal/
     ├── Platform.swift         ◇ struct Platform — holds the ports, nothing
     │                            else; Platform.bare: the name and zone. Until
@@ -525,29 +592,34 @@ Modules/DataSources/Sources/
     │                            PipeCLIExecutor · PipeConversation ·
     │                            SubprocessSupport underneath, one copy for every
     │                            platform (#579)
+    ├── Network/               LocalServers · LoopbackClient, and
+    │                            Fetch/LocalServerFetcher: an app's own server,
+    │                            found and asked, one copy (#588)
     ├── Fetch/ Lookup/ Mapping/ Logs/ Network/   neutral workers
     ├── macOS/                 #if os(macOS), whole file: one adapter per port
     │   ├── Platform+macOS.swift      static let current = Platform(name: "macOS", …)
     │   ├── Time/SystemTimeZone.swift   TimeZone.current
-    │   ├── Process/MacProcesses.swift   the five facts: BinaryLocator, sh,
-    │   │                               $SHELL -l -i, SIGTERM then kill,
-    │   │                               RunningProcesses (#579)
+    │   ├── Process/MacProcesses.swift   the four facts: BinaryLocator, sh,
+    │   │                               $SHELL -l -i, SIGTERM then kill (#579)
+    │   ├── Network/MacLocalServers.swift   RunningProcesses, pgrep, lsof,
+    │   │                               URLSession trusting 127.0.0.1 (#588)
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
     │                                 under their ports in slices 3–5
     ├── Windows/               #if os(Windows), whole file: the same ports
     │   ├── Platform+Windows.swift    static let current = Platform(name: "Windows", …)
     │   ├── Time/WindowsTimeZone.swift   the zone's registry key and offset (#567)
-    │   ├── Process/WindowsProcesses.swift   the five facts: PathBinaryLocator (PATH +
+    │   ├── Process/WindowsProcesses.swift   the four facts: PathBinaryLocator (PATH +
     │   │                                   PATHEXT), the file itself, PowerShell,
-    │   │                                   TerminateProcess, EnumProcesses (#579)
+    │   │                                   TerminateProcess (#579)
+    │   ├── Network/WindowsLocalServers.swift   EnumProcesses, NtQueryInformationProcess,
+    │   │                                   GetExtendedTcpTable, WinHTTP (#588)
     │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows
     └── Linux/                 #if os(Linux), whole file: the same ports, as far as
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
         ├── Time/LinuxTimeZone.swift     TimeZone.current; a zone with no tzdata
         │                                 file is the OS's offset, fixed
-        ├── Process/LinuxProcesses.swift  the five facts: LinuxBinaryLocator (PATH),
-        │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill,
-        │                                 /proc
+        ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH),
+        │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill
         └── Logs/                    FileStamp+Linux · ByteSearch+Linux
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
@@ -627,7 +699,8 @@ Each phase leaves main shippable and the Mac app unchanged in behaviour.
 | 3 | **Windows adapters for the slice:** `SigningKeyStore` on Credential Manager, `MachineIdentity` as "Windows PC" (the model Windows reports names a self-built PC's motherboard, so it isn't read; the hardware UUID came with the copied-key check, [#549](https://github.com/tddworks/ClaudeBar/pull/549)), `LeaderboardAPI` on `URLSession` as on the Mac | a program on Windows joins, uploads and leaves against the real server through the factories — built ([#547](https://github.com/tddworks/ClaudeBar/pull/547)) |
 | 4 | **Paths and shells.** App-data and path separators, shell argv, local-server discovery and the trusted CLI directory are platform facts supplied by the factory. Definitions use `{{platform.appData}}` ([ENGINE_DESIGN](ENGINE_DESIGN.md)); Mac process workers stay in `Internal/macOS/`, and Windows execution remains unavailable until phase 5 | definitions that read local files resolve on Windows — implemented in [#556](https://github.com/tddworks/ClaudeBar/pull/556), for review: redirected `APPDATA`, native drive/UNC paths, newest IDE file, and unchanged Mac paths/archived days |
 | 5 | **Quotas on Windows**, in the slices below | the Windows client shows quotas, and Windows skips no test |
-| 6 | **Linux, as far as Windows got.** `Internal/Linux/` implements `TimeZone`, `Places` and the log stamps, `Processes` over `/proc` and `/bin/sh`, and the leaderboard's key store over libsecret with the app's own store behind it; `Package.swift` and a `ubuntu-latest` job build and test the modules there | `swift test` is green on Linux and `ProcessesContract` and `TimeZoneContract` pass there; the ports without a slice (`Terminal`, `Secrets`, `LocalNetwork`) stay `nil`, so their cases fail at the named step |
+| 6 | **Linux, as far as Windows got.** `Internal/Linux/` implements `TimeZone`, `Places` and the log stamps, `Processes` over `/bin/sh` (the running-program listing it had over `/proc` moved to `LocalNetwork`, which Linux doesn't answer yet), and the leaderboard's key store over libsecret with the app's own store behind it; `Package.swift` and a `ubuntu-latest` job build and test the modules there | `swift test` is green on Linux and `ProcessesContract` and `TimeZoneContract` pass there; the ports without a slice (`Terminal`, `Secrets`, `LocalNetwork`) stay `nil`, so their contracts are skipped, saying why — built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)): 2,021 tests in 185 suites, 18 skipped with their reasons |
+| 7 | **Terminal on Linux.** `runCLI` and the screen renderer on a pty (`posix_openpt`): the Mac's interactive session — `InteractiveRunner`, `DefaultCLIExecutor`, `TerminalRenderer` — becomes one neutral copy, the pty and the session's environment join the Terminal port as its first facts, and the child's bound end keeps its one copy beside the session ([#615](https://github.com/tddworks/ClaudeBar/pull/615)) | the 9 `reads a CLI's screen` tests run on Linux; `TerminalContract` holds the Mac and Linux to one rendered answer; the Mac's tests are unchanged; Linux skips only the local server |
 
 Phase 5's slices, each its own issue and PR
 ([#563](https://github.com/tddworks/ClaudeBar/issues/563)):
@@ -637,8 +710,8 @@ Phase 5's slices, each its own issue and PR
 | 0 | **`TimeZone` port.** The person's zone, read through the factory; every `.current` calendar default reads it | a KST test runs on any machine — built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) |
 | 1 | **Vendor QuickJS and SQLite; one engine everywhere.** `QuickJSEngine` replaces JavaScriptCore on the Mac and is the engine on Windows; one `ReadOnlyQuery` on bundled SQLite | Windows no longer skips a test for a script engine or SQLite (−391); the Mac's numbers don't change; release-build timing, the size added to the Mac app, and scripts in definitions people wrote checked — built ([#571](https://github.com/tddworks/ClaudeBar/pull/571)) |
 | 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows — built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)): `command`, `script` and `jsonRpc` fetches, `command` logs and the login-shell lookup run on Windows |
-| 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows |
-| 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows |
+| 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows — built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)): a `localServer` fetch (Antigravity's `local` source) runs on Windows |
+| 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows — built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)): `cli` fetches read a CLI's screen through a pseudo console, and the runner's own suites run on all three platforms |
 | 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows |
 | 6 | **`Monitoring` into the package**, so no platform rewrites refresh scheduling and alert logic; the menu bar and Notify! stay in the Mac app | its own design review first, since it reshapes the domain's root |
 
@@ -647,16 +720,18 @@ Phase 5's slices, each its own issue and PR
 - **`Places` has no slice of its own.** Its two fields came with phase 4 and
   already work on Windows and on Linux. Slice 2 kept to `Processes`, so they
   stay fields of `Platform` until a slice needs them as a port.
-- **Linux is where Windows is.** Its adapters exist as far as Windows' do;
-  `Terminal`, `Secrets` and `LocalNetwork` are the same three slices that
-  neither platform has ([#563](https://github.com/tddworks/ClaudeBar/issues/563),
-  slices 3–5). What Linux answers in its own words: a `secret-tool` key store
-  with the app's own store behind it, `/proc` for the programs running,
-  `~/.local/share` for `{{platform.appData}}`, and the zone Foundation reads
-  from `/etc/localtime`. The key goes into the tool's pipe *before* the tool
-  starts: a write to a tool that has already gone — `env` exiting 127 when
-  `secret-tool` isn't installed — is a write to a pipe with no reader, and
-  `SIGPIPE`'s default action ends the whole app, not just that call.
+- **Linux is where Windows is, but for `LocalNetwork`.** Its adapters exist
+  as far as Windows' do, and the Terminal port begins with its pty. `Secrets`
+  is the slice neither platform has; `LocalNetwork` is built on Windows and
+  still `nil` on Linux, where `LocalNetworkContract` is skipped, saying why
+  ([#563](https://github.com/tddworks/ClaudeBar/issues/563), slices 3–5). What
+  Linux answers in its own words: a `secret-tool` key store with the app's own
+  store behind it, `~/.local/share` for `{{platform.appData}}`, the zone
+  Foundation reads from `/etc/localtime`, and a pty of its own for a CLI
+  fetch. The key goes into the tool's pipe *before* the tool starts: a write
+  to a tool that has already gone — `env` exiting 127 when `secret-tool`
+  isn't installed — is a write to a pipe with no reader, and `SIGPIPE`'s
+  default action ends the whole app, not just that call.
 - **No Linux client.** The modules carry no UI: the Mac's is the Mac's, and
   the Windows client is its own repo. A Linux one would be a third, and would
   start where the Windows one started.
@@ -691,6 +766,9 @@ Phase 5's slices, each its own issue and PR
   library's clock keeps for it, and the TimeZone contract's *should give a zone
   a date can be written in* proves it on every OS (Linux CI runs it in
   `Asia/Calcutta`) ([#600](https://github.com/tddworks/ClaudeBar/pull/600)).
+- **Swift's Glibc modulemap carries none of glibc's pty calls.** `posix_openpt`,
+  `grantpt`, `unlockpt` and `ptsname` are libc's to answer, but Swift cannot
+  import them, so the Linux pty declares the four by name.
 - ~~**The machine GUID** is kept by a disk image cloned to another PC, unlike a
   Mac's `IOPlatformUUID`; the leaderboard design decides whether that is
   enough for its copied-key check.~~ It isn't: Windows reads the firmware's
