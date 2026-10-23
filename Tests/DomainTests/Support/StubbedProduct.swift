@@ -9,18 +9,24 @@ import Foundation
 @MainActor
 func stubbedProduct(_ id: String, name: String? = nil, probe: any UsageProbe,
                settings: any ProviderSettingsRepository, available: Bool = true,
-               backgroundRefreshFloor: Duration? = nil, usageHistory: UsageHistory? = nil) -> Provider {
+               accounts: [ProviderAccountConfig] = [], backgroundRefreshFloor: Duration? = nil,
+               usageHistory: UsageHistory? = nil) -> Provider {
     // A data source with a cache sets the background floor, as Claude's API does.
     let cache = backgroundRefreshFloor.map { #","cache":{"ttl":\#($0.components.seconds)}"# } ?? ""
+    // A folder rule, so the product can hold added logins; it is never read —
+    // the saved configs come in through `accounts`.
+    let accountsJSON = accounts.isEmpty ? "" : """
+    ,"accounts":{"folder":{"default":"~/.stub-\(id)","signedInAs":{"file":"{{account.folder}}/auth.json","id":"$.account_id"}}}
+    """
     let json = """
     {"profile":{"id":"\(id)","name":"\(name ?? id.prefix(1).uppercased() + id.dropFirst())","links":{}},
      "dataSources":[{"kind":"stub","credential":{"environment":"STUB_READY"},
-                     "fetch":{"http":{"url":"https://stub.invalid/\(id)"}},"mapping":{"usage":{}}\(cache)}],
+                     "fetch":{"http":{"url":"https://stub.invalid/\(id)"}},"mapping":{"usage":{}}\(cache)}]\(accountsJSON),
      "defaultDataSource":"stub"}
     """
     let definition = try! ProviderDefinition.parse(Data(json.utf8), origin: .custom)
     let network = ProbeAnswers(probe: probe)
-    let provider = Provider(definition: definition, settings: LegacySettings(settings), makeDataSource: { source, _ in
+    let provider = Provider(definition: definition, settings: LegacySettings(settings), accounts: accounts, makeDataSource: { source, _ in
         DataSources.make(source, providerId: id, cliExecutor: NoCLI(), network: network,
                          makeTransport: { _, _, _, _ in throw UsageError.executionFailed("no RPC in a stub") },
                          environment: { $0 == "STUB_READY" && available ? "ready" : nil },

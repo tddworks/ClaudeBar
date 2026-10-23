@@ -3,8 +3,8 @@ import Quotas
 
 /// Records into days: each record on the local day its own time falls in,
 /// priced, with working sessions split by `sessionGap`. A day is the sum of
-/// its lines — one per model; records with no model form one unnamed line
-/// (daily-usage design §1).
+/// its lines — one per model, and, when the log names a working directory,
+/// one per project (daily-usage design §1, quota-by-project design §3).
 enum DayAggregator {
     /// Bumped when how days are summed changes. The log's fingerprint
     /// carries it, so kept days are summed again — a ledger is a cache, not
@@ -29,7 +29,8 @@ enum DayAggregator {
         guard !records.isEmpty else { return .empty(for: day) }
         var cost: Decimal = 0
         var savings: Decimal = 0
-        var tallies: [String: Tally] = [:]
+        var models: [String: Spend] = [:]
+        var projects: [String: Spend] = [:]
         for record in records {
             let spent: Decimal?
             if let own = record.cost {
@@ -43,32 +44,29 @@ enum DayAggregator {
             } else {
                 spent = nil
             }
+            let spend = Spend(inputTokens: record.input, outputTokens: record.output,
+                              cacheCreationTokens: record.cacheWrite, cacheReadTokens: record.cacheRead,
+                              totalTokens: record.tokens, cost: spent ?? 0)
             // A record without a declared model is one unnamed line; the
             // day's totals still hold it.
-            let model = record.model ?? ""
-            var tally = tallies[model] ?? Tally()
-            tally.total += record.tokens
-            tally.input += record.input
-            tally.output += record.output
-            tally.write += record.cacheWrite
-            tally.read += record.cacheRead
-            tally.cost += spent ?? 0
-            tallies[model] = tally
+            models[record.model ?? "", default: .none] = models[record.model ?? "", default: .none] + spend
+            // …and a named record to its project, named by the working
+            // directory's last path component — the one place the naming
+            // happens, so a day is never kept with a path. What no project
+            // names is the day's remainder, the day's own to work out.
+            let project = record.project.map { ProjectUsageLine.name(of: $0) } ?? ""
+            if !project.isEmpty {
+                projects[project, default: .none] = projects[project, default: .none] + spend
+            }
         }
         // Named models in name order; the unnamed line last, so it reads as
         // what remains of the day.
-        var lines = tallies
+        var lines = models
             .filter { !$0.key.isEmpty }
             .sorted { $0.key < $1.key }
-            .map { key, tally in
-                ModelUsageLine(model: key, inputTokens: tally.input, outputTokens: tally.output,
-                               cacheCreationTokens: tally.write, cacheReadTokens: tally.read,
-                               totalTokens: tally.total, cost: tally.cost)
-            }
-        if let unnamed = tallies[""] {
-            lines.append(ModelUsageLine(model: "", inputTokens: unnamed.input, outputTokens: unnamed.output,
-                                        cacheCreationTokens: unnamed.write, cacheReadTokens: unnamed.read,
-                                        totalTokens: unnamed.total, cost: unnamed.cost))
+            .map { ModelUsageLine(model: $0.key, spend: $0.value) }
+        if let unnamed = models[""] {
+            lines.append(ModelUsageLine(model: "", spend: unnamed))
         }
         let (workingTime, sessions) = sessionsAndTime(records, gap: sessionGap)
         return DailyUsageStat(
@@ -82,18 +80,10 @@ enum DayAggregator {
             cacheCreationTokens: records.reduce(0) { $0 + $1.cacheWrite },
             cacheReadTokens: records.reduce(0) { $0 + $1.cacheRead },
             cachedSavings: savings,
-            lines: lines
+            lines: lines,
+            // The named projects, in name order; the remainder is the day's.
+            projects: projects.sorted { $0.key < $1.key }.map { ProjectUsageLine(project: $0.key, spend: $0.value) }
         )
-    }
-
-    /// One model's share of a day, gathered while the records pass.
-    private struct Tally {
-        var total = 0
-        var input = 0
-        var output = 0
-        var write = 0
-        var read = 0
-        var cost: Decimal = 0
     }
 
     /// Working time from first to last record of each session, a pause longer

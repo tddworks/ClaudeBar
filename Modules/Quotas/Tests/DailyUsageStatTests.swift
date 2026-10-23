@@ -222,4 +222,81 @@ struct DailyUsageStatTests {
             ModelUsageLine(model: "m-large", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
         ])
     }
+
+    /// A day's project split rides with the day; days kept before it decode
+    /// with none.
+    @Test func `should decode a day kept before projects were recorded without them`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.projects.isEmpty)
+    }
+
+    @Test func `should decode a day's project lines`() throws {
+        let json = #"{"date":760000000,"totalCost":1.5,"totalTokens":1200,"workingTime":600,"sessionCount":2,"projects":[{"project":"marron","inputTokens":1000,"outputTokens":200,"cacheCreationTokens":0,"cacheReadTokens":0,"totalTokens":1200,"cost":1.5}]}"#
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(json.utf8))
+
+        #expect(day.projects == [
+            ProjectUsageLine(project: "marron", inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cost: 1.5),
+        ])
+    }
+
+    /// A day kept before the split is written exactly as it was read, so a
+    /// ledger's kept days read the same and are never summed again for it.
+    @Test func `should write a kept day back byte for byte`() throws {
+        let kept = #"{"cacheCreationTokens":0,"cacheReadTokens":40,"cachedSavings":0.25,"date":760000000,"inputTokens":1000,"lines":[{"cacheCreationTokens":0,"cacheReadTokens":40,"cost":1.5,"inputTokens":1000,"model":"m-large","outputTokens":200,"totalTokens":1200}],"outputTokens":200,"sessionCount":2,"totalCost":1.5,"totalTokens":1200,"workingTime":600}"#
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+
+        let day = try JSONDecoder().decode(DailyUsageStat.self, from: Data(kept.utf8))
+
+        #expect(String(decoding: try encoder.encode(day), as: UTF8.self) == kept)
+    }
+
+    @Test func `should write a day's named project lines flat, as a model's line is`() throws {
+        let day = DailyUsageStat(date: Date(timeIntervalSinceReferenceDate: 760_000_000), totalCost: 1.5,
+                                 totalTokens: 1200, workingTime: 0, sessionCount: 1,
+                                 projects: [ProjectUsageLine(project: "marron", totalTokens: 1200, cost: 1.5)])
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+
+        let json = String(decoding: try encoder.encode(day), as: UTF8.self)
+
+        #expect(json.contains(#""projects":[{"cacheCreationTokens":0,"cacheReadTokens":0,"cost":1.5,"inputTokens":0,"outputTokens":0,"project":"marron","totalTokens":1200}]"#))
+    }
+
+    // MARK: - The day's project split (quota-by-project design §3)
+
+    private let splitDate = Date(timeIntervalSince1970: 1_760_000_000)
+    private let marron = ProjectUsageLine(project: "marron", inputTokens: 600, totalTokens: 600, cost: 6)
+    private let api = ProjectUsageLine(project: "api", inputTokens: 200, totalTokens: 200, cost: 2)
+
+    @Test func `should split a day into its named projects and what remains of it`() {
+        let day = DailyUsageStat(date: splitDate, totalCost: 10, totalTokens: 1000, workingTime: 0, sessionCount: 1,
+                                 inputTokens: 1000, projects: [api, marron])
+
+        #expect(day.projectSplit == [
+            api, marron,
+            ProjectUsageLine(project: "", inputTokens: 200, totalTokens: 200, cost: 2),
+        ])
+    }
+
+    @Test func `should leave no remainder when the named projects hold the whole day`() {
+        let day = DailyUsageStat(date: splitDate, totalCost: 8, totalTokens: 800, workingTime: 0, sessionCount: 1,
+                                 inputTokens: 800, projects: [api, marron])
+
+        #expect(day.projectSplit == [api, marron])
+    }
+
+    @Test func `should keep no unnamed line and read the whole day as unnamed when it names no project`() {
+        let day = DailyUsageStat(date: splitDate, totalCost: 10, totalTokens: 1000, workingTime: 0, sessionCount: 1,
+                                 projects: [ProjectUsageLine(project: "", totalTokens: 1000, cost: 10)])
+
+        #expect(day.projects.isEmpty)
+        #expect(day.projectSplit == [ProjectUsageLine(project: "", totalTokens: 1000, cost: 10)])
+    }
+
+    @Test func `should have no project parts on a day with nothing spent`() {
+        #expect(DailyUsageStat.empty(for: splitDate).projectSplit.isEmpty)
+    }
 }

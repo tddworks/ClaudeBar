@@ -33,7 +33,7 @@ still hold — they are now lines in `claude.json`, pinned by
 | Token refresh | `POST https://platform.claude.com/v1/oauth/token` with Claude Code's public `client_id` | Scopes: the ones the login was granted, read from its own `scopes` (`$.claudeAiOauth.scopes#joined`) and asked for verbatim, so a renewed token is never narrower than the one it replaced (RFC 6749 §6: a token is issued for what was asked). A login that names no scopes falls back to `user:profile user:inference user:sessions:claude_code` |
 | Account identity | `~/.claude.json` → `oauthAccount` (email, display name, `billingType`) — read by every data source as the `account` context file, so the email shows whether the CLI or the API answered | CLI v2.1.79+ moved account details to a separate Status tab |
 | Guest passes | `claude /passes`, which copies the link to the clipboard | Max only (#243) |
-| Daily usage | `~/.claude/projects/*/*.jsonl` | Deduplicated by `(message.id, requestId)`, because Claude Code writes the same usage more than once |
+| Daily usage | `~/.claude/projects/*/*.jsonl` | Deduplicated by `(message.id, requestId)`, because Claude Code writes the same usage more than once. Every line carries the `cwd` it was written in, read as the record's `project` and named at aggregation — the folder part of [quota-by-project](../../features/usage-history/quota-by-project/design.md) |
 | Claude Desktop tokens | `{{platform.appData}}/Claude/buddy-tokens.json` | Today's `tokens-today.date` and `tokens-today.tokens`; tokens only, no cost |
 
 The Desktop path is a platform fact supplied through `DataSources`: macOS keeps

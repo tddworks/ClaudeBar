@@ -70,7 +70,7 @@ Recap(this: [String: Days], before: [String: Days])                             
  └ isEmpty     no provider used anything
 
 Days.merged([Days])         several ranges as one: each date once, its days added (DailyUsageStat +)
-DailyUsageStat +            two days of one date as one: every count, cost, time, savings; one line per model (ModelUsageLine +)
+DailyUsageStat +            two days of one date as one: every count, cost, time, savings; one line per model and per named project (UsageLine +)
 ```
 
 | Type | Answers | Where |

@@ -242,8 +242,11 @@ data. The reading rules every format shares:
 - **`records` is the log**: its **source** — files (`files` glob and `format`),
   one `command`, or one `sqlite` call on an app's own database; exactly one of
   them — then the record's shape —
-  `where`, `at`, `id`, `model`, `tokens`, `cost` — or, when the log writes a
-  record more than one way, a list of **`shapes`**; never both. Each file is
+  `where`, `at`, `id`, `model`, `tokens`, `cost` — and, to attribute the
+  record to a project, its `project`: the field of the working directory
+  ([quota-by-project](../quota-by-project/design.md)) — or, when the log
+  writes a record more than one way, a list of **`shapes`**; never both.
+  Each file is
   read once, and a line is read whole by the first shape whose `where`
   holds: one shape's paths never answer for another's record. Every shape in
   a list has a `where`, so none silently takes another's lines. `id` dedupe

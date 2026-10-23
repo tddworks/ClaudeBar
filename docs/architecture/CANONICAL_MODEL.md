@@ -187,7 +187,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │   │               read-only query of the app's own database · format (a
 │       │       │   │   │   │               JSON object per line, or per file) · the record's shape
 │       │       │   │   │   │               in the mapping's path language (when, which model,
-│       │       │   │   │   │               tokens by kind, its own cost, its identity), or its
+│       │       │   │   │   │               tokens by kind, its own cost, its identity, its
+│       │       │   │   │   │               project — the field of the working directory), or its
 │       │       │   │   │   │               `shapes` when the log writes it more than one way,
 │       │       │   │   │   │               each read whole
 │       │       │   │   ├── prices: PriceList   WHAT A TOKEN COSTS — a price file beside the
@@ -202,7 +203,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           per model, a line holding what the day holds — tokens
 │       │       │                           input · output · cache write · cache read · cost
 │       │       │                           (ESTIMATED unless the log states it); records with no
-│       │       │                           model form one unnamed line · sessions · working
+│       │       │                           model form one unnamed line · one line per project
+│       │       │                           when the log names the working directory · sessions ·
 │       │       │                           time · cache savings
 │       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
 │       │       │                           run by the engine; `nil` when not declared
@@ -262,6 +264,10 @@ Usage History                               the context that runs each login's `
 New sessions  ◆                             In use's shell side — the lines that make `claude` start on the
                                             login in use; a choice waits for them. Follows refreshes
                                             through the Monitor's one extension point, `onRefreshed`
+Rest when empty  ◆                          the products asked to rest while empty, each with one saved
+                                            `WhenEmpty`: watching · resting(since:) · shownAnyway. Follows
+                                            refreshes through `onRefreshed`; judges *empty* by
+                                            `monitor.status(of: provider)`; never touches the switch
 Destinations                                notifications · your quota alerts · status alerts · signed out · webhooks · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
@@ -367,6 +373,8 @@ Claude Code sessions (Activity); where settings and secrets are kept
 | The user does | The node is told | Notes |
 |---|---|---|
 | toggles a provider in Providers | `provider.enable()` · `disable()` | every login of it; the pane keeps its place |
+| turns on *Rest when empty* (a product's page in Providers) | `restWhenEmpty.turn(_:product:)` | off by default, per product: the product rests, dimmed, while every counted login is out, and is back at the first refresh that shows room ([design](../features/monitoring/rest-when-empty/design.md)) |
+| clicks *Show anyway* on a resting product | `restWhenEmpty.showAnyway(product)` | drawn as usual until it has had room; saved, so a relaunch keeps it |
 | toggles one account | `monitor.pause(_:)` · `resume(_:)` → `account.pause()` · `resume()` | pauses that login — no refresh, no pill, no judgement — and keeps its settings. The popover's account menu and the Accounts card are two doors to the same one; the selection never lands on a login that is off the page |
 | drags the pane's order | `monitor.providers.move(_:to:)` | the lineup follows |
 | picks DATA SOURCE | `provider.use(_ kind:)` | one data source active at a time |
@@ -400,6 +408,10 @@ account.usage                        → Usage?       that login's latest — wh
 account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
 provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
+monitor.status(of: provider)         → Status?      the healthiest counted login (min), under the
+                                                    policy; nil with no usage. overallStatus,
+                                                    selectedTabStatus and rest all read it:
+                                                    depleted only when every counted login is
 provider.accounts.best               → Account?     the most left — "switch to work"
 provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
 provider.accounts.pool               → Pool?        the logins' shares summed — "340% left across 3 logins"
@@ -460,7 +472,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a destination's secret (Notify!'s token, a webhook's URL) is never in `settings.json` or a log — webhooks keep the rest under `alerts.webhooks`; one the Keychain refuses falls back to the app credential store, read Keychain first, and the pane says so — one copy of that rule for every destination | `DestinationSecrets` |
 | one provider per id; the order is the pane's, saved, a provider's logins together; only a provider you made can be deleted — a built-in is turned off. The Monitor never adds, deletes or orders one | `Providers` |
 | a paused account is PAUSED, not forgotten, and is out of every judgement: no refresh, no status, no badge, no alert, no menu-bar name, and no say in its product's status. What it keeps is its last numbers, printed as *last seen* — and a fetch that lands while the login is paused lands nowhere: nothing recorded, success or failure, and nothing published. The refusal is an **outcome** (`UsageError.paused`), never an empty answer dressed as usage | `Account.isPaused` |
-| a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened | `Provider.isEnabled` · `QuotaMonitor.tabs` |
+| a product is off only when the person turns it off. Pausing every login of it leaves its tab, dimmed, with *Resume* — pause and the switch are two facts, and a login never leaves the popover without saying which one happened. | `Provider.isEnabled` · `QuotaMonitor.tabs` |
+| a product asked to *rest when empty* rests while its status is depleted: dimmed and labelled *RESTING*, never hidden and never switched off. Where it is (watching, resting since a moment, shown anyway) is one saved value, moved only by an observed refresh or by the person: a failed fetch neither rests nor wakes it, and *Show anyway* holds until it has had room ([design](../features/monitoring/rest-when-empty/design.md)) | `WhenEmpty.after` · `RestWhenEmpty` |
 | a product whose every login is paused reads *PAUSED*, never *NO DATA* — it stopped looking, which is not the same as having nothing to show | `ProviderBadgeState.paused` |
 | a failed refresh keeps the last usage and records the error beside it — what we saw is never erased by failing to look again | `Account.sync` |
 | at most one refresh per account is in flight | `Provider` |
@@ -513,12 +526,14 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a day closes a fixed while after it ends; a closed day is summed once, kept, and never read from the logs again. Today, and the day before until it closes, are read every time | `DayLedger` |
 | a day is THE SUM OF ITS LINES: one line per model, a line holding what the day holds — the model's tokens by kind and its cost. The log's own cost wins; otherwise cost is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission. Records with no model form one unnamed line, so the lines always add up to the day | `Day.lines` · `PriceList` |
 | a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit; which units it offers — so a view renders and tells. The unit is the view's choice (cost, tokens, cache), and COST is offered only when the log prices its records and a day holds a cost: a log that writes zero everywhere has nothing to say in dollars ; what caching saved over the range | `Days` |
-| two lines of one model add up to one line: every count and the cost, so a sum over days never drops a field | `ModelUsageLine` |
-| a range's mix is each model summed over it, largest first, the unnamed line included so the parts add up; each part carries its share — a page that needs a top model reads it here, and the unnamed line is never the top model | `ModelMix` |
+| what a part of a day spent — tokens by kind and their cost — adds up field by field, so a sum over days never drops a field, and reads itself in a unit | `Spend` |
+| a line of a day's split is its key and its spend — a model (`ModelUsageLine`) or a project (`ProjectUsageLine`); two lines of one key add up to one | `UsageLine` |
+| a range's mix is each line summed over it, largest first, the unnamed part included so the parts add up; each part carries its share — a page that needs a top model or project reads it here, and the unnamed part is never the top. `ModelMix` and `ByProject` are this one mix, each with its own key | `UsageMix` |
+| a day keeps its named project lines only, each named by its working directory's last path component; its project split is those and the remainder — the day less them, when that is anything — so the parts add up to the day, and a day that names no project is all remainder; a path is never kept or shown, only its last component ([quota-by-project](../features/usage-history/quota-by-project/design.md)) | `DailyUsageStat` (`projects`, `projectSplit`) · `ProjectUsageLine` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0. The shading band a heatmap draws is the App's | `DayActivity` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
 | a week is the calendar's week holding a day, from the calendar's own first weekday; the range before a range is the same length, one run earlier | `DateRange` (`week`, `before`) |
-| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
+| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model, one per named project — so several ranges read as one (`Days.merged`) never drop a field, and a day with a split added to one without keeps the other's spend in its remainder | `DailyUsageStat` (`+`) |
 | a RECAP is the one read that sums across logins, for the person's total, and names the providers it spans — two logins of one provider are one part; a login's own chart stays its own. It reads in the unit every range offers: cost only when every provider that used anything, this range or the one before, offers cost, tokens otherwise; its change is against the range before, in that unit, and none when nothing was used before; its top model is `ModelMix`'s and its biggest day `DayActivity`'s, over the providers' days merged | `Recap` |
 | the weekly recap is read again only when the week turned or a login's days were read again since its last read; the page tells it when usage was read and never decides | `WeeklyRecaps` |
 | a week's recap goes out once, at the first refresh after the calendar's week turned, for the week that closed; the due answer is pure (`now`, the last send, the calendar), the send is read through `WeeklyRecaps`, and a week that added up to nothing says nothing ([design](../features/alerting/recap-alerts/design.md)) | `RecapDue` · `RecapAlerts` |

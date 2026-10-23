@@ -138,9 +138,9 @@ extension UsageLog {
 
         /// A log that writes a record one way, its fields given inline.
         public init(files: String, format: Format = .jsonLines, where condition: Match? = nil, at: At,
-                    id: [String] = [], model: String? = nil, tokens: Tokens = Tokens(), cost: String? = nil) {
+                    id: [String] = [], model: String? = nil, project: String? = nil, tokens: Tokens = Tokens(), cost: String? = nil) {
             self.init(source: .files(glob: files, format: format),
-                      shapes: [Shape(where: condition, at: at, id: id, model: model, tokens: tokens, cost: cost)])
+                      shapes: [Shape(where: condition, at: at, id: id, model: model, project: project, tokens: tokens, cost: cost)])
         }
 
         /// A log that writes a record more than one way.
@@ -175,7 +175,7 @@ extension UsageLog {
                 self.init(source: source, shapes: [try Shape(from: decoder)])
                 return
             }
-            if let inline = [CodingKeys.where, .at, .id, .model, .tokens, .cost].first(where: container.contains) {
+            if let inline = [CodingKeys.where, .at, .id, .model, .project, .tokens, .cost].first(where: container.contains) {
                 throw DecodingError.dataCorruptedError(forKey: inline, in: container,
                     debugDescription: "A log gives its record's fields inline or in `shapes`, never both.")
             }
@@ -206,7 +206,7 @@ extension UsageLog {
             }
         }
 
-        enum CodingKeys: String, CodingKey { case files, command, sqlite, format, shapes, `where`, at, id, model, tokens, cost }
+        enum CodingKeys: String, CodingKey { case files, command, sqlite, format, shapes, `where`, at, id, model, project, tokens, cost }
     }
 
     /// One way a log writes a usage record, read whole: its own filter and
@@ -219,16 +219,21 @@ extension UsageLog {
         /// Together, a record's identity: written twice, it counts once — the last wins.
         public let id: [String]
         public let model: String?
+        /// The field holding the working directory the record was spent in —
+        /// the one word that attributes usage to a project. Read like the
+        /// model; named at aggregation, never kept as a path.
+        public let project: String?
         public let tokens: Tokens
         /// The log's own cost, which wins over any price.
         public let cost: String?
 
         public init(where condition: Match? = nil, at: At, id: [String] = [], model: String? = nil,
-                    tokens: Tokens = Tokens(), cost: String? = nil) {
+                    project: String? = nil, tokens: Tokens = Tokens(), cost: String? = nil) {
             self.where = condition
             self.at = at
             self.id = id
             self.model = model
+            self.project = project
             self.tokens = tokens
             self.cost = cost
         }
@@ -240,12 +245,13 @@ extension UsageLog {
                 at: try container.decode(At.self, forKey: .at),
                 id: try container.decodeIfPresent([String].self, forKey: .id) ?? [],
                 model: try container.decodeIfPresent(String.self, forKey: .model),
+                project: try container.decodeIfPresent(String.self, forKey: .project),
                 tokens: try container.decodeIfPresent(Tokens.self, forKey: .tokens) ?? Tokens(),
                 cost: try container.decodeIfPresent(String.self, forKey: .cost)
             )
         }
 
-        private enum CodingKeys: String, CodingKey { case `where`, at, id, model, tokens, cost }
+        private enum CodingKeys: String, CodingKey { case `where`, at, id, model, project, tokens, cost }
     }
 
     /// How a log is laid out — a closed list, one reader per case.

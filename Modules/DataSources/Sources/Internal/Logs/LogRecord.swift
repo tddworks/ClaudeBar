@@ -8,6 +8,9 @@ struct LogRecord: Sendable, Equatable {
     /// merged with another record.
     let id: String?
     let model: String?
+    /// The working directory the record was spent in, as the log wrote it —
+    /// named a project only at aggregation, never here.
+    let project: String?
     let input: Int
     let output: Int
     let cacheWrite: Int
@@ -19,11 +22,12 @@ struct LogRecord: Sendable, Equatable {
     /// The log's own cost, which wins over any price.
     let cost: Decimal?
 
-    init(at: Date, id: String? = nil, model: String? = nil, input: Int = 0, output: Int = 0,
+    init(at: Date, id: String? = nil, model: String? = nil, project: String? = nil, input: Int = 0, output: Int = 0,
          cacheWrite: Int = 0, cacheWrite1h: Int = 0, cacheRead: Int = 0, total: Int? = nil, cost: Decimal? = nil) {
         self.at = at
         self.id = id
         self.model = model
+        self.project = project
         self.input = input
         self.output = output
         self.cacheWrite = cacheWrite
@@ -99,6 +103,9 @@ struct RecordShape: Sendable {
             guard let name = scope.string(path) else { return nil }
             model = name
         }
+        // The directory the log says the record was spent in; a log that
+        // names none, or writes it empty, leaves the record unnamed.
+        let project = shape.project.flatMap { scope.string($0) }
         let tokens = shape.tokens
         let read = [tokens.input, tokens.output, tokens.cacheWrite, tokens.cacheRead, tokens.total, tokens.cacheWrite1h,
                     tokens.reasoningOutput]
@@ -116,7 +123,7 @@ struct RecordShape: Sendable {
         let id = parts.isEmpty || parts.contains(nil) ? nil : parts.compactMap { $0 }.joined(separator: "\u{1F}")
         var input = counts[0] ?? 0
         if tokens.inputIncludesCacheRead == true { input = max(0, input - (counts[3] ?? 0)) }
-        return LogRecord(at: at, id: id, model: model,
+        return LogRecord(at: at, id: id, model: model, project: project,
                          input: input, output: (counts[1] ?? 0) + (counts[6] ?? 0), cacheWrite: counts[2] ?? 0,
                          cacheWrite1h: counts[5] ?? 0, cacheRead: counts[3] ?? 0, total: counts[4], cost: cost)
     }
