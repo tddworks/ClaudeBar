@@ -72,6 +72,11 @@ public final class WeeklyRecaps {
     /// The recap of `range`, once read.
     public func recap(for range: RecapRange) -> Recap? { recaps[range] }
 
+    /// The week the shown recaps were read for — nil until a read finished.
+    /// A reader that must have *this* week's read (the recap send) tells a
+    /// read left standing from it here.
+    public var weekShown: DateRange? { shown?.week }
+
     /// Reads both weeks again when the week turned or a login's days were read
     /// again since the last read; otherwise reads nothing.
     public func readIfStale() async {
