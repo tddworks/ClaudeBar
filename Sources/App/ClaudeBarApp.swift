@@ -326,7 +326,9 @@ struct ClaudeBarApp: App {
         localAPITask?.cancel()
         localAPITask = Task { @MainActor in
             do {
-                let router = LocalAPIRouter(reading: MonitorLocalAPIReading(monitor: monitor))
+                // Every answer is a read of the All page's Overview, on the main actor.
+                let monitor = monitor
+                let router = LocalAPIRouter(read: { Overview(monitor) })
                 try await localAPIServer.start { result in
                     await router.answer(result)
                 }

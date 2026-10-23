@@ -59,7 +59,6 @@ struct LocalAPIPayloadTests {
         #expect(report.dollarRemaining == 50)
         #expect(report.dollarCap == nil)
         #expect(report.currency == "USD")
-        #expect(!LocalAPIContract.hasShare(balance))
     }
 
     @Test func `should report a capped money quota's share as its money's`() {
@@ -72,7 +71,6 @@ struct LocalAPIPayloadTests {
         #expect(report.percentLeft == 25)
         #expect(report.dollarRemaining == 12.5)
         #expect(report.dollarCap == 50)
-        #expect(LocalAPIContract.hasShare(capped))
     }
 
     @Test func `should carry the quota's own currency`() {
@@ -215,18 +213,6 @@ struct LocalAPIPayloadTests {
 
         #expect(day.cost == nil)
         #expect(day.workingMinutes == 1)
-    }
-
-    @Test func `should clamp a share that strays past either end`() {
-        #expect(LocalAPIContract.share(of: Left.share(150)) == 100)
-        #expect(LocalAPIContract.share(of: Left.share(-10)) == 0)
-        #expect(LocalAPIContract.share(of: .money(Money(80), of: Money(50))) == 100)
-        #expect(LocalAPIContract.share(of: .money(Money(-5), of: Money(50))) == 0)
-    }
-
-    @Test func `should give a balance with no ceiling or an empty cap no share`() {
-        #expect(LocalAPIContract.share(of: .money(Money(50), of: nil)) == nil)
-        #expect(LocalAPIContract.share(of: .money(Money(50), of: Money(0))) == nil)
     }
 
     @Test func `should round trip the usage days report through JSON`() throws {

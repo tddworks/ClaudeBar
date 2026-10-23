@@ -2,36 +2,6 @@ import Foundation
 import Network
 import Domain
 
-/// The port file at `~/.claudebar/api-port` — the one place a launcher reads
-/// the real port from, as the hook scripts read theirs. Written on start
-/// (the real number, default or not), removed on stop, so a file that exists
-/// never lies.
-public enum LocalAPIPortFile {
-    /// The path of the port file.
-    public static var path: String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.claudebar/api-port"
-    }
-
-    /// Writes the port number, creating `~/.claudebar` if needed.
-    public static func write(_ port: Int) throws {
-        let directory = (path as NSString).deletingLastPathComponent
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-        try "\(port)".write(toFile: path, atomically: true, encoding: .utf8)
-    }
-
-    /// The port the file holds, or `nil` — no file, or nothing readable in it.
-    public static func read() -> Int? {
-        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
-        return Int(content.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    /// Removes the file.
-    public static func remove() {
-        try? FileManager.default.removeItem(atPath: path)
-    }
-}
-
 /// THE ONLY SOCKET — an NWListener bound to 127.0.0.1, speaking exactly one
 /// request per connection: read the request whole (or refuse it by the caps),
 /// hand it to the router's answer, write the bytes back, close. No
@@ -40,7 +10,7 @@ public enum LocalAPIPortFile {
 /// and external callers hand work to it, so nothing locks.
 public final class LocalAPIServer: @unchecked Sendable {
     private var listener: NWListener?
-    private let defaultPort: UInt16
+    private let preferredPort: UInt16
 
     /// The router's answer, installed at start. The server never knows the
     /// routes; it moves bytes.
@@ -53,8 +23,14 @@ public final class LocalAPIServer: @unchecked Sendable {
     /// when the default was busy.
     public private(set) var actualPort: UInt16 = 0
 
-    public init(defaultPort: UInt16 = LocalAPIConstants.defaultPort) {
-        self.defaultPort = defaultPort
+    /// The port the local API listens on, on 127.0.0.1 only — beside the hook
+    /// server's 19847, one number apart. If another process holds it, the
+    /// server takes a free port and writes the real number to its
+    /// `PortFile.localAPI`; a launcher that needs the real port reads the file.
+    public static let defaultPort: UInt16 = 19848
+
+    public init(port: UInt16 = LocalAPIServer.defaultPort) {
+        self.preferredPort = port
     }
 
     /// Starts listening and returns when the socket is ready. The default
@@ -69,12 +45,12 @@ public final class LocalAPIServer: @unchecked Sendable {
         }
 
         do {
-            try await listen(on: NWEndpoint.Port(rawValue: defaultPort) ?? .any)
+            try await listen(on: NWEndpoint.Port(rawValue: preferredPort) ?? .any)
         } catch is CancellationError {
             return
         } catch {
             try Task.checkCancellation()
-            AppLog.network.info("Local API: port \(self.defaultPort) is taken; taking a free port")
+            AppLog.network.info("Local API: port \(self.preferredPort) is taken; taking a free port")
             try await listen(on: .any)
         }
         if Task.isCancelled { stop() }
@@ -86,7 +62,7 @@ public final class LocalAPIServer: @unchecked Sendable {
         queue.async { [self] in
             stopListener()
             answer = nil
-            LocalAPIPortFile.remove()
+            PortFile.localAPI.remove()
             AppLog.network.info("Local API stopped")
         }
     }
@@ -112,13 +88,13 @@ public final class LocalAPIServer: @unchecked Sendable {
                 guard let self else { return }
                 switch state {
                 case .ready:
-                    let actual = listener.port?.rawValue ?? self.defaultPort
+                    let actual = listener.port?.rawValue ?? self.preferredPort
                     self.queue.async {
                         self.actualPort = actual
                         self.listener = listener
                     }
                     do {
-                        try LocalAPIPortFile.write(Int(actual))
+                        try PortFile.localAPI.write(Int(actual))
                         AppLog.network.info("Local API listening on 127.0.0.1:\(actual)")
                     } catch {
                         AppLog.network.error("Local API could not write its port file: \(error.localizedDescription)")

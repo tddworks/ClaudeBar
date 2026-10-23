@@ -123,8 +123,9 @@ for now; one listener can follow when the hooks next change.
 
 One word per question, the same nouns the screens print: `status` (HEALTHY ·
 WARNING · CRITICAL · DEPLETED), `percentLeft`, `resetsAt`, `forecast`,
-`best` (*switch to work*), `inUse` (IN USE). Dates are ISO 8601; a `null`
-means what it means on screen — a balance has no percentage, a quota with no
+`best` (*switch to work*), `inUse` (IN USE). Dates are ISO 8601. An optional
+field with nothing to say is left out of the JSON, which a client reads as
+`null`; a `null` means what it means on screen — a balance has no percentage, a quota with no
 forecast has no line, and a login with no numbers yet has no `status` (the
 card says *Syncing* or *Unavailable*, never HEALTHY).
 

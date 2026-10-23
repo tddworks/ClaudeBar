@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Quotas
+import Domain
 @testable import Infrastructure
 
 /// THE CLOSED ROUTE TABLE: every answer a request can earn, and the one law
@@ -10,30 +10,29 @@ import Quotas
 @Suite
 struct LocalAPIRouterTests {
 
-    /// A reading that answers fixed payloads and echoes the days it was
-    /// asked for — so the clamped count is read straight off the answer.
-    private struct StubReading: LocalAPIReading {
-        var status: StatusSummary
-        var providers: ProvidersReport
-        var forecast: ForecastReport
-
-        func statusSummary() -> StatusSummary { status }
-        func providersReport() -> ProvidersReport { providers }
-        func forecastReport() -> ForecastReport { forecast }
-        func usageDays(count: Int) async -> UsageDaysReport {
-            UsageDaysReport(days: count, logins: [])
-        }
+    /// What the router reads — one hand-built Overview — and the payloads
+    /// each route should encode from it.
+    private struct Read {
+        let overview: Overview
+        let now: Date
+        var status: StatusSummary { StatusSummary(overview, at: now) }
+        var providers: ProvidersReport { ProvidersReport(overview, at: now) }
+        var forecast: ForecastReport { ForecastReport(overview, at: now) }
     }
 
     private let now = Date(timeIntervalSince1970: 1_760_000_000)
 
-    private func makeRouter(version: String = "9.9.9") -> (LocalAPIRouter, StubReading) {
-        let reading = StubReading(
-            status: StatusSummary(status: .warning, lowest: nil, providers: 3, at: now),
-            providers: ProvidersReport(providers: [], at: now),
-            forecast: ForecastReport(forecasts: [], at: now)
-        )
-        return (LocalAPIRouter(reading: reading, version: version), reading)
+    /// A router over one product with one login at 30% — no history, so the
+    /// days answer only echoes the count it was asked for.
+    private func makeRouter(version: String = "9.9.9") -> (LocalAPIRouter, Read) {
+        let quota = UsageQuota(percentRemaining: 30, quotaType: .session, providerId: "acme")
+        let overview = Overview(cards: [OverviewCard(id: "acme", name: "Acme", logins: [
+            OverviewCard.Login(id: "acme", name: "Acme",
+                               snapshot: UsageSnapshot(providerId: "acme", quotas: [quota], capturedAt: now),
+                               status: .warning, state: .init()),
+        ])])
+        let now = self.now
+        return (LocalAPIRouter(read: { overview }, version: version, now: { now }), Read(overview: overview, now: now))
     }
 
     /// A GET request value, whole.
@@ -66,7 +65,7 @@ struct LocalAPIRouterTests {
         #expect(index["endpoints"] as? [String] == ["/status", "/providers", "/forecast", "/usage/days?n=30"])
     }
 
-    @Test func `should answer status with the reading's one line`() async throws {
+    @Test func `should answer status with the line the Overview reads`() async throws {
         let (router, reading) = makeRouter()
 
         let response = await router.answer(get("/status"))
@@ -75,7 +74,7 @@ struct LocalAPIRouterTests {
         #expect(try JSONDecoder().decode(StatusSummary.self, from: response.body) == reading.status)
     }
 
-    @Test func `should answer providers with the reading's report`() async throws {
+    @Test func `should answer providers with every card the Overview reads`() async throws {
         let (router, reading) = makeRouter()
 
         let response = await router.answer(get("/providers"))
@@ -84,7 +83,7 @@ struct LocalAPIRouterTests {
         #expect(try JSONDecoder().decode(ProvidersReport.self, from: response.body) == reading.providers)
     }
 
-    @Test func `should answer forecast with the reading's report`() async throws {
+    @Test func `should answer forecast with every forecast line the Overview reads`() async throws {
         let (router, reading) = makeRouter()
 
         let response = await router.answer(get("/forecast"))

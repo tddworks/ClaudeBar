@@ -1,11 +1,12 @@
 import Foundation
-import Quotas
+import Domain
 
 /// THE JSON CONTRACT — what the local API and its MCP tools answer with.
-/// One word per question, the same nouns the screens print. Every payload is
-/// built purely from `Quotas` values, so the whole contract is testable
-/// without a Monitor. A `null` means what it means on screen: a balance with
-/// no ceiling has no percentage, a quota with no pace has no forecast.
+/// One word per question, the same nouns the screens print. Every payload
+/// encodes an `Overview` — the *All* page's read — and decides nothing, so
+/// the whole contract is testable on a hand-built one. A `null` means what it
+/// means on screen: a balance with no ceiling has no percentage, a quota with
+/// no pace has no forecast, a login with no numbers yet has no status.
 extension QuotaStatus {
     /// The word every surface prints for a status (HEALTHY · WARNING · …).
     var apiName: String {
@@ -18,23 +19,35 @@ extension QuotaStatus {
     }
 }
 
-/// `GET /status` — the one line: the worst quota across the watched logins,
-/// and the overall status under the person's policy.
+/// `GET /status` — the one line: the quota the *All* page leads with, and
+/// the overall status under the person's policy.
 public struct StatusSummary: Codable, Equatable, Sendable {
-    public let status: String
+    /// The worst product's status; `null` while no login has numbers.
+    public let status: String?
     public let summary: String
     public let lowest: LowestQuota?
+    /// How many products the answer covers — products, never logins.
     public let providers: Int
     public let updatedAt: String
 
-    /// Builds the line. `lowest` names the login and quota with the least
-    /// share left, when any quota has a share at all.
-    public init(status: QuotaStatus, lowest: LowestQuota?, providers: Int, at now: Date = Date()) {
-        self.status = status.apiName
-        if let lowest {
-            self.summary = "\(Int(lowest.percentLeft))% left · \(status.apiName)"
+    /// The Overview's line: its status, its leading card's ring and the login
+    /// that ring reads, and its cards counted.
+    public init(_ overview: Overview, at now: Date = Date()) {
+        var lowest: LowestQuota?
+        if let card = overview.tightestCard, let login = card.login, let quota = card.tightest {
+            lowest = LowestQuota(quota: quota, provider: card.id, login: login.id, name: login.name, at: now)
+        }
+        self.init(status: overview.status, lowest: lowest, providers: overview.cards.count, at: now)
+    }
+
+    /// Builds the line from its parts.
+    init(status: QuotaStatus?, lowest: LowestQuota?, providers: Int, at now: Date = Date()) {
+        let word = status?.apiName ?? "no usage yet"
+        self.status = status?.apiName
+        if let percent = lowest?.percentLeft {
+            self.summary = "\(Int(percent))% left · \(word)"
         } else {
-            self.summary = status.apiName
+            self.summary = word
         }
         self.lowest = lowest
         self.providers = providers
@@ -42,40 +55,45 @@ public struct StatusSummary: Codable, Equatable, Sendable {
     }
 }
 
-/// The quota about to run out first — what "will I run out?" points at.
+/// The quota the *All* page leads with — what "will I run out?" points at.
 public struct LowestQuota: Codable, Equatable, Sendable {
+    /// The product's id.
     public let provider: String
     public let login: String
     public let name: String
     public let quota: String
     public let key: String
-    public let percentLeft: Double
+    /// `null` for a balance with no ceiling, which has no percentage.
+    public let percentLeft: Double?
     public let resetsAt: String?
     public let resetsInMinutes: Int?
 
-    /// Builds one from a quota and the login it belongs to. A quota with no
-    /// share (a balance with no ceiling) never stands for the lowest — ask
-    /// `LocalAPIRouter.share(of:)`'s rule first.
+    /// Builds one from a quota and the login it belongs to.
     public init(quota: UsageQuota, provider: String, login: String, name: String, at now: Date = Date()) {
         self.provider = provider
         self.login = login
         self.name = name
         self.quota = quota.quotaType.displayName
         self.key = quota.quotaType.quotaKey
-        // The reading only builds a lowest from a quota that has a share; the
-        // zero is unreachable — a balance with no ceiling never stands here.
-        self.percentLeft = LocalAPIContract.share(of: quota) ?? 0
+        self.percentLeft = quota.percentLeft
         self.resetsAt = quota.resetsAt.map { ISO8601DateFormatter().string(from: $0) }
         self.resetsInMinutes = quota.timeUntilReset.map { Int(($0 / 60).rounded()) }
     }
 }
 
-/// `GET /providers` — every watched login: what it last said, its status
+/// `GET /providers` — every card's logins: what each last said, its status
 /// under the policy, which login has the most left (`best`), which one new
 /// terminal sessions start with (`inUse`).
 public struct ProvidersReport: Codable, Equatable, Sendable {
     public let updatedAt: String
     public let providers: [ProviderReport]
+
+    /// The Overview's cards, one product each, in pill order.
+    public init(_ overview: Overview, at now: Date = Date()) {
+        self.init(providers: overview.cards.map { card in
+            ProviderReport(id: card.id, name: card.name, logins: card.logins.map { LoginReport($0, of: card, at: now) })
+        }, at: now)
+    }
 
     public init(providers: [ProviderReport], at now: Date = Date()) {
         self.providers = providers
@@ -83,7 +101,7 @@ public struct ProvidersReport: Codable, Equatable, Sendable {
     }
 }
 
-/// The product, with its logins in the lineup's order.
+/// The product, with its logins in the person's order.
 public struct ProviderReport: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
@@ -100,7 +118,8 @@ public struct ProviderReport: Codable, Equatable, Sendable {
 public struct LoginReport: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
-    public let status: String
+    /// `null` while the login has no numbers — never *healthy* by default.
+    public let status: String?
     /// The unpaused login with the most left — *switch to work*.
     public let best: Bool
     /// New terminal sessions start here.
@@ -111,13 +130,24 @@ public struct LoginReport: Codable, Equatable, Sendable {
     public let updatedAt: String?
     public let quotas: [QuotaReport]
 
+    /// One login of a card, `best` and `inUse` as its product answered.
+    public init(_ login: OverviewCard.Login, of card: OverviewCard, at now: Date = Date()) {
+        self.init(
+            id: login.id, name: login.name, status: login.status,
+            best: card.best == login.id, inUse: card.inUse == login.id,
+            plan: login.snapshot?.accountTier?.badgeText, source: login.source,
+            updatedAt: login.snapshot?.capturedAt,
+            quotas: (login.snapshot?.quotas ?? []).map { QuotaReport(quota: $0, at: now) }, at: now
+        )
+    }
+
     public init(
-        id: String, name: String, status: QuotaStatus, best: Bool, inUse: Bool,
+        id: String, name: String, status: QuotaStatus?, best: Bool, inUse: Bool,
         plan: String?, source: String?, updatedAt: Date?, quotas: [QuotaReport], at now: Date = Date()
     ) {
         self.id = id
         self.name = name
-        self.status = status.apiName
+        self.status = status?.apiName
         self.best = best
         self.inUse = inUse
         self.plan = plan
@@ -129,7 +159,8 @@ public struct LoginReport: Codable, Equatable, Sendable {
 
 /// One limit the vendor set: what is left (a share, or money), and when it
 /// refills. A balance with no ceiling reports `percentLeft: null` — writing
-/// 100% is the lie the status would believe.
+/// 100% is the lie the status would believe. The share is the quota's own
+/// (`UsageQuota.percentLeft`), never worked out here.
 public struct QuotaReport: Codable, Equatable, Sendable {
     public let key: String
     public let name: String
@@ -143,7 +174,7 @@ public struct QuotaReport: Codable, Equatable, Sendable {
     public init(quota: UsageQuota, at now: Date = Date()) {
         self.key = quota.quotaType.quotaKey
         self.name = quota.compactTitle ?? quota.quotaType.displayName
-        self.percentLeft = LocalAPIContract.share(of: quota)
+        self.percentLeft = quota.percentLeft
         if case let .money(remaining, of: cap) = quota.left {
             self.dollarRemaining = NSDecimalNumber(decimal: remaining.amount).doubleValue
             self.dollarCap = cap.map { NSDecimalNumber(decimal: $0.amount).doubleValue }
@@ -165,6 +196,19 @@ public struct ForecastReport: Codable, Equatable, Sendable {
     public let updatedAt: String
     public let forecasts: [ForecastLine]
 
+    /// Every card login's quotas that have a forecast line, in pill order.
+    public init(_ overview: Overview, at now: Date = Date()) {
+        self.init(forecasts: overview.cards.flatMap { card in
+            card.logins.flatMap { login in
+                (login.snapshot?.quotas ?? []).compactMap { quota in
+                    quota.forecast.flatMap {
+                        ForecastLine(forecast: $0, quota: quota, provider: card.id, login: login.id, loginName: login.name)
+                    }
+                }
+            }
+        }, at: now)
+    }
+
     public init(forecasts: [ForecastLine], at now: Date = Date()) {
         self.forecasts = forecasts
         self.updatedAt = ISO8601DateFormatter().string(from: now)
@@ -175,6 +219,7 @@ public struct ForecastReport: Codable, Equatable, Sendable {
 public struct ForecastLine: Codable, Equatable, Sendable {
     /// `lastsUntilReset` or `runsOut`.
     public let state: String
+    /// The product's id.
     public let provider: String
     public let login: String
     public let loginName: String
@@ -185,9 +230,7 @@ public struct ForecastLine: Codable, Equatable, Sendable {
     /// Present when `state` is `runsOut`: how long before the window refills.
     public let beforeResetMinutes: Int?
 
-    /// Builds one from a quota's forecast; `nil` when the quota has none (no
-    /// rate, a balance with no ceiling, or already used up) — the card prints
-    /// no line and neither does the API.
+    /// Builds one from a quota's forecast.
     public init?(forecast: Forecast, quota: UsageQuota, provider: String, login: String, loginName: String) {
         self.provider = provider
         self.login = login
@@ -222,6 +265,23 @@ public struct UsageDaysReport: Codable, Equatable, Sendable {
     public init(days: Int, logins: [LoginDaySeries]) {
         self.days = days
         self.logins = logins
+    }
+
+    /// Each card login's last `count` days, read from its own history on the
+    /// ask — like a popover opening, never in the background. A login whose
+    /// provider declares no history has no series.
+    public static func read(_ overview: Overview, count: Int, endingOn now: Date = Date(),
+                            calendar: Calendar = DataSources.calendar()) async -> UsageDaysReport {
+        var series: [LoginDaySeries] = []
+        for login in overview.cards.flatMap(\.logins) {
+            guard let history = login.usageHistory else { continue }
+            let days = await history.days(in: .last(count, endingOn: now, calendar: calendar))
+            series.append(LoginDaySeries(
+                id: login.id, name: login.name,
+                days: days.stats.map { DayUsage(stat: $0, knowsCost: days.knowsCost, calendar: calendar) }
+            ))
+        }
+        return UsageDaysReport(days: count, logins: series)
     }
 }
 
@@ -263,34 +323,5 @@ public struct DayUsage: Codable, Equatable, Sendable {
         self.cacheTokens = stat.cacheCreationTokens + stat.cacheReadTokens
         self.workingMinutes = Int((stat.workingTime / 60).rounded())
         self.sessions = stat.sessionCount
-    }
-}
-
-/// The one rule both status and /providers read: the share a quota's `left`
-/// holds, or none. A balance with no ceiling has NO percentage (CANONICAL §5);
-/// a capped money quota's share is its money's.
-public enum LocalAPIContract {
-    /// The quota's share left, or `nil` — a balance with no ceiling has none.
-    public static func share(of quota: UsageQuota) -> Double? {
-        share(of: quota.left)
-    }
-
-    /// Whether the quota has a share at all — the balance with no ceiling is
-    /// never judged and never stands for the lowest.
-    public static func hasShare(_ quota: UsageQuota) -> Bool {
-        share(of: quota.left) != nil
-    }
-
-    /// The share a `Left` holds: its percent, or its money's — never invented.
-    public static func share(of left: Left) -> Double? {
-        switch left {
-        case let .share(percent):
-            return min(100, max(0, percent))
-        case let .money(remaining, of: ceiling):
-            guard let ceiling, ceiling.amount > 0 else { return nil }
-            let left = NSDecimalNumber(decimal: remaining.amount).doubleValue
-            let cap = NSDecimalNumber(decimal: ceiling.amount).doubleValue
-            return min(100, max(0, left / cap * 100))
-        }
     }
 }

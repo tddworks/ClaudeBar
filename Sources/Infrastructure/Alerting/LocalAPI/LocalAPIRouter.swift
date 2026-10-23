@@ -1,32 +1,20 @@
 import Foundation
-import Quotas
-
-/// What the local API answers from — the Monitor's reads, and nothing else.
-/// The one port between the wire and the Monitor: it never refreshes, never
-/// decides, and never holds a number of its own. Read on the main actor,
-/// where the Monitor's state lives.
-@MainActor
-public protocol LocalAPIReading: Sendable {
-    /// `GET /status` — the one line: worst quota, overall status.
-    func statusSummary() -> StatusSummary
-
-    /// `GET /providers` — every watched login: quotas, status, best, inUse.
-    func providersReport() -> ProvidersReport
-
-    /// `GET /forecast` — every quota that has a forecast line.
-    func forecastReport() -> ForecastReport
-
-    /// `GET /usage/days?n=` — per login, day by day. An explicit ask, like a
-    /// popover opening: the history is read here and never in the background.
-    func usageDays(count: Int) async -> UsageDaysReport
-}
+import Domain
 
 /// THE ROUTES — the closed table between a request and a read, plus the MCP
 /// tool list, which is this table read twice: one tool per route, each
 /// answering the same payload its HTTP route answers. This is also the one
 /// owner of the read-only law: no row here mutates anything.
+///
+/// Every answer encodes one read of the *All* page's `Overview` — the
+/// router never refreshes, never decides, and never holds a number of its own.
 public struct LocalAPIRouter: Sendable {
-    private let reading: any LocalAPIReading
+    /// The Overview as it stands now — read on the main actor, where the
+    /// Monitor's state lives. The app hands `{ Overview(monitor) }`; tests
+    /// hand one built by hand.
+    private let read: @MainActor @Sendable () -> Overview
+    /// The clock the answers' `updatedAt` reads.
+    private let now: @Sendable () -> Date
     /// The version `serverInfo` names — the app's own.
     private let version: String
 
@@ -36,9 +24,27 @@ public struct LocalAPIRouter: Sendable {
 
     /// Builds the router. `version` names what `serverInfo` and the index
     /// answer with — the app's short version when nil (tests name their own).
-    public init(reading: any LocalAPIReading, version: String? = nil) {
-        self.reading = reading
+    public init(read: @escaping @MainActor @Sendable () -> Overview, version: String? = nil,
+                now: @escaping @Sendable () -> Date = { Date() }) {
+        self.read = read
+        self.now = now
         self.version = version ?? Self.bundleVersion
+    }
+
+    // MARK: - The four answers, each one read of the Overview
+
+    /// `GET /status` — the one line: the ring All leads with, the overall status.
+    func statusSummary() async -> StatusSummary { StatusSummary(await read(), at: now()) }
+
+    /// `GET /providers` — every card's logins: quotas, status, best, inUse.
+    func providersReport() async -> ProvidersReport { ProvidersReport(await read(), at: now()) }
+
+    /// `GET /forecast` — every quota that has a forecast line.
+    func forecastReport() async -> ForecastReport { ForecastReport(await read(), at: now()) }
+
+    /// `GET /usage/days?n=` — per login, day by day, read on the ask.
+    func usageDays(count: Int) async -> UsageDaysReport {
+        await UsageDaysReport.read(await read(), count: count, endingOn: now())
     }
 
     /// The app's short version, as the Settings window shows it.
@@ -64,13 +70,13 @@ public struct LocalAPIRouter: Sendable {
         case ("GET", "/"):
             return Self.index(version: version)
         case ("GET", "/status"):
-            return .json(await reading.statusSummary())
+            return .json(await statusSummary())
         case ("GET", "/providers"):
-            return .json(await reading.providersReport())
+            return .json(await providersReport())
         case ("GET", "/forecast"):
-            return .json(await reading.forecastReport())
+            return .json(await forecastReport())
         case ("GET", "/usage/days"):
-            return .json(await reading.usageDays(count: Self.clampedDays(from: request.query["n"])))
+            return .json(await usageDays(count: Self.clampedDays(from: request.query["n"])))
         case ("POST", "/mcp"):
             return await answerMCP(request)
         case (_, "/"), (_, "/status"), (_, "/providers"), (_, "/forecast"), (_, "/usage/days"):
@@ -108,14 +114,14 @@ public struct LocalAPIRouter: Sendable {
     /// read its route runs and answers the same JSON, as text content.
     var tools: [MCPTool] {
         [
-            MCPTool(name: "quota_status", description: "One line: the worst quota across your AI coding logins and the overall status. Ask this before starting a big task.") { [reading] _ in
-                Self.text(await reading.statusSummary())
+            MCPTool(name: "quota_status", description: "One line: the quota that runs out first across your AI coding products, each read by its login with the most room, and the overall status. Ask this before starting a big task.") { [self] _ in
+                Self.text(await statusSummary())
             },
-            MCPTool(name: "providers", description: "Every watched login with its quotas and status, which login has the most left (best), and which one new terminal sessions start with (inUse).") { [reading] _ in
-                Self.text(await reading.providersReport())
+            MCPTool(name: "providers", description: "Every watched login with its quotas and status, which login has the most left (best), and which one new terminal sessions start with (inUse).") { [self] _ in
+                Self.text(await providersReport())
             },
-            MCPTool(name: "forecast", description: "Every quota that has a forecast: whether it lasts until it resets at the pace it has been spent, or runs out first, and when.") { [reading] _ in
-                Self.text(await reading.forecastReport())
+            MCPTool(name: "forecast", description: "Every quota that has a forecast: whether it lasts until it resets at the pace it has been spent, or runs out first, and when.") { [self] _ in
+                Self.text(await forecastReport())
             },
             MCPTool(name: "usage_days", description: "Daily usage per login — cost, tokens, cache, working time — for the last n days.", inputSchema: .object([
                 "type": .string("object"),
@@ -123,8 +129,8 @@ public struct LocalAPIRouter: Sendable {
                     "type": .string("integer"),
                     "description": .string("How many days back, 1 to 365. Default 30."),
                 ])]),
-            ])) { [reading] arguments in
-                Self.text(await reading.usageDays(count: Self.clampedDays(from: arguments?["n"]?.intValue)))
+            ])) { [self] arguments in
+                Self.text(await usageDays(count: Self.clampedDays(from: arguments?["n"]?.intValue)))
             },
         ]
     }
