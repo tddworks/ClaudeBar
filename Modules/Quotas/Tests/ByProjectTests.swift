@@ -14,10 +14,13 @@ struct ByProjectTests {
     private let api = ProjectUsageLine(project: "api", inputTokens: 300, totalTokens: 400, cost: 2)
     private let unnamed = ProjectUsageLine(project: "", totalTokens: 50, cost: 1)
 
+    /// A day that is the sum of its project lines, the unnamed one among them.
     private func day(_ date: Date, _ projects: [ProjectUsageLine]) -> DailyUsageStat {
-        DailyUsageStat(date: date, totalCost: projects.reduce(0) { $0 + $1.cost },
-                       totalTokens: projects.reduce(0) { $0 + $1.totalTokens }, workingTime: 0, sessionCount: 1,
-                       projects: projects)
+        let whole = projects.reduce(Spend.none) { $0 + $1.spend }
+        return DailyUsageStat(date: date, totalCost: whole.cost, totalTokens: whole.totalTokens, workingTime: 0,
+                              sessionCount: 1, inputTokens: whole.inputTokens, outputTokens: whole.outputTokens,
+                              cacheCreationTokens: whole.cacheCreationTokens, cacheReadTokens: whole.cacheReadTokens,
+                              projects: projects)
     }
 
     /// A day whose log named no directory: totals without a split.
@@ -32,7 +35,7 @@ struct ByProjectTests {
 
         #expect(byProject.parts.map(\.line.project) == ["marron", "api"])
         #expect(byProject.parts.map(\.value) == [12, 4])
-        #expect(byProject.parts.last?.line.totalTokens == 800)
+        #expect(byProject.parts.last?.line.spend.totalTokens == 800)
     }
 
     @Test func `should rank the projects in the unit asked`() {
@@ -107,5 +110,42 @@ struct ByProjectTests {
         let days = Days([day(monday, [unnamed])], knowsCost: true)
 
         #expect(ByProject(of: days, in: .cost).top == nil)
+    }
+
+    /// Two ranges read as one (`Days.merged`, as the recap reads every
+    /// provider's week) add a day with a split to a day of the same date
+    /// without one: the second day's spend stays in the remainder, so no
+    /// named project's share overstates.
+    @Test func `should keep a merged day's unsplit spend in the unnamed part, so shares stay true`() {
+        let claude = DailyUsageStat(date: monday, totalCost: 10, totalTokens: 100, workingTime: 0, sessionCount: 1,
+                                    projects: [ProjectUsageLine(project: "marron", totalTokens: 60, cost: 6),
+                                               ProjectUsageLine(project: "api", totalTokens: 20, cost: 2)])
+        let codex = unsplitDay(monday, totalTokens: 100, cost: 10)
+
+        let merged = Days.merged([Days([claude], knowsCost: true), Days([codex], knowsCost: true)])
+        let byProject = ByProject(of: merged, in: .cost)
+
+        #expect(byProject.parts.map(\.line.project) == ["", "marron", "api"])
+        #expect(byProject.parts.map(\.share) == [0.6, 0.3, 0.1])
+        #expect(byProject.top?.line.project == "marron")
+    }
+
+    @Test func `should name the range's projects in name order, the unnamed part apart`() {
+        let days = Days([day(monday, [marron, unnamed, api]), unsplitDay(tuesday, totalTokens: 0, cost: 0)],
+                        knowsCost: true)
+
+        let byProject = ByProject(of: days, in: .cost)
+
+        #expect(byProject.names == ["api", "marron"])
+        #expect(!byProject.isEmpty)
+    }
+
+    @Test func `should be empty when no day names a project`() {
+        let days = Days([day(monday, [unnamed]), unsplitDay(tuesday, totalTokens: 50, cost: 3)], knowsCost: true)
+
+        let byProject = ByProject(of: days, in: .cost)
+
+        #expect(byProject.names.isEmpty)
+        #expect(byProject.isEmpty)
     }
 }

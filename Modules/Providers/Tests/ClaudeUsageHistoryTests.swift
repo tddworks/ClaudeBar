@@ -123,8 +123,8 @@ struct ClaudeUsageHistoryTests {
                    Self.line(message: "c", request: "3")].joined(separator: "\n"))
         let today = try await report().today
 
-        #expect(today.projects.map(\.project) == ["api", "marron", ""])
-        #expect(today.projects.reduce(0) { $0 + $1.totalTokens } == today.totalTokens)
+        #expect(today.projectSplit.map(\.project) == ["api", "marron", ""])
+        #expect(today.projectSplit.reduce(0) { $0 + $1.spend.totalTokens } == today.totalTokens)
     }
 
     // MARK: - Prices from claude-prices.json

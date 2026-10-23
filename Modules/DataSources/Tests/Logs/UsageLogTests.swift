@@ -218,8 +218,8 @@ struct UsageLogTests {
 
         let today = await log(withDirectory).days(last: 1)[0]
 
-        #expect(today.projects.map(\.project) == ["api", "marron", ""])
-        #expect(today.projects.reduce(0) { $0 + $1.totalTokens } == today.totalTokens)
+        #expect(today.projectSplit.map(\.project) == ["api", "marron", ""])
+        #expect(today.projectSplit.reduce(0) { $0 + $1.spend.totalTokens } == today.totalTokens)
     }
 
     @Test func `should keep a definition that names no project exactly as it was written`() throws {

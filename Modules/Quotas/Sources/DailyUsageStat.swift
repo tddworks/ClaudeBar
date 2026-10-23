@@ -40,9 +40,10 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
     /// when the day came from a log that doesn't name models.
     public let lines: [ModelUsageLine]
 
-    /// One line per project — the day's split by the working directory its
-    /// records were spent in, named lines in name order, the unnamed part
-    /// last. Empty when the log names no directory (quota-by-project design).
+    /// One line per NAMED project — what the records spent in each working
+    /// directory, in name order. The unnamed part is never kept: it is what
+    /// remains of the day (`projectSplit`). Empty when the log names no
+    /// directory (quota-by-project design §3).
     public let projects: [ProjectUsageLine]
 
     public init(
@@ -70,7 +71,7 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         self.cacheReadTokens = cacheReadTokens
         self.cachedSavings = cachedSavings
         self.lines = lines
-        self.projects = projects
+        self.projects = projects.filter { !$0.project.isEmpty }
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -92,23 +93,52 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         cacheReadTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadTokens) ?? 0
         cachedSavings = try container.decodeIfPresent(Decimal.self, forKey: .cachedSavings) ?? 0
         lines = try container.decodeIfPresent([ModelUsageLine].self, forKey: .lines) ?? []
-        projects = try container.decodeIfPresent([ProjectUsageLine].self, forKey: .projects) ?? []
+        projects = (try container.decodeIfPresent([ProjectUsageLine].self, forKey: .projects) ?? [])
+            .filter { !$0.project.isEmpty }
+    }
+
+    /// Written as it is read; a day with no project lines writes none, so a
+    /// day kept before the split is written back byte for byte.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(date, forKey: .date)
+        try container.encode(totalCost, forKey: .totalCost)
+        try container.encode(totalTokens, forKey: .totalTokens)
+        try container.encode(workingTime, forKey: .workingTime)
+        try container.encode(sessionCount, forKey: .sessionCount)
+        try container.encode(inputTokens, forKey: .inputTokens)
+        try container.encode(outputTokens, forKey: .outputTokens)
+        try container.encode(cacheCreationTokens, forKey: .cacheCreationTokens)
+        try container.encode(cacheReadTokens, forKey: .cacheReadTokens)
+        try container.encode(cachedSavings, forKey: .cachedSavings)
+        try container.encode(lines, forKey: .lines)
+        if !projects.isEmpty { try container.encode(projects, forKey: .projects) }
+    }
+
+    /// What the whole day spent — its tokens by kind and its cost.
+    public var spend: Spend {
+        Spend(inputTokens: inputTokens, outputTokens: outputTokens, cacheCreationTokens: cacheCreationTokens,
+              cacheReadTokens: cacheReadTokens, totalTokens: totalTokens, cost: totalCost)
+    }
+
+    /// The day split by project: its named lines and, when they leave some
+    /// of the day, the remainder — the unnamed part, the day less its named
+    /// lines — so the parts add up to the day. A day that names no project
+    /// is all remainder; a day with nothing spent has no parts. The day alone
+    /// works the remainder out, so a sum of days with and without names
+    /// keeps it, and a mix only sums (quota-by-project design §3).
+    public var projectSplit: [ProjectUsageLine] {
+        let remainder = spend - projects.reduce(Spend.none) { $0 + $1.spend }
+        return remainder == .none ? projects : projects + [ProjectUsageLine(project: "", spend: remainder)]
     }
 
     /// Two days of one date as one: every count, the cost, the time and the
-    /// savings added, and each model's and each project's lines added into
-    /// one line, in name order — so several logins' days read as one never
-    /// drop a field.
+    /// savings added, and each model's and each named project's lines added
+    /// into one line, in name order — so several logins' days read as one
+    /// never drop a field, and what a day without a split spent stays in the
+    /// sum's remainder.
     public static func + (lhs: DailyUsageStat, rhs: DailyUsageStat) -> DailyUsageStat {
         precondition(lhs.date == rhs.date, "only days of one date add up")
-        var lines: [String: ModelUsageLine] = [:]
-        for line in lhs.lines + rhs.lines {
-            lines[line.model] = lines[line.model].map { $0 + line } ?? line
-        }
-        var projects: [String: ProjectUsageLine] = [:]
-        for line in lhs.projects + rhs.projects {
-            projects[line.project] = projects[line.project].map { $0 + line } ?? line
-        }
         return DailyUsageStat(
             date: lhs.date,
             totalCost: lhs.totalCost + rhs.totalCost,
@@ -120,8 +150,8 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
             cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
             cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
             cachedSavings: lhs.cachedSavings + rhs.cachedSavings,
-            lines: lines.values.sorted { $0.model < $1.model },
-            projects: projects.values.sorted { $0.project < $1.project }
+            lines: ModelUsageLine.summed(lhs.lines + rhs.lines),
+            projects: ProjectUsageLine.summed(lhs.projects + rhs.projects)
         )
     }
 

@@ -15,8 +15,8 @@ struct ModelMixTests {
     private let unnamed = ModelUsageLine(model: "", totalTokens: 50, cost: 1)
 
     private func day(_ date: Date, _ lines: [ModelUsageLine]) -> DailyUsageStat {
-        DailyUsageStat(date: date, totalCost: lines.reduce(0) { $0 + $1.cost },
-                       totalTokens: lines.reduce(0) { $0 + $1.totalTokens }, workingTime: 0, sessionCount: 1,
+        DailyUsageStat(date: date, totalCost: lines.reduce(0) { $0 + $1.spend.cost },
+                       totalTokens: lines.reduce(0) { $0 + $1.spend.totalTokens }, workingTime: 0, sessionCount: 1,
                        lines: lines)
     }
 
@@ -27,7 +27,7 @@ struct ModelMixTests {
 
         #expect(mix.parts.map(\.line.model) == ["acme-large-2", "acme-small-1"])
         #expect(mix.parts.map(\.value) == [12, 4])
-        #expect(mix.parts.last?.line.totalTokens == 800)
+        #expect(mix.parts.last?.line.spend.totalTokens == 800)
     }
 
     @Test func `should rank the models in the unit asked`() {

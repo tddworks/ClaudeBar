@@ -20,10 +20,10 @@ enum ModelColors {
         return color(at: index)
     }
 
-    /// The colour a range gives `project` — the same palette, by the
-    /// project's place among the range's projects; grey for the unnamed part.
-    static func color(ofProject project: String, in days: Days) -> Color {
-        guard let index = days.projects.firstIndex(of: project) else { return .gray }
+    /// The colour a split gives `project` — the same palette, by the
+    /// project's place among the split's names; grey for the unnamed part.
+    static func color(ofProject project: String, in split: ByProject) -> Color {
+        guard let index = split.names.firstIndex(of: project) else { return .gray }
         return color(at: index)
     }
 }

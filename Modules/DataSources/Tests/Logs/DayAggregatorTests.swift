@@ -68,7 +68,7 @@ struct DayAggregatorTests {
             ModelUsageLine(model: "", inputTokens: 100, totalTokens: 100, cost: 0.5),
         ])
         #expect(stat.totalCost == 0.75)
-        #expect(stat.lines.reduce(0) { $0 + $1.cost } == stat.totalCost)
+        #expect(stat.lines.reduce(0) { $0 + $1.spend.cost } == stat.totalCost)
     }
 
     @Test func `should make a day's lines add up to the day`() {
@@ -77,8 +77,8 @@ struct DayAggregatorTests {
             record(model: "m-small", input: 300, output: 100, cost: 0.25),
         ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.lines.reduce(0) { $0 + $1.cost } == stat.totalCost)
-        #expect(stat.lines.reduce(0) { $0 + $1.totalTokens } == stat.totalTokens)
+        #expect(stat.lines.reduce(0) { $0 + $1.spend.cost } == stat.totalCost)
+        #expect(stat.lines.reduce(0) { $0 + $1.spend.totalTokens } == stat.totalTokens)
     }
 
     @Test func `should price a line's model the way it prices the day`() {
@@ -136,7 +136,7 @@ struct DayAggregatorTests {
         ])
     }
 
-    @Test func `should carry no project split when no record names a directory`() {
+    @Test func `should keep no project lines when no record names a directory`() {
         let stat = DayAggregator.stat([
             record(in: nil, input: 100, cost: 0.5),
             record(in: nil, input: 10, cost: 0.25),
@@ -151,7 +151,7 @@ struct DayAggregatorTests {
             record(in: nil, input: 100, cost: 0.5),
         ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.projects == [
+        #expect(stat.projectSplit == [
             ProjectUsageLine(project: "marron", inputTokens: 1_000, totalTokens: 1_000, cost: 1.5),
             ProjectUsageLine(project: "", inputTokens: 100, totalTokens: 100, cost: 0.5),
         ])
@@ -164,7 +164,7 @@ struct DayAggregatorTests {
             record(in: nil, cost: 1),
         ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.projects.map(\.project) == ["api", "zeta", ""])
+        #expect(stat.projectSplit.map(\.project) == ["api", "zeta", ""])
     }
 
     @Test func `should read an empty directory as unnamed`() {
@@ -182,7 +182,7 @@ struct DayAggregatorTests {
             record(in: nil, input: 50, cost: 0.1),
         ], on: day, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.projects.reduce(0) { $0 + $1.cost } == stat.totalCost)
-        #expect(stat.projects.reduce(0) { $0 + $1.totalTokens } == stat.totalTokens)
+        #expect(stat.projectSplit.reduce(0) { $0 + $1.spend.cost } == stat.totalCost)
+        #expect(stat.projectSplit.reduce(0) { $0 + $1.spend.totalTokens } == stat.totalTokens)
     }
 }

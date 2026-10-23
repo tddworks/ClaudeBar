@@ -1276,7 +1276,7 @@ struct MenuContentView: View {
         let lastThirtyDays = settings.isShown(.lastThirtyDays) ? history?.lastThirtyDays : nil
         let heatmapYear = settings.isShown(.lastYear) ? history?.lastYear : nil
         let mixYear = settings.isShown(.modelMix) ? history?.lastYear.flatMap { $0.hasModels ? $0 : nil } : nil
-        let projectYear = settings.isShown(.projectMix) ? history?.lastYear.flatMap { $0.hasProjects ? $0 : nil } : nil
+        let projectYear = settings.isShown(.projectMix) ? history?.lastYear.flatMap { ByProject(of: $0, in: $0.defaultUnit).isEmpty ? nil : $0 } : nil
         if titled,
            report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil || projectYear != nil {
             HStack {

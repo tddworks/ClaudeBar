@@ -48,4 +48,15 @@ struct DailyUsageStatSumTests {
 
         #expect((personal + work).projects == [api, marron + marron])
     }
+
+    /// A day with a split added to one without keeps the other's spend as
+    /// the sum's remainder, never as more of a named project.
+    @Test func `should keep a day without a split as the remainder of the sum`() {
+        let marron = ProjectUsageLine(project: "marron", totalTokens: 100, cost: 2)
+        let split = DailyUsageStat(date: date, totalCost: 2, totalTokens: 100, workingTime: 0, sessionCount: 1,
+                                   projects: [marron])
+        let unsplit = DailyUsageStat(date: date, totalCost: 3, totalTokens: 50, workingTime: 0, sessionCount: 1)
+
+        #expect((split + unsplit).projectSplit == [marron, ProjectUsageLine(project: "", totalTokens: 50, cost: 3)])
+    }
 }

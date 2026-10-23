@@ -15,15 +15,16 @@ struct ProjectMixView: View {
     /// The unit the card reads the range in: the one it opens on.
     /// The card reads the range in the unit it opens on — the one its caption names.
     private var unit: Days.Unit { days.defaultUnit }
-    /// The range's project split, answered once per body.
+    /// The range's project split, answered once per body and handed to its parts.
     private var byProject: ByProject { ByProject(of: days, in: unit) }
 
     /// The card: header, the one bar, and a row per project.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            let split = byProject
             header
-            bar
-            rows
+            bar(split)
+            rows(split)
         }
         .padding(12)
         .background(
@@ -65,12 +66,12 @@ struct ProjectMixView: View {
     // MARK: - The split
 
     /// The range as one bar: a part a project, in the colours of the range.
-    private var bar: some View {
+    private func bar(_ split: ByProject) -> some View {
         GeometryReader { proxy in
             HStack(spacing: 0) {
-                ForEach(byProject.parts, id: \.line.project) { part in
+                ForEach(split.parts, id: \.line.project) { part in
                     Rectangle()
-                        .fill(ModelColors.color(ofProject: part.line.project, in: days))
+                        .fill(ModelColors.color(ofProject: part.line.project, in: split))
                         .frame(width: proxy.size.width * part.share)
                 }
             }
@@ -80,12 +81,12 @@ struct ProjectMixView: View {
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    private var rows: some View {
+    private func rows(_ split: ByProject) -> some View {
         VStack(spacing: 4) {
-            ForEach(byProject.parts, id: \.line.project) { part in
+            ForEach(split.parts, id: \.line.project) { part in
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(ModelColors.color(ofProject: part.line.project, in: days))
+                        .fill(ModelColors.color(ofProject: part.line.project, in: split))
                         .frame(width: 6, height: 6)
                     Text(part.line.displayName)
                         .font(theme.font(size: 9, weight: .medium))
