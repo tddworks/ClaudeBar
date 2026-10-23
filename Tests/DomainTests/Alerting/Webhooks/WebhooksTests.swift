@@ -23,6 +23,17 @@ struct WebhooksTests {
 
     private let both = Webhook.Sends(quotaAlerts: true, statusAlerts: true)
 
+    /// The week that closed, as `RecapAlerts` would tell it.
+    private let recap: RecapAlert = {
+        let calendar = Calendar(identifier: .gregorian)
+        let week = DateRange.week(containing: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!,
+                                  calendar: calendar)
+        let recap = Recap(this: ["claude": Days([DailyUsageStat(
+            date: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!,
+            totalCost: 10, totalTokens: 10, workingTime: 0, sessionCount: 1)], knowsCost: true)], before: [:])
+        return RecapAlert(recap: recap, week: week, calendar: calendar, names: [:])
+    }()
+
     @discardableResult
     private func add(_ webhooks: Webhooks, url: String? = nil, name: String = "", channel: WebhookChannel = .slack,
                      scope: Webhook.Scope = .everyLogin, sends: Webhook.Sends? = nil) throws -> Webhook {
@@ -209,6 +220,25 @@ struct WebhooksTests {
 
         #expect(sender.posts.isEmpty)
         #expect(webhooks.list.first?.delivery == .failed(.noURL, at: now))
+    }
+
+    // MARK: - The recap
+
+    @Test func `should send the recap to every webhook that wants recaps, and no other`() async throws {
+        let sender = RecordingWebhookSender()
+        let webhooks = webhooks(sender: sender)
+        let recaps = try add(webhooks, name: "recap",
+                             sends: Webhook.Sends(quotaAlerts: false, statusAlerts: false, recap: true))
+        try add(webhooks, url: "https://alerts.example.com/hook", name: "alerts", sends: both)
+        let off = try add(webhooks, url: "https://off.example.com/hook", name: "off",
+                          sends: Webhook.Sends(quotaAlerts: false, statusAlerts: false, recap: true))
+        webhooks.turn(off.id, on: false)
+
+        await webhooks.announce(recap)
+
+        #expect(sender.posts.map(\.webhookId) == [recaps.id])
+        #expect(sender.posts.first?.body == WebhookBody(.recap(recap), channel: .slack, sentAt: now).encoded())
+        #expect(webhooks.list.first { $0.id == recaps.id }?.delivery == .sent(at: now))
     }
 
     // MARK: - Send a test

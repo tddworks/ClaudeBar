@@ -9,7 +9,8 @@ description: Contributor design for Webhooks — a destination that POSTs the al
 > where they already look*. The laws are the model's
 > ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
 > this says which piece keeps them. Its sibling is [status alerts](../status-alerts/design.md),
-> which gives webhooks their second kind of alert.
+> which gives webhooks their second kind of alert, and [recap alerts](../recap-alerts/design.md)
+> their third — the week that closed, sent once when the calendar's week turns.
 >
 > **Status: BUILT.** Mockup: [design-concept/webhooks](../../../../design-concept/webhooks/index.html);
 > as built: [as-built.png](../../../../design-concept/webhooks/as-built.png).
@@ -48,7 +49,7 @@ wants it.
 | *URL* | where it is sent — a secret |
 | *Slack* · *JSON* | the channel: a Slack incoming-webhook message, or a JSON body |
 | *Every login* · a provider's name | the scope: every login, or every login of one product |
-| *Quota alerts* · *Status alerts* | what it sends: the person's percents, and a status that got worse |
+| *Quota alerts* · *Status alerts* · *Weekly recap* | what it sends: the person's percents, a status that got worse, and the week that closed each week turn ([recap alerts](../recap-alerts/design.md)) |
 | *Send a test* | POST a message labelled as a test, never an alert |
 | *Sent 2m ago* · *Sending…* · *Failed — 404* · *Nothing sent yet* | the last delivery |
 
@@ -65,11 +66,11 @@ AlertDestinations([…]).announce(_ alert) ◄───────────�
    └─► Webhooks  ◆                   the person's list, @Observable, in Alerting
          └─ Webhook ◇
               id · name · channel (slack | json) · scope (everyLogin | provider(id))
-              sends (quotaAlerts, statusAlerts) · isOn
-              wants(alert) → Bool
+              sends (quotaAlerts, statusAlerts, recap) · isOn
+              wants(alert) → Bool · wants(recap) → Bool
               host · delivery: neverSent | sending | sent(at) | failed(Failure, at)
               │
-              ├─ WebhookBody(alert | test, channel) → bytes
+              ├─ WebhookBody(alert | recap | test, channel) → bytes
               └─ WebhookAddress ◇   the URL; https, or http to loopback / LAN only
                     │
                     ▼
@@ -87,8 +88,9 @@ Secrets: DestinationSecrets  webhook-url-<id>  ← one Keychain-with-fallback, s
 | a login's status got worse under the policy: tell once per worsening | `StatusAlerts` |
 | every alert goes to every destination; a destination never decides *whether* a login is low | `AlertDestinations` (the one fan-out both deciders tell, built in the composition root) |
 | a webhook wants an alert when it is on, the alert's kind is one it sends, and the alert's provider is in its scope | `Webhook.wants(_:)` |
+| a webhook wants the week's recap when it is on and sends recaps — scope is never judged, the recap is one read across every provider ([recap alerts](../recap-alerts/design.md)) | `Webhook.wants(_:)` |
 | a webhook that is off keeps its place, its URL and its last delivery; turning off is not removing | `Webhook` · `Webhooks` |
-| how an alert, or a test, reads in Slack and as JSON; a test is labelled a test and is never shaped like an alert | `WebhookBody` |
+| how an alert, a recap or a test reads in Slack and as JSON; a test is labelled a test and is never shaped like an alert or a recap | `WebhookBody` |
 | a URL is https, or http only to a loopback or LAN host (`localhost`, `127.0.0.0/8`, `::1`, `10/8`, `172.16/12`, `192.168/16`, `*.local`); anything else is refused when it is added | `WebhookAddress` |
 | one POST per alert, no retry, a 10 s timeout; a redirect is followed only on the URL's own origin; a 2xx is *sent*, anything else *failed* with its code; nothing that could carry the URL reaches a log or the pane | `WebhookClient` |
 | the last delivery — an alert's or a test's — is the webhook's, kept in memory, shown in the pane | `Webhook.delivery` |
@@ -102,12 +104,14 @@ Secrets: DestinationSecrets  webhook-url-<id>  ← one Keychain-with-fallback, s
 | `Alert` ◇ = `.quota(QuotaAlert)` \| `.status(StatusAlert)` | `Domain/Alerting` | what was decided, naming the login (`lineupName`) and its provider id | **built** |
 | `QuotaAlert` ◇ | `Domain/Alerting/QuotaAlerts` | carries `providerId`, so a scope can be judged | **built** |
 | `StatusAlert` ◇ · `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | see [status alerts](../status-alerts/design.md) | **built** |
+| `RecapAlert` ◇ · `RecapAlerts` ◆ | `Domain/Alerting/RecapAlerts` | the week that closed, told once when the calendar's week turns — see [recap alerts](../recap-alerts/design.md) | **built** |
 | `AlertDestination` (port, `@Mockable`) · `AlertDestinations` | `Domain/Alerting` | `announce(_ alert: Alert) async`; `AlertDestinations` tells each destination in turn, and is what `QuotaAlerts` and `StatusAlerts` are handed | **built** |
+| `RecapDestination` (port, `@Mockable`) | `Domain/Alerting/RecapAlerts` | `announce(_ recap: RecapAlert) async` — the recap's own door, beside `AlertDestination`, as In use's announcer is | **built** |
 | `Notifications` | `Infrastructure/Alerting/Notifications` | the Mac's notifications for both kinds, today's words; `requestPermission()` | **built** |
-| `Webhooks` ◆ `@Observable` | `Domain/Alerting/Webhooks` | the list: `add(url:name:channel:scope:sends:) throws(Refusal)`, `edit(_:url:name:channel:scope:sends:)` (`url` nil keeps it), `remove(_:)`, `turn(_:on:)`, `sendTest(_:)`, `urlsAreOutsideKeychain`; an `AlertDestination` | **built** |
+| `Webhooks` ◆ `@Observable` | `Domain/Alerting/Webhooks` | the list: `add(url:name:channel:scope:sends:) throws(Refusal)`, `edit(_:url:name:channel:scope:sends:)` (`url` nil keeps it), `remove(_:)`, `turn(_:on:)`, `sendTest(_:)`, `urlsAreOutsideKeychain`; an `AlertDestination` and a `RecapDestination` | **built** |
 | `Webhook` ◇ | `Domain/Alerting/Webhooks` | one webhook's data and `wants(_:)`; its `host` and `delivery`, never saved | **built** |
 | `WebhookAddress` ◇ | `Domain/Alerting/Webhooks` | parses the URL, refuses what isn't https or a local host, answers `host` | **built** |
-| `WebhookBody` ◇ | `Domain/Alerting/Webhooks` | `WebhookBody(.alert(_) \| .test, channel:, sentAt:).encoded() → Data` | **built** |
+| `WebhookBody` ◇ | `Domain/Alerting/Webhooks` | `WebhookBody(.alert(_)` \| `.recap(_)` \| `.test, channel:, sentAt:).encoded() → Data` | **built** |
 | `WebhookSending` (port) · `WebhookClient` | `Domain` · `Infrastructure/Alerting/Webhooks` | `post(_:to:webhook:) → WebhookPost` (`.sent` \| `.failed(WebhookFailure)`): one POST | **built** |
 | `WebhookSettingsRepository` (port) · `JSONSettingsRepository` | `Domain` · `Infrastructure/Settings` | `alerts.webhooks` in `settings.json` — a destination's own repository, like `NotifySettingsRepository` | **built** |
 | `DestinationSecrets` (port) · `KeychainDestinationSecrets` | `Domain/Settings` · `Infrastructure/Settings/Storage` | a destination's secret (Notify!'s token, a webhook's URL): `save` (verified read-back, else the fallback), `get`, `delete`, `isInKeychain(key)`. Notify! and Webhooks both use the one `JSONSettingsRepository.destinationSecrets`. Not the provider vault (`SecretVault`), which keeps provider keys and has no fallback | **built** |
@@ -173,20 +177,22 @@ alert is.
 
 ## What is sent
 
-| Field | Quota alert | Status alert | Test |
-|---|---|---|---|
-| `type` | `"quota"` | `"status"` | `"test"` |
-| `provider` | `"claude"` | `"claude"` | `null` |
-| `login` | `"Claude · work"` | `"Claude · work"` | `null` |
-| `below` | `35` | `null` | `null` |
-| `left` | `34` | `null` | `null` |
-| `status` | `null` | `"critical"` | `null` |
-| `was` | `null` | `"warning"` | `null` |
-| `sentAt` | ISO 8601 | ISO 8601 | ISO 8601 |
+| Field | Quota alert | Status alert | Test | Weekly recap |
+|---|---|---|---|---|
+| `type` | `"quota"` | `"status"` | `"test"` | `"recap"` |
+| `provider` | `"claude"` | `"claude"` | `null` | — (`providers`: one row per part) |
+| `login` | `"Claude · work"` | `"Claude · work"` | `null` | — |
+| `below` | `35` | `null` | `null` | — |
+| `left` | `34` | `null` | `null` | — |
+| `status` | `null` | `"critical"` | `null` | — |
+| `was` | `null` | `"warning"` | `null` | — |
+| `total` · `unit` · `change` · `weekStart` · `weekEnd` · `providers` · `topModel` · `biggestDay` · `cacheSavings` · `workingTime` · `sessions` · `tokens` | — | — | — | the week that closed ([recap alerts](../recap-alerts/design.md)) |
+| `sentAt` | ISO 8601 | ISO 8601 | ISO 8601 | ISO 8601 |
 
-Every key on every send, `null` where there is no value. Slack gets one line,
-the same words the Mac's notification uses: *Claude · work is below 35% — 34%
-left*, *Claude · work is critical — was warning*.
+Every key on every send *of its kind*, `null` where there is no value. Slack
+gets one line, the same words the Mac's notification uses: *Claude · work is
+below 35% — 34% left*, *Claude · work is critical — was warning* — and the
+recap its own message, built from the same `Recap` the card reads.
 
 Nothing else leaves the Mac: no email, no prompt, no path, no session.
 
@@ -197,12 +203,14 @@ Nothing else leaves the Mac: no email, no prompt, no path, no session.
   "thresholds": [60, 35],
   "webhooks": [
     { "id": "9F2C…", "name": "#ai-quota", "channel": "slack",
-      "provider": null, "quotaAlerts": true, "statusAlerts": true, "isOn": true }
+      "provider": null, "quotaAlerts": true, "statusAlerts": true, "recap": false, "isOn": true }
   ]
 }
 ```
 
-`provider: null` is *every login*. The URL is never here. Removing a webhook
+`provider: null` is *every login*. The URL is never here. `recap` reads back
+`false` for a row saved before the field existed — a webhook never sent
+recaps unasked. Removing a webhook
 removes its row and its secret. `host` and `delivery` are not saved: the host
 is read from the kept URL at launch, and after a relaunch the card says
 *Nothing sent yet*.
