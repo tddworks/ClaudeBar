@@ -15,8 +15,9 @@ public struct RecapDue: Sendable, Equatable {
     public let week: DateRange
 
     /// The recap due at `now`, or nil while the week of the last send is
-    /// still the week holding `now`. Never sent is due at once, so the first
-    /// refresh after a recap webhook is added hears the week that closed.
+    /// still the week holding `now`. Never sent (a fresh install) is due at
+    /// once. The last send is the week's, not a webhook's: a webhook that
+    /// starts sending recaps mid-week hears the next week that closes.
     public static func week(containing now: Date, lastSentAt: Date?, calendar: Calendar) -> RecapDue? {
         let current = DateRange.week(containing: now, calendar: calendar)
         guard let sent = lastSentAt, current.contains(sent, calendar: calendar) else {

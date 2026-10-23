@@ -78,6 +78,18 @@ struct LocalNetworkContract {
         #expect(elsewhere.requests.isEmpty)
     }
 
+    @Test(arguments: ["https://example.invalid/", "http://10.0.0.1:5001/"])
+    func `should refuse a host off this machine`(_ address: String) async throws {
+        // The adapter itself, not the client above it: the port's own fact.
+        let requests = try #require(servers().network as? LoopbackClient).requests
+        var request = URLRequest(url: URL(string: address)!)
+        request.timeoutInterval = 5
+
+        let error = await #expect(throws: URLError.self) { try await requests.send(request) }
+
+        #expect(error?.code == .unsupportedURL)
+    }
+
     @Test func `should ask a TLS server whose certificate is self-signed for another name`() async throws {
         let openssl = try #require(Self.openssl(), "no openssl to serve TLS with")
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("loopback-tls-\(UUID().uuidString.prefix(8))")

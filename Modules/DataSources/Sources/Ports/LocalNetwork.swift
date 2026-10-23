@@ -48,6 +48,8 @@ protocol ListeningPorts: Sendable {
 @Mockable
 protocol LoopbackRequests: Sendable {
     /// Sends `request` as it is, trusting the certificate the server presents
-    /// and following no redirect: a redirect is the response.
+    /// and following no redirect: a redirect is the response. A host off this
+    /// machine (`LoopbackClient.isLoopback`) throws `URLError(.unsupportedURL)`
+    /// before anything is sent.
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }

@@ -117,8 +117,11 @@ public final class Account: Identifiable {
         return SignedInFolder(url: URL(fileURLWithPath: path), madeBy: madeBy ?? .folder)
     }
 
-    /// What its tightest quota has left, in percent — `nil` before a usage.
-    public var percentLeft: Double? { snapshot?.lowestQuota?.percentRemaining }
+    /// THE SHARE IT BRINGS — what its tightest quota has left, in percent,
+    /// the number its card leads with. `nil` before a usage, and for a
+    /// balance with no ceiling: it has no percentage, never a guessed 100.
+    /// The pool, *Switch when low* and *In use* all read this one answer.
+    public var percentLeft: Double? { snapshot?.lowestQuota?.percentLeft }
 
     /// The email the data source reported, else the one it was added with.
     public var accountEmail: String? { snapshot?.accountEmail ?? email }

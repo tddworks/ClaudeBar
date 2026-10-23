@@ -58,7 +58,9 @@ struct MacLocalServers: RunningPrograms, ProgramCommandLines, ListeningPorts, Lo
         ["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", pid]
     }
 
+    /// Only this machine: a host off it is refused before anything is sent.
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard let url = request.url, LoopbackClient.isLoopback(url) else { throw URLError(.unsupportedURL) }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
@@ -76,8 +78,7 @@ private final class LoopbackSessionDelegate: NSObject, URLSessionTaskDelegate {
 
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        let host = challenge.protectionSpace.host.lowercased()
-        guard host == "127.0.0.1" || host == "localhost",
+        guard LoopbackClient.isLoopback(host: challenge.protectionSpace.host),
               challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let trust = challenge.protectionSpace.serverTrust else {
             completionHandler(.performDefaultHandling, nil)

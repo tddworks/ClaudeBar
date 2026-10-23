@@ -10,9 +10,9 @@ extension Platform {
         return Platform(
             name: "Linux",
             timeZone: LinuxTimeZone(),
-            runCLI: CLIFetcher.system(installed: linux, terminal: LinuxPty()),
+            runCLI: CLIFetcher.system(programs: linux, terminal: LinuxPty()),
             processes: Processes(linux),
-            screenRenderer: { TerminalRenderer(cols: 160, rows: 50).render($0) },
+            screenRenderer: { TerminalRenderer().render($0) },
             applicationData: { home, environment in
                 // The spec answers absolute paths only; a relative value is
                 // invalid and is ignored, the home's local share stepping in.

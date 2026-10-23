@@ -72,10 +72,14 @@ public final class WeeklyRecaps {
     /// The recap of `range`, once read.
     public func recap(for range: RecapRange) -> Recap? { recaps[range] }
 
-    /// The week the shown recaps were read for — nil until a read finished.
-    /// A reader that must have *this* week's read (the recap send) tells a
-    /// read left standing from it here.
-    public var weekShown: DateRange? { shown?.week }
+    /// The recap of `week`, once a read taken after it closed holds it: the
+    /// week before the one the read was taken in. Nil before a read finished,
+    /// for the week the read was taken in (still under way, so not the whole
+    /// week), and while the read left standing covers other weeks.
+    public func recap(of week: DateRange) -> Recap? {
+        guard let shown, week == shown.week.before(calendar: calendar) else { return nil }
+        return recaps[.lastWeek]
+    }
 
     /// Reads both weeks again when the week turned or a login's days were read
     /// again since the last read; otherwise reads nothing.

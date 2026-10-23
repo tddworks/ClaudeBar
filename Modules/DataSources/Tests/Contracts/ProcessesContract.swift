@@ -51,6 +51,27 @@ struct ProcessesContract {
         #expect(printed.map { Programs.same(String($0.dropFirst("folder=".count))) } == Programs.same(folder.path))
     }
 
+    @Test func `should start a program with a default only where the app has no such variable, and what is set over both`() throws {
+        let environment = try processes().launch.environment(for: folder.appendingPathComponent("cli").path, ProcessEnvironment(
+            defaults: ["path": "default-path", "CLAUDEBAR_CONTRACT_DEFAULT": "default", "CLAUDEBAR_CONTRACT_SET": "default"],
+            set: ["CLAUDEBAR_CONTRACT_SET": "set"]
+        ))
+
+        let pathNames = environment.keys.filter { $0.uppercased() == "PATH" }
+        #if os(Windows)
+        // Names ignore case: `path` is the app's `Path`, which stays, and no
+        // second spelling appears.
+        #expect(pathNames.count == 1)
+        #expect(pathNames.first.flatMap { environment[$0] } != "default-path")
+        #else
+        // Names are exact: `path` is a variable of its own, and `PATH` stays.
+        #expect(Set(pathNames) == ["PATH", "path"])
+        #expect(environment["PATH"] != "default-path")
+        #endif
+        #expect(environment["CLAUDEBAR_CONTRACT_DEFAULT"] == "default")
+        #expect(environment["CLAUDEBAR_CONTRACT_SET"] == "set")
+    }
+
     @Test func `should report the code a script exited with`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         let script = try #require(try processes().script(at: try script("fail", Programs.fail)))

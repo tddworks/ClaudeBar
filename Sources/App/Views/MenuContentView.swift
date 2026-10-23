@@ -960,17 +960,15 @@ struct MenuContentView: View {
         }
     }
 
-    /// "340% left across 3 logins" — the pool's sum, said for what it is:
-    /// shares across the logins, never a percentage of a bigger whole
+    /// "240% left across 3 logins" — the pool's sum, in `PoolText`'s words;
+    /// the Text is also what VoiceOver reads
     /// (docs/features/providers/quota-pools/design.md).
     private func poolLine(_ pool: Pool) -> some View {
-        let across = pool.count == 1 ? "1 login" : "\(pool.count) logins"
-        return Text("\(Int(pool.percent))% left across \(across)")
+        Text(PoolText.line(for: pool))
             .popoverFont(10, weight: .medium)
             .foregroundStyle(theme.textTertiary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .help("Each login's tightest window, added together. The logins refill independently, so over 100% is normal.")
-            .accessibilityLabel("\(Int(pool.percent))% left across \(across)")
+            .help(PoolText.help)
     }
 
     /// "Work is at 18% Session — causing Warning": the aggregate names its cause.
