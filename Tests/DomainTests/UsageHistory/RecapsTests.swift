@@ -2,12 +2,12 @@ import Testing
 import Foundation
 @testable import Domain
 
-/// *WEEKLY RECAP*: both weeks across the lineup, each against the week before
-/// it, two logins of one provider as one — read again only when the week
-/// turned or a login's days were read again (CANONICAL §5, `WeeklyRecaps`).
+/// *RECAP*: both weeks and both months across the lineup, each against the
+/// period before it, two logins of one provider as one — read again only when the week
+/// or month turned or a login's days were read again (CANONICAL §5, `Recaps`).
 @MainActor
 @Suite
-struct WeeklyRecapsTests {
+struct RecapsTests {
     private let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -54,8 +54,8 @@ struct WeeklyRecapsTests {
         }
     }
 
-    private func recaps(_ logins: [RecapLogin], now: @escaping () -> Date) -> WeeklyRecaps {
-        WeeklyRecaps(logins: { logins }, now: now, calendar: calendar)
+    private func recaps(_ logins: [RecapLogin], now: @escaping () -> Date) -> Recaps {
+        Recaps(logins: { logins }, now: now, calendar: calendar)
     }
 
     @Test func `should read this week against last week and last week against the week before`() async {
@@ -63,10 +63,10 @@ struct WeeklyRecapsTests {
 
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.total == 12)
-        #expect(recaps.recap(for: .thisWeek)?.change == 0.2)
-        #expect(recaps.recap(for: .lastWeek)?.total == 10)
-        #expect(recaps.recap(for: .lastWeek)?.change == 1)
+        #expect(recaps.recap(for: .this(.week))?.total == 12)
+        #expect(recaps.recap(for: .this(.week))?.change == 0.2)
+        #expect(recaps.recap(for: .last(.week))?.total == 10)
+        #expect(recaps.recap(for: .last(.week))?.change == 1)
     }
 
     @Test func `should add two logins of one provider into that provider's one part`() async {
@@ -74,7 +74,7 @@ struct WeeklyRecapsTests {
 
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.providers == [Recap.Part(provider: "a", value: 10, share: 1)])
+        #expect(recaps.recap(for: .this(.week))?.providers == [Recap.Part(provider: "a", value: 10, share: 1)])
     }
 
     /// A quiet week is still a recap, so the card can say it held nothing.
@@ -83,8 +83,8 @@ struct WeeklyRecapsTests {
 
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.isEmpty == true)
-        #expect(recaps.recap(for: .lastWeek)?.isEmpty == false)
+        #expect(recaps.recap(for: .this(.week))?.isEmpty == true)
+        #expect(recaps.recap(for: .last(.week))?.isEmpty == false)
     }
 
     @Test func `should read again when the week turns`() async {
@@ -95,8 +95,8 @@ struct WeeklyRecapsTests {
         today = date(27)
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.total == 3)
-        #expect(recaps.recap(for: .lastWeek)?.total == 12)
+        #expect(recaps.recap(for: .this(.week))?.total == 3)
+        #expect(recaps.recap(for: .last(.week))?.total == 12)
     }
 
     /// The month recap reads the calendar's month against the one before it.
@@ -105,10 +105,10 @@ struct WeeklyRecapsTests {
 
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisMonth)?.total == 17)
-        #expect(recaps.recap(for: .thisMonth)?.change == 1.125)
-        #expect(recaps.recap(for: .lastMonth)?.total == 8)
-        #expect(recaps.recap(for: .lastMonth)?.change == nil)
+        #expect(recaps.recap(for: .this(.month))?.total == 17)
+        #expect(recaps.recap(for: .this(.month))?.change == 1.125)
+        #expect(recaps.recap(for: .last(.month))?.total == 8)
+        #expect(recaps.recap(for: .last(.month))?.change == nil)
     }
 
     /// October 31 and November 1, 2026 share the Monday-first week Oct 26 –
@@ -121,20 +121,33 @@ struct WeeklyRecapsTests {
         today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisMonth)?.isEmpty == true)
-        #expect(recaps.recap(for: .lastMonth)?.total == 21)
+        #expect(recaps.recap(for: .this(.month))?.isEmpty == true)
+        #expect(recaps.recap(for: .last(.month))?.total == 21)
     }
 
-    /// The ranges the recaps were read for — what a report writes in its
-    /// header — are there once the recaps are.
-    @Test func `should name the ranges it read for once read`() async {
+    /// Each recap says which days it sums — what a report writes in its
+    /// header and a sender checks.
+    @Test func `should give each recap the days it was read for`() async {
         let recaps = recaps([login("a", Log([day(21, cost: 12)]))]) { self.date(22) }
-        #expect(recaps.ranges.isEmpty)
 
         await recaps.readIfStale()
 
-        #expect(recaps.ranges[.thisWeek] == DateRange.week(containing: date(22), calendar: calendar))
-        #expect(recaps.ranges[.lastMonth] == DateRange.month(containing: date(22), calendar: calendar).previousMonth(calendar: calendar))
+        #expect(recaps.recap(for: .this(.week))?.range == week(22))
+        #expect(recaps.recap(for: .last(.week))?.range == week(14))
+        #expect(recaps.recap(for: .last(.month))?.range
+                == DateRange(first: date(1).addingTimeInterval(-30 * 86_400), last: date(1).addingTimeInterval(-86_400),
+                             calendar: calendar))
+    }
+
+    /// Last week is this week's *before*, and last month this month's: six
+    /// ranges, each asked once.
+    @Test func `should ask a login for each range once, however many recaps read it`() async {
+        let log = Log([day(21, cost: 12)])
+        let recaps = recaps([login("a", log)]) { self.date(22) }
+
+        await recaps.readIfStale()
+
+        #expect(log.asked == 6)
     }
 
     @Test func `should read again when a login's usage was read again`() async {
@@ -146,7 +159,7 @@ struct WeeklyRecapsTests {
         log.lastRead = Days(log.stats, knowsCost: true)
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.total == 20)
+        #expect(recaps.recap(for: .this(.week))?.total == 20)
     }
 
     @Test func `should not read again when nothing changed`() async {
@@ -158,7 +171,7 @@ struct WeeklyRecapsTests {
         await recaps.readIfStale()
 
         #expect(log.asked == asked)
-        #expect(recaps.recap(for: .thisWeek)?.total == 12)
+        #expect(recaps.recap(for: .this(.week))?.total == 12)
     }
 
     @Test func `should read again after a read that was cancelled`() async {
@@ -170,23 +183,23 @@ struct WeeklyRecapsTests {
         }
         let recaps = recaps([cancelling]) { self.date(22) }
         await Task { await recaps.readIfStale() }.value
-        #expect(recaps.recap(for: .thisWeek) == nil)
+        #expect(recaps.recap(for: .this(.week)) == nil)
 
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.total == 12)
+        #expect(recaps.recap(for: .this(.week))?.total == 12)
     }
 
     @Test func `should read again when another provider takes a login's place, even with the same days`() async {
         let days = [day(21, cost: 12)]
         var lineup = [login("a", Log(days))]
-        let recaps = WeeklyRecaps(logins: { lineup }, now: { self.date(22) }, calendar: calendar)
+        let recaps = Recaps(logins: { lineup }, now: { self.date(22) }, calendar: calendar)
         await recaps.readIfStale()
 
         lineup = [login("b", Log(days))]
         await recaps.readIfStale()
 
-        #expect(recaps.recap(for: .thisWeek)?.providers.map(\.provider) == ["b"])
+        #expect(recaps.recap(for: .this(.week))?.providers.map(\.provider) == ["b"])
     }
 
     @Test func `should hand back the recap of the week that closed before its read`() async {
@@ -223,6 +236,6 @@ struct WeeklyRecapsTests {
     @Test func `should hold no recap before it is read`() {
         let recaps = recaps([login("a", Log([day(21, cost: 12)]))]) { self.date(22) }
 
-        #expect(recaps.recap(for: .thisWeek) == nil)
+        #expect(recaps.recap(for: .this(.week)) == nil)
     }
 }

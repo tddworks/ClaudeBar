@@ -9,8 +9,8 @@ import Quotas
 public struct RecapAlert: Sendable, Equatable {
     /// The week's read, in the one unit every provider offers.
     public let recap: Recap
-    /// The week the recap sums — the one that closed.
-    public let week: DateRange
+    /// The week the recap sums — the one that closed. The recap's own range.
+    public var week: DateRange { recap.range }
     /// The calendar the week was read in, holding the week's boundaries —
     /// where it starts and where it ends. What is written of the week (a
     /// biggest day, a week's run) is Gregorian in this calendar's zone, never
@@ -20,9 +20,8 @@ public struct RecapAlert: Sendable, Equatable {
     /// longer kept is read as its id.
     public let names: [String: String]
 
-    public init(recap: Recap, week: DateRange, calendar: Calendar, names: [String: String]) {
+    public init(recap: Recap, calendar: Calendar, names: [String: String]) {
         self.recap = recap
-        self.week = week
         self.calendar = calendar
         self.names = names
     }

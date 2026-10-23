@@ -23,6 +23,9 @@ public struct Recap: Sendable, Equatable {
         }
     }
 
+    /// The days the recap sums — the range it was read for, which its header
+    /// writes and a sender checks it against.
+    public let range: DateRange
     /// The one unit every range offers: cost only when every provider that
     /// used anything, this range or the one before, offers cost — an unpriced
     /// provider would otherwise count as nothing — and tokens when not.
@@ -59,9 +62,10 @@ public struct Recap: Sendable, Equatable {
     public let isEmpty: Bool
 
     /// - Parameters:
+    ///   - range: the days `this` was read for.
     ///   - this: each provider's days in the range, by provider id.
     ///   - before: each provider's days in the range before it.
-    public init(this: [String: Days], before: [String: Days]) {
+    public init(range: DateRange, this: [String: Days], before: [String: Days]) {
         let unit = Self.unit(of: Array(this.values) + Array(before.values))
         let total = this.values.reduce(0) { $0 + $1.total(in: unit) }
         let earlier = before.values.reduce(0) { $0 + $1.total(in: unit) }
@@ -69,6 +73,7 @@ public struct Recap: Sendable, Equatable {
         let mix = ModelMix(of: week, in: unit)
         let activity = DayActivity(of: week, in: unit)
 
+        self.range = range
         self.unit = unit
         self.total = total
         change = earlier > 0 ? (total - earlier) / earlier : nil

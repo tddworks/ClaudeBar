@@ -14,7 +14,7 @@ struct MenuContentView: View {
     let notifications: Notifications
     let leaderboard: AppLeaderboard
     /// *WEEKLY RECAP*'s two weeks, read with the All page.
-    let weeklyRecaps: WeeklyRecaps
+    let recaps: Recaps
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
     var onHookSettingsChanged: ((Bool) -> Void)?
@@ -710,8 +710,8 @@ struct MenuContentView: View {
             // that adds logins up, so it lives on the one page that is about
             // them all. It reads the same days as the daily usage cards.
             if settings.isShown(.weeklyRecap) {
-                RecapCardView(recaps: weeklyRecaps.recaps, dates: weeklyRecaps.ranges) { monitor.providers.provider(id: $0)?.name ?? $0 }
-                    .task { await weeklyRecaps.readIfStale() }
+                RecapCardView(recaps: recaps.recaps) { monitor.providers.provider(id: $0)?.name ?? $0 }
+                    .task { await recaps.readIfStale() }
             }
         }
     }
@@ -720,7 +720,7 @@ struct MenuContentView: View {
     /// again only when the week turned or a login's days changed.
     private func readUsage() async {
         await monitor.readToday()
-        if settings.isShown(.weeklyRecap) { await weeklyRecaps.readIfStale() }
+        if settings.isShown(.weeklyRecap) { await recaps.readIfStale() }
     }
 
     /// A tap on a card or a row opens the provider on its first login.

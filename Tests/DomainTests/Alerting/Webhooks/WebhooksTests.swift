@@ -28,10 +28,10 @@ struct WebhooksTests {
         let calendar = Calendar(identifier: .gregorian)
         let week = DateRange.week(containing: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!,
                                   calendar: calendar)
-        let recap = Recap(this: ["claude": Days([DailyUsageStat(
+        let recap = Recap(range: week, this: ["claude": Days([DailyUsageStat(
             date: calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!,
             totalCost: 10, totalTokens: 10, workingTime: 0, sessionCount: 1)], knowsCost: true)], before: [:])
-        return RecapAlert(recap: recap, week: week, calendar: calendar, names: [:])
+        return RecapAlert(recap: recap, calendar: calendar, names: [:])
     }()
 
     @discardableResult

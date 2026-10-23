@@ -4,48 +4,46 @@ import Foundation
 
 /// The recap's ranges: *This week* is the calendar's week that holds today,
 /// *Last week* the one before it; *This month* the calendar's month, *Last
-/// month* the one before it.
+/// month* the one before it. Each is read against its period's one before.
 @Suite
 struct RecapRangeTests {
     private let calendar = DataSources.calendar()
     private let now = Date(timeIntervalSince1970: 1_760_000_000)
 
+    private func period(_ period: RecapPeriod) -> DateRange { period.range(containing: now, calendar: calendar) }
+    private func before(_ range: DateRange, _ period: RecapPeriod) -> DateRange { period.before(range, calendar: calendar) }
+
+    @Test func `should offer this and last of a week, then of a month`() {
+        #expect(RecapRange.allCases == [.this(.week), .last(.week), .this(.month), .last(.month)])
+    }
+
     @Test func `should name the calendar week that holds today as this week`() {
-        #expect(RecapRange.thisWeek.range(containing: now, calendar: calendar)
-                == DateRange.week(containing: now, calendar: calendar))
+        #expect(RecapRange.this(.week).range(containing: now, calendar: calendar) == period(.week))
     }
 
     @Test func `should name the week before this one as last week`() {
-        let thisWeek = DateRange.week(containing: now, calendar: calendar)
-
-        #expect(RecapRange.lastWeek.range(containing: now, calendar: calendar) == thisWeek.before(calendar: calendar))
+        #expect(RecapRange.last(.week).range(containing: now, calendar: calendar) == before(period(.week), .week))
     }
 
     @Test func `should name the calendar month that holds today as this month`() {
-        #expect(RecapRange.thisMonth.range(containing: now, calendar: calendar)
-                == DateRange.month(containing: now, calendar: calendar))
+        #expect(RecapRange.this(.month).range(containing: now, calendar: calendar) == period(.month))
     }
 
     @Test func `should name the month before this one as last month`() {
-        let thisMonth = DateRange.month(containing: now, calendar: calendar)
-
-        #expect(RecapRange.lastMonth.range(containing: now, calendar: calendar) == thisMonth.previousMonth(calendar: calendar))
+        #expect(RecapRange.last(.month).range(containing: now, calendar: calendar) == before(period(.month), .month))
     }
 
-    /// What a range is read against: the same kind, one run earlier.
     @Test func `should read each week against the week before it`() {
-        let week = DateRange.week(containing: now, calendar: calendar)
+        let week = period(.week)
 
-        #expect(RecapRange.thisWeek.rangeBefore(containing: now, calendar: calendar) == week.before(calendar: calendar))
-        #expect(RecapRange.lastWeek.rangeBefore(containing: now, calendar: calendar) == week.before(calendar: calendar).before(calendar: calendar))
+        #expect(RecapRange.this(.week).rangeBefore(containing: now, calendar: calendar) == before(week, .week))
+        #expect(RecapRange.last(.week).rangeBefore(containing: now, calendar: calendar) == before(before(week, .week), .week))
     }
 
-    /// A month is read against the month before it — a month steps a month,
-    /// never a day-count back.
     @Test func `should read each month against the month before it`() {
-        let month = DateRange.month(containing: now, calendar: calendar)
+        let month = period(.month)
 
-        #expect(RecapRange.thisMonth.rangeBefore(containing: now, calendar: calendar) == month.previousMonth(calendar: calendar))
-        #expect(RecapRange.lastMonth.rangeBefore(containing: now, calendar: calendar) == month.previousMonth(calendar: calendar).previousMonth(calendar: calendar))
+        #expect(RecapRange.this(.month).rangeBefore(containing: now, calendar: calendar) == before(month, .month))
+        #expect(RecapRange.last(.month).rangeBefore(containing: now, calendar: calendar) == before(before(month, .month), .month))
     }
 }

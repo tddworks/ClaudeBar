@@ -4,19 +4,19 @@ import Foundation
 /// recap's moment, beside `QuotaAlerts` and `StatusAlerts` in Alerting. It
 /// follows the Monitor's refreshes (never a timer of its own), asks the pure
 /// `RecapDue` whether a week's recap is due, reads the recap through
-/// `WeeklyRecaps` — the card's own read, never a second one — marks the week
+/// `Recaps` — the card's own read, never a second one — marks the week
 /// sent, and tells the recap destinations ([design](docs/features/alerting/recap-alerts/design.md)).
 @MainActor
 public final class RecapAlerts {
     private let destination: any RecapDestination
-    private let recaps: WeeklyRecaps
+    private let recaps: Recaps
     /// Each provider's name, by id, asked at the send — handed the words,
     /// never looking them up, as `StatusAlerts` is handed the login's name.
     private let names: @MainActor () -> [String: String]
     private let memory: any RecapSentRepository
     private let calendar: Calendar
     private let now: () -> Date
-    /// One review at a time, as `WeeklyRecaps` reads one at a time: the read
+    /// One review at a time, as `Recaps` reads one at a time: the read
     /// suspends, and refreshes keep arriving meanwhile.
     private var underWay = false
 
@@ -29,7 +29,7 @@ public final class RecapAlerts {
     ///     one the weeks are read in and written in.
     ///   - now: the clock.
     public init(destination: any RecapDestination,
-                recaps: WeeklyRecaps,
+                recaps: Recaps,
                 names: @escaping @MainActor () -> [String: String],
                 memory: any RecapSentRepository,
                 calendar: Calendar,
@@ -67,6 +67,6 @@ public final class RecapAlerts {
         memory.setLastSent(date)
         // A week that added up to nothing says nothing: silence, not zeros.
         guard !recap.isEmpty else { return }
-        await destination.announce(RecapAlert(recap: recap, week: due.week, calendar: calendar, names: names()))
+        await destination.announce(RecapAlert(recap: recap, calendar: calendar, names: names()))
     }
 }

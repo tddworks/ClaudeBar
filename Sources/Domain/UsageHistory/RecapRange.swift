@@ -1,33 +1,35 @@
 import Foundation
 
-/// The recap's ranges: the calendar's week or month that holds today, or the
-/// one before each — each read against the range before it. The words are the
-/// App's; the calendar's week and month are `DateRange`'s.
+/// The recap's ranges: this period or the last one, of a week or a month —
+/// each read against the period before it. The span is `RecapPeriod`'s; the
+/// words are the App's.
 public enum RecapRange: CaseIterable, Hashable, Sendable {
-    case thisWeek
-    case lastWeek
-    case thisMonth
-    case lastMonth
+    /// The period that holds today.
+    case this(RecapPeriod)
+    /// The period before the one that holds today.
+    case last(RecapPeriod)
 
-    /// The range it names: the calendar's week or month that holds `now`, or
-    /// the one before it.
-    public func range(containing now: Date, calendar: Calendar) -> DateRange {
+    /// Every range the recap offers, a period's two together: this week, last
+    /// week, this month, last month.
+    public static let allCases: [RecapRange] = RecapPeriod.allCases.flatMap { [.this($0), .last($0)] }
+
+    /// The span it adds up.
+    public var period: RecapPeriod {
         switch self {
-        case .thisWeek: DateRange.week(containing: now, calendar: calendar)
-        case .lastWeek: DateRange.week(containing: now, calendar: calendar).before(calendar: calendar)
-        case .thisMonth: DateRange.month(containing: now, calendar: calendar)
-        case .lastMonth: DateRange.month(containing: now, calendar: calendar).previousMonth(calendar: calendar)
+        case .this(let period), .last(let period): period
         }
     }
 
-    /// The range it is read against: the same kind, one run earlier — a week
-    /// steps a week, a month steps a month.
-    public func rangeBefore(containing now: Date, calendar: Calendar) -> DateRange {
+    /// The range it names: the period that holds `now`, or the one before it.
+    public func range(containing now: Date, calendar: Calendar) -> DateRange {
         switch self {
-        case .thisWeek, .lastWeek:
-            range(containing: now, calendar: calendar).before(calendar: calendar)
-        case .thisMonth, .lastMonth:
-            range(containing: now, calendar: calendar).previousMonth(calendar: calendar)
+        case .this(let period): period.range(containing: now, calendar: calendar)
+        case .last(let period): period.before(period.range(containing: now, calendar: calendar), calendar: calendar)
         }
+    }
+
+    /// The range it is read against: the period before the one it names.
+    public func rangeBefore(containing now: Date, calendar: Calendar) -> DateRange {
+        period.before(range(containing: now, calendar: calendar), calendar: calendar)
     }
 }

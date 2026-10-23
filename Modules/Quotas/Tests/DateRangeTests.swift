@@ -91,21 +91,4 @@ struct DateRangeTests {
         #expect(DateRange.month(containing: date(2026, 10, 1), calendar: calendar)
             == DateRange.month(containing: date(2026, 10, 31), calendar: calendar))
     }
-
-    /// The month before is one calendar month earlier, never a day-count back:
-    /// months differ in length, and stepping 31 days from March 1 is January.
-    @Test func `should name the previous calendar month, not a day-count back`() {
-        let before = DateRange.month(containing: date(2026, 3, 15), calendar: calendar).previousMonth(calendar: calendar)
-
-        #expect(before.first == date(2026, 2, 1))
-        #expect(before.last == date(2026, 2, 28))
-    }
-
-    /// Stepping back from a January lands in the December before.
-    @Test func `should cross a year when stepping to the previous month`() {
-        let before = DateRange.month(containing: date(2026, 1, 9), calendar: calendar).previousMonth(calendar: calendar)
-
-        #expect(before.first == date(2025, 12, 1))
-        #expect(before.last == date(2025, 12, 31))
-    }
 }

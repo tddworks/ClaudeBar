@@ -102,7 +102,7 @@ struct WebhookBodyTests {
     private func recapAlert(this: [String: Days], before: [String: Days],
                             names: [String: String], on day: Date) -> RecapAlert {
         let week = DateRange.week(containing: day, calendar: calendar)
-        return RecapAlert(recap: Recap(this: this, before: before), week: week, calendar: calendar, names: names)
+        return RecapAlert(recap: Recap(range: week, this: this, before: before), calendar: calendar, names: names)
     }
 
     /// Two providers, the week before behind them: $19.92, +20%, 62/38, one
@@ -116,6 +116,7 @@ struct WebhookBodyTests {
         let sonnet = ModelUsageLine(model: "claude-sonnet-4-5", cost: 12.34)
         let gpt = ModelUsageLine(model: "gpt-5-codex", cost: 7.58)
         let recap = Recap(
+            range: week,
             this: ["claude": Days([
                 DailyUsageStat(date: calendar.date(from: DateComponents(year: 2026, month: 11, day: 2))!,
                                totalCost: 7.34, totalTokens: 600, workingTime: 3_600, sessionCount: 2,
@@ -134,7 +135,7 @@ struct WebhookBodyTests {
                      "codex": Days([DailyUsageStat(date: calendar.date(from: DateComponents(year: 2026, month: 10, day: 27))!,
                                                    totalCost: 6.64, totalTokens: 0, workingTime: 0, sessionCount: 0)],
                                   knowsCost: true)])
-        return RecapAlert(recap: recap, week: week, calendar: calendar, names: ["claude": "Claude", "codex": "Codex"])
+        return RecapAlert(recap: recap, calendar: calendar, names: ["claude": "Claude", "codex": "Codex"])
     }()
 
     @Test func `should tell the week's story in Slack`() throws {
@@ -169,8 +170,8 @@ struct WebhookBodyTests {
         buddhist.timeZone = TimeZone(identifier: "UTC")!
         buddhist.firstWeekday = 2
         let week = DateRange.week(containing: date(11, 2), calendar: buddhist)
-        let alert = RecapAlert(recap: Recap(this: ["claude": days([stat(11, 2, cost: 12.34)])], before: [:]),
-                               week: week, calendar: buddhist, names: ["claude": "Claude"])
+        let alert = RecapAlert(recap: Recap(range: week, this: ["claude": days([stat(11, 2, cost: 12.34)])], before: [:]),
+                               calendar: buddhist, names: ["claude": "Claude"])
         let body = try json(.recap(alert))
 
         #expect(body["biggestDay"] as? String == "2026-11-02")

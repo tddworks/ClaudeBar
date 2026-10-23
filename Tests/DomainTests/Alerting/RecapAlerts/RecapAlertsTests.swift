@@ -4,7 +4,7 @@ import Testing
 @testable import Domain
 
 /// *Recap alerts*: the week turned, the closed week hasn't gone out, and it
-/// added up to something — read through `WeeklyRecaps`, marked sent, and told
+/// added up to something — read through `Recaps`, marked sent, and told
 /// to the recap destinations (docs/features/alerting/recap-alerts/design.md).
 @MainActor
 @Suite
@@ -48,7 +48,7 @@ struct RecapAlertsTests {
 
     private func alerts(_ logins: [RecapLogin], now: @escaping () -> Date,
                         destination: RecordingRecapDestination? = nil) -> RecapAlerts {
-        let recaps = WeeklyRecaps(logins: { logins }, now: now, calendar: calendar)
+        let recaps = Recaps(logins: { logins }, now: now, calendar: calendar)
         return RecapAlerts(destination: destination ?? told, recaps: recaps, names: { ["a": "Alpha"] },
                            memory: memory, calendar: calendar, now: now)
     }
@@ -116,9 +116,9 @@ struct RecapAlertsTests {
     }
 
     @Test func `should read a provider the lineup no longer keeps as its id`() {
-        let recap = Recap(this: ["a": Days([day(14, cost: 10)], knowsCost: true)], before: [:])
-        let alert = RecapAlert(recap: recap, week: DateRange(first: date(12), last: date(18), calendar: calendar),
-                               calendar: calendar, names: ["b": "Beta"])
+        let recap = Recap(range: DateRange(first: date(12), last: date(18), calendar: calendar),
+                          this: ["a": Days([day(14, cost: 10)], knowsCost: true)], before: [:])
+        let alert = RecapAlert(recap: recap, calendar: calendar, names: ["b": "Beta"])
 
         #expect(alert.name(of: Recap.Part(provider: "a", value: 10, share: 1)) == "a")
         #expect(alert.name(of: Recap.Part(provider: "b", value: 10, share: 1)) == "Beta")
@@ -132,7 +132,7 @@ struct RecapAlertsTests {
         given(probe).probe().willReturn(UsageSnapshot(providerId: "acme", quotas: [], capturedAt: Date()))
         let product = stubbedProduct("acme", probe: probe, settings: MockRepositoryFactory.makeSettingsRepository())
         let monitor = QuotaMonitor(providers: kept([product]))
-        let recaps = WeeklyRecaps(monitor: monitor, calendar: calendar)
+        let recaps = Recaps(monitor: monitor, calendar: calendar)
         let decider = RecapAlerts(destination: told, recaps: recaps, names: { [:] }, memory: memory, calendar: calendar)
         decider.follow(monitor)
 

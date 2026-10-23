@@ -21,10 +21,10 @@ struct WebhookTests {
         let week = DateRange(first: calendar.date(from: DateComponents(year: 2026, month: 11, day: 2))!,
                              last: calendar.date(from: DateComponents(year: 2026, month: 11, day: 8))!, calendar: calendar)
         let day = calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!
-        let recap = Recap(this: ["claude": Days([DailyUsageStat(date: day, totalCost: 10, totalTokens: 10,
+        let recap = Recap(range: week, this: ["claude": Days([DailyUsageStat(date: day, totalCost: 10, totalTokens: 10,
                                                                 workingTime: 0, sessionCount: 1)], knowsCost: true)],
                           before: [:])
-        return RecapAlert(recap: recap, week: week, calendar: calendar, names: [:])
+        return RecapAlert(recap: recap, calendar: calendar, names: [:])
     }()
 
     private func webhook(scope: Webhook.Scope = .everyLogin, quotaAlerts: Bool = true,
