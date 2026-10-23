@@ -5,9 +5,10 @@ import Subprocess
 /// Shared plumbing for fetches that shell out through `Subprocess`.
 ///
 /// The PTY runners (`InteractiveRunner`, `PersistentSession`) deliberately stay
-/// on `Foundation.Process`: they need `openpty` so CLI tools believe they are
-/// attached to a terminal, and Subprocess has no pseudo-terminal support as of
-/// 1.0.0. Everything that only needs pipes routes through here instead, which
+/// on `Foundation.Process`: they need the platform's pseudo-terminal — the
+/// `PseudoTerminal` port answers it — so CLI tools believe they are attached to
+/// a terminal, and Subprocess has no pseudo-terminal support as of 1.0.0.
+/// Everything that only needs pipes routes through here instead, which
 /// removes the read-after-wait deadlock hazard and reaps the child properly.
 public enum SubprocessSupport {
 

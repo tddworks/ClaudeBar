@@ -1,22 +1,32 @@
-#if os(macOS)
 import Diagnostics
-import Darwin
 import Quotas
 import Foundation
+
+/// Seconds since Foundation's reference date; only durations are ever taken
+/// from it.
+private func nowSeconds() -> Double { Date.timeIntervalSinceReferenceDate }
 
 /// Runs CLI commands in an interactive terminal session.
 ///
 /// Many CLI tools (like Claude, Codex, Gemini) detect when they're not running in a
 /// real terminal and change their behavior. This runner simulates a terminal session
-/// so these tools produce their normal, parseable output.
+/// so these tools produce their normal, parseable output. What a terminal is here —
+/// the pty or pseudo console, starting the CLI in it, and the session's environment —
+/// this platform's `PseudoTerminal` answers (MODULAR_DESIGN §10); finding the CLI is
+/// the `InstalledPrograms` fact. Everything else here is the same on every platform.
 ///
 /// Usage:
 /// ```swift
-/// let runner = InteractiveRunner()
+/// let runner = InteractiveRunner(terminal: MacPty(), installed: MacProcesses())
 /// let result = try runner.run(binary: "claude", input: "/usage")
 /// print(result.output)
 /// ```
 public struct InteractiveRunner: Sendable {
+
+    /// The terminal this session runs in.
+    private let terminal: any PseudoTerminal
+    /// Finds the CLI, as this OS finds a program.
+    private let installed: any InstalledPrograms
 
     /// The result of running a command.
     public struct Result: Sendable {
@@ -113,7 +123,10 @@ public struct InteractiveRunner: Sendable {
     private static let terminalRows: UInt16 = 50
     private static let terminalCols: UInt16 = 160
 
-    public init() {}
+    init(terminal: any PseudoTerminal, installed: any InstalledPrograms) {
+        self.terminal = terminal
+        self.installed = installed
+    }
 
     /// Runs a command and captures its output.
     ///
@@ -128,73 +141,37 @@ public struct InteractiveRunner: Sendable {
         input: String,
         options: Options = Options()
     ) throws -> Result {
-        let totalStart = CFAbsoluteTimeGetCurrent()
+        let totalStart = nowSeconds()
 
-        let findStart = CFAbsoluteTimeGetCurrent()
+        let findStart = nowSeconds()
         let executablePath = try findExecutable(binary)
-        let findElapsed = CFAbsoluteTimeGetCurrent() - findStart
+        let findElapsed = nowSeconds() - findStart
         AppLog.probes.debug("InteractiveRunner: findExecutable('\(binary)') took \(String(format: "%.3f", findElapsed))s")
 
-        let (primaryFD, secondaryFD) = try openTerminal()
-
-        _ = fcntl(primaryFD, F_SETFL, O_NONBLOCK)
-
-        let primaryHandle = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: true)
-        let secondaryHandle = FileHandle(fileDescriptor: secondaryFD, closeOnDealloc: true)
-
-        let process = createProcess(
-            executablePath: executablePath,
-            options: options,
-            terminalHandle: secondaryHandle
-        )
-
-        var cleanedUp = false
-        var didLaunch = false
-
-        func cleanup() {
-            guard !cleanedUp else { return }
-            cleanedUp = true
-
-            try? primaryHandle.close()
-            try? secondaryHandle.close()
-
-            if didLaunch {
-                ChildTeardown.end(process, named: process.executableURL?.lastPathComponent ?? "terminal child")
-            }
-        }
-
-        defer { cleanup() }
-
-        let runStart = CFAbsoluteTimeGetCurrent()
-        try process.run()
-        didLaunch = true
+        let runStart = nowSeconds()
+        let session = try start(executablePath, options: options)
+        defer { session.end() }
 
         // Allow the process to initialize; `inputDelay` gives TUIs time to finish
         // their startup paint before typed input lands (see Options.inputDelay).
-        usleep(UInt32(max(0, options.inputDelay) * 1_000_000))
+        Thread.sleep(forTimeInterval: max(0, options.inputDelay))
 
         // Send the input command
-        try sendInput(input, to: primaryHandle)
+        try sendInput(input, to: session)
 
         // Read output, handling any prompts automatically
-        let buffer = try captureOutput(
-            from: primaryFD,
-            handle: primaryHandle,
-            process: process,
-            options: options
-        )
-        let runElapsed = CFAbsoluteTimeGetCurrent() - runStart
+        let buffer = captureOutput(from: session, options: options)
+        let runElapsed = nowSeconds() - runStart
         AppLog.probes.debug("InteractiveRunner: process execution took \(String(format: "%.3f", runElapsed))s")
 
         guard let text = String(data: buffer, encoding: .utf8), !text.isEmpty else {
             throw RunError.timedOut
         }
 
-        let totalElapsed = CFAbsoluteTimeGetCurrent() - totalStart
+        let totalElapsed = nowSeconds() - totalStart
         AppLog.probes.debug("InteractiveRunner: total run() took \(String(format: "%.3f", totalElapsed))s for '\(binary)'")
 
-        let exitCode: Int32 = process.isRunning ? -1 : process.terminationStatus
-        return Result(output: text, exitCode: exitCode)
+        return Result(output: text, exitCode: session.exitCode ?? -1)
     }
 
     // MARK: - Private Helpers
@@ -204,72 +181,47 @@ public struct InteractiveRunner: Sendable {
         if FileManager.default.isExecutableFile(atPath: binary) {
             return binary
         }
-        if let found = BinaryLocator.which(binary) {
+        if let found = installed.find(binary) {
             return found
         }
         throw RunError.binaryNotFound(binary)
     }
 
-    /// Opens a pseudo-terminal for the interactive session.
-    private func openTerminal() throws -> (primary: Int32, secondary: Int32) {
-        var primaryFD: Int32 = -1
-        var secondaryFD: Int32 = -1
-        var terminalSize = winsize(
-            ws_row: Self.terminalRows,
-            ws_col: Self.terminalCols,
-            ws_xpixel: 0,
-            ws_ypixel: 0
+    /// Starts the CLI in a new terminal, in its session's environment.
+    private func start(_ executablePath: String, options: Options) throws -> any TerminalSession {
+        let launch = TerminalLaunch(
+            executable: executablePath,
+            arguments: options.arguments,
+            environment: terminal.environment(
+                for: executablePath,
+                ProcessEnvironment(unset: options.environmentExclusions, set: options.environmentAdditions)
+            ),
+            directory: options.workingDirectory,
+            rows: Self.terminalRows,
+            cols: Self.terminalCols,
+            // Carry the fetch QoS captured when `Options` was built: the
+            // background monitoring loop binds `.utility` (issue #204).
+            qualityOfService: options.qualityOfService
         )
-        guard openpty(&primaryFD, &secondaryFD, nil, nil, &terminalSize) == 0 else {
+        do {
+            return try terminal.start(launch)
+        } catch PseudoTerminalError.couldNotOpen {
             throw RunError.launchFailed("Could not create terminal session")
+        } catch PseudoTerminalError.couldNotStart(let reason) {
+            throw RunError.launchFailed(reason)
         }
-        return (primaryFD, secondaryFD)
-    }
-
-    /// Creates and configures the process to run.
-    private func createProcess(
-        executablePath: String,
-        options: Options,
-        terminalHandle: FileHandle
-    ) -> Process {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = options.arguments
-        process.standardInput = terminalHandle
-        process.standardOutput = terminalHandle
-        process.standardError = terminalHandle
-        process.environment = Self.terminalEnvironment(
-            excluding: options.environmentExclusions,
-            adding: options.environmentAdditions
-        )
-        // Carry the fetch QoS captured when `Options` was built: the background
-        // monitoring loop binds `.utility` so the spawned CLI tree runs on
-        // efficiency cores / throttled, cutting idle heat (issue #204).
-        // Interactive runs stay `.default`.
-        process.qualityOfService = options.qualityOfService
-
-        if let workingDirectory = options.workingDirectory {
-            process.currentDirectoryURL = workingDirectory
-        }
-
-        return process
     }
 
     /// Sends input text to the running command.
-    private func sendInput(_ input: String, to handle: FileHandle) throws {
+    private func sendInput(_ input: String, to session: any TerminalSession) throws {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard let data = (trimmed + "\r").data(using: .utf8) else { return }
-        try handle.write(contentsOf: data)
+        try session.write(data)
     }
 
     /// Captures output from the command, automatically responding to known prompts.
-    private func captureOutput(
-        from fd: Int32,
-        handle: FileHandle,
-        process: Process,
-        options: Options
-    ) throws -> Data {
+    private func captureOutput(from session: any TerminalSession, options: Options) -> Data {
         let deadline = Date().addingTimeInterval(options.timeout)
         var buffer = Data()
         var lastMeaningfulDataTime = Date()
@@ -282,7 +234,7 @@ public struct InteractiveRunner: Sendable {
 
         while Date() < deadline {
             let previousSize = buffer.count
-            readAvailableData(from: fd, into: &buffer)
+            buffer.append(session.read())
 
             // Track when we last received MEANINGFUL data (not just OSC/escape sequences)
             if buffer.count > previousSize {
@@ -295,14 +247,14 @@ public struct InteractiveRunner: Sendable {
             // Auto-respond to any recognized prompts
             for item in promptResponses where !respondedPrompts.contains(item.prompt) {
                 if buffer.range(of: item.prompt) != nil {
-                    try? handle.write(contentsOf: item.response)
+                    try? session.write(item.response)
                     respondedPrompts.insert(item.prompt)
                     lastMeaningfulDataTime = Date()  // Reset idle timer after responding
                 }
             }
 
             // Exit if process stopped
-            if !process.isRunning { break }
+            if !session.isRunning { break }
 
             // Exit if we have meaningful output and no new meaningful data for
             // idleTimeout — unless the screen says it is still filling in, in
@@ -313,11 +265,11 @@ public struct InteractiveRunner: Sendable {
                 break
             }
 
-            usleep(60000)
+            Thread.sleep(forTimeInterval: 0.06)
         }
 
         // Capture any remaining output
-        readAvailableData(from: fd, into: &buffer)
+        buffer.append(session.read())
         return buffer
     }
 
@@ -419,69 +371,4 @@ public struct InteractiveRunner: Sendable {
         return !meaningful.isEmpty
     }
 
-    /// Reads all currently available data from a file descriptor.
-    private func readAvailableData(from fd: Int32, into buffer: inout Data) {
-        var chunk = [UInt8](repeating: 0, count: 8192)
-        while true {
-            let bytesRead = Darwin.read(fd, &chunk, chunk.count)
-            if bytesRead > 0 {
-                buffer.append(contentsOf: chunk.prefix(bytesRead))
-            } else {
-                break
-            }
-        }
-    }
-
-    /// Environment variables for the terminal session.
-    /// Ensures CLI tools behave as they would in a normal terminal.
-    /// - Parameter excluding: Environment variable keys to remove from the subprocess.
-    ///   Use this to prevent tokens like `CLAUDE_CODE_OAUTH_TOKEN` from being inherited.
-    /// - Parameter adding: Environment variables to set on the subprocess after
-    ///   exclusions and defaults, so additions always win.
-    private static func terminalEnvironment(
-        excluding: [String] = [],
-        adding additions: [String: String] = [:]
-    ) -> [String: String] {
-        var env = ProcessInfo.processInfo.environment
-        // Remove excluded keys before setting defaults
-        for key in excluding {
-            env.removeValue(forKey: key)
-        }
-        env["PATH"] = ensureCommonPathsIncluded(BinaryLocator.shellPath())
-        env["HOME"] = env["HOME"] ?? NSHomeDirectory()
-        env["TERM"] = env["TERM"] ?? "xterm-256color"
-        env["COLORTERM"] = env["COLORTERM"] ?? "truecolor"
-        env["LANG"] = env["LANG"] ?? "en_US.UTF-8"
-        env["CI"] = env["CI"] ?? "0"
-        for (key, value) in additions {
-            env[key] = value
-        }
-        return env
-    }
-
-    /// Ensures common tool paths are included in PATH.
-    ///
-    /// When apps are launched from Finder/launchd, the PATH obtained from login shell
-    /// may not include paths configured in .zshrc/.bashrc (which are only loaded for
-    /// interactive shells). This ensures common installation paths are always available.
-    private static func ensureCommonPathsIncluded(_ path: String) -> String {
-        let essentialPaths = [
-            "/opt/homebrew/bin",  // Homebrew on Apple Silicon
-            "/opt/homebrew/sbin",
-            "/usr/local/bin",     // Homebrew on Intel / common tools
-            "/usr/local/sbin",
-        ]
-
-        var components = path.split(separator: ":").map(String.init)
-        let fm = FileManager.default
-
-        for essentialPath in essentialPaths.reversed() {
-            if !components.contains(essentialPath) && fm.fileExists(atPath: essentialPath) {
-                components.insert(essentialPath, at: 0)
-            }
-        }
-
-        return components.joined(separator: ":")
-    }
 }
-#endif

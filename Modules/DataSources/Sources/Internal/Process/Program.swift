@@ -49,9 +49,9 @@ struct Program: Sendable {
 }
 
 /// The programs on this machine, as a data source reaches them: an installed
-/// CLI or the person's script, found and ready to run, what the person's login
-/// sets, and the programs running (MODULAR_DESIGN §10). The OS answers five
-/// facts; finding, running and talking are this one copy.
+/// CLI or the person's script, found and ready to run, and what the person's
+/// login sets (MODULAR_DESIGN §10). The OS answers four facts; finding,
+/// running and talking are this one copy.
 struct Processes: Sendable {
     /// How a program runs over pipes, for a change to its environment.
     typealias Pipes = @Sendable (ProcessEnvironment) -> any CLIExecutor
@@ -60,7 +60,6 @@ struct Processes: Sendable {
     let scripts: any ScriptStart
     let loginShell: any LoginShell
     let launch: any ChildLaunch
-    let running: any RunningPrograms
     /// Runs a program over pipes: `PipeCLIExecutor`, unless a test hands its own.
     let pipes: Pipes
     /// Holds a conversation with a program: `PipeConversation`, unless a test
@@ -68,13 +67,12 @@ struct Processes: Sendable {
     let conversation: DataSources.TransportFactory
 
     /// This OS's answers, its programs run on the one pipe runner and conversation.
-    init(_ os: some InstalledPrograms & ScriptStart & LoginShell & ChildLaunch & RunningPrograms) {
-        self.init(installed: os, scripts: os, loginShell: os, launch: os, running: os)
+    init(_ os: some InstalledPrograms & ScriptStart & LoginShell & ChildLaunch) {
+        self.init(installed: os, scripts: os, loginShell: os, launch: os)
     }
 
-    init(installed: any InstalledPrograms, scripts: any ScriptStart, loginShell: any LoginShell,
-         launch: any ChildLaunch, running: any RunningPrograms) {
-        self.init(installed: installed, scripts: scripts, loginShell: loginShell, launch: launch, running: running,
+    init(installed: any InstalledPrograms, scripts: any ScriptStart, loginShell: any LoginShell, launch: any ChildLaunch) {
+        self.init(installed: installed, scripts: scripts, loginShell: loginShell, launch: launch,
                   pipes: { PipeCLIExecutor(change: $0, installed: installed, launch: launch) },
                   conversation: { path, arguments, environment, directory in
                       PipeConversation(executablePath: path, arguments: arguments,
@@ -84,24 +82,21 @@ struct Processes: Sendable {
     }
 
     private init(installed: any InstalledPrograms, scripts: any ScriptStart, loginShell: any LoginShell,
-                 launch: any ChildLaunch, running: any RunningPrograms, pipes: @escaping Pipes,
-                 conversation: @escaping DataSources.TransportFactory) {
+                 launch: any ChildLaunch, pipes: @escaping Pipes, conversation: @escaping DataSources.TransportFactory) {
         self.installed = installed
         self.scripts = scripts
         self.loginShell = loginShell
         self.launch = launch
-        self.running = running
         self.pipes = pipes
         self.conversation = conversation
     }
 
     /// This OS's facts, with programs run on `pipes`, found as `pipes` finds
-    /// them, talked to through `conversation`, and `paths` the ones running:
-    /// what the factory's stubbed `make` and a test hand in.
-    func with(pipes: @escaping Pipes, conversation: @escaping DataSources.TransportFactory,
-              paths: @escaping @Sendable () -> [String]) -> Processes {
+    /// them, and talked to through `conversation`: what the factory's stubbed
+    /// `make` and a test hand in.
+    func with(pipes: @escaping Pipes, conversation: @escaping DataSources.TransportFactory) -> Processes {
         Processes(installed: FoundBy(pipes: pipes), scripts: scripts, loginShell: loginShell, launch: launch,
-                  running: Listed(list: paths), pipes: pipes, conversation: conversation)
+                  pipes: pipes, conversation: conversation)
     }
 
     /// The installed CLI `name`, or `nil` when it isn't installed.
@@ -126,10 +121,4 @@ struct Processes: Sendable {
 private struct FoundBy: InstalledPrograms {
     let pipes: Processes.Pipes
     func find(_ name: String) -> String? { pipes(ProcessEnvironment()).locate(name) }
-}
-
-/// The programs running, as handed in.
-private struct Listed: RunningPrograms {
-    let list: @Sendable () -> [String]
-    func paths() -> [String] { list() }
 }

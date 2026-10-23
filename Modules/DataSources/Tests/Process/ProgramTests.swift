@@ -78,7 +78,7 @@ struct ProgramTests {
             .with(pipes: { _ in runner() }, conversation: { path, arguments, environment, _ in
                 seen.record(path, arguments, environment)
                 return MockRPCTransport()
-            }, paths: { [] })
+            })
         let program = try #require(processes.program(named: "acme"))
 
         _ = try program.talk(["app-server"], environment: ProcessEnvironment(set: ["ACME_HOME": "/h"]), in: nil)

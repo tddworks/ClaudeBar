@@ -34,11 +34,11 @@ public final class ClaudeGuestPassSource: GuestPassSource, @unchecked Sendable {
     ) {
         self.claudeBinary = claudeBinary
         self.timeout = timeout
-        self.cliExecutor = cliExecutor ?? DefaultCLIExecutor(
+        self.cliExecutor = cliExecutor ?? DataSources.systemExecutor([
             // Same loopback risk as the usage probe: /passes spawns a full
             // claude session whose hooks would fire. Mark it (issue #222).
-            environmentAdditions: [HookConstants.probeEnvironmentKey: "1"]
-        )
+            HookConstants.probeEnvironmentKey: "1",
+        ])
         self.clipboardReader = clipboardReader ?? SystemClipboardReader()
     }
 

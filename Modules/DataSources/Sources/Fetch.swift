@@ -18,7 +18,7 @@ public enum Fetch: Sendable, Equatable {
     case command(CommandCall)
     /// A file on this Mac that some tool keeps up to date — the *File* choice.
     case file(FileCall)
-    /// An app's own server on this Mac, found through its running process.
+    /// An app's own server on this machine, found through its running process.
     case localServer(LocalServerCall)
     /// A cloud's metrics, summed per dimension value — through `CloudWatchClient`.
     case cloudWatch(CloudWatchCall)

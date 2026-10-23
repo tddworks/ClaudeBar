@@ -4,9 +4,8 @@ import Subprocess
 
 /// What Linux answers about programs: a CLI found on `PATH`, a script started
 /// by `sh`, a variable read through the person's login shell, a child given
-/// the tool folders and ended with `SIGTERM` then `SIGKILL`, and the kernel's
-/// process table.
-struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, RunningPrograms {
+/// the tool folders and ended with `SIGTERM` then `SIGKILL`.
+struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     func find(_ name: String) -> String? {
         LinuxBinaryLocator().locate(name)
     }
@@ -49,10 +48,6 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, 
         [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
     }
 
-    func paths() -> [String] {
-        RunningProcesses.system()
-    }
-
     /// Where CLI tools are installed outside a login shell's `PATH`: the same
     /// folders the Mac's locator falls back to, in Linux' spellings.
     static var commonPaths: [String] {
@@ -81,22 +76,6 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch, 
             // nvm (for node-based CLIs like codex)
             "\(home)/.nvm/versions",
         ]
-    }
-}
-
-/// The executable paths of the processes running now, read from `/proc`
-/// without starting a process. A process this user can't open — a service,
-/// another person's — is left out.
-enum RunningProcesses {
-    static let system: @Sendable () -> [String] = {
-        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: "/proc") else { return [] }
-        var paths: [String] = []
-        for entry in entries where entry.allSatisfy(\.isNumber) {
-            if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: "/proc/\(entry)/exe") {
-                paths.append(target)
-            }
-        }
-        return paths
     }
 }
 #endif

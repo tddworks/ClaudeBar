@@ -1,4 +1,3 @@
-#if os(macOS)
 import Diagnostics
 import Quotas
 import Foundation
@@ -6,43 +5,33 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// `localServer` — an app's own server on this Mac. Its process is found by
+/// `localServer`: an app's own server on this machine. Its process is found by
 /// name and command line, the values it started with are read from that
-/// command line, and the declared paths are asked on its listening ports,
-/// on 127.0.0.1 only.
+/// command line, and the declared paths are asked on its listening ports, on
+/// 127.0.0.1 only. The same steps on every platform; the OS only answers
+/// what runs, its command lines and its ports (`LocalServers`).
 struct LocalServerFetcher: Fetching {
     let call: LocalServerCall
-    /// Runs `pgrep` and `lsof`.
-    let commands: any CLIExecutor
-    /// The loopback client: self-signed TLS accepted on 127.0.0.1 only.
-    let network: any NetworkClient
-    /// The executable paths of the processes running now — read without
-    /// starting a process, so readiness stays cheap.
-    let processPaths: @Sendable () -> [String]
+    let servers: LocalServers
 
-    /// Running, as far as its executable's path can tell.
+    /// Running, as far as its executable's path can tell: read without
+    /// starting a program, so readiness stays cheap.
     func isReady() -> Bool {
-        processPaths().contains { Self.isApp($0, call.process) }
+        servers.running.paths().contains { Self.isApp($0, call.process) }
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        let query = Self.processQuery(call.process)
-        // An empty pgrep result surfaces as a runner timeout, not "not found".
-        let listing = (try? await commands.execute(binary: query[0], args: Array(query.dropFirst()), input: nil,
-                                                     timeout: call.timeout, workingDirectory: nil, autoResponses: [:]).output) ?? ""
-        let running = listing.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { Self.isApp($0, call.process) }
-            .compactMap { line -> (pid: Int, values: Credential)? in
-                guard let pid = line.split(separator: " ", maxSplits: 1).first.flatMap({ Int($0) }) else { return nil }
-                return (pid, self.values(in: line, with: credential))
-            }
+        let running = await servers.commandLines.commandLines(naming: call.process.names)
+            .filter { Self.isApp($0.text, call.process) }
+            .sorted { $0.pid < $1.pid }
+            .map { (pid: $0.pid, values: values(in: $0.text, with: credential)) }
         guard let first = running.first else {
             AppLog.probes.info("\(call.app) isn't running")
             throw CLIMissingError(cli: call.app)
         }
 
-        // The first one started with every required value: a CLI of the same
-        // name can run beside the app, and pgrep lists them by PID.
+        // The first one, by PID, started with every required value: a CLI of
+        // the same name can run beside the app without them.
         guard let (pid, values) = running.first(where: { process in call.required.allSatisfy { process.values[$0] != nil } }) else {
             if let name = call.required.first(where: { first.values[$0] == nil }) {
                 // Never the value; only that it is missing.
@@ -51,10 +40,7 @@ struct LocalServerFetcher: Fetching {
             throw UsageError.authenticationRequired
         }
 
-        let portsQuery = Self.listeningPortsQuery(pid: String(pid))
-        let lsof = (try? await commands.execute(binary: portsQuery[0], args: Array(portsQuery.dropFirst()),
-                                                input: nil, timeout: call.timeout, workingDirectory: nil, autoResponses: [:]).output) ?? ""
-        var tries = Self.listeningPorts(in: lsof).map { ("https", $0) }
+        var tries = await servers.ports.ports(of: pid).map { ("https", $0) }
         if let name = call.plainHTTPPort, let port = values[name].flatMap(Int.init) { tries.append(("http", port)) }
         guard !tries.isEmpty else { throw UsageError.executionFailed("\(call.app) isn't listening on any port") }
 
@@ -90,23 +76,16 @@ struct LocalServerFetcher: Fetching {
             guard let filled = Template.fill(body, with: values) else { return nil }
             request.httpBody = Data(filled.utf8)
         }
-        guard let (data, response) = try? await network.request(request),
+        guard let (data, response) = try? await servers.network.request(request),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
         let headers = http.allHeaderFields.reduce(into: [String: String]()) { $0["\($1.key)"] = "\($1.value)" }
         return Response(status: 200, headers: headers, body: data)
     }
 
-    /// `pgrep -lf name|name…` — every process whose command line names one.
-    static func processQuery(_ process: LocalServerCall.Process) -> [String] {
-        ["/usr/bin/pgrep", "-lf", process.names.joined(separator: "|")]
-    }
-
-    static func listeningPortsQuery(pid: String) -> [String] {
-        ["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", pid]
-    }
-
+    /// A path's separators read as `/`, so a definition's path pattern
+    /// (`/antigravity/`) matches Windows' `\` paths too.
     static func isApp(_ commandLine: String, _ process: LocalServerCall.Process) -> Bool {
-        let lower = commandLine.lowercased()
+        let lower = commandLine.lowercased().replacingOccurrences(of: "\\", with: "/")
         guard process.names.contains(where: { lower.contains($0.lowercased()) }) else { return false }
         return process.match.isEmpty || process.match.contains { lower.range(of: $0, options: .regularExpression) != nil }
     }
@@ -117,15 +96,4 @@ struct LocalServerFetcher: Fetching {
               match.numberOfRanges > 1, let range = Range(match.range(at: 1), in: text) else { return nil }
         return String(text[range])
     }
-
-    /// `… TCP 127.0.0.1:53421 (LISTEN)` → 53421, each once, in order.
-    static func listeningPorts(in lsof: String) -> [Int] {
-        guard let regex = try? NSRegularExpression(pattern: #":(\d+)\s+\(LISTEN\)"#) else { return [] }
-        var ports = Set<Int>()
-        regex.enumerateMatches(in: lsof, range: NSRange(lsof.startIndex..., in: lsof)) { match, _, _ in
-            if let match, let range = Range(match.range(at: 1), in: lsof), let port = Int(lsof[range]) { ports.insert(port) }
-        }
-        return ports.sorted()
-    }
 }
-#endif

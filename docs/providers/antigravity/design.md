@@ -6,7 +6,7 @@ Contributor notes for the Antigravity provider. For setup, see the [README](READ
 
 Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `antigravity-usage.js`, run by the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names it. Ported from #396. The sections below are the research; the requests are unchanged.
 
-- **`local` is a `localServer` fetch**: the process found by name and command-line pattern (`pgrep -lf`), `csrfToken` and `extensionPort` read from its arguments, its listening ports from `lsof`, then the three language-server paths on each port over HTTPS (self-signed accepted on 127.0.0.1 only), the extension port over plain HTTP last. Readiness reads running executables' paths from the kernel, without starting a process.
+- **`local` is a `localServer` fetch**: the process found by name and command-line pattern, `csrfToken` and `extensionPort` read from its arguments, its listening ports, then the three language-server paths on each port over HTTPS (self-signed accepted on 127.0.0.1 only), the extension port over plain HTTP last. Readiness reads running executables' paths from the kernel, without starting a process. The Mac reads command lines with `pgrep -a -lf` and ports with `lsof`; Windows reads both from the kernel, running no program (#588).
 - **`cloud` is `http.steps`** over the daily and production Cloud Code hosts: the quota summary, then the per-model list unless a summary answered, then `loadCodeAssist` for the plan. Its key is the Keychain item `gemini` / `antigravity` (`encoding: goKeyringBase64`, `$.token.access_token`); a refused one is the `agy` hint.
 - **The login is renewed by its CLI** (`refresh: {"cli": …}`), as Gemini's is: on a 401, `agy models` runs, renews the Keychain item itself, and the item is read again. The refresher doesn't write back, so ClaudeBar never writes the item. Never proactive: the expiry isn't checked.
 - **Not running hands over to `cloud`** (`fallbackOn.cliNotFound`), so with the app closed, the cloud's own failure is the one shown.
@@ -22,15 +22,15 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 ## Local language server
 
-1. **Find the process**: `/usr/bin/pgrep -lf 'language_server|language_server_macos|language_server_macos_arm|agy'`. Keep lines that contain one of `language_server`, `language_server_macos`, `language_server_macos_arm` or `agy`, and also look like Antigravity: an `agy` binary, `--app_data_dir … antigravity`, or `/antigravity/` / `.antigravity/` in the path. The first matching line, in `pgrep`'s (PID) order, that has `--csrf_token <t>` is the one asked: an `agy` session left open in a terminal matches too but is started without a token, and it can have the lower PID. If no matching line has one, detection throws `authenticationRequired`. `--extension_server_port <p>` is optional.
+1. **Find the process**: on the Mac `/usr/bin/pgrep -a -lf 'language_server|language_server_macos|language_server_macos_arm|agy'`; on Windows each process's command line, read from its process information. Keep lines that contain one of `language_server`, `language_server_macos`, `language_server_macos_arm` or `agy`, and also look like Antigravity: an `agy` binary, `--app_data_dir … antigravity`, or `/antigravity/` / `.antigravity/` in the path (a Windows path's `\` reads as `/`). The first matching process, by PID, that has `--csrf_token <t>` is the one asked: an `agy` session left open in a terminal matches too but is started without a token, and it can have the lower PID. If no matching process has one, detection throws `authenticationRequired`. `--extension_server_port <p>` is optional.
 2. **Empty `pgrep` (#301, PR #304)**: when `pgrep` matches nothing it exits with empty output. The PTY runner reports that as `InteractiveRunner.RunError.timedOut`, not as empty output. Before the fix, that timeout escaped `detectProcess()`, `probe()` never saw `cliNotFound`, and the Cloud Code fallback was unreachable with the app closed. The user saw "Command did not complete within the timeout" on every refresh. A `pgrep` timeout now counts as "not running".
-3. **Ports**: `lsof -nP -iTCP -sTCP:LISTEN -a -p <pid>` → every `:<port> (LISTEN)`.
+3. **Ports**: on the Mac `lsof -nP -iTCP -sTCP:LISTEN -a -p <pid>` → every `:<port> (LISTEN)`; on Windows the process's rows in the TCP listener table.
 4. **Quota**: `POST https://127.0.0.1:<port>/exa.language_server_pb.LanguageServerService/<method>` on each port, in this order:
    - `RetrieveUserQuotaSummary`: the pooled summary.
    - `GetUserStatus`: legacy, one entry per model.
    - `GetCommandModelConfigs`: legacy fallback.
 
-   Headers: `X-Codeium-Csrf-Token: <t>`, `Connect-Protocol-Version: 1`. Body: `{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}`. The certificate is self-signed, so this uses `InsecureLocalhostNetworkClient`. If no HTTPS port answers, the same three paths are tried over plain HTTP on `--extension_server_port`.
+   Headers: `X-Codeium-Csrf-Token: <t>`, `Connect-Protocol-Version: 1`. Body: `{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}`. The certificate is self-signed, so the request trusts whatever certificate the server on 127.0.0.1 presents, on that request only: `URLSession` on the Mac, WinHTTP on Windows. If no HTTPS port answers, the same three paths are tried over plain HTTP on `--extension_server_port`.
 
 ## Cloud Code (app closed)
 
@@ -60,7 +60,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 ## Known limits
 
-- The local server is reached on `localhost` / `127.0.0.1` only, and a redirect must keep its scheme, host and port; anything else is refused before the server's token could leave the Mac.
+- The local server is reached on `localhost` / `127.0.0.1` only, and a redirect must keep its scheme, host and port; anything else is refused before the server's token could leave the machine.
 
 - If the saved token has expired and `agy` isn't installed (only the desktop app is), nothing can renew it until the app runs again. The user sees "Authentication required".
 - If the keychain item's service or account changes in a future Antigravity build, the app-closed fallback stops working without any error beyond "not running and no stored credentials".
