@@ -101,17 +101,20 @@ key.
 | `UsageSection.projectMix` | whether the popover shows the projects card — hidden until the person shows it, and it reads the year | `Sources/Domain/Settings/UsageSection.swift` |
 | `ProjectMixView` | the split as one bar and a row per project, largest first | `Sources/App/UsageHistory/` |
 
-**A day carries a split only when its log names projects, and the day owns
-it.** A day keeps its *named* project lines only. A day none of whose records
-names a directory keeps none — so the ledgers of the providers that don't
-capture stay byte for byte as they were — and its split is empty. On a day
-that does, `projectSplit` is the named lines and the **remainder**, the day
-less its named lines, whenever that is anything; so the parts add up to the
-day exactly as a day's model lines do ([insights §2](../insights/design.md)).
-Nothing else rebuilds the unnamed part: two days of one date added up
-(`DailyUsageStat +`, so `Days.merged` and the recap) add their named lines and
-their totals, and the sum's remainder holds what a day without a split spent;
-`ByProject` only sums the days' splits.
+**The day owns its split.** A day keeps its *named* project lines only. A
+day none of whose records names a directory keeps none — so the ledgers of
+the providers that don't capture stay byte for byte as they were. Its
+`projectSplit` is the named lines and the **remainder**, the day less its
+named lines, whenever that is anything — so the parts add up to every day
+exactly as a day's model lines do ([insights §2](../insights/design.md)); a
+day that names no project is all remainder, and a day with nothing spent has
+no parts. Nothing else rebuilds the unnamed part: two days of one date added
+up (`DailyUsageStat +`, so `Days.merged` and the recap) add their named lines
+and their totals, so the sum's remainder holds what a day without names
+spent; `ByProject` only sums the days' splits, so a day without names in a
+range with some is the range's unnamed part and no named share overstates. A
+range that names no project has nothing to offer (`ByProject.isEmpty`), and
+no card shows.
 
 ## 4 · The laws, each with one owner
 
@@ -119,7 +122,7 @@ their totals, and the sum's remainder holds what a day without a split spent;
 |---|---|
 | a log's record may name its project — the field that holds the working directory — read like the model, one more word in the shape's path language | `UsageLog.Shape` |
 | a record's project is named once, at aggregation: the last path component of the working directory; a path that names no component names itself; a record that names nothing is unnamed | `ProjectUsageLine.name(of:)` · `DayAggregator` |
-| a day keeps its named project lines only, in name order; its split is those and the remainder — the day less its named lines, when that is anything — so the parts add up to the day, and a day that names no project has no split | `DailyUsageStat` (`projects`, `projectSplit`) |
+| a day keeps its named project lines only, in name order; its split is those and the remainder — the day less its named lines, when that is anything — so the parts add up to the day; a day that names no project is all remainder | `DailyUsageStat` (`projects`, `projectSplit`) |
 | what a part spent adds up field by field, and reads itself in a unit (cost, tokens, cache) | `Spend` |
 | two lines of one name add up to one line: their spends added | `UsageLine` (`+`) |
 | a mix is each line summed over the range, largest first, ties by name, the unnamed part included so the parts add up; each part carries its share; the top is the largest named one, never the unnamed part; it names its named parts and says whether it names any | `UsageMix` (`ByProject` for projects) |
