@@ -1,7 +1,7 @@
 import DataSources
 import Foundation
 import Mockable
-import Providers
+@testable import Providers
 import Quotas
 import Testing
 
@@ -162,6 +162,18 @@ struct InUseTests {
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
 
         #expect(codex.inUse?.worthSwitchingTo === work)
+    }
+
+    @Test
+    func `should suggest no switch to a login that shows only a balance`() async throws {
+        let (stub, codex, work) = try InUseFixture.twoLogins()
+        defer { stub.cleanUp() }
+        try await InUseFixture.usage(stub, codex, me: 92, work: 15)
+        work.snapshot = UsageSnapshot(providerId: "codex", quotas: [
+            UsageQuota(left: .money(Money(12), of: nil), quotaType: .modelSpecific("Credits"), providerId: "codex"),
+        ], capturedAt: Date())
+
+        #expect(codex.inUse?.worthSwitchingTo == nil)
     }
 
     @Test

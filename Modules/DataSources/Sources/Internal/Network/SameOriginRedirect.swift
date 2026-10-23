@@ -37,8 +37,8 @@ final class SameOriginRedirectDelegate: NSObject, URLSessionTaskDelegate {
 
 /// The remote network every fetch shares: one `URLSession`, built once, whose
 /// redirects never leave the origin (the law above). Local-server fetches
-/// keep their own client (`InsecureLocalhostNetworkClient`), whose redirect
-/// rule is this one, pinned to the loopback.
+/// keep their own client (`LoopbackClient`), which follows a redirect by
+/// this same `sameOrigin`, pinned to this machine.
 ///
 /// Public, so a client outside `DataSources` — the Rules webhook's POST —
 /// sends under the same law rather than following a redirect off the origin

@@ -11,19 +11,19 @@ import Glibc
 @_silgen_name("ptsname_r") private func ptsname_r(_ fd: Int32, _ buf: UnsafeMutablePointer<CChar>!, _ length: Int) -> Int32
 
 /// Linux' pty: `posix_openpt` on the session's end, the slave opened for the
-/// child and sized as asked, its program started on it as `PtySession` does,
-/// and a session environment whose `PATH` carries the tool folders a
-/// service's minimal `PATH` misses.
+/// child and sized as asked, and its program started on it as `PtySession`
+/// does. A session's `PATH` is a program's (`LinuxProcesses`), with the tool
+/// folders a service's minimal one misses.
 struct LinuxPty: PseudoTerminal {
-    private let programs = LinuxProcesses()
-
     func start(_ launch: TerminalLaunch) throws -> any TerminalSession {
         try PtySession.start(launch, on: open(rows: launch.rows, cols: launch.cols))
     }
 
     private func open(rows: UInt16, cols: UInt16) throws -> PtyEnds {
         let session = posix_openpt(O_RDWR | O_NOCTTY)
-        guard session >= 0, grantpt(session) == 0, unlockpt(session) == 0 else {
+        guard session >= 0 else { throw PseudoTerminalError.couldNotOpen }
+        guard grantpt(session) == 0, unlockpt(session) == 0 else {
+            close(session)
             throw PseudoTerminalError.couldNotOpen
         }
         var name = [CChar](repeating: 0, count: 128)
@@ -41,14 +41,10 @@ struct LinuxPty: PseudoTerminal {
         return PtyEnds(session: session, child: child)
     }
 
-    func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = programs.environment(for: path, change)
-        environment["HOME"] = environment["HOME"] ?? NSHomeDirectory()
-        environment["TERM"] = environment["TERM"] ?? "xterm-256color"
-        environment["COLORTERM"] = environment["COLORTERM"] ?? "truecolor"
-        environment["LANG"] = environment["LANG"] ?? "C.UTF-8"
-        environment["CI"] = environment["CI"] ?? "0"
-        return environment
-    }
+    func sessionPath() -> String? { nil }
+
+    // `en_US.UTF-8` may not be generated on a Linux machine; `C.UTF-8` is
+    // built into glibc.
+    var fallbackLocale: String? { "C.UTF-8" }
 }
 #endif

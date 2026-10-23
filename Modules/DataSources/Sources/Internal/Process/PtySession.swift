@@ -16,18 +16,20 @@ struct PtyEnds: Sendable {
 /// A program running on a POSIX pty, the Mac's and Linux' alike: started by
 /// `Foundation.Process` with the pty's child end as its standard input,
 /// output and error, read without waiting from the session end, and ended
-/// with `SIGTERM`, then `SIGKILL` (`ChildTeardown`).
+/// with `SIGTERM`, then `SIGKILL` after the launch's grace (`ChildTeardown`).
 final class PtySession: TerminalSession, @unchecked Sendable {
     private let session: FileHandle
     private let child: FileHandle
     private let process: Process
+    private let stopGrace: Duration?
     private let lock = NSLock()
     private var ended = false
 
-    private init(session: FileHandle, child: FileHandle, process: Process) {
+    private init(session: FileHandle, child: FileHandle, process: Process, stopGrace: Duration?) {
         self.session = session
         self.child = child
         self.process = process
+        self.stopGrace = stopGrace
     }
 
     /// Starts `launch` on `ends`. The ends are closed if it doesn't start.
@@ -57,7 +59,7 @@ final class PtySession: TerminalSession, @unchecked Sendable {
             try? child.close()
             throw PseudoTerminalError.couldNotStart(error.localizedDescription)
         }
-        return PtySession(session: session, child: child, process: process)
+        return PtySession(session: session, child: child, process: process, stopGrace: launch.stopGrace)
     }
 
     func read() -> Data {
@@ -87,7 +89,7 @@ final class PtySession: TerminalSession, @unchecked Sendable {
         guard first else { return }
         try? session.close()
         try? child.close()
-        ChildTeardown.end(process, named: process.executableURL?.lastPathComponent ?? "terminal child")
+        ChildTeardown.end(process, named: process.executableURL?.lastPathComponent ?? "terminal child", grace: stopGrace)
     }
 }
 

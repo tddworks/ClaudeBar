@@ -11,13 +11,16 @@ private func nowSeconds() -> Double { Date.timeIntervalSinceReferenceDate }
 /// Many CLI tools (like Claude, Codex, Gemini) detect when they're not running in a
 /// real terminal and change their behavior. This runner simulates a terminal session
 /// so these tools produce their normal, parseable output. What a terminal is here —
-/// the pty or pseudo console, starting the CLI in it, and the session's environment —
-/// this platform's `PseudoTerminal` answers (MODULAR_DESIGN §10); finding the CLI is
-/// the `InstalledPrograms` fact. Everything else here is the same on every platform.
+/// the pty or pseudo console, starting the CLI in it, and what its session's
+/// environment differs in — this platform's `PseudoTerminal` answers (MODULAR_DESIGN
+/// §10); finding the CLI, the environment it starts with under the OS's name rule
+/// and how long it is given to stop are the `InstalledPrograms` and `ChildLaunch`
+/// facts. Everything else here is the same on every platform: the terminal defaults
+/// a CLI gets, the screen's size, typing and reading.
 ///
 /// Usage:
 /// ```swift
-/// let runner = InteractiveRunner(terminal: MacPty(), installed: MacProcesses())
+/// let runner = InteractiveRunner(terminal: MacPty(), programs: MacProcesses())
 /// let result = try runner.run(binary: "claude", input: "/usage")
 /// print(result.output)
 /// ```
@@ -25,8 +28,9 @@ public struct InteractiveRunner: Sendable {
 
     /// The terminal this session runs in.
     private let terminal: any PseudoTerminal
-    /// Finds the CLI, as this OS finds a program.
-    private let installed: any InstalledPrograms
+    /// Finds the CLI, starts it with its environment and gives it its time to
+    /// stop, as this OS does any program.
+    private let programs: any InstalledPrograms & ChildLaunch
 
     /// The result of running a command.
     public struct Result: Sendable {
@@ -119,13 +123,9 @@ public struct InteractiveRunner: Sendable {
         }
     }
 
-    // Terminal size for the simulated session
-    private static let terminalRows: UInt16 = 50
-    private static let terminalCols: UInt16 = 160
-
-    init(terminal: any PseudoTerminal, installed: any InstalledPrograms) {
+    init(terminal: any PseudoTerminal, programs: any InstalledPrograms & ChildLaunch) {
         self.terminal = terminal
-        self.installed = installed
+        self.programs = programs
     }
 
     /// Runs a command and captures its output.
@@ -181,7 +181,7 @@ public struct InteractiveRunner: Sendable {
         if FileManager.default.isExecutableFile(atPath: binary) {
             return binary
         }
-        if let found = installed.find(binary) {
+        if let found = programs.find(binary) {
             return found
         }
         throw RunError.binaryNotFound(binary)
@@ -192,16 +192,14 @@ public struct InteractiveRunner: Sendable {
         let launch = TerminalLaunch(
             executable: executablePath,
             arguments: options.arguments,
-            environment: terminal.environment(
-                for: executablePath,
-                ProcessEnvironment(unset: options.environmentExclusions, set: options.environmentAdditions)
-            ),
+            environment: programs.environment(for: executablePath, sessionChange(options)),
             directory: options.workingDirectory,
-            rows: Self.terminalRows,
-            cols: Self.terminalCols,
+            rows: UInt16(TerminalRenderer.rows),
+            cols: UInt16(TerminalRenderer.cols),
             // Carry the fetch QoS captured when `Options` was built: the
             // background monitoring loop binds `.utility` (issue #204).
-            qualityOfService: options.qualityOfService
+            qualityOfService: options.qualityOfService,
+            stopGrace: programs.stopGrace
         )
         do {
             return try terminal.start(launch)
@@ -210,6 +208,20 @@ public struct InteractiveRunner: Sendable {
         } catch PseudoTerminalError.couldNotStart(let reason) {
             throw RunError.launchFailed(reason)
         }
+    }
+
+    /// What a session changes in the environment a program starts with,
+    /// handed to `ChildLaunch` as one change it applies under its OS's name
+    /// rule: the call's exclusions removed; the terminal defaults every CLI
+    /// gets where the app has none; and set over both, this OS's terminal
+    /// `PATH`, then the call's additions, so they win.
+    private func sessionChange(_ options: Options) -> ProcessEnvironment {
+        var defaults = ["HOME": NSHomeDirectory(), "TERM": "xterm-256color", "COLORTERM": "truecolor", "CI": "0"]
+        defaults["LANG"] = terminal.fallbackLocale
+        var set: [String: String] = [:]
+        set["PATH"] = terminal.sessionPath()
+        set.merge(options.environmentAdditions) { _, addition in addition }
+        return ProcessEnvironment(unset: options.environmentExclusions, defaults: defaults, set: set)
     }
 
     /// Sends input text to the running command.

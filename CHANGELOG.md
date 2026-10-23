@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A quota turns low when it will run out before it resets**: with the warning on, colours and alerts follow the forecast, so a quota on pace is never marked low and the threshold setting is gone. ([#613](https://github.com/tddworks/ClaudeBar/pull/613)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota/status-colors/README.md)
 
 ### Fixed
+- **No pool line for a single login**: when only one of your logins has a percent left (the other shows just a balance), the popover no longer says "62% left across 1 login"; that login's card already says it. A balance-only login is no longer counted as 100% left either. ([#630](https://github.com/tddworks/ClaudeBar/pull/630))
 - **Alibaba shows the Alibaba Cloud logo**: the provider's card, popover and menu bar carried a question-mark placeholder; now the official mark sits on the brand-orange tile, in light and dark. ([#622](https://github.com/tddworks/ClaudeBar/pull/622))
 
 ### Added

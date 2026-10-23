@@ -1,6 +1,5 @@
 #if os(macOS)
 import Foundation
-import Subprocess
 
 /// What the Mac answers about programs: a CLI found through the login shell's
 /// `PATH`, a script started by `sh`, a variable read from the person's login
@@ -37,13 +36,12 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
         }
         environment["PATH"] = entries.joined(separator: ":")
         for name in change.unset { environment.removeValue(forKey: name) }
+        for (name, value) in change.defaults where environment[name] == nil { environment[name] = value }
         environment.merge(change.set) { _, value in value }
         return environment
     }
 
     // Asked to stop (`SIGTERM`), then killed after two seconds (#550).
-    var teardown: [TeardownStep] {
-        [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
-    }
+    var stopGrace: Duration? { .seconds(2) }
 }
 #endif

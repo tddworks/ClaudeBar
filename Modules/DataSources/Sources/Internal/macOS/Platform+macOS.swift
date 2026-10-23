@@ -8,13 +8,13 @@ extension Platform {
         return Platform(
             name: "macOS",
             timeZone: SystemTimeZone(),
-            runCLI: CLIFetcher.system(installed: mac, terminal: MacPty()),
+            runCLI: CLIFetcher.system(programs: mac, terminal: MacPty()),
             processes: Processes(mac),
             keychain: KeychainReader.system,
             browserCookies: SystemBrowserCookies(),
             browserStorage: SystemBrowserStorage(),
             localServers: LocalServers(MacLocalServers()),
-            screenRenderer: { TerminalRenderer(cols: 160, rows: 50).render($0) },
+            screenRenderer: { TerminalRenderer().render($0) },
             applicationData: { home, _ in home.appendingPathComponent("Library/Application Support", isDirectory: true) }
         )
     }()

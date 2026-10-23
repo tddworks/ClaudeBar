@@ -4,16 +4,16 @@ import Foundation
 import WinSDK
 
 /// Windows' terminal: a pseudo console (ConPTY), the CLI created attached to
-/// it, and the app's environment with the call's changes, as a program over
-/// pipes gets it (`WindowsProcesses`).
+/// it. A session's environment is a program's (`WindowsProcesses`): Windows
+/// has no login shell `PATH` and reads no `LANG`.
 struct ConPty: PseudoTerminal {
     func start(_ launch: TerminalLaunch) throws -> any TerminalSession {
         try ConPtySession.start(launch)
     }
 
-    func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        WindowsProcesses.environment(change)
-    }
+    func sessionPath() -> String? { nil }
+
+    var fallbackLocale: String? { nil }
 }
 
 /// A CLI running in a pseudo console.
@@ -28,9 +28,10 @@ struct ConPty: PseudoTerminal {
 /// - **Read.** A thread drains the console's output into a buffer `read()`
 ///   empties, so the console never waits on a full pipe — not even while it
 ///   closes, which waits for its last frame to be read.
-/// - **End.** The job is terminated at once, as `WindowsProcesses` ends a
-///   child: Windows' graceful step attaches to the child's console, which a
-///   GUI app shouldn't do. Then the console closes, which ends the reader.
+/// - **End.** `ChildTeardown`'s steps with the launch's grace, which
+///   `WindowsProcesses.stopGrace` leaves out: Windows' graceful step attaches
+///   to the child's console, which a GUI app shouldn't do. The job is ended,
+///   then the console closes, which ends the reader.
 final class ConPtySession: TerminalSession, @unchecked Sendable {
     private let console: HPCON
     private let input: HANDLE
@@ -38,6 +39,7 @@ final class ConPtySession: TerminalSession, @unchecked Sendable {
     private let process: HANDLE
     private let job: HANDLE
     private let name: String
+    private let stopGrace: Duration?
 
     private let lock = NSLock()
     private var pending = Data()
@@ -51,13 +53,15 @@ final class ConPtySession: TerminalSession, @unchecked Sendable {
     /// session counts as running until it has been quiet this long since then.
     private static let lastFrameQuiet: Duration = .milliseconds(300)
 
-    private init(console: HPCON, input: HANDLE, output: HANDLE, process: HANDLE, job: HANDLE, name: String) {
+    private init(console: HPCON, input: HANDLE, output: HANDLE, process: HANDLE, job: HANDLE, name: String,
+                 stopGrace: Duration?) {
         self.console = console
         self.input = input
         self.output = output
         self.process = process
         self.job = job
         self.name = name
+        self.stopGrace = stopGrace
         self.lastSeen = ContinuousClock.now
         Thread.detachNewThread { [self] in self.drain() }
     }
@@ -93,7 +97,7 @@ final class ConPtySession: TerminalSession, @unchecked Sendable {
         }
         let name = URL(fileURLWithPath: launch.executable).lastPathComponent
         return ConPtySession(console: console, input: input, output: output,
-                             process: child.process, job: child.job, name: name)
+                             process: child.process, job: child.job, name: name, stopGrace: launch.stopGrace)
     }
 
     // MARK: - The session
@@ -145,12 +149,15 @@ final class ConPtySession: TerminalSession, @unchecked Sendable {
             return !ended
         }
         guard first else { return }
-        if WaitForSingleObject(process, 0) == WAIT_TIMEOUT {
-            TerminateJobObject(job, 1)
-            if WaitForSingleObject(process, 2_000) == WAIT_TIMEOUT {
-                AppLog.probes.warning("\(name) was still running 2s after TerminateJobObject; leaving it so the fetch can end")
-            }
-        }
+        ChildTeardown.end(
+            named: name,
+            isRunning: { WaitForSingleObject(process, 0) == WAIT_TIMEOUT },
+            // Nothing a GUI app should send asks a console child to stop.
+            terminate: {},
+            kill: { TerminateJobObject(job, 1) },
+            grace: stopGrace,
+            afterKill: .seconds(2)
+        )
         ClosePseudoConsole(console)
         CloseHandle(input)
         CloseHandle(process)

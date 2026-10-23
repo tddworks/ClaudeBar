@@ -163,7 +163,7 @@ struct ClaudeCostScreenTests {
     private func read(_ screen: String) throws -> UsageSnapshot {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
-        return try claude.readCostScreen(TerminalRenderer(cols: 160, rows: 50).render(screen))
+        return try claude.readCostScreen(TerminalRenderer().render(screen))
     }
 }
 #endif

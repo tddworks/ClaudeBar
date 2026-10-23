@@ -1,6 +1,5 @@
 #if os(Linux)
 import Foundation
-import Subprocess
 
 /// What Linux answers about programs: a CLI found on `PATH`, a script started
 /// by `sh`, a variable read through the person's login shell, a child given
@@ -39,14 +38,13 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
         }
         environment["PATH"] = entries.joined(separator: ":")
         for name in change.unset { environment.removeValue(forKey: name) }
+        for (name, value) in change.defaults where environment[name] == nil { environment[name] = value }
         environment.merge(change.set) { _, value in value }
         return environment
     }
 
     // Asked to stop (`SIGTERM`), then killed after two seconds.
-    var teardown: [TeardownStep] {
-        [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
-    }
+    var stopGrace: Duration? { .seconds(2) }
 
     /// Where CLI tools are installed outside a login shell's `PATH`: the same
     /// folders the Mac's locator falls back to, in Linux' spellings.
