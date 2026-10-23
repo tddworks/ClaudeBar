@@ -136,6 +136,62 @@ struct OverviewTests {
     }
 
     @Test
+    func `should read the card by the login its ring reads`() {
+        let card = card("codex",
+                        login("personal", snapshot(quota(74), quota(58, .weekly))),
+                        login("work", snapshot(quota(18))))
+
+        #expect(card.login?.id == "personal")
+    }
+
+    @Test
+    func `should lead with the product whose healthiest login runs out first, not the emptiest login`() throws {
+        // Codex has an empty login and one with room; Claude has one login at 40%.
+        let overview = Overview(cards: [
+            card("codex", login("work", snapshot(quota(0))), login("personal", snapshot(quota(80)))),
+            card("claude", login("claude", snapshot(quota(40)))),
+        ])
+
+        // Codex's room is its personal login's, so Claude runs out first.
+        let lowest = try #require(overview.tightestCard)
+        #expect(lowest.id == "claude")
+        #expect(lowest.login?.id == "claude")
+        #expect(overview.tightest?.percentRemaining == 40)
+    }
+
+    @Test
+    func `should have no status until a card has numbers`() {
+        let waiting = Overview(cards: [card("kimi", login("kimi", nil))])
+        let read = Overview(cards: [card("kimi", login("kimi", nil)), card("codex", login("codex", snapshot(quota(30))))])
+
+        #expect(waiting.status == nil)
+        #expect(read.status == .warning)
+    }
+
+    @Test
+    func `should repeat the product's best login and each login's history`() async throws {
+        let settings = MockRepositoryFactory.makeSettingsRepository()
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(quota(62)))
+        let history = UsageHistory(log: DataSources.makeUsageLog(
+            UsageLog.Definition(records: UsageLog.Records(files: "~/.acme/*.jsonl", at: "$.at", tokens: UsageLog.Tokens(total: "$.tokens"))),
+            environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory))
+        let monitor = QuotaMonitor(providers: kept([
+            stubbedProduct("acme", probe: probe, settings: settings, usageHistory: history),
+            stubbedProduct("zeta", probe: probe, settings: settings),
+        ]))
+
+        await monitor.refresh(providerId: "acme")
+        let card = try #require(Overview(monitor).cards.first)
+
+        #expect(card.best == "acme")
+        // No sign-in to choose from: no login is in use.
+        #expect(card.inUse == nil)
+        #expect(card.logins.first?.usageHistory === history)
+    }
+
+    @Test
     func `should offer All only with two providers or more`() {
         let one = Overview(cards: [card("claude", login("claude", snapshot(quota(80))))])
         let two = Overview(cards: [card("claude", login("claude", nil)), card("codex", login("codex", nil))])

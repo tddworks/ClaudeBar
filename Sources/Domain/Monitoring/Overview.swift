@@ -27,9 +27,13 @@ public struct Overview: Sendable {
                     snapshot: monitor.usage(of: account),
                     status: monitor.status(of: account),
                     state: .init(isSyncing: account.isSyncing, failed: account.lastError != nil,
-                                 needsSetup: account.needsSetup, readsUsage: account.readsUsage)
+                                 needsSetup: account.needsSetup, readsUsage: account.readsUsage),
+                    source: account.answeredByLabel,
+                    usageHistory: account.usageHistory
                 )
-            })
+            },
+            best: tab.provider.accounts.best?.id,
+            inUse: tab.provider.inUse.flatMap { inUse in tab.unpaused.first(where: inUse.isInUse)?.id })
         })
     }
 
@@ -39,14 +43,21 @@ public struct Overview: Sendable {
 
     /// The header on All: the worst card's word.
     public var badge: ProviderBadgeState {
-        ProviderBadgeState(of: cards.flatMap { $0.logins.map(\.state) },
-                           quotaStatus: cards.compactMap(\.status).max())
+        ProviderBadgeState(of: cards.flatMap { $0.logins.map(\.state) }, quotaStatus: status)
+    }
+
+    /// The worst card's status — each product as healthy as its healthiest
+    /// login; `nil` while no card has numbers.
+    public var status: QuotaStatus? { cards.compactMap(\.status).max() }
+
+    /// The card whose ring runs out first — the one All leads with.
+    public var tightestCard: OverviewCard? {
+        cards.compactMap { card in card.tightest.map { (card, $0) } }
+            .min { $0.1.percentRemaining < $1.1.percentRemaining }?.0
     }
 
     /// The quota that runs out first across every card.
-    public var tightest: UsageQuota? {
-        cards.compactMap(\.tightest).min { $0.percentRemaining < $1.percentRemaining }
-    }
+    public var tightest: UsageQuota? { tightestCard?.tightest }
 
     /// Cards that are critical or out — of those with numbers.
     public var critical: Int { cards.filter { ($0.status ?? .healthy) >= .critical }.count }
@@ -67,26 +78,40 @@ public struct OverviewCard: Identifiable, Sendable {
         /// Its status under the person's policy; `nil` with no numbers.
         public let status: QuotaStatus?
         public let state: ProviderBadgeState.Login
+        /// *via RPC* — which data source answered, when one has.
+        public let source: String?
+        /// Its day-by-day usage, read on the ask — `nil` when its provider
+        /// declares none.
+        public let usageHistory: UsageHistory?
 
         public init(id: String, name: String, snapshot: UsageSnapshot?, status: QuotaStatus?,
-                    state: ProviderBadgeState.Login) {
+                    state: ProviderBadgeState.Login, source: String? = nil, usageHistory: UsageHistory? = nil) {
             self.id = id
             self.name = name
             self.snapshot = snapshot
             self.status = status
             self.state = state
+            self.source = source
+            self.usageHistory = usageHistory
         }
     }
 
     /// The product's id — `codex`, never `codex.<acct>`.
     public let id: String
     public let name: String
-    let logins: [Login]
+    /// Its unpaused logins, in the person's order.
+    public let logins: [Login]
+    /// The login with the most left — *switch to work* — as `Accounts.best` says.
+    public let best: String?
+    /// The login new sessions start with, as `InUse` says; `nil` with no choice.
+    public let inUse: String?
 
-    public init(id: String, name: String, logins: [Login]) {
+    public init(id: String, name: String, logins: [Login], best: String? = nil, inUse: String? = nil) {
         self.id = id
         self.name = name
         self.logins = logins
+        self.best = best
+        self.inUse = inUse
     }
 
     /// The login the card reads: its healthiest, then the one with the most
@@ -101,6 +126,9 @@ public struct OverviewCard: Identifiable, Sendable {
             }
     }
 
+    /// The login the card reads — its healthiest, then the one with the most left.
+    public var login: Login? { tightestOf?.login }
+
     /// The ring: the healthiest login's quota with the least left.
     public var tightest: UsageQuota? { tightestOf?.quota }
 
@@ -114,7 +142,7 @@ public struct OverviewCard: Identifiable, Sendable {
 
     /// The name of the login the ring reads — only when there are several to tell apart.
     public var tightestLogin: String? {
-        logins.count > 1 ? tightestOf?.login.name : nil
+        logins.count > 1 ? login?.name : nil
     }
 
     /// Every quota of the login this card reads — the **lines** the *Bars*

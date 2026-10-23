@@ -3,7 +3,7 @@ import Domain
 
 /// Unified JSON-backed settings repository.
 /// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols) + HookSettingsRepository + NotifySettingsRepository.
+/// (including all sub-protocols) + HookSettingsRepository + LocalAPISettingsRepository + NotifySettingsRepository.
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
 /// Notify! credentials use the injected secure store; legacy provider
@@ -13,6 +13,7 @@ public final class JSONSettingsRepository:
     ClaudeSettingsRepository,
     CodexSettingsRepository,
     HookSettingsRepository,
+    LocalAPISettingsRepository,
     NotifySettingsRepository,
     QuotaAlertSettingsRepository,
     WebhookSettingsRepository,
@@ -603,6 +604,16 @@ public final class JSONSettingsRepository:
 
     public func setHookPort(_ port: Int) {
         store.write(value: port, key: "hook.port")
+    }
+
+    // MARK: - LocalAPISettingsRepository
+
+    public func isLocalAPIEnabled() -> Bool {
+        store.read(key: "api.enabled") ?? false
+    }
+
+    public func setLocalAPIEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "api.enabled")
     }
 
     // MARK: - NotifySettingsRepository

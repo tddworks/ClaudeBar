@@ -27,6 +27,7 @@ description: Who uses ClaudeBar and what they ask — the people, the moments fr
 | **Ana** — long Claude Code sessions, often in another window | to know when Claude needs her, or is done, without watching the terminal | *Follow* |
 | **Tom** — on a subscription, curious what it's worth | what he used, day by day, and what it would have cost on the API | *Look back* |
 | **Mia**, away from her desk | her quota on her phone | *Carry* |
+| **Mia**, before she hands an agent a two-hour task | the agent to ask, before it starts, whether it can finish and on which login | *Ask* |
 
 Each journey is a promise. A screen that serves none of them is a screen to
 question; a person here that no screen serves is a gap.
@@ -68,6 +69,7 @@ the command that lands on the domain, and the node that answers.
 | 19 | Mia wants warning sooner than 20% | Settings → Sync & Alerts: *Quota alerts*, *Alert me below 35%*; later a notification: *Claude · work is below 35% — 34% left* | adds 35%, keeps working | `quotaAlerts.add(35)`; after a refresh `quotaAlerts.review(login)` | `QuotaAlerts` — a destination, outside the monitor |
 | 19a | Mia's team should hear it too | Settings → Sync & Alerts → *Webhooks*: *Add Webhook*, *Slack · JSON*, *Every login*, *Quota alerts · Status alerts*, *Send a test*, *Sent 2m ago*; in Slack: *Claude · work is below 35% — 34% left* | pastes the team's Slack URL, sends a test | `webhooks.add(url:…)` · `sendTest(_:)`; each alert → `webhooks.announce(alert)` | `Webhooks` — a destination; `QuotaAlerts` and `StatusAlerts` decide |
 | 20 | Mia's Claude plan empties for the afternoon | Claude's pill and menu-bar readout dimmed; its page opens on *RESTING · since 2:14 PM* with *Show anyway*; a notification: *Claude is resting*; the row in Settings reads *Resting until the reset*; later, *Claude is back* | usually nothing; *Show anyway* when she wants the numbers | `restWhenEmpty.turn(_:product:)` to ask; `restWhenEmpty.showAnyway(product)` · `claudebar://show-anyway?provider=…` | `RestWhenEmpty` follows refreshes, outside the Monitor; the switch stays hers |
+| 21 | Mia's agent asks before it starts | nothing on screen: the agent reads *62% left · healthy* from `quota_status` — the quota the *All* page leads with, each product by its login with the most room — and which login is *best* and *IN USE*; Settings → *Local API* shows the `claude mcp add` line | turns *Local API* on once, then nothing: the agent starts, or switches login first | `GET /status` · `tools/call quota_status` → `Overview(monitor)` | a destination, asked rather than told: the [local API](../features/alerting/local-api/design.md) reads `Overview` and decides nothing |
 
 ## 3 · What the journeys found
 

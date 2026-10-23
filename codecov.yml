@@ -38,6 +38,7 @@ ignore:
   - "Modules/Leaderboard/Sources/Internal/macOS/KeychainSigningKeyStore.swift"  # Keychain
   - "Modules/Leaderboard/Sources/Internal/macOS/IOKitMachineIdentity.swift"  # IOKit; MacModel names what it reads
   - "Sources/Infrastructure/Activity/Hooks/HookHTTPServer.swift"  # a local socket server
+  - "Sources/Infrastructure/Alerting/LocalAPI/LocalAPIServer.swift"  # a local socket server; its framing is LocalAPIRequestFrame's, tested
   - "Sources/Infrastructure/Alerting/SystemAlertSender.swift"  # NSAlert, notifications
   - "Sources/Infrastructure/Monitoring/SystemPowerStateProvider.swift"  # IOKit
   - "Sources/Infrastructure/Monitoring/SystemClock.swift"  # the clock

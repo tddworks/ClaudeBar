@@ -70,6 +70,7 @@ paths, field names, client ids, CLI arguments — is data.
 | `CredentialLookup` · `Fetch` · `Mapping` | closed sums — one case per JSON tag | a protocol, format or key location is added |
 | a worker (`HTTPFetcher`, `JSONMapper`, `OAuth2Refresher`, …) | carries out one case | that protocol or format changes |
 | `DataSources.make(_:settings:vault:cloudWatch:)` | the one place a case meets the connection it needs | a connection is added |
+| `LocalAPIRouter` · `LocalAPIServer` (Infrastructure, Alerting) | a destination that is asked rather than told: reads `Overview(monitor)` on the main actor and encodes it as JSON and MCP tool text on `127.0.0.1`; decides nothing, changes nothing ([design](../features/alerting/local-api/design.md)) | a route is added, or the transport changes |
 | `SecretRedactor` (Diagnostics) | scrubs registered credentials from every line before a sink sees it; `DataSource` registers each credential it touches, so no caller has to | where a credential could reach a line changes |
 
 ## 2.1 · The product and its roles

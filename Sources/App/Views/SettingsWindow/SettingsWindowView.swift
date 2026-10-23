@@ -17,6 +17,10 @@ struct SettingsWindowView: View {
 
     var onHookSettingsChanged: ((Bool) -> Void)?
 
+    /// The Local API toggle's start/stop, run by the app even while other
+    /// windows are closed (the same path the hooks toggle takes).
+    var onLocalAPISettingsChanged: ((Bool) -> Void)?
+
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @State private var selection: SettingsSection = .general
@@ -82,6 +86,10 @@ struct SettingsWindowView: View {
             let enabled = notification.userInfo?["enabled"] as? Bool ?? false
             onHookSettingsChanged?(enabled)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .localAPISettingsChanged)) { notification in
+            let enabled = notification.userInfo?["enabled"] as? Bool ?? false
+            onLocalAPISettingsChanged?(enabled)
+        }
     }
 
     /// Opens on the pane asked for from outside, when there is one.
@@ -106,6 +114,8 @@ struct SettingsWindowView: View {
             SyncAlertsPane(monitor: monitor)
         case .hooks:
             HooksPane()
+        case .localAPI:
+            LocalAPIPane()
         case .notify:
             NotifyPane(monitor: monitor, driver: notifyDriver)
         case .leaderboard:

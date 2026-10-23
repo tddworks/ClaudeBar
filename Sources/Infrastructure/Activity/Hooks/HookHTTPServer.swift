@@ -55,7 +55,7 @@ public final class HookHTTPServer: @unchecked Sendable {
             case .ready:
                 if let actualPort = listener.port?.rawValue {
                     self.actualPort = actualPort
-                    try? PortDiscovery.writePort(Int(actualPort))
+                    try? PortFile.hooks.write(Int(actualPort))
                     AppLog.hooks.info("Hook HTTP server listening on port \(actualPort)")
                 }
             case .failed(let error):
@@ -84,7 +84,7 @@ public final class HookHTTPServer: @unchecked Sendable {
             listener = nil
             continuation?.finish()
             continuation = nil
-            PortDiscovery.removePortFile()
+            PortFile.hooks.remove()
             AppLog.hooks.info("Hook HTTP server stopped")
         }
     }

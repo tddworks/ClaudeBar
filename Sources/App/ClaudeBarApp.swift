@@ -11,6 +11,16 @@ import Sparkle
 extension Notification.Name {
     static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
 
+    /// Posted by the Local API pane when its switch turns. The composition
+    /// root starts or stops the server — the same notification→closure path
+    /// the hooks toggle takes.
+    static let localAPISettingsChanged = Notification.Name("com.tddworks.claudebar.localAPISettingsChanged")
+
+    /// Posted by the composition root once the Local API's socket is ready.
+    /// The pane re-reads the port file then — the file the server wrote with
+    /// the real number, so the copied commands name the port that answers.
+    static let localAPIPortChanged = Notification.Name("com.tddworks.claudebar.localAPIPortChanged")
+
     /// Posted by the Notify! pane when the device link or a stored surface
     /// handle changes. Those live outside observable state, so nothing the
     /// publish driver watches would otherwise tell it to try again.
@@ -71,8 +81,14 @@ struct ClaudeBarApp: App {
     private let hookServer = HookHTTPServer()
     private let sessionTitles: any SessionTitles = TranscriptTitleReader()
 
+    /// The local API and MCP server — read-only quota answers on 127.0.0.1.
+    /// Off means no listener exists at all.
+    private let localAPIServer = LocalAPIServer()
+
     /// Task for the hook server event loop (allows cancellation on toggle off)
     @State private var hookServerTask: Task<Void, Never>?
+    /// Task holding the local API server's start-up (allows cancellation on toggle off)
+    @State private var localAPITask: Task<Void, Never>?
     @State private var sessionSweepTask: Task<Void, Never>?
 
     /// How often ClaudeBar checks that each session's Claude Code process still exists.
@@ -251,6 +267,12 @@ struct ClaudeBarApp: App {
             startHookServer()
         }
 
+        // The local API comes up only when the person turned it on: a
+        // listener is a door, and a door is opened deliberately.
+        if settingsRepository.isLocalAPIEnabled() {
+            startLocalAPI()
+        }
+
         // Note: Notification permission is requested in onAppear, not here
         // Menu bar apps need the run loop to be active before requesting permissions
 
@@ -309,6 +331,35 @@ struct ClaudeBarApp: App {
         hookServerTask?.cancel()
         hookServerTask = nil
         hookServer.stop()
+    }
+
+    /// Starts the local API: the router over the Monitor's reads, on the
+    /// server's one socket. Called with the switch on, at launch or from the
+    /// pane. The reads live on the main actor, where the Monitor does.
+    private func startLocalAPI() {
+        localAPITask?.cancel()
+        localAPITask = Task { @MainActor in
+            do {
+                // Every answer is a read of the All page's Overview, on the main actor.
+                let monitor = monitor
+                let router = LocalAPIRouter(read: { Overview(monitor) })
+                try await localAPIServer.start { result in
+                    await router.answer(result)
+                }
+                // The socket is ready and the port file written; the pane
+                // re-reads it, so what it shows and copies is what answers.
+                NotificationCenter.default.post(name: .localAPIPortChanged, object: nil)
+            } catch {
+                AppLog.network.error("Failed to start local API: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Stops the local API and takes its port file with it.
+    private func stopLocalAPI() {
+        localAPITask?.cancel()
+        localAPITask = nil
+        localAPIServer.stop()
     }
 
     @MainActor private func sendSessionNotification(for event: SessionEvent) {
@@ -438,15 +489,19 @@ struct ClaudeBarApp: App {
         Window("ClaudeBar Settings", id: "settings") {
             Group {
                 #if ENABLE_SPARKLE
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard, onHookSettingsChanged: { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
-                }
+                }, onLocalAPISettingsChanged: { enabled in
+                    if enabled { startLocalAPI() } else { stopLocalAPI() }
+                })
                 .appThemeProvider(themeModeId: settings.themeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver, leaderboard: leaderboard, onHookSettingsChanged: { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
-                }
+                }, onLocalAPISettingsChanged: { enabled in
+                    if enabled { startLocalAPI() } else { stopLocalAPI() }
+                })
                 .appThemeProvider(themeModeId: settings.themeMode)
                 #endif
             }
