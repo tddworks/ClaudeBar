@@ -84,7 +84,7 @@ private struct NoCLI: CLIExecutor {
 
 /// A test's settings as a provider reads them: whether it is on comes from
 /// the test's repository, as it did for the old stubs; the rest is kept here.
-private final class LegacySettings: MultiAccountSettingsRepository, @unchecked Sendable {
+final class LegacySettings: MultiAccountSettingsRepository, @unchecked Sendable {
     private let wrapped: any ProviderSettingsRepository
     private var flags: [String: Bool] = [:]
     private var values: [String: String] = [:]

@@ -16,6 +16,8 @@ struct WebhookTests {
 
     private let quota = Alert.quota(QuotaAlert(login: "Claude · work", providerId: "claude", below: 35, left: 34))
     private let status = Alert.status(StatusAlert(login: "Codex", providerId: "codex", was: .warning, now: .critical))
+    private let signedOut = Alert.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude", hint: nil))
+
     private let recap: RecapAlert = {
         let calendar = Calendar(identifier: .gregorian)
         let week = DateRange(first: calendar.date(from: DateComponents(year: 2026, month: 11, day: 2))!,
@@ -28,9 +30,12 @@ struct WebhookTests {
     }()
 
     private func webhook(scope: Webhook.Scope = .everyLogin, quotaAlerts: Bool = true,
-                         statusAlerts: Bool = true, recap: Bool = false, isOn: Bool = true) -> Webhook {
+                         statusAlerts: Bool = true, recap: Bool = false, signedOutAlerts: Bool = true,
+                         isOn: Bool = true) -> Webhook {
         Webhook(id: "1", name: "#ai-quota", channel: .slack, scope: scope,
-                sends: Webhook.Sends(quotaAlerts: quotaAlerts, statusAlerts: statusAlerts, recap: recap), isOn: isOn)
+                sends: Webhook.Sends(quotaAlerts: quotaAlerts, statusAlerts: statusAlerts, recap: recap,
+                                     signedOutAlerts: signedOutAlerts),
+                isOn: isOn)
     }
 
     @Test func `should want every alert when it sends both kinds for every login`() {
@@ -47,6 +52,13 @@ struct WebhookTests {
         #expect(!webhook(quotaAlerts: false).wants(quota))
         #expect(webhook(quotaAlerts: false).wants(status))
         #expect(!webhook(statusAlerts: false).wants(status))
+        #expect(webhook(statusAlerts: false).wants(signedOut))
+        #expect(!webhook(signedOutAlerts: false).wants(signedOut))
+    }
+
+    @Test func `should be nothing while it sends no kind at all`() {
+        #expect(webhook(quotaAlerts: false, statusAlerts: false, signedOutAlerts: false).sends.isNothing)
+        #expect(!webhook(quotaAlerts: false, statusAlerts: false, signedOutAlerts: true).sends.isNothing)
     }
 
     @Test func `should want only alerts about its provider's logins`() {

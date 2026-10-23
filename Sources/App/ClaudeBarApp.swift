@@ -185,6 +185,8 @@ struct ClaudeBarApp: App {
             announcer: RestNotifications(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
         self.restWhenEmpty = restWhenEmpty
         restWhenEmpty.follow(monitor)
+        // *Signed out* follows every refresh, failed ones too: a sign-in that ended, told once.
+        SignedOutAlerts(destination: destinations).follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()
