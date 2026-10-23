@@ -29,16 +29,6 @@ struct OAuth2Refresher: CredentialRefreshing {
         return now().timeIntervalSince(refreshedAt) > every
     }
 
-    /// The instant the definition's `dueWhen` reads out of the credential —
-    /// the same field the refresh is due by. `nil` when the store holds none:
-    /// a login whose expiry is unknowable says nothing.
-    func expiry(of credential: Credential) -> Date? {
-        guard let expiry = refresh.dueWhen,
-              let raw = credential[expiry.expiresAt],
-              let instant = Self.instant(raw, unit: expiry.unit) else { return nil }
-        return Date(timeIntervalSince1970: instant)
-    }
-
     func refresh(_ credential: Credential) async throws -> Credential {
         // Nothing to trade: a key with no refresh token (a setup token, an
         // API-key login) that is refused is simply needed again.

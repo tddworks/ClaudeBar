@@ -105,7 +105,6 @@ The Desktop path is a platform fact supplied through `DataSources`: macOS keeps
 - The credential cache expires after 5 minutes so a re-login in the CLI is picked up. It's cleared on any auth failure. A refresh token is single-use, and the CLI may already have used it (#143).
 - A failed Keychain read is logged with the `security` exit status. Before this, it looked like "no credentials" to someone who was signed in (#271).
 - A missing `~/.claude/.credentials.json` is *not* logged — it is the normal case on macOS, and the Keychain read that follows logs its own failure. So when `isAvailable()` says there are no credentials and nothing was logged, the file simply was not there and the Keychain read succeeded, which is not a failure to report (#317).
-- **Login expiry** ([alerting design](../../features/alerting/login-expiry/design.md)): the same `expiresAt` the OAuth refresh reads, in the `api` source's credential, is read at every successful fetch to warn before the login expires. The default `cli` source names no credential, so the read asks every data source of the login and takes the earliest answer. Only the instant is kept — never the token beside it.
 
 ## Added accounts
 

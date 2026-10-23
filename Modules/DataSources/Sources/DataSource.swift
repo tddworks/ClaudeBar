@@ -87,15 +87,6 @@ public struct DataSource: Sendable {
         return read(field, credential: credential.map { Credential(Self.withoutSecrets($0.values)) })
     }
 
-    /// When the login's credential expires, as this data source's definition
-    /// declares it (`dueWhen`) — `nil` when it names no expiry, or the store
-    /// holds none to read. The instant only; never the token beside it.
-    public func credentialExpiry() -> Date? {
-        guard let credentials, let refresher else { return nil }
-        guard let found = try? credentials.find() else { return nil }
-        return refresher.expiry(of: found.credential)
-    }
-
     /// Looks up the key and fetches. Nothing is mapped and nothing is saved.
     /// Throws a `DataSourceError` naming the step that failed.
     public func fetchResponse() async throws -> Response {
@@ -362,14 +353,6 @@ protocol CredentialRefreshing: Sendable {
     var writesBack: Bool { get }
     func isDue(_ credential: Credential) -> Bool
     func refresh(_ credential: Credential) async throws -> Credential
-    /// When the credential it renews expires, as the definition declares it.
-    /// `nil` when this refresher reads no expiry — a `dueWhen` is the only
-    /// thing that knows how, so nothing is parsed by guessing.
-    func expiry(of credential: Credential) -> Date?
-}
-
-extension CredentialRefreshing {
-    func expiry(of credential: Credential) -> Date? { nil }
 }
 
 protocol Fetching: Sendable {
