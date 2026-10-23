@@ -51,6 +51,16 @@ public enum DataSources {
         Platform.current.processes?.installed.find(cli)
     }
 
+    /// The executor this platform runs a CLI in — its terminal and its program
+    /// finder, what a `runCLI` fetch uses (§10). The app's own executors
+    /// default to it; `additions` marks the sessions it starts (the probe key).
+    public static func systemExecutor(_ additions: [String: String] = [:]) -> any CLIExecutor {
+        guard let runCLI = Platform.current.runCLI else {
+            preconditionFailure("\(Platform.current.name) has no terminal for a CLI to run in (§10)")
+        }
+        return runCLI(CLICall(cli: "system", environment: ProcessEnvironment(set: additions)))
+    }
+
     /// A data source on this machine: the real network and this platform's
     /// connections.
     public static func make(

@@ -1,15 +1,15 @@
-#if os(macOS)
+#if canImport(Darwin) || canImport(Glibc)
 import Testing
 import Foundation
 import Quotas
 @testable import DataSources
 
-@Suite
+@Suite(.needsTerminal)
 struct InteractiveRunnerTests {
 
     @Test
     func `should show what a CLI printed and its success`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         // Use absolute path since 'echo' is a shell built-in
         let result = try runner.run(
             binary: "/bin/echo",
@@ -23,7 +23,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should fail when the CLI isn't installed`() {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         #expect(throws: InteractiveRunner.RunError.self) {
             try runner.run(binary: "unknown-binary-xyz-123", input: "")
         }
@@ -45,7 +45,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI without the environment values it is told to drop`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         // Set a test env var that we'll verify is excluded
         let testKey = "CLAUDEBAR_TEST_EXCLUSION_VAR"
         setenv(testKey, "should_be_stripped", 1)
@@ -63,7 +63,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI with this app's environment values when none are dropped`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         let testKey = "CLAUDEBAR_TEST_PRESERVE_VAR"
         setenv(testKey, "should_be_present", 1)
         defer { unsetenv(testKey) }
@@ -87,7 +87,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI with the extra environment values it is given (#222)`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
 
         let result = try runner.run(
             binary: "/usr/bin/env",
@@ -113,7 +113,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should keep waiting past a quiet spell while Claude's usage screen shows only its placeholder (#271)`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         // Paints a placeholder, then goes quiet for longer than the 3s idle
         // cutoff before the real content arrives — exactly how `claude /usage`
         // fills its quota bars in asynchronously.
@@ -136,7 +136,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should keep waiting past a quiet spell while the CLI is still booting (#317)`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         // The probe launches `claude /usage`, but the CLI only submits the command
         // once it has finished booting. For a few seconds the screen is the boot
         // screen — `/usage` still unsubmitted in the input box, SessionStart hooks
@@ -167,7 +167,7 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should stop at once on a finished usage screen rather than wait out the timeout`() throws {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
         // Over-waiting is its own failure: a finished screen must still stop the
         // capture at the idle cutoff instead of blocking for the whole timeout.
         // `exitCode` is -1 while the process is still running, so this proves the
@@ -194,7 +194,7 @@ struct InteractiveRunnerTests {
 @Suite("hasMeaningfulContent")
 struct HasMeaningfulContentTests {
     
-    let runner = InteractiveRunner()
+    let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, installed: PlatformTerminal.installed)
     
     // MARK: - Empty and Basic Cases
     

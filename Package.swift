@@ -160,8 +160,8 @@ let package = Package(
 )
 #else
 // What builds on Windows and Linux today (§10 phases 0–2 and 6): Quotas, Diagnostics,
-// DataSources, Providers and Leaderboard. SwiftTerm, SweetCookieKit and the AWS SDK are
-// the Mac's.
+// DataSources, Providers and Leaderboard. SwiftTerm's core builds everywhere and carries
+// the Terminal port; SweetCookieKit and the AWS SDK are the Mac's.
 let package = Package(
     name: "ClaudeBarKit",
     products: [
@@ -176,6 +176,7 @@ let package = Package(
         .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "6.0.0"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.12.0"),
     ],
     targets: vendored + [
         .target(name: "Quotas", path: "Modules/Quotas/Sources"),
@@ -190,6 +191,7 @@ let package = Package(
                 "CQuickJS",
                 "CSQLite",
                 mockable,
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
                 .product(name: "Subprocess", package: "swift-subprocess"),
                 crypto,
             ],

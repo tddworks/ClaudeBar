@@ -16,7 +16,7 @@ public final class ShellEnvironment: @unchecked Sendable {
     private var found: [String: String] = [:]
 
     public init(process: [String: String] = ProcessInfo.processInfo.environment,
-                cliExecutor: any CLIExecutor = DefaultCLIExecutor()) {
+                cliExecutor: any CLIExecutor = DataSources.systemExecutor()) {
         self.process = process
         self.shell = DataSources.makeLoginShellEnvironment(cliExecutor: cliExecutor)
     }

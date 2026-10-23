@@ -1,9 +1,15 @@
-#if os(macOS)
+#if canImport(Darwin) || canImport(Glibc)
 import Foundation
 
-/// Default CLIExecutor that uses BinaryLocator and InteractiveRunner.
-/// This is an adapter that wraps system APIs for CLI execution.
+/// Default CLIExecutor that uses InteractiveRunner on this platform's terminal,
+/// and finds the CLI as this platform finds a program.
 public struct DefaultCLIExecutor: CLIExecutor {
+    /// Finds the CLI, as this OS finds a program.
+    private let installed: any InstalledPrograms
+
+    /// The terminal a CLI session here runs in.
+    private let terminal: any PseudoTerminal
+
     /// Environment variable keys to exclude from the subprocess environment.
     /// When set, these keys are removed before the subprocess launches,
     /// preventing tokens like `CLAUDE_CODE_OAUTH_TOKEN` from being inherited.
@@ -24,12 +30,16 @@ public struct DefaultCLIExecutor: CLIExecutor {
     /// land on a settled TUI screen (see InteractiveRunner.Options.inputDelay).
     public let inputDelay: TimeInterval
 
-    public init(
+    init(
+        installed: any InstalledPrograms,
+        terminal: any PseudoTerminal,
         environmentExclusions: [String] = [],
         environmentAdditions: [String: String] = [:],
         completionRule: CLICompletionRule? = nil,
         inputDelay: TimeInterval = 0.4
     ) {
+        self.installed = installed
+        self.terminal = terminal
         self.environmentExclusions = environmentExclusions
         self.environmentAdditions = environmentAdditions
         self.completionRule = completionRule
@@ -37,7 +47,7 @@ public struct DefaultCLIExecutor: CLIExecutor {
     }
 
     public func locate(_ binary: String) -> String? {
-        BinaryLocator.which(binary)
+        installed.find(binary)
     }
 
     public func execute(
@@ -48,7 +58,7 @@ public struct DefaultCLIExecutor: CLIExecutor {
         workingDirectory: URL?,
         autoResponses: [String: String]
     ) async throws -> CLIResult {
-        let runner = InteractiveRunner()
+        let runner = InteractiveRunner(terminal: terminal, installed: installed)
         // Built here, on the task, so the `qualityOfService` default argument
         // reads the ambient `FetchContext` task local before we hop
         // off the cooperative pool below (task locals do not cross that hop).
@@ -100,15 +110,19 @@ public struct DefaultCLIExecutor: CLIExecutor {
 
 extension CLIFetcher {
     /// The real terminal: `DefaultCLIExecutor` with the session's environment and ready markers.
-    static let system: MakeExecutor = { call in
-        DefaultCLIExecutor(
-            environmentExclusions: call.environment.unset,
-            environmentAdditions: call.environment.set,
-            completionRule: call.readyWhen.isEmpty
-                ? nil
-                : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) }),
-            inputDelay: call.inputDelay ?? 0.4
-        )
+    static func system(installed: any InstalledPrograms, terminal: any PseudoTerminal) -> MakeExecutor {
+        { call in
+            DefaultCLIExecutor(
+                installed: installed,
+                terminal: terminal,
+                environmentExclusions: call.environment.unset,
+                environmentAdditions: call.environment.set,
+                completionRule: call.readyWhen.isEmpty
+                    ? nil
+                    : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) }),
+                inputDelay: call.inputDelay ?? 0.4
+            )
+        }
     }
 }
 #endif

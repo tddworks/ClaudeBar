@@ -1,4 +1,3 @@
-#if os(macOS)
 import Foundation
 import SwiftTerm
 
@@ -93,4 +92,3 @@ public final class TerminalRenderer {
             .joined(separator: "\n")
     }
 }
-#endif
