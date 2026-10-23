@@ -141,9 +141,9 @@ public final class LocalAPIServer: @unchecked Sendable {
         }
     }
 
-    /// Accumulates bytes until the request is whole: the header block, then
-    /// its Content-Length of body. The caps refuse one that grows too big to
-    /// read; a peer that hangs up mid-request earns a refusal, never a guess.
+    /// Accumulates bytes until `LocalAPIRequestFrame` says the request is
+    /// whole, refused or abandoned; the rules are the frame's, the socket
+    /// only carries bytes.
     private func receive(_ connection: NWConnection, accumulated: Data) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self else { return }
@@ -155,49 +155,11 @@ public final class LocalAPIServer: @unchecked Sendable {
                 connection.cancel()
                 return
             }
-            if LocalAPIRequestParser.isHeaderOverCap(buffer) {
-                self.finish(connection, with: .failed(.oversized))
-                return
+            switch LocalAPIRequestFrame.read(buffer, peerDone: isComplete) {
+            case .whole(let result): self.finish(connection, with: result)
+            case .abandoned: connection.cancel()
+            case .needMore: self.receive(connection, accumulated: buffer)
             }
-            let wanted: Int?
-            do {
-                wanted = try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: buffer)
-            } catch {
-                // A length that cannot be read is refused, not waited on.
-                self.finish(connection, with: .failed(.malformed))
-                return
-            }
-            if let wanted {
-                if wanted > LocalAPIRequestParser.maxBodyBytes {
-                    self.finish(connection, with: .failed(.oversized))
-                    return
-                }
-                if let separator = buffer.range(of: LocalAPIRequestParser.headerSeparator),
-                   buffer.count - separator.upperBound >= wanted {
-                    let head = buffer.subdata(in: buffer.startIndex..<separator.lowerBound)
-                    let body = buffer.subdata(in: separator.upperBound..<buffer.index(separator.upperBound, offsetBy: wanted))
-                    self.finish(connection, with: self.request(headerBlock: head, body: body))
-                    return
-                }
-            }
-            if isComplete {
-                // The peer hung up before one whole request — nothing to serve.
-                connection.cancel()
-                return
-            }
-            self.receive(connection, accumulated: buffer)
-        }
-    }
-
-    /// A whole request's bytes, as a value — or the reason the parser
-    /// refused them.
-    private func request(headerBlock: Data, body: Data) -> LocalAPIRequestResult {
-        do {
-            return .request(try LocalAPIRequestParser.parse(headerBlock: headerBlock, body: body))
-        } catch let error as LocalAPIParseError {
-            return .failed(error)
-        } catch {
-            return .failed(.malformed)
         }
     }
 

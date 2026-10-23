@@ -33,7 +33,7 @@ public struct LocalAPIRequest: Sendable, Equatable {
 
 /// What the server can hand the router: a whole request, or the reason it
 /// refused one. The router answers both — the adapter stays dumb.
-public enum LocalAPIRequestResult: Sendable {
+public enum LocalAPIRequestResult: Sendable, Equatable {
     case request(LocalAPIRequest)
     case failed(LocalAPIParseError)
 }
@@ -96,6 +96,53 @@ public struct LocalAPIResponse: Sendable, Equatable {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         return "\"\(escaped)\""
+    }
+}
+
+/// The bytes a connection has delivered so far, read as one request. The
+/// server only moves bytes; when a request is whole, refused or abandoned is
+/// decided here, on the parser's caps.
+public enum LocalAPIRequestFrame: Sendable, Equatable {
+    /// Not whole yet: read more.
+    case needMore
+    /// One request, or the reason it is refused. Either way, answer it.
+    case whole(LocalAPIRequestResult)
+    /// The peer hung up before one whole request: nothing to serve.
+    case abandoned
+
+    /// What `buffer` is, given whether the peer has finished sending. A
+    /// header block or a promised body over the caps is refused without
+    /// waiting for it; a length that can't be read is refused, never waited
+    /// on; bytes after the promised body are not this request's.
+    public static func read(_ buffer: Data, peerDone: Bool) -> LocalAPIRequestFrame {
+        if LocalAPIRequestParser.isHeaderOverCap(buffer) { return .whole(.failed(.oversized)) }
+        let wanted: Int?
+        do {
+            wanted = try LocalAPIRequestParser.pendingBodyLength(headerBlockPrefix: buffer)
+        } catch {
+            return .whole(.failed(.malformed))
+        }
+        if let wanted {
+            if wanted > LocalAPIRequestParser.maxBodyBytes { return .whole(.failed(.oversized)) }
+            if let separator = buffer.range(of: LocalAPIRequestParser.headerSeparator),
+               buffer.count - separator.upperBound >= wanted {
+                let head = buffer.subdata(in: buffer.startIndex..<separator.lowerBound)
+                let body = buffer.subdata(in: separator.upperBound..<buffer.index(separator.upperBound, offsetBy: wanted))
+                return .whole(request(headerBlock: head, body: body))
+            }
+        }
+        return peerDone ? .abandoned : .needMore
+    }
+
+    /// A whole request's bytes, as a value, or the reason the parser refused them.
+    private static func request(headerBlock: Data, body: Data) -> LocalAPIRequestResult {
+        do {
+            return .request(try LocalAPIRequestParser.parse(headerBlock: headerBlock, body: body))
+        } catch let error as LocalAPIParseError {
+            return .failed(error)
+        } catch {
+            return .failed(.malformed)
+        }
     }
 }
 
