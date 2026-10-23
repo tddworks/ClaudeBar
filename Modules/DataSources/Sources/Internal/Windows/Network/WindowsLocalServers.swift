@@ -68,9 +68,12 @@ struct WindowsLocalServers: RunningPrograms, ProgramCommandLines, ListeningPorts
 
     func command(pid: String) -> [String]? { nil }
 
+    /// Only this machine: a host off it is refused before any connection is
+    /// opened, since this request turns the certificate checks off.
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard let url = request.url, LoopbackClient.isLoopback(url) else { throw URLError(.unsupportedURL) }
         // WinHTTP's calls block; they run off the cooperative pool.
-        try await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async { continuation.resume(with: Result { try WinHTTPRequest(request).send() }) }
         }
     }
@@ -118,7 +121,8 @@ struct WindowsLocalServers: RunningPrograms, ProgramCommandLines, ListeningPorts
     }
 }
 
-/// One WinHTTP request, sent as `URLRequest` says, to the host in its URL.
+/// One WinHTTP request, sent as `URLRequest` says, to the host in its URL
+/// (on this machine: `send` refuses any other first).
 private struct WinHTTPRequest {
     let request: URLRequest
 

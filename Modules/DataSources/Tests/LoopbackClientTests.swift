@@ -77,6 +77,22 @@ struct LoopbackClientTests {
         #expect(sent.requests.count == 1)
     }
 
+    @Test func `should follow a redirect that only restates the default port`() async throws {
+        let sent = Sent()
+        let (data, _) = try await client(["http://127.0.0.1/": (302, "http://127.0.0.1:80/x")], sent: sent)
+            .request(URLRequest(url: URL(string: "http://127.0.0.1/")!))
+        #expect(String(decoding: data, as: UTF8.self) == "from http://127.0.0.1:80/x")
+        #expect(sent.requests.count == 2)
+    }
+
+    @Test func `should hand back a redirect from the default port to another, unfollowed`() async throws {
+        let sent = Sent()
+        let (_, response) = try await client(["http://127.0.0.1/": (302, "http://127.0.0.1:8080/x")], sent: sent)
+            .request(URLRequest(url: URL(string: "http://127.0.0.1/")!))
+        #expect((response as? HTTPURLResponse)?.statusCode == 302)
+        #expect(sent.requests.count == 1)
+    }
+
     @Test func `should stop following a server that keeps redirecting`() async throws {
         let sent = Sent()
         let loop = ["https://127.0.0.1:5001/a": (302, "/b"), "https://127.0.0.1:5001/b": (302, "/a")]

@@ -212,14 +212,14 @@ private struct RecapLine {
     private var story: String {
         var text = "Weekly recap \(weekText): \(totalText)"
         if let change = alert.recap.change {
-            text += ", \(Self.change(change)) vs the week before"
+            text += ", \(UsageNumberFormat.change(change)) vs the week before"
         }
         return text + "."
     }
 
     /// *Claude 62% · Codex 38%.*
     private var split: String {
-        let parts = alert.recap.providers.map { "\(alert.name(of: $0)) \(Self.share($0.share))" }
+        let parts = alert.recap.providers.map { "\(alert.name(of: $0)) \(UsageNumberFormat.share($0.share))" }
         guard !parts.isEmpty else { return "" }
         return parts.joined(separator: " · ") + "."
     }
@@ -261,34 +261,9 @@ private struct RecapLine {
     private var totalText: String {
         switch alert.recap.unit {
         case .cost: MoneyFormat.string(Decimal(alert.recap.total))
-        case .tokens: "\(Self.count(Int(alert.recap.total))) tokens"
-        case .cache: "\(Self.count(Int(alert.recap.total))) cache tokens"
+        case .tokens: "\(UsageNumberFormat.count(Int(alert.recap.total))) tokens"
+        case .cache: "\(UsageNumberFormat.count(Int(alert.recap.total))) cache tokens"
         }
-    }
-
-    /// "+20%", "−8%" — a change as a fraction of the week before.
-    static func change(_ change: Double) -> String {
-        let percent = Int((abs(change) * 100).rounded())
-        return (change < 0 && percent > 0 ? "\u{2212}" : "+") + "\(percent)%"
-    }
-
-    /// "62%" — a part of the week, 0…1.
-    static func share(_ share: Double) -> String { String(format: "%.0f%%", share * 100) }
-
-    /// "19.5M", "1.2K", "500" — a count, spelled like the chart's.
-    static func count(_ tokens: Int) -> String {
-        switch tokens {
-        case 1_000_000_000...: short(Double(tokens) / 1_000_000_000) + "B"
-        case 1_000_000...: short(Double(tokens) / 1_000_000) + "M"
-        case 1_000...: short(Double(tokens) / 1_000) + "K"
-        default: "\(tokens)"
-        }
-    }
-
-    /// One decimal, without a trailing ".0" — "2.5", "500".
-    private static func short(_ value: Double) -> String {
-        let text = String(format: "%.1f", value)
-        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
     }
 }
 

@@ -87,7 +87,7 @@ day gains is added by the line itself, never dropped by a field-by-field copy.
 | the mix is each model summed over the range, largest first, ties by name, the unnamed line included so the parts add up; each part carries its share; the top model is the largest named one, never the unnamed line | `ModelMix` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0 | `DayActivity` |
 | a day's shade is one of five bands by its share; a day with nothing is band 0 — a cell, never a gap | `UsageHeatmap` (App) |
-| a value is written once per unit: money for cost, a count for tokens and cache | `UsageFormat` (App), money through `MoneyFormat` |
+| a value is written once per unit: money for cost, a count for tokens and cache | `UsageFormat` (App), money through `MoneyFormat`, counts, shares and changes through `UsageNumberFormat` (the kernel's, shared with the recap webhook) |
 | a day with nothing is an empty day, not a missing one — a series has every date in its range (unchanged) | `UsageHistory.days(in:)` |
 | the heatmap (*Last year*) and the mix (*Model mix*) are two usage sections, each hidden until the person shows it; the year is read only while one of them is shown | `UsageSection` (its default, `readsTheYear`) · the settings repository (the person's switch) |
 

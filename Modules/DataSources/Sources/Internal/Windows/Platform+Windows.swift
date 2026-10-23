@@ -8,10 +8,10 @@ extension Platform {
     static let current = Platform(
         name: "Windows",
         timeZone: WindowsTimeZone(),
-        runCLI: CLIFetcher.system(installed: WindowsProcesses(), terminal: ConPty()),
+        runCLI: CLIFetcher.system(programs: WindowsProcesses(), terminal: ConPty()),
         processes: Processes(WindowsProcesses()),
         localServers: LocalServers(WindowsLocalServers()),
-        screenRenderer: { TerminalRenderer(cols: 160, rows: 50).render($0) },
+        screenRenderer: { TerminalRenderer().render($0) },
         applicationData: { home, environment in
             if let path = environment("APPDATA"), !path.isEmpty {
                 return URL(fileURLWithPath: path, isDirectory: true)

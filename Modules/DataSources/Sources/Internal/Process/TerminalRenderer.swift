@@ -30,11 +30,16 @@ public final class TerminalRenderer {
     /// at the top, so keep this comfortably above the tallest known screen.
     private let scrollback = 2000
 
+    /// The screen a CLI draws on: the terminal a fetch opens is this size,
+    /// and its output is rendered at it, so both read these two values.
+    public static let cols = 160
+    public static let rows = 50
+
     /// Creates a terminal renderer with the specified dimensions.
     /// - Parameters:
-    ///   - cols: Number of columns (default: 160)
-    ///   - rows: Number of rows (default: 50)
-    public init(cols: Int = 160, rows: Int = 50) {
+    ///   - cols: Number of columns (default: the fetch's screen, `Self.cols`)
+    ///   - rows: Number of rows (default: the fetch's screen, `Self.rows`)
+    public init(cols: Int = TerminalRenderer.cols, rows: Int = TerminalRenderer.rows) {
         self.cols = cols
         self.rows = rows
     }

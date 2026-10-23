@@ -1,6 +1,5 @@
 import Foundation
 import Mockable
-import Subprocess
 @testable import DataSources
 
 extension Processes {
@@ -18,5 +17,5 @@ private struct FixtureOS: InstalledPrograms, ScriptStart, LoginShell, ChildLaunc
     func command(_ path: String) -> [String] { [path] }
     func command(printing variable: String, between begin: String, and end: String) -> [String] { ["fixture-shell", variable] }
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] { change.set }
-    var teardown: [TeardownStep] { [] }
+    var stopGrace: Duration? { nil }
 }

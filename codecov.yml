@@ -30,7 +30,8 @@ ignore:
   - "Modules/DataSources/Sources/Internal/macOS/Process/PipeCLIExecutor.swift"  # Process
   - "Modules/DataSources/Sources/Internal/Process/FoundationSignInProcess.swift"  # Process
   - "Modules/DataSources/Sources/Internal/Network/URLSessionNetworkClient.swift"  # URLSession
-  - "Modules/DataSources/Sources/Internal/macOS/Network/InsecureLocalhostNetworkClient.swift"  # URLSession
+  - "Modules/DataSources/Sources/Internal/macOS/Network/MacLocalServers.swift"  # URLSession, pgrep, lsof
+  - "Modules/DataSources/Sources/Internal/Windows/Network/WindowsLocalServers.swift"  # WinHTTP, the kernel's tables
   - "Modules/DataSources/Sources/Internal/macOS/Lookup/SystemBrowserCookies.swift"  # browser cookie stores
   - "Modules/DataSources/Sources/Internal/macOS/Lookup/SystemBrowserStorage.swift"  # browser profiles
   - "Modules/Leaderboard/Sources/Internal/macOS/Platform+macOS.swift"  # hands out the key store and machine below

@@ -19,6 +19,10 @@ struct WeeklyRecapsTests {
         calendar.date(from: DateComponents(year: 2026, month: 10, day: day))!
     }
 
+    private func week(_ day: Int) -> DateRange {
+        DateRange.week(containing: date(day), calendar: calendar)
+    }
+
     private func day(_ day: Int, cost: Decimal) -> DailyUsageStat {
         DailyUsageStat(date: date(day), totalCost: cost, totalTokens: 10, workingTime: 0, sessionCount: 1)
     }
@@ -139,6 +143,37 @@ struct WeeklyRecapsTests {
         await recaps.readIfStale()
 
         #expect(recaps.recap(for: .thisWeek)?.providers.map(\.provider) == ["b"])
+    }
+
+    @Test func `should hand back the recap of the week that closed before its read`() async {
+        let recaps = recaps([login("a", Log([day(21, cost: 12), day(14, cost: 10)]))]) { self.date(22) }
+
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(of: week(14))?.total == 10)
+    }
+
+    /// The week the read was taken in was still under way: its recap is not
+    /// the whole week's, and a week the read didn't hold has none.
+    @Test func `should hand back no recap of a week the read did not see close`() async {
+        let recaps = recaps([login("a", Log([day(21, cost: 12), day(14, cost: 10), day(7, cost: 5)]))]) { self.date(22) }
+
+        await recaps.readIfStale()
+
+        #expect(recaps.recap(of: week(22)) == nil)
+        #expect(recaps.recap(of: week(7)) == nil)
+    }
+
+    @Test func `should hand back no recap of the week that closed until a read after the turn finishes`() async {
+        var today = date(22)
+        let recaps = recaps([login("a", Log([day(21, cost: 12), day(22, cost: 3)]))]) { today }
+        await recaps.readIfStale()
+
+        today = date(27)
+        #expect(recaps.recap(of: week(22)) == nil)
+
+        await recaps.readIfStale()
+        #expect(recaps.recap(of: week(22))?.total == 15)
     }
 
     @Test func `should hold no recap before it is read`() {

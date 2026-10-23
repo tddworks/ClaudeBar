@@ -560,19 +560,31 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
 /// Variables to remove from, and add to, a CLI's environment. Each process
 /// gets its own; the app's is never changed. `{{token}}` in a value is filled
 /// when a `command` starts.
+///
+/// Applied in order, each name as the OS matches it (exactly on POSIX, in any
+/// case on Windows): `unset` removed, `defaults` set where no variable of that
+/// name is left, `set` set over everything. A definition writes `unset` and
+/// `set`; `defaults` are the app's own, as a terminal's `TERM`.
 public struct ProcessEnvironment: Sendable, Equatable, Codable {
     public let unset: [String]
+    public let defaults: [String: String]
     public let set: [String: String]
 
-    public init(unset: [String] = [], set: [String: String] = [:]) {
+    public init(unset: [String] = [], defaults: [String: String] = [:], set: [String: String] = [:]) {
         self.unset = unset
+        self.defaults = defaults
         self.set = set
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         unset = try container.decodeIfPresent([String].self, forKey: .unset) ?? []
+        defaults = [:]
         set = try container.decodeIfPresent([String: String].self, forKey: .set) ?? [:]
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case unset, set
     }
 }
 
