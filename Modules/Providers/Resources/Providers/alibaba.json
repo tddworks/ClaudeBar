@@ -6,8 +6,16 @@
       "dashboard": "{{setting.region.dashboard}}"
     },
     "look": {
-      "symbol": "questionmark.circle.fill",
-      "icon": "QuestionIcon"
+      "symbol": "cloud.fill",
+      "icon": "AlibabaIcon",
+      "color": {
+        "light": [0.95, 0.39, 0.0],
+        "dark": [1.0, 0.42, 0.0]
+      },
+      "gradientEnd": {
+        "light": [0.9, 0.5, 0.02],
+        "dark": [1.0, 0.55, 0.05]
+      }
     }
   },
   "enabledByDefault": false,
