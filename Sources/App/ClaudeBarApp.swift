@@ -29,6 +29,10 @@ struct ClaudeBarApp: App {
     /// *Quota alerts* — the person's own percentages (#68).
     @State private var quotaAlerts: QuotaAlerts
 
+    /// *Rest when empty* — the products asked to rest, dimmed, while every
+    /// login has run out. Their switches stay the person's.
+    @State private var restWhenEmpty: RestWhenEmpty
+
     /// *Webhooks* — the person's URLs that hear every alert, beside this Mac.
     @State private var webhooks: Webhooks
 
@@ -161,7 +165,7 @@ struct ClaudeBarApp: App {
         let quotaAlerts = QuotaAlerts(settings: settingsRepository, destination: destinations)
         self.quotaAlerts = quotaAlerts
         quotaAlerts.follow(monitor)
-        // *Status alerts* follow every refresh: a login's status got worse under the policy.
+        // *Status alerts* follow every refresh too: a login's status got worse under the policy.
         StatusAlerts(destination: destinations).follow(monitor)
         // The weekly recap reads the lineup's usage history when the All page
         // asks; it decides for itself when it is stale.
@@ -174,6 +178,13 @@ struct ClaudeBarApp: App {
                                    uniquingKeysWith: { first, _ in first })
                     },
                     memory: settingsRepository, calendar: DataSources.calendar()).follow(monitor)
+        // *Rest when empty* follows every refresh too; the notice's button
+        // opens the link `URLSchemeAction` builds and reads back.
+        let restWhenEmpty = RestWhenEmpty(
+            repository: settingsRepository,
+            announcer: RestNotifications(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
+        self.restWhenEmpty = restWhenEmpty
+        restWhenEmpty.follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()
@@ -185,7 +196,8 @@ struct ClaudeBarApp: App {
         statusItemDriver = StatusItemLabelDriver(
             monitor: monitor,
             settings: AppSettings.shared,
-            sessionMonitor: sessionMonitor
+            sessionMonitor: sessionMonitor,
+            restWhenEmpty: restWhenEmpty
         )
         statusItemDriver.startMonitoringLifecycle()
         statusItemDriver.startAttachLifecycle()
@@ -361,6 +373,12 @@ struct ClaudeBarApp: App {
                 isMenuPresented = true
                 NSApp.activate(ignoringOtherApps: true)
             }
+        case let .showAnyway(providerId):
+            if let product = monitor.providers.provider(id: providerId) {
+                restWhenEmpty.showAnyway(product)
+            } else {
+                AppLog.ui.info("claudebar://show-anyway names no product")
+            }
         }
     }
 
@@ -384,6 +402,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(restWhenEmpty)
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
             // image. The dropdown's lifecycle maps 1:1 to those flips, so
@@ -431,6 +450,7 @@ struct ClaudeBarApp: App {
             }
             .environment(newSessions)
             .environment(quotaAlerts)
+            .environment(restWhenEmpty)
             .environment(webhooks)
         }
         .windowStyle(.hiddenTitleBar)

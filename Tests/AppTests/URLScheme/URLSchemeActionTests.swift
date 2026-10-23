@@ -53,6 +53,44 @@ struct URLSchemeActionTests {
         #expect(URLSchemeAction(url: url) == nil)
     }
 
+    // MARK: - show-anyway: one click on a resting product
+
+    @Test(arguments: [
+        ("claudebar://show-anyway?provider=claude", "claude"),
+        ("claudebar:///show-anyway?provider=codex", "codex"),
+        // Real ids aren't all builtin-shaped: extensions are `ext-<manifest id>`,
+        // custom ones come from an imported definition. The parser refuses only
+        // the unsafe; the handler resolves the name against the products.
+        ("claudebar://show-anyway?provider=ext-my-tool.v2", "ext-my-tool.v2"),
+        ("claudebar://show-anyway?provider=ext-a-very-long-extension-identifier-1234567890",
+         "ext-a-very-long-extension-identifier-1234567890"),
+    ])
+    func `should show the named resting provider anyway from its link`(string: String, provider: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == .showAnyway(provider: provider))
+    }
+
+    @Test(arguments: [
+        "claudebar://show-anyway",
+        "claudebar://show-anyway?provider=",
+        "claudebar://show-anyway?provider=claude&x=1",
+        "claudebar://show-anyway?provider=claude&provider=codex",
+        "claudebar://show-anyway?provider=claude%0A",
+        "claudebar://show-anyway?provider=claude&account=work",
+        "claudebar://show-anyway/extra?provider=claude",
+        "claudebar://show-anyway?provider=claude#top",
+    ])
+    func `should ignore a show-anyway link that isn't exactly one provider`(string: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == nil)
+    }
+
+    @Test
+    func `should read back the link a resting product's notice opens`() {
+        let link = URLSchemeAction.showAnywayLink(provider: "claude")
+
+        #expect(link.absoluteString == "claudebar://show-anyway?provider=claude")
+        #expect(URLSchemeAction(url: link) == .showAnyway(provider: "claude"))
+    }
+
     // MARK: - use: which login new terminal sessions start with
 
     @Test(arguments: [

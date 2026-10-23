@@ -454,9 +454,7 @@ public final class QuotaMonitor {
     /// The worst product's status, each product as healthy as its healthiest
     /// login (CANONICAL §5): its logins are interchangeable, products are not.
     public var overallStatus: QuotaStatus {
-        products
-            .compactMap { logins in logins.compactMap { status(of: $0) }.min() }
-            .max() ?? .healthy
+        providers.all.filter(\.isEnabled).compactMap { status(of: $0) }.max() ?? .healthy
     }
 
     /// The lineup, a product at a time: each enabled product's unpaused logins.
@@ -529,10 +527,24 @@ public final class QuotaMonitor {
         usage(of: login)?.overallStatus(under: statusPolicy)
     }
 
+    /// A product's status as the person sees it — its healthiest counted
+    /// login's (so it reads *depleted* only when every counted login is),
+    /// each login's read under the policy with hidden quotas and paused
+    /// logins left out; `nil` while no unpaused login has usage. A
+    /// login without usage never stands for the product: *not set up*, or a
+    /// failed fetch, is not *empty* (CANONICAL §5). The one owner of the
+    /// rule: `overallStatus`, `selectedTabStatus` and *Rest when empty* read it.
+    public func status(of product: Provider) -> QuotaStatus? {
+        product.accounts.unpaused.compactMap { status(of: $0) }.min()
+    }
+
     /// The selected tab's status: its healthiest unpaused login's, for a
     /// product's logins are interchangeable (CANONICAL §5); `nil` while no
     /// unpaused login has usage.
-    public var selectedTabStatus: QuotaStatus? { selectedLogins.compactMap { status(of: $0) }.min() }
+    public var selectedTabStatus: QuotaStatus? {
+        if let tab = selectedTab { return status(of: tab.provider) }
+        return selectedLogin.flatMap { status(of: $0) }
+    }
 
     /// What the popover's header says about the selected tab — the tab's own
     /// answer, with the status the person's policy gives its unpaused logins.

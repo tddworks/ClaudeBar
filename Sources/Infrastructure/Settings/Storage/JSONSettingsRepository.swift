@@ -922,3 +922,33 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: record?.addedAsDevice == true ? true : nil, key: "leaderboard.addedAsDevice")
     }
 }
+
+// MARK: - RestWhenEmptyRepository
+
+// `providers.<id>.restWhenEmpty`: one object per product, absent while the
+// person never asked. A state this version doesn't know reads as not asked.
+extension JSONSettingsRepository: RestWhenEmptyRepository {
+    public func whenEmpty(forProvider id: String) -> WhenEmpty? {
+        guard let saved: [String: Any] = store.read(key: Self.restWhenEmptyKey(id)) else { return nil }
+        switch saved["state"] as? String {
+        case "watching": return .watching
+        case "shownAnyway": return .shownAnyway
+        case "resting":
+            let since = (saved["since"] as? Double).map(Date.init(timeIntervalSince1970:)) ?? Date()
+            return .resting(since: since)
+        default: return nil
+        }
+    }
+
+    public func setWhenEmpty(_ state: WhenEmpty?, forProvider id: String) {
+        let saved: [String: Any]? = switch state {
+        case nil: nil
+        case .watching: ["state": "watching"]
+        case .shownAnyway: ["state": "shownAnyway"]
+        case let .resting(since): ["state": "resting", "since": since.timeIntervalSince1970]
+        }
+        store.write(value: saved, key: Self.restWhenEmptyKey(id))
+    }
+
+    private static func restWhenEmptyKey(_ id: String) -> String { "providers.\(id).restWhenEmpty" }
+}
