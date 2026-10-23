@@ -70,11 +70,16 @@ final class StatusItemLabelDriver {
     /// system's status-item service (issue #281).
     private var writeGate: StatusItemWriteGate<LabelContent>?
 
-    init(monitor: QuotaMonitor, settings: AppSettings, sessionMonitor: SessionMonitor) {
+    init(monitor: QuotaMonitor, settings: AppSettings, sessionMonitor: SessionMonitor,
+         restWhenEmpty: RestWhenEmpty? = nil) {
         self.monitor = monitor
         self.settings = settings
         self.sessionMonitor = sessionMonitor
+        self.restWhenEmpty = restWhenEmpty
     }
+
+    /// *Rest when empty*: a resting product's readout stays, dimmed.
+    private let restWhenEmpty: RestWhenEmpty?
 
     // No deinit: this object lives for the app's lifetime, so the wake
     // observer is intentionally never removed (and a nonisolated deinit
@@ -114,6 +119,11 @@ final class StatusItemLabelDriver {
         /// label keeps comparing equal across ticks and never repaints for the
         /// blink alone (see `render`'s early-out).
         var colonVisible: Bool = true
+        /// *Rest when empty*: the primary readout's product is resting, so
+        /// it is drawn dimmed.
+        var primaryIsResting: Bool = false
+        /// The additional readouts' lineup ids whose product is resting.
+        var restingIds: Set<String> = []
     }
 
     /// Attaches to an `NSStatusItem` and starts rendering. Repeated callbacks
@@ -252,6 +262,10 @@ final class StatusItemLabelDriver {
             logoAlways: settings.menuBarProviderLogoEnabled
         ) ? primaryProvider.map { settings.shown(monitor.lineupName(of: $0)) } : nil
 
+        let resting = Set(shownIds.filter { id in
+            monitor.login(id: id).flatMap { monitor.product(of: $0) }.map { restWhenEmpty?.isResting($0) == true } ?? false
+        })
+
         return LabelContent(
             label: label,
             additionalLabels: additionalLabels,
@@ -267,7 +281,9 @@ final class StatusItemLabelDriver {
             statusColors: settings.statusColorPolicy,
             isDarkAppearance: isDarkAppearance,
             nativeMenuBarIconsEnabled: settings.nativeMenuBarIconsEnabled,
-            colonVisible: hasCountdownColon ? blinkPhase : true
+            colonVisible: hasCountdownColon ? blinkPhase : true,
+            primaryIsResting: resting.contains(settings.menuBarPercentageProviderId),
+            restingIds: resting.subtracting([settings.menuBarPercentageProviderId])
         )
     }
 
@@ -334,8 +350,12 @@ final class StatusItemLabelDriver {
         lastImage = image
         button.image = image
         button.imagePosition = .imageOnly
-        let primaryText = [content.primaryProviderName, content.label?.text].compactMap { $0 }.joined(separator: " ")
-        let tooltip = settings.shown(([primaryText].filter { !$0.isEmpty } + content.additionalLabels.map(\.text))
+        let primaryText = [content.primaryProviderName, content.label?.text, content.primaryIsResting ? RestText.readoutSuffix : nil]
+            .compactMap { $0 }.joined(separator: " ")
+        let additionalTexts = content.additionalLabels.map { label in
+            content.restingIds.contains(label.providerId) ? "\(label.text) \(RestText.readoutSuffix)" : label.text
+        }
+        let tooltip = settings.shown(([primaryText].filter { !$0.isEmpty } + additionalTexts)
             .joined(separator: " | "))
         // The blink never changes the tooltip text; re-setting an identical
         // string would still round-trip into the system service, so apply the
@@ -391,18 +411,22 @@ final class StatusItemLabelDriver {
             showsSessionGlyph = true
         }
 
+        var primary: [NSImage] = []
         if let providerId = content.primaryProviderId {
-            parts.append(providerIcon(for: providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance))
+            primary.append(providerIcon(for: providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance))
         }
 
         if let id = content.primaryProviderId, let name = content.accountNames[id] {
-            parts.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
+            primary.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
         }
 
         if let label = content.label {
-            parts.append(quotaImage(label, stacked: content.stacked, size: content.stackedSize,
-                                    colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
-        } else if showsStatusIcon(hasLabel: false, showsLogo: content.primaryProviderId != nil) {
+            primary.append(quotaImage(label, stacked: content.stacked, size: content.stackedSize,
+                                      colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
+        }
+        parts += content.primaryIsResting ? primary.map(dimmed) : primary
+
+        if content.label == nil, showsStatusIcon(hasLabel: false, showsLogo: content.primaryProviderId != nil) {
             if let symbolName = statusIconSymbol(
                 theme: theme, status: content.fallbackStatus, besideSessionGlyph: showsSessionGlyph
             ) {
@@ -420,14 +444,26 @@ final class StatusItemLabelDriver {
                     text: " | ", color: theme.menuBarStatusColor(for: label.status, darkMenuBar: content.isDarkAppearance)
                 ))
             }
-            parts.append(providerIcon(for: label.providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance))
+            var readout = [providerIcon(for: label.providerId, native: content.nativeMenuBarIconsEnabled, dark: content.isDarkAppearance)]
             if let name = content.accountNames[label.providerId] {
-                parts.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
+                readout.append(StatusBarPercentageImageRenderer.image(text: name, color: .primary))
             }
-            parts.append(quotaImage(label.label, stacked: label.stacked, size: label.stackedSize,
-                                    colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
+            readout.append(quotaImage(label.label, stacked: label.stacked, size: label.stackedSize,
+                                      colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
+            parts += content.restingIds.contains(label.providerId) ? readout.map(dimmed) : readout
         }
         return hStack(parts, spacing: 3)
+    }
+
+    /// How faint a resting product's readout is drawn.
+    static let restingAlpha: CGFloat = 0.4
+
+    /// A readout part, dimmed: *Rest when empty* keeps it in place, quieter.
+    static func dimmed(_ image: NSImage) -> NSImage {
+        NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: restingAlpha)
+            return true
+        }
     }
 
     private static func quotaImage(_ label: MenuBarLabel, stacked: Bool, size: MenuBarStackedSize,

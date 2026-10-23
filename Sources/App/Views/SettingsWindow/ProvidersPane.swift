@@ -112,12 +112,12 @@ private struct ProviderListRow: View {
     let onSelect: () -> Void
 
     @Environment(\.appTheme) private var theme
-    @Environment(AutoPause.self) private var autoPause
+    @Environment(RestWhenEmpty.self) private var restWhenEmpty
     @State private var isHovering = false
 
     private var statusText: String {
-        if autoPause.isWaiting(tab.provider) { return "Waiting for a reset" }
         guard tab.isEnabled else { return "Disabled" }
+        if restWhenEmpty.isResting(tab.provider) { return RestText.row }
         let updated = tab.logins.compactMap { $0.snapshot?.capturedAt }.max()
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
@@ -230,8 +230,6 @@ private struct ProviderDetailView: View {
     let provider: Account
     let onBack: () -> Void
 
-    @Environment(AutoPause.self) private var autoPause
-
     @Environment(\.appTheme) private var theme
 
     var body: some View {
@@ -270,7 +268,7 @@ private struct ProviderDetailView: View {
 
                     QuotaVisibilityCard(provider: provider, monitor: monitor)
 
-                    AutoPauseCard(product: tab.provider)
+                    RestWhenEmptyCard(product: tab.provider)
 
                     SettingsCard {
                         SettingsFieldLabel(text: "CUSTOM WEB CARD")
@@ -279,13 +277,6 @@ private struct ProviderDetailView: View {
                         CustomCardURLField(providerId: provider.id)
                     }
                 } else {
-                    // A waiting product is off — ClaudeBar's own off — so this
-                    // is the one card the disabled page still shows: it is
-                    // where the person withdraws the instruction, which puts
-                    // the product back on.
-                    if autoPause.isWaiting(tab.provider) {
-                        AutoPauseCard(product: tab.provider)
-                    }
                     Text("Enable \(tab.name) to configure it.")
                         .font(theme.font(size: 12, weight: .medium))
                         .foregroundStyle(theme.textTertiary)
@@ -350,28 +341,22 @@ private struct ProviderDetailView: View {
     }
 }
 
-// MARK: - Auto-pause on empty
+// MARK: - Rest when empty
 
-/// *Turn off when empty* — the standing instruction: when every counted
-/// login of the product is depleted, ClaudeBar turns the switch off itself,
-/// and back on at the first refresh that shows room again. It renders and
-/// tells; `AutoPause` decides.
-private struct AutoPauseCard: View {
+/// *Rest when empty* — while every counted login of the product is out, it
+/// is dimmed until a refresh shows room. Its switch is never touched. It
+/// renders and tells; `RestWhenEmpty` decides.
+private struct RestWhenEmptyCard: View {
     let product: Provider
 
-    @Environment(AutoPause.self) private var autoPause
+    @Environment(RestWhenEmpty.self) private var restWhenEmpty
 
     var body: some View {
         SettingsCard {
-            SettingsRow(
-                title: "Turn off when empty",
-                subtitle: autoPause.isWaiting(product)
-                    ? "Waiting for a reset — the switch comes back on at the first refresh that shows room."
-                    : "When every login has run out, ClaudeBar turns this product off, and back on at the next reset."
-            ) {
+            SettingsRow(title: RestText.cardTitle, subtitle: RestText.cardSubtitle) {
                 SettingsSwitch(isOn: Binding(
-                    get: { autoPause.isOn(product) },
-                    set: { autoPause.turn($0, product: product) }
+                    get: { restWhenEmpty.isOn(product) },
+                    set: { restWhenEmpty.turn($0, product: product) }
                 ))
             }
         }

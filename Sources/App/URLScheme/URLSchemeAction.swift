@@ -7,8 +7,8 @@ import Foundation
 /// spelling (`claudebar:///open`). The URL is compared as a whole string, so
 /// anything else, whether a parameter, a fragment, a user, a port or an extra
 /// path, is not an action. `claudebar://use?provider=claude&account=work` and
-/// `claudebar://enable?provider=claude` are the ones with parameters: exactly
-/// the documented ones, each once. See docs/features/app/url-schemes/README.md.
+/// `claudebar://show-anyway?provider=claude` are the ones with parameters:
+/// exactly the documented ones, each once. See docs/features/app/url-schemes/README.md.
 enum URLSchemeAction: Equatable, Sendable {
     case open
     case refresh
@@ -16,8 +16,8 @@ enum URLSchemeAction: Equatable, Sendable {
     /// *In use* — new terminal sessions of `provider` start on `account`
     /// (its name, email or `default`).
     case use(provider: String, account: String)
-    /// *Auto-pause* — turn `provider` back on, one click.
-    case enable(provider: String)
+    /// *Rest when empty* — draw a resting `provider` as usual, one click.
+    case showAnyway(provider: String)
 
     static let scheme = "claudebar"
 
@@ -30,7 +30,7 @@ enum URLSchemeAction: Equatable, Sendable {
         case .refresh: "refresh"
         case .settings: "settings"
         case .use: "use"
-        case .enable: "enable"
+        case .showAnyway: "show-anyway"
         }
     }
 
@@ -41,7 +41,7 @@ enum URLSchemeAction: Equatable, Sendable {
             self = action
             return
         }
-        guard let parameterised = Self.use(string) ?? Self.enable(string) else { return nil }
+        guard let parameterised = Self.use(string) ?? Self.showAnyway(string) else { return nil }
         self = parameterised
     }
 
@@ -62,12 +62,22 @@ enum URLSchemeAction: Equatable, Sendable {
         return .use(provider: provider, account: account)
     }
 
-    /// `claudebar://enable?provider=<id>`, and nothing more — *auto-pause*'s
-    /// one click back on. The id's shape is checked loosely — built-in,
+    /// The link a *Rest when empty* notice's button opens — built here, beside
+    /// the parser that reads it back, so the link has one owner.
+    static func showAnywayLink(provider: String) -> URL {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = "show-anyway"
+        components.queryItems = [URLQueryItem(name: "provider", value: provider)]
+        return components.url!
+    }
+
+    /// `claudebar://show-anyway?provider=<id>`, and nothing more — *Rest when
+    /// empty*'s one click. The id's shape is checked loosely — built-in,
     /// custom and extension ids differ, so only the unsafe is refused; the
     /// handler resolves the name against the registered products.
-    private static func enable(_ string: String) -> URLSchemeAction? {
-        let prefixes = ["\(scheme)://enable?", "\(scheme):///enable?"]
+    private static func showAnyway(_ string: String) -> URLSchemeAction? {
+        let prefixes = ["\(scheme)://show-anyway?", "\(scheme):///show-anyway?"]
         guard let prefix = prefixes.first(where: { string.lowercased().hasPrefix($0) }),
               !string.contains("#"),
               let items = URLComponents(string: "x:?" + string.dropFirst(prefix.count))?.queryItems,
@@ -77,6 +87,6 @@ enum URLSchemeAction: Equatable, Sendable {
               !provider.isEmpty, provider.count <= 200,
               provider.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
         else { return nil }
-        return .enable(provider: provider)
+        return .showAnyway(provider: provider)
     }
 }
