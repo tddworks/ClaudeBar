@@ -1,12 +1,12 @@
 ---
-description: Send ClaudeBar's quota alerts and status alerts to a Slack channel or a URL you own, as a Slack message or a JSON body. Use when wiring quota into Slack, a script or a service, or when a webhook says Failed.
+description: Send ClaudeBar's quota alerts, status alerts and signed-out alerts to a Slack channel or a URL you own, as a Slack message or a JSON body. Use when wiring quota into Slack, a script or a service, or when a webhook says Failed.
 ---
 
 # Webhooks
 
 [Quota alerts](../quota-alerts/README.md) and the [status alerts](../status-alerts/README.md) tell *you*, on this Mac. A webhook sends the same alerts somewhere else: a Slack channel your team watches, a script on a home server, a monitoring service. It can also send the [weekly recap](../recap-alerts/README.md) — the week across every provider, once a week.
 
-A webhook has no percent of its own. It sends the percents you already chose under Quota alerts and, if you tick it, every status that got worse (low, critical, empty) and the week that closed.
+A webhook has no percent of its own. It sends the percents you already chose under Quota alerts and, if you tick it, every status that got worse (low, critical, empty), the week that closed, and every login that [signed out](../signed-out/README.md).
 
 ## Set up
 
@@ -15,7 +15,7 @@ A webhook has no percent of its own. It sends the percents you already chose und
 1. Paste the **URL**. It must be `https://`, except for a host on this Mac or your network (`localhost`, `192.168.…`, `*.local`).
 2. Pick the **channel**: **Slack** for a Slack incoming webhook, **JSON** for anything else.
 3. Pick **For**: **Every login**, or one provider.
-4. Tick what it **sends**: **Quota alerts**, **Status alerts**, the **Weekly recap**, or any mix. The recap sends the week that closed each time your calendar's week turns — see [recap webhooks](../recap-alerts/README.md).
+4. Tick what it **sends**: **Quota alerts**, **Status alerts**, the **Weekly recap**, **Signed-out alerts**, or any mix. The recap sends the week that closed each time your calendar's week turns — see [recap webhooks](../recap-alerts/README.md).
 5. Press **Add**, then **Send a test**.
 
 Each webhook shows its name (the URL's host until you type one), its channel and scope, an on/off switch, and its last delivery: *Sent 2m ago*, *Failed — 404*, or *Nothing sent yet*.
@@ -38,7 +38,7 @@ Each webhook shows its name (the URL's host until you type one), its channel and
   "sentAt": "2026-10-22T09:41:00Z" }
 ```
 
-`type` is `quota`, `status` or `test`. A status alert fills `status` and `was` (`warning`, `critical`, `depleted`) instead of `below` and `left`. A webhook that also sends the **Weekly recap** gets a fourth message, `"type": "recap"`, with the week's total, change, split by provider, top model, biggest day and cache savings — [recap webhooks](../recap-alerts/README.md) has the fields and the timing.
+`type` is `quota`, `status`, `signedOut` or `test`. A status alert fills `status` and `was` (`warning`, `critical`, `depleted`) instead of `below` and `left`. A signed-out alert fills `hint`, what to run to sign in again, or `null` when the provider gives none. A webhook that also sends the **Weekly recap** gets its own message, `"type": "recap"`, with the week's total, change, split by provider, top model, biggest day and cache savings — [recap webhooks](../recap-alerts/README.md) has the fields and the timing.
 
 **Send a test** sends a message that says it is a test (`"type": "test"`), never a made-up alert.
 
@@ -46,7 +46,7 @@ Each webhook shows its name (the URL's host until you type one), its channel and
 
 The URL is a **secret**: a Slack URL carries a token. It is kept in the Keychain, never in `settings.json` and never in a log. On a build the Keychain refuses (one you compiled yourself), it is kept in the app credential store instead and the card says so → [settings.md](../../../settings.md#where-secrets-live).
 
-What leaves your Mac: the provider, the login's name as the menu shows it, the percent and the status. No email, prompt, path or session.
+What leaves your Mac: the provider, the login's name as the menu shows it, the percent, the status and the provider's sign-in hint. No email, prompt, path or session.
 
 ## Gotchas
 

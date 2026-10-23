@@ -365,6 +365,7 @@
       "at": "$.timestamp",
       "id": ["$.message.id", "$.requestId"],
       "model": "$.message.model",
+      "project": "$.cwd",
       "tokens": {
         "input": "$.message.usage.input_tokens",
         "output": "$.message.usage.output_tokens",

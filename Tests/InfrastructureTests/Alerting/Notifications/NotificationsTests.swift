@@ -4,7 +4,7 @@ import Mockable
 @testable import Infrastructure
 @testable import Domain
 
-/// This Mac's notifications, for both kinds of alert: the login as the lineup
+/// This Mac's notifications, for every kind of alert: the login as the lineup
 /// names it, in the words the person has always read.
 @Suite
 struct NotificationsTests {
@@ -72,6 +72,31 @@ struct NotificationsTests {
         await Notifications(alertSender: sending(into: sent)).announce(status(.depleted))
 
         #expect(sent.body == "Your Claude · work quota is depleted. Usage may be blocked.")
+    }
+
+    // MARK: - Signed out
+
+    @Test
+    func `should say a login signed out, in the provider's own words for signing in again`() async {
+        let sent = Sent()
+
+        await Notifications(alertSender: sending(into: sent))
+            .announce(.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude",
+                                                hint: "Run `claude` in terminal to log in again.")))
+
+        #expect(sent.title == "Claude · work signed out")
+        #expect(sent.body == "Run `claude` in terminal to log in again.")
+        #expect(sent.category == Notifications.signedOutCategory)
+    }
+
+    @Test
+    func `should ask to sign in again when the provider gives no hint`() async {
+        let sent = Sent()
+
+        await Notifications(alertSender: sending(into: sent))
+            .announce(.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude", hint: nil)))
+
+        #expect(sent.body == "Sign in again to see its usage.")
     }
 
     // MARK: - This Mac

@@ -187,7 +187,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │   │   │   │               read-only query of the app's own database · format (a
 │       │       │   │   │   │               JSON object per line, or per file) · the record's shape
 │       │       │   │   │   │               in the mapping's path language (when, which model,
-│       │       │   │   │   │               tokens by kind, its own cost, its identity), or its
+│       │       │   │   │   │               tokens by kind, its own cost, its identity, its
+│       │       │   │   │   │               project — the field of the working directory), or its
 │       │       │   │   │   │               `shapes` when the log writes it more than one way,
 │       │       │   │   │   │               each read whole
 │       │       │   │   ├── prices: PriceList   WHAT A TOKEN COSTS — a price file beside the
@@ -202,7 +203,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           per model, a line holding what the day holds — tokens
 │       │       │                           input · output · cache write · cache read · cost
 │       │       │                           (ESTIMATED unless the log states it); records with no
-│       │       │                           model form one unnamed line · sessions · working
+│       │       │                           model form one unnamed line · one line per project
+│       │       │                           when the log names the working directory · sessions ·
 │       │       │                           time · cache savings
 │       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
 │       │       │                           run by the engine; `nil` when not declared
@@ -266,7 +268,7 @@ Rest when empty  ◆                          the products asked to rest while e
                                             `WhenEmpty`: watching · resting(since:) · shownAnyway. Follows
                                             refreshes through `onRefreshed`; judges *empty* by
                                             `monitor.status(of: provider)`; never touches the switch
-Destinations                                notifications · your quota alerts · status alerts · webhooks · Notify! · live activity · status export
+Destinations                                notifications · your quota alerts · status alerts · signed out · webhooks · Notify! · live activity · status export
 
     NOT IN THE MODEL (the page's)
 MenuBarLabel · display mode (left/used) · countdown colon · popover height · theme ·
@@ -455,11 +457,12 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **a CLI is wrapped once**, however many products run it: two products on `claude` share its record, and the last choice wins | `NewSessions` (its commands, each once) · `ShellSetup` |
 | a choice waits for the shell lines, and the plain login never waits; turning off removes the lines and puts every CLI back on its plain login | `NewSessions` |
 | *Switch when low* is off until turned on, moves only below its threshold, only to a ticked login with more left, and never touches a running session; a login worth switching to is told once per low | `SwitchWhenLow` · `InUse.review` |
-| the Monitor knows nothing that follows a refresh: In use, and anything after it, observes through `onRefreshed` | `QuotaMonitor` |
+| the Monitor knows nothing that follows a refresh: In use, and anything after it, observes through `onRefreshed` — or `onRefreshFailed` for a refresh that failed, never a paused login's | `QuotaMonitor` |
 | a quota alert says once that a login fell below one of the person's percentages, and again only after it climbed back a point above it | `QuotaAlerts` |
 | a quota alert judges what the person sees: the lowest share left among the login's quotas not hidden; a balance with no ceiling has no share and is never judged | `QuotaAlerts` |
 | a quota alert names the login (*Claude · work*), never only the product, once a product has several | `QuotaAlerts` |
 | a status alert says when a login's status got worse under the policy and is not healthy, once per worsening; the first status seen is compared with healthy ([design](../features/alerting/status-alerts/design.md)) | `StatusAlerts` |
+| a login is SIGNED OUT when a refresh failed with `sessionExpired` (its last error, as the card shows it) — told once per sign-out, forgotten at the next refresh with no error; never a forecast, since no store records when a sign-in will end ([design](../features/alerting/signed-out/design.md)) | `SignedOutAlerts` |
 | an alert names the login by its `lineupName` and carries its provider id; every alert goes to every destination, and no destination decides whether a login is low | `Alert` · `AlertDestinations` |
 | a webhook wants an alert when it is on, sends that kind, and the alert's provider is in its scope; it has no percent of its own ([design](../features/alerting/webhooks/design.md)) | `Webhook` |
 | how an alert or a test reads in Slack and as JSON; a test is never shaped like an alert | `WebhookBody` |
@@ -523,12 +526,14 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a day closes a fixed while after it ends; a closed day is summed once, kept, and never read from the logs again. Today, and the day before until it closes, are read every time | `DayLedger` |
 | a day is THE SUM OF ITS LINES: one line per model, a line holding what the day holds — the model's tokens by kind and its cost. The log's own cost wins; otherwise cost is ESTIMATED from the price catalog, and says so. A model served on this Mac costs nothing; an unknown model gets the catalog's fallback price, never zero by omission. Records with no model form one unnamed line, so the lines always add up to the day | `Day.lines` · `PriceList` |
 | a range of days answers the page's questions — which models, in order; a day's lines, largest first; its total in a unit; which units it offers — so a view renders and tells. The unit is the view's choice (cost, tokens, cache), and COST is offered only when the log prices its records and a day holds a cost: a log that writes zero everywhere has nothing to say in dollars ; what caching saved over the range | `Days` |
-| two lines of one model add up to one line: every count and the cost, so a sum over days never drops a field | `ModelUsageLine` |
-| a range's mix is each model summed over it, largest first, the unnamed line included so the parts add up; each part carries its share — a page that needs a top model reads it here, and the unnamed line is never the top model | `ModelMix` |
+| what a part of a day spent — tokens by kind and their cost — adds up field by field, so a sum over days never drops a field, and reads itself in a unit | `Spend` |
+| a line of a day's split is its key and its spend — a model (`ModelUsageLine`) or a project (`ProjectUsageLine`); two lines of one key add up to one | `UsageLine` |
+| a range's mix is each line summed over it, largest first, the unnamed part included so the parts add up; each part carries its share — a page that needs a top model or project reads it here, and the unnamed part is never the top. `ModelMix` and `ByProject` are this one mix, each with its own key | `UsageMix` |
+| a day keeps its named project lines only, each named by its working directory's last path component; its project split is those and the remainder — the day less them, when that is anything — so the parts add up to the day, and a day that names no project is all remainder; a path is never kept or shown, only its last component ([quota-by-project](../features/usage-history/quota-by-project/design.md)) | `DailyUsageStat` (`projects`, `projectSplit`) · `ProjectUsageLine` |
 | a day's share is its value against the range's busiest; a range with nothing used has no busiest day, and every share is 0. The shading band a heatmap draws is the App's | `DayActivity` |
 | usage history is per login: an added login reads its own folder's logs; two logins' days are never summed | `Account.usageHistory` |
 | a week is the calendar's week holding a day, from the calendar's own first weekday; the range before a range is the same length, one run earlier | `DateRange` (`week`, `before`) |
-| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model — so several ranges read as one (`Days.merged`) never drop a field | `DailyUsageStat` (`+`) |
+| two days of one date add up to one day: every count, the cost, the time, the savings, one line per model, one per named project — so several ranges read as one (`Days.merged`) never drop a field, and a day with a split added to one without keeps the other's spend in its remainder | `DailyUsageStat` (`+`) |
 | a RECAP is the one read that sums across logins, for the person's total, and names the providers it spans — two logins of one provider are one part; a login's own chart stays its own. It reads in the unit every range offers: cost only when every provider that used anything, this range or the one before, offers cost, tokens otherwise; its change is against the range before, in that unit, and none when nothing was used before; its top model is `ModelMix`'s and its biggest day `DayActivity`'s, over the providers' days merged | `Recap` |
 | a recap's span is a period, a week or a month; the period before is the one holding the day before it starts — one rule for both; a recap carries the days it sums | `RecapPeriod` · `RecapRange` · `Recap.range` |
 | the recap is read again only when a week or month turned or a login's days were read again since its last read; the page tells it when usage was read and never decides | `Recaps` |
@@ -576,8 +581,8 @@ its factory.
 | **Quota** | **shared kernel** | *how much is left, when does it refill, and is that OK?* | values: `Quota`, `Left`, `Window`, `Status`, `StatusPolicy`, `Pace` | — it imports nothing |
 | **Providers** | **core** | *who do I pay, under which accounts, and what did they last say?* | ◆ `Providers` → `Provider` → `Accounts` | a `DataSource` the factory makes from a definition |
 | **Data Sources** | supporting | *how do we find out?* — DataSource, DataSourceDefinition, CredentialLookup, Fetch, Mapping, Setting, DataSourceError, and every worker | ◆ `DataSource` | the platform's ports |
-| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed`: whatever follows a refresh observes it |
-| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage and its status under the policy |
+| **Monitoring** | **core · conductor** | *what is true right now, and when do we look again?* | ◆ `QuotaMonitor` | `onRefreshed` · `onRefreshFailed`: whatever follows a refresh observes it |
+| **Alerting** | generic | *who needs to hear that it changed?* — notifications, your quota alerts, status alerts, the week's recap, signed out, webhooks, Notify!, live activity, status export | ◆ `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `SignedOutAlerts`, `Webhooks`, the Notify publication | a login's id, its `lineupName`, its usage, its status under the policy and its last refresh error |
 | **Activity** | supporting | *what is Claude Code doing right now?* — hooks, sessions, the notch | ◆ `SessionMonitor` | Data Sources' answer to "is this one of my runs" |
 | **Usage History** | supporting | *what did I use, day by day?* | ◆ `UsageHistory`, one per login | `account.usageHistory` |
 | **In use** | supporting | *which login does my next terminal session start with?* | ◆ `InUse` | the login's id and folder; the best login from `Accounts` |

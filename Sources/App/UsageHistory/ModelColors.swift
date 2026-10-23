@@ -47,4 +47,11 @@ enum ModelColors {
     private static func channel(_ value: CGFloat) -> Int {
         Int((min(max(value, 0), 1) * 255).rounded())
     }
+
+    /// The colour a split gives `project` — the same palette, by the
+    /// project's place among the split's names; grey for the unnamed part.
+    static func color(ofProject project: String, in split: ByProject) -> Color {
+        guard let index = split.names.firstIndex(of: project) else { return .gray }
+        return color(at: index)
+    }
 }

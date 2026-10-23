@@ -10,7 +10,8 @@ description: Contributor design for Webhooks — a destination that POSTs the al
 > ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them));
 > this says which piece keeps them. Its sibling is [status alerts](../status-alerts/design.md),
 > which gives webhooks their second kind of alert, and [recap alerts](../recap-alerts/design.md)
-> their third — the week that closed, sent once when the calendar's week turns.
+> their third — the week that closed, sent once when the calendar's week turns —
+> and [signed out](../signed-out/design.md) their fourth: a login whose sign-in ended.
 >
 > **Status: BUILT.** Mockup: [design-concept/webhooks](../../../../design-concept/webhooks/index.html);
 > as built: [as-built.png](../../../../design-concept/webhooks/as-built.png).
@@ -49,7 +50,7 @@ wants it.
 | *URL* | where it is sent — a secret |
 | *Slack* · *JSON* | the channel: a Slack incoming-webhook message, or a JSON body |
 | *Every login* · a provider's name | the scope: every login, or every login of one product |
-| *Quota alerts* · *Status alerts* · *Weekly recap* | what it sends: the person's percents, a status that got worse, and the week that closed each week turn ([recap alerts](../recap-alerts/design.md)) |
+| *Quota alerts* · *Status alerts* · *Weekly recap* · *Signed-out alerts* | what it sends: the person's percents, a status that got worse, the week that closed each week turn ([recap alerts](../recap-alerts/design.md)), and a login that signed out ([signed out](../signed-out/design.md)) |
 | *Send a test* | POST a message labelled as a test, never an alert |
 | *Sent 2m ago* · *Sending…* · *Failed — 404* · *Nothing sent yet* | the last delivery |
 
@@ -57,16 +58,17 @@ wants it.
 
 ```
 QuotaMonitor.onRefreshed(login) ─┬─► QuotaAlerts   ─► .quota(QuotaAlert)
-                                 └─► StatusAlerts  ─► .status(StatusAlert)
+                                 ├─► StatusAlerts  ─► .status(StatusAlert)
+  · onRefreshFailed(login) ──────┴─► SignedOutAlerts ─► .signedOut(SignedOutAlert)
                                                          │
-Alert = .quota | .status            (names the login by lineupName, and its provider id)
+Alert = .quota | .status | .signedOut   (names the login by lineupName, and its provider id)
                                                          │
 AlertDestinations([…]).announce(_ alert) ◄───────────────┘   every alert, every destination
    ├─► Notifications                 this Mac; today's wording
    └─► Webhooks  ◆                   the person's list, @Observable, in Alerting
          └─ Webhook ◇
               id · name · channel (slack | json) · scope (everyLogin | provider(id))
-              sends (quotaAlerts, statusAlerts, recap) · isOn
+              sends (quotaAlerts, statusAlerts, recap, signedOutAlerts) · isOn
               wants(alert) → Bool · wants(recap) → Bool
               host · delivery: neverSent | sending | sent(at) | failed(Failure, at)
               │
@@ -86,6 +88,7 @@ Secrets: DestinationSecrets  webhook-url-<id>  ← one Keychain-with-fallback, s
 |---|---|
 | a login fell below the person's percent: tell once, again only after it climbs a point above | `QuotaAlerts` |
 | a login's status got worse under the policy: tell once per worsening | `StatusAlerts` |
+| a login's sign-in ended: tell once per sign-out ([signed out](../signed-out/design.md)) | `SignedOutAlerts` |
 | every alert goes to every destination; a destination never decides *whether* a login is low | `AlertDestinations` (the one fan-out both deciders tell, built in the composition root) |
 | a webhook wants an alert when it is on, the alert's kind is one it sends, and the alert's provider is in its scope | `Webhook.wants(_:)` |
 | a webhook wants the week's recap when it is on and sends recaps — scope is never judged, the recap is one read across every provider ([recap alerts](../recap-alerts/design.md)) | `Webhook.wants(_:)` |
@@ -101,9 +104,10 @@ Secrets: DestinationSecrets  webhook-url-<id>  ← one Keychain-with-fallback, s
 
 | Piece | Where | One job | |
 |---|---|---|---|
-| `Alert` ◇ = `.quota(QuotaAlert)` \| `.status(StatusAlert)` | `Domain/Alerting` | what was decided, naming the login (`lineupName`) and its provider id | **built** |
+| `Alert` ◇ = `.quota(QuotaAlert)` \| `.status(StatusAlert)` \| `.signedOut(SignedOutAlert)` | `Domain/Alerting` | what was decided, naming the login (`lineupName`) and its provider id | **built** |
 | `QuotaAlert` ◇ | `Domain/Alerting/QuotaAlerts` | carries `providerId`, so a scope can be judged | **built** |
 | `StatusAlert` ◇ · `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | see [status alerts](../status-alerts/design.md) | **built** |
+| `SignedOutAlert` ◇ · `SignedOutAlerts` ◆ | `Domain/Alerting/SignedOutAlerts` | see [signed out](../signed-out/design.md) | **built** |
 | `RecapAlert` ◇ · `RecapAlerts` ◆ | `Domain/Alerting/RecapAlerts` | the week that closed, told once when the calendar's week turns — see [recap alerts](../recap-alerts/design.md) | **built** |
 | `AlertDestination` (port, `@Mockable`) · `AlertDestinations` | `Domain/Alerting` | `announce(_ alert: Alert) async`; `AlertDestinations` tells each destination in turn, and is what `QuotaAlerts` and `StatusAlerts` are handed | **built** |
 | `RecapDestination` (port, `@Mockable`) | `Domain/Alerting/RecapAlerts` | `announce(_ recap: RecapAlert) async` — the recap's own door, beside `AlertDestination`, as In use's announcer is | **built** |
@@ -177,21 +181,22 @@ alert is.
 
 ## What is sent
 
-| Field | Quota alert | Status alert | Test | Weekly recap |
-|---|---|---|---|---|
-| `type` | `"quota"` | `"status"` | `"test"` | `"recap"` |
-| `provider` | `"claude"` | `"claude"` | `null` | — (`providers`: one row per part) |
-| `login` | `"Claude · work"` | `"Claude · work"` | `null` | — |
-| `below` | `35` | `null` | `null` | — |
-| `left` | `34` | `null` | `null` | — |
-| `status` | `null` | `"critical"` | `null` | — |
-| `was` | `null` | `"warning"` | `null` | — |
-| `total` · `unit` · `change` · `weekStart` · `weekEnd` · `providers` · `topModel` · `biggestDay` · `cacheSavings` · `workingTime` · `sessions` · `tokens` | — | — | — | the week that closed ([recap alerts](../recap-alerts/design.md)) |
-| `sentAt` | ISO 8601 | ISO 8601 | ISO 8601 | ISO 8601 |
+| Field | Quota alert | Status alert | Signed out | Test | Weekly recap |
+|---|---|---|---|---|---|
+| `type` | `"quota"` | `"status"` | `"signedOut"` | `"test"` | `"recap"` |
+| `provider` | `"claude"` | `"claude"` | `"claude"` | `null` | — (`providers`: one row per part) |
+| `login` | `"Claude · work"` | `"Claude · work"` | `"Claude · work"` | `null` | — |
+| `below` | `35` | `null` | `null` | `null` | — |
+| `left` | `34` | `null` | `null` | `null` | — |
+| `status` | `null` | `"critical"` | `null` | `null` | — |
+| `was` | `null` | `"warning"` | `null` | `null` | — |
+| `hint` | `null` | `null` | the definition's hint, or `null` | `null` | — |
+| `total` · `unit` · `change` · `weekStart` · `weekEnd` · `providers` · `topModel` · `biggestDay` · `cacheSavings` · `workingTime` · `sessions` · `tokens` | — | — | — | — | the week that closed ([recap alerts](../recap-alerts/design.md)) |
+| `sentAt` | ISO 8601 | ISO 8601 | ISO 8601 | ISO 8601 | ISO 8601 |
 
 Every key on every send *of its kind*, `null` where there is no value. Slack
 gets one line, the same words the Mac's notification uses: *Claude · work is
-below 35% — 34% left*, *Claude · work is critical — was warning* — and the
+below 35% — 34% left*, *Claude · work is critical — was warning*, *Claude · work signed out: sign in again — Run `claude` …* — and the
 recap its own message, built from the same `Recap` the card reads.
 
 Nothing else leaves the Mac: no email, no prompt, no path, no session.
@@ -203,14 +208,15 @@ Nothing else leaves the Mac: no email, no prompt, no path, no session.
   "thresholds": [60, 35],
   "webhooks": [
     { "id": "9F2C…", "name": "#ai-quota", "channel": "slack",
-      "provider": null, "quotaAlerts": true, "statusAlerts": true, "recap": false, "isOn": true }
+      "provider": null, "quotaAlerts": true, "statusAlerts": true, "recap": false,
+      "signedOutAlerts": false, "isOn": true }
   ]
 }
 ```
 
-`provider: null` is *every login*. The URL is never here. `recap` reads back
-`false` for a row saved before the field existed — a webhook never sent
-recaps unasked. Removing a webhook
+`provider: null` is *every login*. The URL is never here. `recap` and
+`signedOutAlerts` read back `false` for a row saved before the field existed —
+a webhook never sends a kind unasked. Removing a webhook
 removes its row and its secret. `host` and `delivery` are not saved: the host
 is read from the kept URL at launch, and after a relaunch the card says
 *Nothing sent yet*.

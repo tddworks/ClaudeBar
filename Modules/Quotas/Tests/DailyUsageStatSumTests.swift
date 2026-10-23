@@ -35,4 +35,28 @@ struct DailyUsageStatSumTests {
 
         #expect((personal + work).lines == [large + large, small])
     }
+
+    /// A day keeps one line per project, so a sum over days never drops the
+    /// split a day carries.
+    @Test func `should keep one line per project when two days of one date add up`() {
+        let marron = ProjectUsageLine(project: "marron", totalTokens: 100, cost: 2)
+        let api = ProjectUsageLine(project: "api", totalTokens: 50, cost: 3)
+        let personal = DailyUsageStat(date: date, totalCost: 5, totalTokens: 150, workingTime: 0, sessionCount: 1,
+                                      projects: [marron])
+        let work = DailyUsageStat(date: date, totalCost: 3, totalTokens: 50, workingTime: 0, sessionCount: 1,
+                                  projects: [marron, api])
+
+        #expect((personal + work).projects == [api, marron + marron])
+    }
+
+    /// A day with a split added to one without keeps the other's spend as
+    /// the sum's remainder, never as more of a named project.
+    @Test func `should keep a day without a split as the remainder of the sum`() {
+        let marron = ProjectUsageLine(project: "marron", totalTokens: 100, cost: 2)
+        let split = DailyUsageStat(date: date, totalCost: 2, totalTokens: 100, workingTime: 0, sessionCount: 1,
+                                   projects: [marron])
+        let unsplit = DailyUsageStat(date: date, totalCost: 3, totalTokens: 50, workingTime: 0, sessionCount: 1)
+
+        #expect((split + unsplit).projectSplit == [marron, ProjectUsageLine(project: "", totalTokens: 50, cost: 3)])
+    }
 }

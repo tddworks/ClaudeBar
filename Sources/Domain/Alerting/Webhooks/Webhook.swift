@@ -39,8 +39,9 @@ public enum WebhookDelivery: Sendable, Equatable {
 }
 
 /// One URL the person owns, with how and what it is sent. It has no percent of
-/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide, and
-/// the week's recap when `RecapAlerts` says it is due
+/// its own: it sends the alerts `QuotaAlerts` and `StatusAlerts` decide, the
+/// week's recap when `RecapAlerts` says it is due, and a sign-out
+/// `SignedOutAlerts` tells
 /// ([design](docs/features/alerting/webhooks/design.md)).
 public struct Webhook: Sendable, Equatable, Identifiable {
     /// Which logins' alerts it sends.
@@ -54,19 +55,22 @@ public struct Webhook: Sendable, Equatable, Identifiable {
     public struct Sends: Sendable, Equatable {
         public var quotaAlerts: Bool
         public var statusAlerts: Bool
-        /// The week that closed, each calendar week turn — a third kind of
-        /// send is a field here and a case in `WebhookBody`, and nothing else
+        /// The week that closed, each calendar week turn — a new kind of send
+        /// is a field here and a case in `WebhookBody`, and nothing else
         /// moves ([recap alerts](docs/features/alerting/recap-alerts/design.md)).
         public var recap: Bool
+        /// A login whose sign-in ended ([signed out](docs/features/alerting/signed-out/design.md)).
+        public var signedOutAlerts: Bool
 
-        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false) {
+        public init(quotaAlerts: Bool, statusAlerts: Bool, recap: Bool = false, signedOutAlerts: Bool = false) {
             self.quotaAlerts = quotaAlerts
             self.statusAlerts = statusAlerts
             self.recap = recap
+            self.signedOutAlerts = signedOutAlerts
         }
 
         /// No kind at all: a webhook that would never send.
-        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap }
+        public var isNothing: Bool { !quotaAlerts && !statusAlerts && !recap && !signedOutAlerts }
     }
 
     public let id: String
@@ -101,6 +105,7 @@ public struct Webhook: Sendable, Equatable, Identifiable {
         let sendsKind = switch alert {
         case .quota: sends.quotaAlerts
         case .status: sends.statusAlerts
+        case .signedOut: sends.signedOutAlerts
         }
         guard sendsKind else { return false }
         return switch scope {

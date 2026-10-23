@@ -196,6 +196,44 @@ struct UsageLogTests {
         #expect(again == definition)
     }
 
+    // MARK: - The record's project (quota-by-project design §3)
+
+    /// ClaudeBar's word for where a record was spent: the shape names the
+    /// field of the working directory, read like the model.
+    @Test func `should attribute each record to the project its log names`() async throws {
+        let withDirectory = UsageLog.Definition(
+            records: UsageLog.Records(
+                files: "~/.acme/sessions/**/*.jsonl",
+                where: Match(path: "$.kind", equals: .string("reply")),
+                at: "$.at",
+                model: "$.reply.model",
+                project: "$.dir",
+                tokens: UsageLog.Tokens(input: "$.reply.usage.in", output: "$.reply.usage.out")
+            ),
+            prices: UsageLog.Prices(file: "acme-prices.json")
+        )
+        try write([#"{"kind":"reply","reply":{"model":"m","usage":{"in":1000,"out":500}},"dir":"/Users/me/code/marron","at":"\#(stamp())"}"#,
+                   #"{"kind":"reply","reply":{"model":"m","usage":{"in":100,"out":50}},"dir":"/Users/me/code/api","at":"\#(stamp(60))"}"#,
+                   #"{"kind":"reply","reply":{"model":"m","usage":{"in":10,"out":5}},"at":"\#(stamp(120))"}"#])
+
+        let today = await log(withDirectory).days(last: 1)[0]
+
+        #expect(today.projectSplit.map(\.project) == ["api", "marron", ""])
+        #expect(today.projectSplit.reduce(0) { $0 + $1.spend.totalTokens } == today.totalTokens)
+    }
+
+    @Test func `should keep a definition that names no project exactly as it was written`() throws {
+        let json = #"""
+        { "records": { "files": "~/x/*.jsonl", "at": "$.at", "model": "$.m", "tokens": { "total": "$.n" } } }
+        """#
+        let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8))
+
+        let written = try String(data: JSONEncoder().encode(definition), encoding: .utf8)!
+
+        #expect(!written.contains("project"))
+        #expect(written.contains(#""model":"$.m""#))
+    }
+
     @Test func `should read other apps in a usage history with their label and own records, and no prices`() throws {
         let json = #"""
         { "records": { "files": "~/x/*.jsonl", "at": "$.at", "tokens": { "total": "$.n" } },

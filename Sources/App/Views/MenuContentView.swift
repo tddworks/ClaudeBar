@@ -1318,8 +1318,9 @@ struct MenuContentView: View {
         let lastThirtyDays = settings.isShown(.lastThirtyDays) ? history?.lastThirtyDays : nil
         let heatmapYear = settings.isShown(.lastYear) ? history?.lastYear : nil
         let mixYear = settings.isShown(.modelMix) ? history?.lastYear.flatMap { $0.hasModels ? $0 : nil } : nil
+        let projectYear = settings.isShown(.projectMix) ? history?.lastYear.flatMap { ByProject(of: $0, in: $0.defaultUnit).isEmpty ? nil : $0 } : nil
         if titled,
-           report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil {
+           report != nil || !apps.isEmpty || lastThirtyDays != nil || heatmapYear != nil || mixYear != nil || projectYear != nil {
             HStack {
                 sectionTitle("TODAY'S USAGE")
                 Spacer(minLength: 0)
@@ -1360,14 +1361,18 @@ struct MenuContentView: View {
             UsageHistoryChartView(days: lastThirtyDays)
         }
 
-        // …and the shape of the last year: the heatmap, and the models it
-        // leans on. Both read the same range, `Days` answering; the year is
-        // read only while one of them is shown (`readsTheYear(of:when:)`).
+        // …and the shape of the last year: the heatmap, the models it
+        // leans on, and the projects the work went to. All read the same
+        // range, `Days` answering; the year is read only while one of them
+        // is shown (`readsTheYear(of:when:)`).
         if let heatmapYear {
             UsageInsightsHeatmapView(days: heatmapYear)
         }
         if let mixYear {
             ModelMixView(days: mixYear)
+        }
+        if let projectYear {
+            ProjectMixView(days: projectYear)
         }
     }
 

@@ -340,7 +340,9 @@ the rest load.
 (refreshing it when the lookup says so), fetch, map. On failure the provider
 tries the active data source's `fallback` once. Success replaces `snapshot`
 and clears `lastError`; failure sets `lastError` and **keeps `snapshot`**. After
-a success the Monitor tells its refresh observers (`onRefreshed`) — its one
+a success the Monitor tells its refresh observers (`onRefreshed`), and after a
+failure of a login that isn't paused, its failure observers (`onRefreshFailed`,
+which [Signed out](../features/alerting/signed-out/design.md) reads) — its
 extension point, so a feature that follows refreshes (In use, §11) never edits
 the Monitor.
 

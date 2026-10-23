@@ -29,6 +29,18 @@ struct WebhookBodyTests {
         #expect(try slackText(.alert(status)) == "Claude · work is critical — was warning")
     }
 
+    @Test func `should say in Slack that a login signed out, and what to run`() throws {
+        let alert = Alert.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude",
+                                                   hint: "Run `claude` in terminal to log in again."))
+        #expect(try slackText(.alert(alert))
+                == "Claude · work signed out: sign in again — Run `claude` in terminal to log in again.")
+    }
+
+    @Test func `should say in Slack only to sign in again when the provider gives no hint`() throws {
+        let alert = Alert.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude", hint: nil))
+        #expect(try slackText(.alert(alert)) == "Claude · work signed out: sign in again")
+    }
+
     @Test func `should label a test as a test in Slack`() throws {
         #expect(try slackText(.test) == "ClaudeBar test — this webhook works. No quota was judged.")
     }
@@ -58,6 +70,21 @@ struct WebhookBodyTests {
         #expect(body["left"] is NSNull)
     }
 
+    @Test func `should send a signed-out alert as JSON with what to run`() throws {
+        let alert = Alert.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude",
+                                                   hint: "Run `claude` in terminal to log in again."))
+        let body = try json(.alert(alert))
+
+        #expect(body["type"] as? String == "signedOut")
+        #expect(body["provider"] as? String == "claude")
+        #expect(body["login"] as? String == "Claude · work")
+        #expect(body["hint"] as? String == "Run `claude` in terminal to log in again.")
+        #expect(body["below"] is NSNull)
+        #expect(body["left"] is NSNull)
+        #expect(body["status"] is NSNull)
+        #expect(body["was"] is NSNull)
+    }
+
     @Test func `should send a test as JSON naming no login`() throws {
         let body = try json(.test)
 
@@ -68,9 +95,14 @@ struct WebhookBodyTests {
         #expect(body["status"] is NSNull)
     }
 
-    @Test(arguments: [WebhookBody.Message.test, .alert(Alert.quota(QuotaAlert(login: "C", providerId: "c", below: 1, left: 0)))])
+    @Test(arguments: [
+        WebhookBody.Message.test,
+        .alert(Alert.quota(QuotaAlert(login: "C", providerId: "c", below: 1, left: 0))),
+        .alert(Alert.signedOut(SignedOutAlert(login: "C", providerId: "c", hint: nil))),
+    ])
     func `should state every key on every JSON send`(message: WebhookBody.Message) throws {
-        #expect(Set(try json(message).keys) == ["type", "provider", "login", "below", "left", "status", "was", "sentAt"])
+        #expect(Set(try json(message).keys) ==
+                ["type", "provider", "login", "below", "left", "status", "was", "hint", "sentAt"])
     }
 
     // MARK: - The recap

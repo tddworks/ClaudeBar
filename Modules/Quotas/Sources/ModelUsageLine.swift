@@ -1,53 +1,51 @@
 import Foundation
 
-/// One model's share of a day: the tokens it spent and what they cost — the
-/// line a chart stacks (daily-usage design §1: a `Cost` with a line per
-/// model). A day has lines only when its log names models; a record without
-/// a declared model stays in the day's totals alone.
+/// One model's share of a day: the model and what it spent — the line a
+/// chart stacks (daily-usage design §1: a `Cost` with a line per model). A
+/// day has lines only when its log names models; records without a declared
+/// model are the unnamed line, so the lines add up to the day.
 ///
 /// - Note: Interim — today's shape, the line of the final `Day`
 ///   (docs/architecture/CANONICAL_MODEL.md §7).
-public struct ModelUsageLine: Sendable, Equatable, Codable {
-    /// The model as the log names it.
+public struct ModelUsageLine: UsageLine, Codable {
+    /// The model as the log names it; `""` for the unnamed line.
     public let model: String
-    public let inputTokens: Int
-    public let outputTokens: Int
-    public let cacheCreationTokens: Int
-    public let cacheReadTokens: Int
-    /// The day's token meaning — input and output, or the log's own total
-    /// when it keeps only that.
-    public let totalTokens: Int
-    public let cost: Decimal
+    public let spend: Spend
 
+    public var name: String { model }
+
+    public init(model: String, spend: Spend) {
+        self.model = model
+        self.spend = spend
+    }
+
+    public init(name: String, spend: Spend) {
+        self.init(model: name, spend: spend)
+    }
+
+    /// A line from its counts — the shape a tally is written in.
     public init(model: String, inputTokens: Int = 0, outputTokens: Int = 0, cacheCreationTokens: Int = 0,
                 cacheReadTokens: Int = 0, totalTokens: Int = 0, cost: Decimal = 0) {
-        self.model = model
-        self.inputTokens = inputTokens
-        self.outputTokens = outputTokens
-        self.cacheCreationTokens = cacheCreationTokens
-        self.cacheReadTokens = cacheReadTokens
-        self.totalTokens = totalTokens
-        self.cost = cost
+        self.init(model: model, spend: Spend(inputTokens: inputTokens, outputTokens: outputTokens,
+                                             cacheCreationTokens: cacheCreationTokens, cacheReadTokens: cacheReadTokens,
+                                             totalTokens: totalTokens, cost: cost))
     }
 
-    /// Two lines of one model as one: every count and the cost added, so a
-    /// sum over days never drops a field a day holds.
-    public static func + (lhs: ModelUsageLine, rhs: ModelUsageLine) -> ModelUsageLine {
-        precondition(lhs.model == rhs.model, "only lines of one model add up")
-        return ModelUsageLine(
-            model: lhs.model,
-            inputTokens: lhs.inputTokens + rhs.inputTokens,
-            outputTokens: lhs.outputTokens + rhs.outputTokens,
-            cacheCreationTokens: lhs.cacheCreationTokens + rhs.cacheCreationTokens,
-            cacheReadTokens: lhs.cacheReadTokens + rhs.cacheReadTokens,
-            totalTokens: lhs.totalTokens + rhs.totalTokens,
-            cost: lhs.cost + rhs.cost
-        )
+    /// A day's model lines, as the day keeps them.
+    public static func split(of day: DailyUsageStat) -> [ModelUsageLine] { day.lines }
+
+    private enum CodingKeys: String, CodingKey { case model }
+
+    /// Flat, as kept days were written: the model beside its spend's counts.
+    public init(from decoder: Decoder) throws {
+        model = try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .model)
+        spend = try Spend(from: decoder)
     }
 
-    /// "$1.50" — the line's cost.
-    public var formattedCost: String {
-        MoneyFormat.string(cost)
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(model, forKey: .model)
+        try spend.encode(to: encoder)
     }
 
     /// The model's name for a tight row, by a mechanical rule, no vendor

@@ -48,10 +48,12 @@ struct ClaudeUsageHistoryTests {
     }
 
     private static func line(_ model: String = "claude-sonnet-4-6", input: Int = 1000, output: Int = 500, cacheWrite: Int = 0,
-                             cacheRead: Int = 0, message: String? = nil, request: String? = nil, at: Date = Date()) -> String {
+                             cacheRead: Int = 0, message: String? = nil, request: String? = nil, at: Date = Date(),
+                             cwd: String? = nil) -> String {
         let requestId = request.map { #""requestId":"\#($0)","# } ?? ""
         let messageId = message.map { #""id":"\#($0)","# } ?? ""
-        return #"{"type":"assistant",\#(requestId)"message":{\#(messageId)"model":"\#(model)","usage":{"input_tokens":\#(input),"output_tokens":\#(output),"cache_creation_input_tokens":\#(cacheWrite),"cache_read_input_tokens":\#(cacheRead)}},"timestamp":"\#(stamp(at))"}"#
+        let directory = cwd.map { #""cwd":"\#($0)","# } ?? ""
+        return #"{"type":"assistant",\#(requestId)"message":{\#(messageId)"model":"\#(model)","usage":{"input_tokens":\#(input),"output_tokens":\#(output),"cache_creation_input_tokens":\#(cacheWrite),"cache_read_input_tokens":\#(cacheRead)}},\#(directory)"timestamp":"\#(stamp(at))"}"#
     }
 
     @Test func `should show today's tokens and cost from Claude Code's session logs`() async throws {
@@ -111,6 +113,18 @@ struct ClaudeUsageHistoryTests {
         let line = Self.line()
         try write([line, line].joined(separator: "\n"))
         #expect(try await report().today.totalTokens == 3000)
+    }
+
+    // MARK: - Quota by project (the record's cwd)
+
+    @Test func `should attribute today's records to the projects they were spent in`() async throws {
+        try write([Self.line(message: "a", request: "1", cwd: "/Users/me/workspaces/ClaudeBar/marron"),
+                   Self.line(message: "b", request: "2", cwd: "/Users/me/workspaces/api"),
+                   Self.line(message: "c", request: "3")].joined(separator: "\n"))
+        let today = try await report().today
+
+        #expect(today.projectSplit.map(\.project) == ["api", "marron", ""])
+        #expect(today.projectSplit.reduce(0) { $0 + $1.spend.totalTokens } == today.totalTokens)
     }
 
     // MARK: - Prices from claude-prices.json

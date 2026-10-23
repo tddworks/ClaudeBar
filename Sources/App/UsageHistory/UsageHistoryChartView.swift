@@ -246,7 +246,7 @@ struct UsageHistoryChartView: View {
         days.stats.flatMap { day -> [Segment] in
             switch shownSplit {
             case .models:
-                day.lines.map { Segment(date: day.date, kind: $0.model, value: days.value(of: $0, in: shownCount)) }
+                day.lines.map { Segment(date: day.date, kind: $0.model, value: $0.spend.value(in: shownCount)) }
             case .kind:
                 switch shownCount {
                 case .cost:
@@ -311,7 +311,7 @@ struct UsageHistoryChartView: View {
                         .font(theme.font(size: 9, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
-                    Text(unit(days.value(of: line, in: shownCount)))
+                    Text(unit(line.spend.value(in: shownCount)))
                         .font(theme.font(size: 9, weight: .semibold))
                         .foregroundStyle(theme.textPrimary)
                 }

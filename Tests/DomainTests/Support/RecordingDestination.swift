@@ -16,4 +16,9 @@ final class RecordingDestination: AlertDestination, @unchecked Sendable {
     var statusAlerts: [StatusAlert] {
         alerts.compactMap { if case .status(let alert) = $0 { alert } else { nil } }
     }
+
+    /// The signed-out alerts it heard, in order.
+    var signedOutAlerts: [SignedOutAlert] {
+        alerts.compactMap { if case .signedOut(let alert) = $0 { alert } else { nil } }
+    }
 }

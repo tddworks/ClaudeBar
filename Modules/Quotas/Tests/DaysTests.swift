@@ -60,16 +60,6 @@ struct DaysTests {
         #expect(days.value(of: mixed, in: .cache) == 50)
     }
 
-    @Test func `should read a line's part in the unit asked`() {
-        let line = ModelUsageLine(model: "claude-opus-4-6", inputTokens: 100, cacheCreationTokens: 10,
-                                  cacheReadTokens: 40, totalTokens: 120, cost: 12)
-        let days = Days([day(12, lines: [line], tokens: 120)], knowsCost: true)
-
-        #expect(days.value(of: line, in: .cost) == 12)
-        #expect(days.value(of: line, in: .tokens) == 120)
-        #expect(days.value(of: line, in: .cache) == 50)
-    }
-
     @Test func `should offer cost when the log prices its records and a day holds one`() {
         let days = Days([day(15, lines: [opus]), day(0, lines: [])], knowsCost: true)
 
