@@ -560,10 +560,7 @@ public final class QuotaMonitor {
     /// The selected tab's status: its healthiest unpaused login's, for a
     /// product's logins are interchangeable (CANONICAL §5); `nil` while no
     /// unpaused login has usage.
-    public var selectedTabStatus: QuotaStatus? {
-        if let tab = selectedTab { return status(of: tab.provider) }
-        return selectedLogin.flatMap { status(of: $0) }
-    }
+    public var selectedTabStatus: QuotaStatus? { selectedTab.flatMap { status(of: $0.provider) } }
 
     /// What the popover's header says about the selected tab — the tab's own
     /// answer, with the status the person's policy gives its unpaused logins.
