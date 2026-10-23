@@ -18,7 +18,7 @@ public struct Pool: Sendable, Equatable {
         /// `<provider>.<acct>`).
         public let loginId: String
         /// The share left, in percent — the login's tightest window's, the
-        /// number its card already shows.
+        /// number its card leads with (`Account.percentLeft`).
         public let percent: Double
 
         public init(loginId: String, percent: Double) {
@@ -30,7 +30,10 @@ public struct Pool: Sendable, Equatable {
     /// The shares, one per counted login, in the person's login order.
     public let shares: [Share]
 
-    public init(shares: [Share]) {
+    /// A pool from these shares — `nil` below two: one login's room is that
+    /// login's card, not a pool.
+    public init?(shares: [Share]) {
+        guard shares.count > 1 else { return nil }
         self.shares = shares
     }
 
@@ -52,19 +55,15 @@ extension Accounts {
     /// together?* A derived read beside `status` · `best` · `cause`, and the
     /// one place the sum is made.
     ///
-    /// Each unpaused login brings the share it already shows — its tightest
-    /// window's, the number its card and its alerts read. A paused login is
-    /// out of every judgement, so it brings nothing; a login with no usage
-    /// yet, or one that shows only a balance with no ceiling, brings nothing
+    /// Each unpaused login brings the share it already shows — its
+    /// `percentLeft`, the number its card leads with. A paused login is out
+    /// of every judgement, so it brings nothing; a login with no usage yet,
+    /// or one that shows only a balance with no ceiling, brings nothing
     /// either — a share that isn't known is never guessed at zero or at a
-    /// hundred. `nil` below two unpaused logins: one login's room is that
-    /// login's card, not a pool.
+    /// hundred. `nil` below two shares (`Pool` keeps that law).
     public var pool: Pool? {
-        guard unpaused.count > 1 else { return nil }
-        let shares = unpaused.compactMap { login in
-            login.snapshot?.lowestQuota?.percentLeft.map { Pool.Share(loginId: login.id, percent: $0) }
-        }
-        guard !shares.isEmpty else { return nil }
-        return Pool(shares: shares)
+        Pool(shares: unpaused.compactMap { login in
+            login.percentLeft.map { Pool.Share(loginId: login.id, percent: $0) }
+        })
     }
 }

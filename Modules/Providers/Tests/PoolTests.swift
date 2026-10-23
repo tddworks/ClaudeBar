@@ -81,14 +81,38 @@ struct PoolTests {
     }
 
     @Test
-    func `should leave a balance with no ceiling out, for it has no share`() throws {
+    func `should offer no pool when a balance with no ceiling leaves one login with a share`() throws {
         let codex = try codex(withAdded: 1)
         codex.accounts[0].snapshot = seen(window(62))
         codex.accounts[1].snapshot = seen(balance(12))
 
+        #expect(codex.accounts.pool == nil)
+    }
+
+    @Test
+    func `should leave a balance with no ceiling out, for it has no share`() throws {
+        let codex = try codex(withAdded: 2)
+        codex.accounts[0].snapshot = seen(window(62))
+        codex.accounts[1].snapshot = seen(balance(12))
+        codex.accounts[2].snapshot = seen(window(88))
+
         let pool = try #require(codex.accounts.pool)
-        #expect(pool.percent == 62)
-        #expect(pool.count == 1)
+        #expect(pool.percent == 150)
+        #expect(pool.count == 2)
+    }
+
+    @Test
+    func `should make no pool from a single share`() {
+        #expect(Pool(shares: [Pool.Share(loginId: "codex", percent: 62)]) == nil)
+        #expect(Pool(shares: []) == nil)
+    }
+
+    @Test
+    func `should say a login showing only a balance has no share left`() throws {
+        let codex = try codex(withAdded: 0)
+        codex.accounts[0].snapshot = seen(balance(12))
+
+        #expect(codex.accounts[0].percentLeft == nil)
     }
 
     @Test

@@ -14,6 +14,7 @@ Each login counts by the number it already shows — its tightest window's perce
 
 - **Watched logins only.** A paused login is out of every judgement, the pool included — resume it and it counts again.
 - **Seen numbers only.** A login that hasn't reported yet, or that shows only a prepaid balance (dollars, no percent), is left out rather than guessed. Its card still shows what it has.
+- **Two or more.** The line shows once at least two logins bring a percent; one login's room is already on its own card.
 - **One product at a time.** Codex's pool sums Codex's logins; Claude's never mixes in.
 
 ## What it is not
