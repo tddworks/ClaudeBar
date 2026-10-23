@@ -8,7 +8,7 @@ import Observation
 /// ([design](docs/features/alerting/webhooks/design.md)).
 @MainActor
 @Observable
-public final class Webhooks: AlertDestination {
+public final class Webhooks: AlertDestination, RecapDestination {
     /// Why a webhook wasn't added or changed, for the card to word.
     public enum Refusal: Error, Equatable, Sendable {
         case address(WebhookAddress.Refusal)
@@ -115,6 +115,13 @@ public final class Webhooks: AlertDestination {
     /// Sends `alert` to every webhook that wants it, all at once.
     public func announce(_ alert: Alert) async {
         await deliver(.alert(alert), to: list.filter { $0.wants(alert) })
+    }
+
+    /// Sends the week's recap to every webhook that wants recaps, all at
+    /// once. Scope is never judged — the recap is one read across every
+    /// provider.
+    public func announce(_ recap: RecapAlert) async {
+        await deliver(.recap(recap), to: list.filter { $0.wants(recap) })
     }
 
     private func deliver(_ message: WebhookBody.Message, to webhooks: [Webhook]) async {

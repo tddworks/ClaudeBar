@@ -3,7 +3,7 @@ import Mockable
 import Subprocess
 
 // What an OS answers about programs (MODULAR_DESIGN §10), one question each.
-// A platform's adapter answers all five; `Processes` and `Program` above them
+// A platform's adapter answers all four; `Processes` and `Program` above them
 // find, run, talk and report the same way on every platform.
 
 /// Finds a program the person installed, as their terminal finds it.
@@ -39,11 +39,4 @@ protocol ChildLaunch: Sendable {
     /// How a child a conversation started is ended once the conversation
     /// is closed, before a last kill; a step gives the child its time.
     var teardown: [TeardownStep] { get }
-}
-
-/// The programs running now.
-@Mockable
-protocol RunningPrograms: Sendable {
-    /// Their executable paths.
-    func paths() -> [String]
 }

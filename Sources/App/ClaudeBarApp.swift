@@ -163,6 +163,17 @@ struct ClaudeBarApp: App {
         quotaAlerts.follow(monitor)
         // *Status alerts* follow every refresh: a login's status got worse under the policy.
         StatusAlerts(destination: destinations).follow(monitor)
+        // The weekly recap reads the lineup's usage history when the All page
+        // asks; it decides for itself when it is stale.
+        weeklyRecaps = WeeklyRecaps(monitor: monitor, calendar: DataSources.calendar())
+        // *Recap alerts* follow every refresh too: the calendar week turned,
+        // and the closed week's recap goes to the webhooks that want it.
+        RecapAlerts(destination: webhooks, recaps: weeklyRecaps,
+                    names: { [weak monitor] in
+                        Dictionary((monitor?.providers.all ?? []).map { ($0.id, $0.name) },
+                                   uniquingKeysWith: { first, _ in first })
+                    },
+                    memory: settingsRepository, calendar: DataSources.calendar()).follow(monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
         let sessionMonitor = SessionMonitor()
@@ -212,10 +223,6 @@ struct ClaudeBarApp: App {
         // Uploads only once the user joined; until then it reads nothing.
         leaderboard = AppLeaderboard(monitor: monitor)
         leaderboard.start()
-
-        // The weekly recap reads the lineup's usage history when the All page
-        // asks; it decides for itself when it is stale.
-        weeklyRecaps = WeeklyRecaps(monitor: monitor, calendar: DataSources.calendar())
 
         // Start hook server if hooks are enabled
         if settingsRepository.isHookEnabled() {

@@ -1,6 +1,10 @@
-#if os(macOS)
+#if canImport(Darwin) || canImport(Glibc)
 import Diagnostics
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import Foundation
 
 /// Ends a child a fetch started, within a bound (#550).
@@ -21,7 +25,7 @@ enum ChildTeardown {
         let ended = end(
             isRunning: { process.isRunning },
             terminate: { process.terminate() },
-            kill: { _ = Darwin.kill(pid, SIGKILL) },
+            kill: { _ = kill(pid, SIGKILL) },
             grace: grace,
             afterKill: afterKill
         )

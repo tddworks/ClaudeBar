@@ -113,12 +113,6 @@ struct ProcessesContract {
         #expect(throws: Never.self) { try FileManager.default.removeItem(at: file) }
     }
 
-    @Test func `should list the program this test runs in among those running`() throws {
-        let own = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().lastPathComponent
-        let names = try processes().running.paths().map { URL(fileURLWithPath: $0).lastPathComponent.lowercased() }
-        #expect(names.contains(own.lowercased()))
-    }
-
     @Test func `should read a variable as the person's login sets it`() async throws {
         let processes = try processes()
         let login = processes.loginEnvironment(runner: processes.pipes(ProcessEnvironment(set: ["CLAUDEBAR_CONTRACT": "a b"])),

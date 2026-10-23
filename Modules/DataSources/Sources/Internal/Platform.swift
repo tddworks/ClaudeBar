@@ -18,14 +18,14 @@ struct Platform: Sendable {
     /// Runs a CLI for a `cli` fetch or a CLI renewal.
     var runCLI: CLIFetcher.MakeExecutor?
     /// Finds and starts programs: `command`, `script`, `jsonRpc`, a `command`
-    /// log, a login-shell lookup and the programs a `localServer` looks for.
+    /// log and a login-shell lookup.
     var processes: Processes?
     /// Reads a `keychain` item.
     var keychain: KeychainReader.Security?
     var browserCookies: (any BrowserCookieReading)?
     var browserStorage: (any BrowserStorageReading)?
-    /// Talks to a server on this machine, for `localServer`.
-    var localNetwork: (any NetworkClient)?
+    /// Finds an app's own server on this machine and asks it, for `localServer`.
+    var localServers: LocalServers?
     /// Draws a terminal's raw output as the screen a person sees, for a
     /// `cli` fetch whose screen is `rendered`.
     var screenRenderer: (@Sendable (String) -> String)?
@@ -33,8 +33,6 @@ struct Platform: Sendable {
     var applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)?
     /// The separator accepted in this platform's filesystem paths.
     var pathSeparator: String
-    var localServer: LocalServerFactory?
-    var localServerCommands: LocalServerCommands?
 
     init(
         name: String,
@@ -44,12 +42,10 @@ struct Platform: Sendable {
         keychain: KeychainReader.Security? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
-        localNetwork: (any NetworkClient)? = nil,
+        localServers: LocalServers? = nil,
         screenRenderer: (@Sendable (String) -> String)? = nil,
         applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)? = nil,
-        pathSeparator: String = "/",
-        localServer: LocalServerFactory? = nil,
-        localServerCommands: LocalServerCommands? = nil
+        pathSeparator: String = "/"
     ) {
         self.name = name
         self.timeZone = timeZone
@@ -58,12 +54,10 @@ struct Platform: Sendable {
         self.keychain = keychain
         self.browserCookies = browserCookies
         self.browserStorage = browserStorage
-        self.localNetwork = localNetwork
+        self.localServers = localServers
         self.screenRenderer = screenRenderer
         self.applicationData = applicationData
         self.pathSeparator = pathSeparator
-        self.localServer = localServer
-        self.localServerCommands = localServerCommands
     }
 
     /// This platform's name and zone and no connection: what a test hands the
