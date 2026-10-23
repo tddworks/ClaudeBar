@@ -365,8 +365,8 @@ there, and the ports whose slice hasn't come (`Terminal`, `Secrets`,
 | Port | Takes over today's | Mac adapter | Windows adapter | Linux adapter |
 |---|---|---|---|---|
 | `TimeZone` | (new) | `TimeZone.current` | the zone's registry key, through CLDR: built ([#567](https://github.com/tddworks/ClaudeBar/pull/567)) | the zone Foundation reads from `/etc/localtime`: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
-| `Processes` | `runCommand` · `rpcTransport` · `processList` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers four facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) | `PATH`, `/bin/sh` for a script, `SIGTERM` then `SIGKILL` after 2 s: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
-| `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` | `proc_listallpids`, `pgrep`, `lsof`, `URLSession` trusting this machine's certificate | `EnumProcesses`, each process's command line from its process information, the TCP listener table, WinHTTP with the certificate checks off on that request: built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)). The OS answers four facts; finding the app and asking it are one neutral copy ([below](#localnetwork-an-apps-own-server)) | not yet: `/proc/<pid>/cmdline` and `/proc/net/tcp` with socket inodes, its own follow-up; `LocalNetworkContract` is skipped, saying why |
+| `Processes` | `runCommand` · `rpcTransport` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers four facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) | `PATH`, `/bin/sh` for a script, `SIGTERM` then `SIGKILL` after 2 s: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
+| `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` · `processList` | `proc_listallpids`, `pgrep`, `lsof`, `URLSession` trusting this machine's certificate | `EnumProcesses`, each process's command line from its process information, the TCP listener table, WinHTTP with the certificate checks off on that request: built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)). The OS answers four facts; finding the app and asking it are one neutral copy ([below](#localnetwork-an-apps-own-server)) | not yet: `/proc/<pid>/cmdline` and `/proc/net/tcp` with socket inodes, its own follow-up; `LocalNetworkContract` is skipped, saying why |
 | `Terminal` | `runCLI` · `screenRenderer` | a pty (`openpty`, one at a time), its CLI started and read by `PtySession`; SwiftTerm renders | a pseudo console (ConPTY), the CLI created attached to it in a job that ends its whole tree; SwiftTerm renders: built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)). The OS starts the CLI in its terminal; typing, reading until the screen settles and rendering are one neutral copy ([below](#terminal-a-clis-screen)) | a pty (`posix_openpt`) through the same `PtySession`, and SwiftTerm's core |
 | `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 | `secret-tool`, the way the leaderboard's key store proved; cookies and storage `Unavailable` |
 | `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) | `$XDG_DATA_HOME`, else `~/.local/share`, `/`: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
@@ -430,14 +430,16 @@ DOMAIN, neutral, one copy
   LocalServers         the four facts below, and a client that asks only here
     .fetcher(for:)   → LocalServerFetcher   find, read values, try ports and paths
     .commands(for:)  → what Import discloses: the programs reading the facts runs
-  LoopbackClient       refuses an address off this machine before sending; follows
-                       a redirect only within the same scheme, host and port
+  LoopbackClient       refuses an address off this machine before sending (isLoopback,
+                       the rule each adapter reads too); follows a redirect only
+                       within the same origin (SameOriginRedirectDelegate.sameOrigin)
 PORTS, Ports/LocalNetwork.swift                    Mac                     │ Windows
   RunningPrograms      paths()                     proc_listallpids        │ EnumProcesses
   ProgramCommandLines  commandLines(naming:)       pgrep -a -lf            │ NtQueryInformationProcess
   ListeningPorts       ports(of:)                  lsof -iTCP -sTCP:LISTEN │ GetExtendedTcpTable
   LoopbackRequests     send(_:) → no redirect      URLSession, any cert    │ WinHTTP, cert checks off
-                       followed                    on 127.0.0.1            │ on that request
+                       followed; a host off this   on 127.0.0.1            │ on that request
+                       machine refused, unsent
 ```
 
 - **Windows runs no program to find an app.** Its command lines and ports
