@@ -27,6 +27,7 @@ MASKS = {
     'OmpIcon': ('dark', 100, .12),
     'MistralIcon': ('light', 245, .10),
     'KimiIcon': ('light', 230, .12),
+    'AlibabaIcon': ('light', 230, .12),
     'GeminiIcon': ('blue', 35, .08),
 }
 
