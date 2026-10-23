@@ -19,7 +19,7 @@ struct JSONSettingsRepositoryWebhookTests {
                                host: "hooks.slack.com", delivery: .sent(at: Date()))
     private let script = Webhook(id: "7A11", name: "pause-jobs", channel: .json, scope: .provider("claude"),
                                  sends: Webhook.Sends(quotaAlerts: false, statusAlerts: false, recap: true,
-                                                      loginExpiryAlerts: true),
+                                                      signedOutAlerts: true),
                                  isOn: false)
 
     @Test func `should have no webhooks until the person adds one`() {
@@ -58,10 +58,10 @@ struct JSONSettingsRepositoryWebhookTests {
         #expect(saved["quotaAlerts"] as? Bool == true)
         #expect(saved["statusAlerts"] as? Bool == false)
         #expect(saved["recap"] as? Bool == false)
-        #expect(saved["loginExpiryAlerts"] as? Bool == false)
+        #expect(saved["signedOutAlerts"] as? Bool == false)
         #expect(saved["isOn"] as? Bool == true)
         #expect(Set(saved.keys) == ["id", "name", "channel", "provider", "quotaAlerts", "statusAlerts", "recap",
-                                    "loginExpiryAlerts", "isOn"])
+                                    "signedOutAlerts", "isOn"])
     }
 
     @Test func `should read an old saved webhook as sending neither of the kinds that came later`() throws {
@@ -76,7 +76,7 @@ struct JSONSettingsRepositoryWebhookTests {
         #expect(saved.sends.quotaAlerts)
         #expect(saved.sends.statusAlerts)
         #expect(!saved.sends.recap)
-        #expect(!saved.sends.loginExpiryAlerts)
+        #expect(!saved.sends.signedOutAlerts)
     }
 
     @Test func `should skip a saved webhook whose channel it doesn't know`() throws {

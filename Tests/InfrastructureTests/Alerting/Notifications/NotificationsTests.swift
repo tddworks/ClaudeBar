@@ -74,28 +74,29 @@ struct NotificationsTests {
         #expect(sent.body == "Your Claude · work quota is depleted. Usage may be blocked.")
     }
 
-    // MARK: - Login expiry
+    // MARK: - Signed out
 
     @Test
-    func `should warn that a login expires in days, and say what to do`() async {
+    func `should say a login signed out, in the provider's own words for signing in again`() async {
         let sent = Sent()
 
         await Notifications(alertSender: sending(into: sent))
-            .announce(.loginExpiry(LoginExpiryAlert(login: "Claude · work", providerId: "claude", days: 3)))
+            .announce(.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude",
+                                                hint: "Run `claude` in terminal to log in again.")))
 
-        #expect(sent.title == "Claude · work Login Expiry")
-        #expect(sent.body == "Login expires in 3 days. Sign in again to renew it.")
-        #expect(sent.category == Notifications.loginExpiryCategory)
+        #expect(sent.title == "Claude · work signed out")
+        #expect(sent.body == "Run `claude` in terminal to log in again.")
+        #expect(sent.category == Notifications.signedOutCategory)
     }
 
     @Test
-    func `should say a login expires today when the day has come`() async {
+    func `should ask to sign in again when the provider gives no hint`() async {
         let sent = Sent()
 
         await Notifications(alertSender: sending(into: sent))
-            .announce(.loginExpiry(LoginExpiryAlert(login: "Claude · work", providerId: "claude", days: 0)))
+            .announce(.signedOut(SignedOutAlert(login: "Claude · work", providerId: "claude", hint: nil)))
 
-        #expect(sent.body == "Login expires today. Sign in again to renew it.")
+        #expect(sent.body == "Sign in again to see its usage.")
     }
 
     // MARK: - This Mac

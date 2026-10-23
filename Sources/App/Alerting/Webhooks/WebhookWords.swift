@@ -27,8 +27,8 @@ enum WebhookWords {
     static let statusAlertsHint = "When a login gets worse: running low, critically low, depleted"
     static let recap = "Weekly recap"
     static let recapHint = "When your week turns: the week that closed, across every provider"
-    static let loginExpiryAlerts = "Login expiry alerts"
-    static let loginExpiryAlertsHint = "Before a sign-in expires: 7 days, 3 days, and the day itself"
+    static let signedOutAlerts = "Signed-out alerts"
+    static let signedOutAlertsHint = "When a login's sign-in ends: sign in again"
     static let inKeychain = "Stored in the Keychain — a Slack URL carries a token. Never written to settings.json or a log."
     static let outsideKeychain = "This build can’t use the Keychain, so the URL is kept in ClaudeBar’s app credential store instead — not encrypted beyond your account’s file protection. A release build keeps it in the Keychain."
     static let listOutsideKeychain = "This build can’t use the Keychain, so these URLs are kept in the app credential store."
@@ -57,7 +57,7 @@ enum WebhookWords {
     static func sends(_ sends: Webhook.Sends) -> String {
         [sends.quotaAlerts ? quotaAlerts : nil, sends.statusAlerts ? statusAlerts : nil,
          sends.recap ? recap : nil,
-         sends.loginExpiryAlerts ? loginExpiryAlerts : nil]
+         sends.signedOutAlerts ? signedOutAlerts : nil]
             .compactMap { $0 }.joined(separator: " · ")
     }
 
