@@ -3,11 +3,11 @@ import Mockable
 import Testing
 @testable import Domain
 
-/// A product's status as the person sees it — the read *Auto-pause on empty*
-/// judges emptiness with: its healthiest counted login's — depleted only when
+/// A product's status as the person sees it — the one read the popover,
+/// the menu-bar icon and *Rest when empty* share: its healthiest counted login's — depleted only when
 /// every counted login is —, under the policy, with paused logins and logins
 /// without usage left out
-/// (docs/features/monitoring/auto-pause/design.md §2).
+/// (docs/features/monitoring/rest-when-empty/design.md §2).
 @MainActor
 @Suite
 struct QuotaMonitorProductStatusTests {
