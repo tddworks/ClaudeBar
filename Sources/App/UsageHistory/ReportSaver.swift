@@ -13,18 +13,17 @@ final class ReportSaver {
     /// Why the last save failed, until the person dismisses it.
     private(set) var failure: String?
 
-    /// Asks where to save `report`, writes it there and opens it.
+    /// Asks where to save `report`, writes it there and opens it. The app is
+    /// an accessory behind `LSUIElement`: without activating it first, the
+    /// panel never comes forward and the save seems to do nothing.
     func save(_ report: RecapHTMLReport) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.html]
         panel.nameFieldStringValue = report.fileName
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            MainActor.assumeIsolated {
-                guard let self, self.write(report, to: url) else { return }
-                NSWorkspace.shared.open(url)
-            }
-        }
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard write(report, to: url) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     /// Writes `report` to `url` at once, whole or not at all. A failed write

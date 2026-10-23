@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The recap's report saves**: the card's share button now opens the save panel — before, on a Mac where the popover was the app's only window, nothing happened. ([#637](https://github.com/tddworks/ClaudeBar/pull/637))
+
 ---
 
 ## [0.5.20] - 2026-10-23
