@@ -86,16 +86,10 @@ struct LocalAPIPane: View {
             title: title,
             subtitle: line
         ) {
-            Button {
+            SettingsActionButton(title: "Copy", iconName: "doc.on.doc", style: .secondary) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(line, forType: .string)
-            } label: {
-                Label("Copy", systemImage: "doc.on.doc")
-                    .labelStyle(.titleAndIcon)
-                    .font(theme.font(size: 11, weight: .medium))
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
             .accessibilityLabel("Copy \(title)")
         }
     }
