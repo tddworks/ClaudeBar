@@ -1,4 +1,4 @@
-#if os(macOS)
+#if canImport(Darwin) || canImport(Glibc)
 import Testing
 import Foundation
 @testable import DataSources

@@ -442,10 +442,14 @@ the folder from its app-data root; missing connections still fail as named
 `Unavailable`. Since phase 5's slice 2 (#579) both reach programs through
 `Processes`: a worker finds a `Program` and tells it to run or talk, one
 copy for every platform, while each OS answers only how a CLI is found, how
-a script starts, how its login is read, how a child is launched and ended,
-and what is running (MODULAR_DESIGN §10). Windows runs a script as the file
-itself and reads a login variable through the PowerShell profile. Windows still has no
-pseudo-terminal or local-server discovery (slices 3 and 4).
+a script starts, how its login is read, and how a child is launched and
+ended (MODULAR_DESIGN §10). Windows runs a script as the file itself and
+reads a login variable through the PowerShell profile. Since slice 3 (#588)
+a `localServer` fetch is one `LocalServerFetcher` on every platform too: the
+OS answers what is running, its command lines and listening ports, and
+sends one request trusting the certificate a server on this machine
+presents. Windows reads them from the kernel and asks through WinHTTP, with
+no program run, and runs a `cli` fetch in a pseudo console (slice 4).
 
 ```text
 "path": ["{{platform.appData}}/JetBrains/*/options/AIAssistantQuotaManager2.xml",

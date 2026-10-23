@@ -8,13 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **An app's own server on Windows**: a provider reading an app's server on this machine, as Antigravity's `local` source does, now reads it on Windows, running no program to find it. Mac quotas are unchanged. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms) ([#590](https://github.com/tddworks/ClaudeBar/pull/590))
 - **A quota turns low when it will run out before it resets**: with the warning on, colours and alerts follow the forecast, so a quota on pace is never marked low and the threshold setting is gone. ([#613](https://github.com/tddworks/ClaudeBar/pull/613)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota/status-colors/README.md)
 
 ### Fixed
 - **Alibaba shows the Alibaba Cloud logo**: the provider's card, popover and menu bar carried a question-mark placeholder; now the official mark sits on the brand-orange tile, in light and dark. ([#622](https://github.com/tddworks/ClaudeBar/pull/622))
 
 ### Added
+- **Linux runs a CLI fetch on a pseudo-terminal**: Claude's and Kimi's CLI sources and Codex's tty fallback read their screen there as the Mac does — the Mac's interactive session became one copy, and Linux answers it with a pty of its own. ([#615](https://github.com/tddworks/ClaudeBar/pull/615)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)
+- **A product's logins sum to one pool**: from two logins, the popover adds what its logins have left — "340% left across 3 logins". ([#617](https://github.com/tddworks/ClaudeBar/pull/617)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/providers/quota-pools/README.md)
 - **A product can turn its own switch off when empty**: turn on *Turn off when empty* per product and ClaudeBar turns the switch off when every login has run out — and back on at the first refresh that shows room again, with a notification both times. ([#619](https://github.com/tddworks/ClaudeBar/pull/619)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/auto-pause/README.md)
+- **Recap by webhook**: at the first refresh after your week turns, the weekly recap travels to your webhooks — a one-line Slack message or a full JSON body, next to your quota alerts. Same Webhooks settings, a new "Weekly recap" tick. ([#620](https://github.com/tddworks/ClaudeBar/pull/620)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/alerting/recap-alerts/README.md)
+- **Windows reads a CLI's screen**: Claude's and Kimi's CLI sources and Codex's tty fallback run in a pseudo console there, typed into and rendered as on the Mac. ([#625](https://github.com/tddworks/ClaudeBar/pull/625)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#terminal-a-clis-screen)
 
 ---
 

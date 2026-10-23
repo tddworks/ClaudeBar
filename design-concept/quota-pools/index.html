@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quota pools — design</title>
+<style>
+:root{--g-bg:linear-gradient(135deg,#20222B,#2B2033);--g-card:rgba(255,255,255,.09);--g-border:rgba(255,255,255,.22);
+  --g-text:#F5F0FF;--g-muted:rgba(245,240,255,.62);--g-faint:rgba(245,240,255,.42);
+  --ok:#5BD98A;--warn:#FFD84D;--amber:#E8A33D}
+@media (prefers-color-scheme: light){:root{--g-bg:linear-gradient(135deg,#EEF1F6,#E7E3F0);--g-card:rgba(255,255,255,.75);
+  --g-border:rgba(30,27,46,.16);--g-text:#1E1B2E;--g-muted:rgba(30,27,46,.62);--g-faint:rgba(30,27,46,.45)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--g-bg);color:var(--g-text);font:500 15px/1.5 -apple-system,system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;gap:28px;padding:40px 16px 64px}
+h1{font-size:24px;font-weight:800;letter-spacing:-.01em;margin:0}
+p.note{max-width:640px;margin:0;color:var(--g-muted);font-size:13px;text-align:center}
+.tab{max-width:390px;width:100%;background:var(--g-card);border:1px solid var(--g-border);border-radius:18px;
+  padding:16px;display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;align-items:center;gap:6px;overflow:hidden}
+.chips .label{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--g-faint)}
+.chip{display:flex;align-items:center;gap:4px;height:25px;padding:0 10px;border-radius:12px;
+  background:var(--g-card);border:1px solid var(--g-border);font-size:11px;font-weight:600;white-space:nowrap}
+.chip .dot{width:6px;height:6px;border-radius:3px}
+.chip.use{color:var(--g-muted);font-weight:800;font-size:10px}
+.pool{font-size:10px;font-weight:600;color:var(--g-muted)}
+.card{border:1px solid var(--g-border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.card .who{display:flex;justify-content:space-between;align-items:baseline}
+.card .who b{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.card .who .st{font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--g-ok);color:var(--ok)}
+.card .who .st.warn{color:var(--warn)}
+.row{display:flex;gap:8px}
+.q{flex:1;border:1px solid var(--g-border);border-radius:9px;padding:7px 9px}
+.q .n{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--g-faint);text-transform:uppercase}
+.q .v{font-size:14px;font-weight:800}
+.paused{display:flex;align-items:center;gap:8px;border:1px solid var(--g-border);border-radius:10px;padding:8px 10px;
+  color:var(--g-faint);font-size:11px}
+.paused .av{width:18px;height:18px;border-radius:9px;background:var(--g-card);display:grid;place-items:center;font-size:8px;font-weight:800}
+.paused .resume{margin-left:auto;color:var(--g-muted);font-weight:700;font-size:11px}
+.rule{max-width:640px;color:var(--g-muted);font-size:12px;text-align:center}
+code{font:600 12px/1.4 ui-monospace,Menlo,monospace;color:var(--g-text)}
+</style>
+</head>
+<body>
+<h1>Quota pools</h1>
+<p class="note">One line under the ACCOUNTS chips: what the product's logins have left, together.
+It renders the domain's sum (<code>Accounts.pool</code>) and decides nothing.</p>
+
+<div class="tab">
+  <div class="chips">
+    <span class="label">ACCOUNTS</span>
+    <span class="chip">Personal <span class="dot" style="background:var(--ok)"></span></span>
+    <span class="chip"><span style="font-size:8px;font-weight:800;background:rgba(232,163,61,.35);padding:2px 5px;border-radius:6px">IN USE</span> Work <span class="dot" style="background:var(--warn)"></span></span>
+    <span class="chip">Side <span class="dot" style="background:var(--ok)"></span></span>
+  </div>
+  <div class="pool">80% left across 2 logins</div>
+  <div class="card">
+    <div class="who"><b>Personal</b><span class="st">HEALTHY</span></div>
+    <div class="row">
+      <div class="q"><div class="n">Session</div><div class="v">62%</div></div>
+      <div class="q"><div class="n">Weekly</div><div class="v">88%</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="who"><b>Work — Acme</b><span class="st warn">WARNING</span></div>
+    <div class="row">
+      <div class="q"><div class="n">Session</div><div class="v">18%</div></div>
+      <div class="q"><div class="n">Weekly</div><div class="v">41%</div></div>
+    </div>
+  </div>
+  <div class="paused"><span class="av">S</span> Side <span class="resume">Resume</span></div>
+</div>
+
+<div class="rule">
+  The law that keeps it honest: <strong>a pool is a sum of shares</strong> — each login brings the share it
+  already shows, over 100 is fine and meaningful (the logins refill independently), and the sum is never
+  a forecast and never a percentage of anything bigger.
+  A paused login, a login with no usage yet, and a balance with no ceiling bring nothing — never guessed.
+</div>
+
+<div class="tab">
+  <div class="chips">
+    <span class="label">ACCOUNTS</span>
+    <span class="chip">Personal <span class="dot" style="background:var(--ok)"></span></span>
+    <span class="chip">Work <span class="dot" style="background:var(--ok)"></span></span>
+  </div>
+  <div class="pool">95% left across 1 login</div>
+</div>
+<p class="note">A balance-only login brings no share: the line says <em>across 1 login</em>,
+what the sum actually spans — never what the page shows.</p>
+</body>
+</html>

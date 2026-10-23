@@ -34,7 +34,6 @@ struct ProcessFactsTests {
         var platform = Platform(name: "Windows", timeZone: Zones.seoul)
         // Programs run, but a local server needs its own connection too.
         if local { platform.processes = Processes.running { _ in MockCLIExecutor() } }
-        platform.localNetwork = MockNetworkClient()
         let fetch: Fetch = local ? .localServer(localCall) : .script(scriptCall)
         let source = DataSources.make(
             DataSourceDefinition(kind: "acme", fetch: fetch, mapping: .usage(UsageMapping())),
@@ -93,7 +92,7 @@ struct ProcessFactsTests {
 
     #if os(Windows)
     @Test
-    func `should run a script as its own file and offer no local server on Windows`() {
+    func `should run a script as its own file, and find a local server without running a program, on Windows`() {
         #expect(DataSources.makeLoginShellEnvironment(cliExecutor: MockCLIExecutor()) != nil)
         #expect(Fetch.script(scriptCall).connection.commands == [["probe.sh"]])
         #expect(Fetch.localServer(localCall).connection.commands.isEmpty)

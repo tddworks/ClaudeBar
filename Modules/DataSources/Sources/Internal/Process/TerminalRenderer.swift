@@ -1,4 +1,3 @@
-#if os(macOS)
 import Foundation
 import SwiftTerm
 
@@ -49,6 +48,10 @@ public final class TerminalRenderer {
         // Enable convertEol to handle \n as \r\n (newline + carriage return)
         let options = TerminalOptions(cols: cols, rows: rows, convertEol: true, scrollback: scrollback)
         let terminal = Terminal(delegate: delegate, options: options)
+        // A mode the emulator doesn't know is logged with `print` in debug
+        // builds; Windows' pseudo console sets one (win32-input-mode) on every
+        // run, and the screen never depends on it.
+        terminal.silentLog = true
 
         // Feed the raw output to the terminal emulator
         terminal.feed(text: raw)
@@ -93,4 +96,3 @@ public final class TerminalRenderer {
             .joined(separator: "\n")
     }
 }
-#endif
