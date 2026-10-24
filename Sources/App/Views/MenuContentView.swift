@@ -2320,6 +2320,10 @@ struct PulsingStatusDot: View {
                     .frame(width: 16, height: 16)
                     .scaleEffect(1 + pulsePhase * 0.5)
                     .opacity(1 - pulsePhase)
+                    // Scoped to the ring: a `withAnimation(...repeatForever...)` transaction
+                    // can ride along with other state changes in the same update (the
+                    // popover's measured height) and animate them forever.
+                    .animation(.easeOut(duration: 1.0).repeatForever(autoreverses: false), value: pulsePhase)
             } else {
                 // Static ring when not syncing
                 Circle()
@@ -2343,16 +2347,11 @@ struct PulsingStatusDot: View {
     }
 
     private func startPulsing() {
-        pulsePhase = 0
-        withAnimation(.easeOut(duration: 1.0).repeatForever(autoreverses: false)) {
-            pulsePhase = 1
-        }
+        pulsePhase = 1
     }
 
     private func stopPulsing() {
-        withAnimation(.easeOut(duration: 0.3)) {
-            pulsePhase = 0
-        }
+        pulsePhase = 0
     }
 }
 

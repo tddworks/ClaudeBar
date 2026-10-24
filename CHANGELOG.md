@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The popover no longer pins a CPU core**: while a refresh ran, opening the popover while a refresh ran could leave it redrawing nonstop at 50–270% of a CPU core, even after you closed it. The header's pulsing dot no longer does that. ([#643](https://github.com/tddworks/ClaudeBar/issues/643))
+
 ---
 
 ## [0.5.20] - 2026-10-23
