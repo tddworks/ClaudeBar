@@ -656,7 +656,6 @@ test first. Findings that need a decision first are in §9.
 | Vault & Settings | `ProviderSettingsRepository` holds the switch, configuration, order and page preferences, and its setters default to doing nothing | one port per role; no silent defaults |
 | In use | the record's folder known by `DiskLoginsInUse` and again, by hand, in `ShellSetup` | the record port answers the file the shell reads |
 | Data Sources | the `{{…}}` grammar parsed in `Template`, `Placeholders`, string replaces and `contains("{{")` guards, in both modules | one `Placeholder` value: parse, fill, names, transforms |
-| Data Sources | the Keychain reader builds `security` argv and decodes its hex in neutral code; the public test factory takes that argv | a `Secrets` port (`password(service:account:)`); the Mac adapter owns the tool |
 | Data Sources | a fetch or lookup case answers for itself in only some places: five switches, and Providers' own `if case .cloudWatch` | `Connection` grows the questions (`readsCloud`, `keyNames`, …) |
 | Data Sources | `Connection` means a payload's disclosures and a platform port; `[*]` ends a path in `JSONPath` and fans out in `LocalEndpoint` | one word each; one path dialect |
 | Data Sources | failures worded by workers (*No file at*, *Network error*, OAuth's *Token refresh failed*), retry decided by `tag == "executionFailed"`, `Unavailable` returns text, a missing CloudWatch client words its own | wider `ErrorFact` (`network`, `fileMissing`, `unavailable`, …), one table of failure names |

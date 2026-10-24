@@ -3,13 +3,14 @@ import Foundation
 
 extension Platform {
     /// File paths, CLI discovery, programs over pipes and in a pseudo
-    /// console, and an app's own server are available; the rest stays absent
-    /// until its phase 5 slice and fails at its named step.
+    /// console, an app's own server and Credential Manager are available;
+    /// browser cookies and storage stay absent and fail at their named step.
     static let current = Platform(
         name: "Windows",
         timeZone: WindowsTimeZone(),
         runCLI: CLIFetcher.system(programs: WindowsProcesses(), terminal: ConPty()),
         processes: Processes(WindowsProcesses()),
+        keychain: CredentialManagerKeychain(),
         localServers: LocalServers(WindowsLocalServers()),
         screenRenderer: { TerminalRenderer().render($0) },
         applicationData: { home, environment in

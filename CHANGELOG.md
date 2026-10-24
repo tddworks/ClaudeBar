@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Windows reads a login from Credential Manager**: a provider that finds its login in the Keychain on the Mac, as Copilot finds the GitHub CLI's, finds it in Credential Manager on Windows; a login ClaudeBar renews is saved back to its item. Mac logins are unchanged. ([#641](https://github.com/tddworks/ClaudeBar/pull/641)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)
+
 ---
 
 ## [0.5.21] - 2026-10-24

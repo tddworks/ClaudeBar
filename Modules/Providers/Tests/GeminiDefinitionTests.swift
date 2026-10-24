@@ -52,7 +52,7 @@ struct GeminiDefinitionTests {
         var platform = Platform.current
         platform.runCLI = { @Sendable call in seen.runs.append(call); return cli }
         platform.processes = Processes.running { _ in cli }
-        platform.keychain = { _ in (1, "") }
+        platform.keychain = StubKeychain { _, _ in nil }
         platform.browserCookies = nil
         platform.browserStorage = nil
         let provider = Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { [platform] source, _ in

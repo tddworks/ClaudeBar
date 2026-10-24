@@ -111,24 +111,20 @@ struct JSONFileReader: CredentialFinding {
     }
 }
 
-/// `keychain` — a generic-password item read and written with macOS's
-/// `security` tool. A refreshed token is written back as compact JSON: a
-/// pretty-printed password comes back hex-encoded from `security -w` (#255).
+/// `keychain` — an item in this OS's secret store (`KeychainItems`): the Mac's
+/// Keychain, Windows' Credential Manager. A refreshed token is written back
+/// as compact JSON, to the item it was read from: the same service and
+/// account, "no account" named by the store the same way both times.
 struct KeychainReader: CredentialFinding {
-    /// Runs `/usr/bin/security` with these arguments: exit status and stdout.
-    typealias Security = @Sendable (_ arguments: [String]) -> (status: Int32, output: String)
-
     let item: KeychainCredential
-    let security: Security
+    let keychain: any KeychainItems
 
     func find() throws -> FoundCredential? {
-        let account = item.account.map { ["-a", $0] } ?? []
-        let (status, output) = security(["find-generic-password", "-s", item.service] + account + ["-w"])
-        guard status == 0 else {
-            AppLog.credentials.error("Keychain read of '\(item.service)' failed: security exited \(status)")
+        guard let stored = keychain.password(service: item.service, account: item.account) else {
+            AppLog.credentials.error("Keychain item '\(item.service)' wasn't found or couldn't be read")
             return nil
         }
-        let password = item.decoded(Credential.trimmed(output))
+        let password = item.decoded(Credential.trimmed(stored))
         guard !password.isEmpty else { return nil }
 
         let values: [String: String]
@@ -154,11 +150,10 @@ struct KeychainReader: CredentialFinding {
         let updated = CredentialDocument.updated(document, with: credential, fields: item.fields)
         guard let compact = try? JSONSerialization.data(withJSONObject: updated),
               let payload = String(data: compact, encoding: .utf8) else { return }
-        let (status, _) = security(["add-generic-password", "-U", "-s", item.service, "-a", NSUserName(), "-w", payload])
-        if status == 0 {
+        if keychain.save(payload, service: item.service, account: item.account) {
             AppLog.credentials.info("Saved refreshed credentials to Keychain item '\(item.service)'")
         } else {
-            AppLog.credentials.error("Failed to save credentials to Keychain item '\(item.service)' (exit \(status))")
+            AppLog.credentials.error("Failed to save credentials to Keychain item '\(item.service)'")
         }
     }
 

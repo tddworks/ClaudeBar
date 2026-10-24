@@ -44,7 +44,7 @@ struct CLIRefreshTests {
             return (Data(#"{"used":20}"#.utf8), HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
         }
         return DataSources.make(definition, providerId: "acme", cliExecutor: cli,
-                                network: network, makeTransport: { _, _, _, _ in MockRPCTransport() }, security: { _ in (1, "") },
+                                network: network, makeTransport: { _, _, _, _ in MockRPCTransport() },
                                 environment: { _ in nil }, homeDirectory: home, now: { Date() })
     }
 

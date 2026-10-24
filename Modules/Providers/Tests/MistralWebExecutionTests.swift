@@ -55,7 +55,7 @@ struct MistralWebExecutionTests {
         let definition = try ProviderFactory.builtIn("mistral")
         return Provider(definition: definition, settings: settings, accounts: settings.accounts(forProvider: "mistral"), makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: MockCLIExecutor(),
-                             network: network, makeTransport: { _, _, _, _ in MockRPCTransport() }, security: { _ in (1, "") },
+                             network: network, makeTransport: { _, _, _, _ in MockRPCTransport() },
                              scripts: ProviderFactory.builtInScripts, secrets: vault.scoped(to: login), browserCookies: browser,
                              environment: { environment[$0] }, homeDirectory: home, now: { Date() })
         }, vault: vault)

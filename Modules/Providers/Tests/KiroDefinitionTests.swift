@@ -38,7 +38,7 @@ struct KiroDefinitionTests {
             }
             return cli
         }
-        platform.keychain = { _ in (1, "") }
+        platform.keychain = StubKeychain { _, _ in nil }
         platform.browserCookies = nil
         platform.browserStorage = nil
         return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { [platform] source, _ in

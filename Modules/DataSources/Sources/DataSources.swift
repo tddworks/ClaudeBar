@@ -94,14 +94,15 @@ public enum DataSources {
     /// CLI and command runs on `cliExecutor`, whatever environment it asks
     /// for. A local server is found among `running` and asked through
     /// `network`, on every platform. This platform's screen renderer stays;
-    /// a `nil` browser store means none.
+    /// a `nil` browser store means none, and a `nil` keychain one holding
+    /// no item.
     public static func make(
         _ definition: DataSourceDefinition,
         providerId: String,
         cliExecutor: any CLIExecutor,
         network: any NetworkClient,
         makeTransport: @escaping TransportFactory,
-        security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
+        keychain: (any KeychainItems)? = nil,
         scripts: @escaping ScriptSource = { _ in nil },
         secrets: (any SecretStore)? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
@@ -117,7 +118,7 @@ public enum DataSources {
         var platform = Platform.current
         platform.runCLI = { _ in cliExecutor }
         platform.processes = platform.processes?.with(pipes: { _ in cliExecutor }, conversation: makeTransport)
-        platform.keychain = security
+        platform.keychain = keychain ?? NoKeychainItems()
         platform.browserCookies = browserCookies
         platform.browserStorage = browserStorage
         platform.localServers = LocalServers(handing: running, network: network)
@@ -306,7 +307,7 @@ public enum DataSources {
                 return JSONFileReader(file: file, homeDirectory: homeDirectory, environment: pathEnvironment)
             case .keychain(let item):
                 guard let keychain = platform.keychain else { return unavailable("Reading a Keychain item") }
-                return KeychainReader(item: item, security: keychain)
+                return KeychainReader(item: item, keychain: keychain)
             case .setting(let name):
                 return SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .refined(let base, let refinement):
@@ -332,6 +333,13 @@ public enum DataSources {
             Unavailable(.lookup, what, on: platform.name)
         }
     }
+}
+
+/// A secret store with no item, for a test that hands the factory no keychain:
+/// a `keychain` lookup finds nothing and the next one in its order answers.
+private struct NoKeychainItems: KeychainItems {
+    func password(service: String, account: String?) -> String? { nil }
+    func save(_ password: String, service: String, account: String?) -> Bool { false }
 }
 
 /// `recover.patchJSONFile` — sets one value deep in a JSON file that already

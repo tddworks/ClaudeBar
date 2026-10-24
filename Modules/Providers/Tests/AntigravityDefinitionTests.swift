@@ -72,9 +72,9 @@ struct AntigravityDefinitionTests {
         return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { source, _ in
             DataSources.make(source, providerId: definition.id, cliExecutor: commands, network: network,
                              makeTransport: { _, _, _, _ in MockRPCTransport() },
-                             security: { @Sendable arguments in
-                                 guard let keychain = login.value, arguments.contains("gemini"), arguments.contains("antigravity") else { return (44, "") }
-                                 return (0, "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString())
+                             keychain: StubKeychain { service, account in
+                                 guard let keychain = login.value, service == "gemini", account == "antigravity" else { return nil }
+                                 return "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString()
                              },
                              scripts: ProviderFactory.builtInScripts, environment: { _ in nil },
                              homeDirectory: FileManager.default.temporaryDirectory,

@@ -41,16 +41,13 @@ struct CredentialReadersTests {
           }
         }
         """
-        let calls = SecurityCalls()
+        let keychain = InMemoryKeychain(service: "Some-credentials", password: password)
         let reader = KeychainReader(
             item: KeychainCredential(service: "Some-credentials", fields: [
                 "token": "$.claudeAiOauth.accessToken",
                 "expiresAt": "$.claudeAiOauth.expiresAt",
             ]),
-            security: { arguments in
-                calls.append(arguments)
-                return arguments.first == "find-generic-password" ? (0, password) : (0, "")
-            }
+            keychain: keychain
         )
         let found = try #require(try reader.find())
         var refreshed = found.credential
@@ -59,9 +56,8 @@ struct CredentialReadersTests {
 
         found.save?(refreshed)
 
-        let write = try #require(calls.all.last)
-        #expect(Array(write.dropLast()) == ["add-generic-password", "-U", "-s", "Some-credentials", "-a", NSUserName(), "-w"])
-        let payload = try #require(write.last)
+        #expect(keychain.saves == [.init(service: "Some-credentials", account: nil)])
+        let payload = try #require(keychain.all[.init(service: "Some-credentials", account: nil)])
         // `security find-generic-password -w` hex-encodes any password holding a
         // byte outside printable ASCII, so the payload must stay printable.
         #expect(payload.allSatisfy { $0.isASCII && $0.asciiValue.map { (0x20...0x7e).contains($0) } == true })
@@ -77,7 +73,7 @@ struct CredentialReadersTests {
     func `should find no key when the keychain item isn't there`() throws {
         let reader = KeychainReader(
             item: KeychainCredential(service: "Missing", fields: ["token": "$.token"]),
-            security: { _ in (44, "") }
+            keychain: InMemoryKeychain()
         )
 
         #expect(try reader.find() == nil)
@@ -235,19 +231,5 @@ struct CredentialReadersTests {
         #expect(oauth["accessToken"] as? String == "new")
         #expect((oauth["expiresAt"] as? NSNumber)?.intValue == 2000)
         #expect(oauth["scopes"] as? [String] == ["x"])
-    }
-}
-
-/// Every `security` invocation, in order.
-private final class SecurityCalls: @unchecked Sendable {
-    private let lock = NSLock()
-    private var calls: [[String]] = []
-
-    func append(_ arguments: [String]) {
-        lock.withLock { calls.append(arguments) }
-    }
-
-    var all: [[String]] {
-        lock.withLock { calls }
     }
 }

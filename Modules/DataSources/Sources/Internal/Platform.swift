@@ -20,8 +20,8 @@ struct Platform: Sendable {
     /// Finds and starts programs: `command`, `script`, `jsonRpc`, a `command`
     /// log and a login-shell lookup.
     var processes: Processes?
-    /// Reads a `keychain` item.
-    var keychain: KeychainReader.Security?
+    /// Its secret store, for a `keychain` item.
+    var keychain: (any KeychainItems)?
     var browserCookies: (any BrowserCookieReading)?
     var browserStorage: (any BrowserStorageReading)?
     /// Finds an app's own server on this machine and asks it, for `localServer`.
@@ -39,7 +39,7 @@ struct Platform: Sendable {
         timeZone: any TimeZoneSource,
         runCLI: CLIFetcher.MakeExecutor? = nil,
         processes: Processes? = nil,
-        keychain: KeychainReader.Security? = nil,
+        keychain: (any KeychainItems)? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
         localServers: LocalServers? = nil,

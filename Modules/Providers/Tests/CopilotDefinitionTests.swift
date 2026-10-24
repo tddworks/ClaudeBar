@@ -45,10 +45,10 @@ struct CopilotDefinitionTests {
         return Provider(definition: definition, settings: settings, accounts: settings.accounts(forProvider: "copilot"), makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: MockCLIExecutor(), network: network,
                              makeTransport: { _, _, _, _ in MockRPCTransport() },
-                             security: { arguments in
-                                 // The GitHub CLI's login, as go-keyring stores it.
-                                 guard arguments.contains("gh:github.com"), let ghLogin else { return (44, "") }
-                                 return (0, "go-keyring-base64:" + Data(ghLogin.utf8).base64EncodedString())
+                             keychain: StubKeychain { service, _ in
+                                 // The GitHub CLI's login, as go-keyring stores it on the Mac.
+                                 guard service == "gh:github.com", let ghLogin else { return nil }
+                                 return "go-keyring-base64:" + Data(ghLogin.utf8).base64EncodedString()
                              },
                              scripts: ProviderFactory.builtInScripts,
                              secrets: vault.scoped(to: login), environment: { environment[$0] },

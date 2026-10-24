@@ -40,7 +40,7 @@ struct AlibabaExecutionTests {
         let definition = try ProviderFactory.builtIn("alibaba")
         return Provider(definition: definition, settings: settings, accounts: settings.accounts(forProvider: "alibaba"), makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: MockCLIExecutor(),
-                             network: network, makeTransport: { _, _, _, _ in MockRPCTransport() }, security: { _ in (1, "") },
+                             network: network, makeTransport: { _, _, _, _ in MockRPCTransport() },
                              scripts: ProviderFactory.builtInScripts, secrets: vault.scoped(to: login), browserCookies: cookies,
                              environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         }, vault: vault)

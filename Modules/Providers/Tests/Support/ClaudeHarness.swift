@@ -66,10 +66,7 @@ struct ClaudeHarness {
             cliExecutor: cli,
             network: network,
             makeTransport: { _, _, _, _ in MockRPCTransport() },
-            security: { arguments in
-                guard arguments.first == "find-generic-password", let password else { return (44, "") }
-                return (0, password)
-            },
+            keychain: StubKeychain { _, _ in password },
             scripts: ProviderFactory.builtInScripts,
             environment: { environment[$0] },
             homeDirectory: home,

@@ -343,8 +343,8 @@ The time zone wasn't in it at all, which is how a KST member's day ended at
 **Done when** a third platform means writing 6 adapters and passing 6 contract
 suites, with no edit above the line. Linux is the third platform, and its
 adapters exist as far as Windows' do: the modules build and pass their tests
-there, and the ports whose slice hasn't come (`Terminal`, `Secrets`,
-`LocalNetwork`) are `nil`, so a case that needs one fails at its named step.
+there, and the ports whose slice hasn't come (`Secrets`, `LocalNetwork`) are
+`nil`, so a case that needs one fails at its named step.
 
 - **A library is vendored, pinned, never hand-edited.** One folder per
   library under `Vendor/`, holding the source, its release `VERSION` and its
@@ -368,7 +368,7 @@ there, and the ports whose slice hasn't come (`Terminal`, `Secrets`,
 | `Processes` | `runCommand` · `rpcTransport` · `binaryLocator` · `scriptCommand` · `loginShellCommand` | the login shell's `PATH`, `sh` for a script, `SIGTERM` then `SIGKILL`, `$SHELL -l -i` | `PATH` + `PATHEXT`, a script run as the file itself, `TerminateProcess`, the PowerShell profile: built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)). The OS answers four facts; finding, running, talking and reporting are one neutral copy ([below](#processes-a-program-the-person-has)) | `PATH`, `/bin/sh` for a script, `SIGTERM` then `SIGKILL` after 2 s: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
 | `LocalNetwork` | `localNetwork` · `localServer` · `localServerCommands` · `processList` | `proc_listallpids`, `pgrep`, `lsof`, `URLSession` trusting this machine's certificate | `EnumProcesses`, each process's command line from its process information, the TCP listener table, WinHTTP with the certificate checks off on that request: built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)). The OS answers four facts; finding the app and asking it are one neutral copy ([below](#localnetwork-an-apps-own-server)) | not yet: `/proc/<pid>/cmdline` and `/proc/net/tcp` with socket inodes, its own follow-up; `LocalNetworkContract` is skipped, saying why |
 | `Terminal` | `runCLI` · `screenRenderer` | a pty (`openpty`, one at a time), its CLI started and read by `PtySession`; SwiftTerm renders | a pseudo console (ConPTY), the CLI created attached to it in a job that ends its whole tree; SwiftTerm renders: built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)). The OS starts the CLI in its terminal; typing, reading until the screen settles and rendering are one neutral copy ([below](#terminal-a-clis-screen)) | a pty (`posix_openpt`) through the same `PtySession`, and SwiftTerm's core |
-| `Secrets` | `keychain` · `browserCookies` · `browserStorage` | Keychain, SweetCookieKit | Credential Manager; cookies and storage `Unavailable` in phase 5 | `secret-tool`, the way the leaderboard's key store proved; cookies and storage `Unavailable` |
+| `Secrets` | `keychain` · `browserCookies` · `browserStorage` | `KeychainItems` over the `security` tool; SweetCookieKit | Credential Manager, an item named `service:account` as go-keyring names it, one call at a time (changed by several threads at once, it loses some changes): built ([#640](https://github.com/tddworks/ClaudeBar/issues/640)); cookies and storage `Unavailable` in phase 5 | `secret-tool`, the way the leaderboard's key store proved; cookies and storage `Unavailable` |
 | `Places` | `applicationData` · `pathSeparator` | `~/Library/Application Support`, `/` | `APPDATA`, `\` (phase 4) | `$XDG_DATA_HOME`, else `~/.local/share`, `/`: built ([#600](https://github.com/tddworks/ClaudeBar/pull/600)) |
 
 #### Processes: a program the person has
@@ -585,7 +585,10 @@ Modules/DataSources/Sources/
 │   ├── LocalNetwork.swift     RunningPrograms · ProgramCommandLines ·
 │   │                          ListeningPorts · LoopbackRequests: what an OS
 │   │                          answers about an app's own server (#588)
-│   └── Terminal · Secrets     (slices 4–5)
+│   ├── Terminal.swift         PseudoTerminal · TerminalSession: a CLI's
+│   │                          terminal session (#623)
+│   └── Secrets.swift          KeychainItems: an item in the OS's secret
+│                              store, by service and account (#640)
 └── Internal/
     ├── Platform.swift         ◇ struct Platform — holds the ports, nothing
     │                            else; Platform.bare: the name and zone. Until
@@ -725,7 +728,7 @@ Phase 5's slices, each its own issue and PR
 | 2 | **`Processes`**: port, contract, Windows adapter | its tests run on Windows — built ([#580](https://github.com/tddworks/ClaudeBar/pull/580)): `command`, `script` and `jsonRpc` fetches, `command` logs and the login-shell lookup run on Windows |
 | 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows — built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)): a `localServer` fetch (Antigravity's `local` source) runs on Windows |
 | 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows — built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)): `cli` fetches read a CLI's screen through a pseudo console, and the runner's own suites run on all three platforms |
-| 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows |
+| 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows — built ([#640](https://github.com/tddworks/ClaudeBar/issues/640)): a `keychain` lookup reads a Credential Manager item, the GitHub CLI's login included, and saves a renewed login back to an unencoded one |
 | 6 | **`Monitoring` into the package**, so no platform rewrites refresh scheduling and alert logic; the menu bar and Notify! stay in the Mac app | its own design review first, since it reshapes the domain's root |
 
 ### Open

@@ -35,6 +35,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 ## Cloud Code (app closed)
 
 - **Token**: `security find-generic-password -s gemini -a antigravity -w`. The value is `go-keyring-base64:`-wrapped JSON `{ "token": { "access_token", "refresh_token", "expiry" } }`; `accessToken`/`expires_at`/`expiresAt` are also accepted. ClaudeBar only reads this item and never writes back to it.
+- **On Windows** the same lookup asks Credential Manager for `gemini:antigravity`, the name go-keyring gives that item there. The Windows build checked (1.13.3) keeps no login there: its language server carries no go-keyring, and Credential Manager held no Antigravity item on that PC, so `cloud` finds nothing on it ([#640](https://github.com/tddworks/ClaudeBar/issues/640#issuecomment-6368841550)). The Mac build that writes the item is 2.24.0.
 - **Renewed by `agy`, not by ClaudeBar.** The token is sent as it is; it lives about an hour. Refreshing it with OAuth would mean embedding Antigravity's client credentials, so ClaudeBar doesn't: on a 401 it runs `agy models` once (30 s timeout), which renews the item, reads it again and retries. Still rejected → `sessionExpired("Sign in to Antigravity or run `agy` again.")`; `agy` not installed → `authenticationRequired`.
 - **Endpoints**: `POST` to `https://daily-cloudcode-pa.googleapis.com` first, then `https://cloudcode-pa.googleapis.com`, with `User-Agent: antigravity` and full TLS validation:
   - `/v1internal:retrieveUserQuotaSummary`: the pooled summary.

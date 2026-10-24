@@ -10,7 +10,7 @@ extension Platform {
             timeZone: SystemTimeZone(),
             runCLI: CLIFetcher.system(programs: mac, terminal: MacPty()),
             processes: Processes(mac),
-            keychain: KeychainReader.system,
+            keychain: SecurityKeychain(),
             browserCookies: SystemBrowserCookies(),
             browserStorage: SystemBrowserStorage(),
             localServers: LocalServers(MacLocalServers()),
