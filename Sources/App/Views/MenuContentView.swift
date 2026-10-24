@@ -2355,6 +2355,8 @@ struct PulsingStatusDot: View {
     }
 
     private func startPulsing() {
+        // Hidden: leave the phase at 0, or the ring would sit at 1 (invisible) and `onAppear` would not change it.
+        guard isShown else { return }
         pulsePhase = 1
     }
 
