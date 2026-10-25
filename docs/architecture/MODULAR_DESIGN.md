@@ -494,6 +494,10 @@ PORT, Ports/Terminal.swift
 - **The whole tree ends.** `claude.cmd` starts `node`: the child starts
   suspended and joins a job before it runs, and ending the session ends the
   job.
+- **A POSIX session has ended when the kernel says so.** Linux' Foundation
+  notices a child's end up to seconds late when many programs run at once,
+  so `PtySession` and `ChildTeardown` ask the kernel (`waitid` with
+  `WNOWAIT`, leaving the reap to Foundation) rather than `Process.isRunning`.
 
 ### The shape
 
