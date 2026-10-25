@@ -2090,38 +2090,36 @@ struct WrappedStatCard: View {
 
 struct LoadingSpinnerView: View {
     @Environment(\.appTheme) private var theme
-    @State private var isSpinning = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .stroke(theme.isOutlined ? theme.progressTrack : theme.textTertiary, lineWidth: theme.isOutlined ? 4 : 3)
-                    .frame(width: 50, height: 50)
+        WindowFrameTicker(interval: 1.0 / 30.0, paused: reduceMotion) { date in
+            let angle = reduceMotion
+                ? 0
+                : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.0) * 360
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(theme.isOutlined ? theme.progressTrack : theme.textTertiary, lineWidth: theme.isOutlined ? 4 : 3)
+                        .frame(width: 50, height: 50)
 
-                Circle()
-                    .trim(from: 0, to: 0.3)
-                    .stroke(
-                        theme.accentGradient,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-                    .frame(width: 50, height: 50)
-                    .rotationEffect(.degrees(isSpinning ? 360 : 0))
-                    .animation(
-                        .linear(duration: 1).repeatForever(autoreverses: false),
-                        value: isSpinning
-                    )
+                    Circle()
+                        .trim(from: 0, to: 0.3)
+                        .stroke(
+                            theme.accentGradient,
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: 50, height: 50)
+                        .rotationEffect(.degrees(angle))
+                }
+
+                Text("Fetching usage data...")
+                    .font(theme.font(size: 13, weight: .medium))
+                    .foregroundStyle(theme.textSecondary)
             }
-
-            Text("Fetching usage data...")
-                .font(theme.font(size: 13, weight: .medium))
-                .foregroundStyle(theme.textSecondary)
-        }
-        .frame(height: 140)
-        .frame(maxWidth: .infinity)
-        .glassCard()
-        .onAppear {
-            isSpinning = true
+            .frame(height: 140)
+            .frame(maxWidth: .infinity)
+            .glassCard()
         }
     }
 }
@@ -2299,69 +2297,40 @@ extension LinearGradient {
 
 // MARK: - Pulsing Status Dot
 
-/// A status dot that pulses when syncing, with proper animation lifecycle management.
+/// A status dot that pulses only while syncing in a visible window.
+/// Discrete frames also stop when `orderOut` skips SwiftUI's `onDisappear`.
 struct PulsingStatusDot: View {
     let color: Color
     let isSyncing: Bool
 
-    @State private var pulsePhase: CGFloat = 0
-    @State private var isShown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            // Solid center dot
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
-
-            // Pulsing ring (only visible when syncing)
-            if isSyncing {
+        WindowFrameTicker(interval: 1.0 / 30.0, paused: !isSyncing || reduceMotion) { date in
+            let raw = CGFloat(date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.0))
+            let pulsePhase = 1 - (1 - raw) * (1 - raw)
+            ZStack {
+                // Solid center dot
                 Circle()
-                    .stroke(color, lineWidth: 2)
-                    .frame(width: 16, height: 16)
-                    .scaleEffect(1 + pulsePhase * 0.5)
-                    .opacity(1 - pulsePhase)
-                    // Scoped to the ring: a `withAnimation(...repeatForever...)` transaction
-                    // can ride along with other state changes in the same update (the
-                    // popover's measured height) and animate them forever.
-                    .animation(isShown ? .easeOut(duration: 1.0).repeatForever(autoreverses: false) : nil, value: pulsePhase)
-            } else {
-                // Static ring when not syncing
-                Circle()
-                    .stroke(color, lineWidth: 2)
-                    .frame(width: 16, height: 16)
-                    .opacity(0.5)
-            }
-        }
-        .onChange(of: isSyncing) { _, syncing in
-            if syncing {
-                startPulsing()
-            } else {
-                stopPulsing()
-            }
-        }
-        .onAppear {
-            isShown = true
-            if isSyncing {
-                startPulsing()
-            }
-        }
-        // The popover's content outlives a close, so a refresh still running would keep the
-        // ring repeating in a hidden window. Without the animation the phase just resets.
-        .onDisappear {
-            isShown = false
-            stopPulsing()
-        }
-    }
+                    .fill(color)
+                    .frame(width: 8, height: 8)
 
-    private func startPulsing() {
-        // Hidden: leave the phase at 0, or the ring would sit at 1 (invisible) and `onAppear` would not change it.
-        guard isShown else { return }
-        pulsePhase = 1
-    }
-
-    private func stopPulsing() {
-        pulsePhase = 0
+                // Pulsing ring (only visible when syncing)
+                if isSyncing && !reduceMotion {
+                    Circle()
+                        .stroke(color, lineWidth: 2)
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(1 + pulsePhase * 0.5)
+                        .opacity(Double(1 - pulsePhase))
+                } else {
+                    // Static ring when not syncing
+                    Circle()
+                        .stroke(color, lineWidth: 2)
+                        .frame(width: 16, height: 16)
+                        .opacity(0.5)
+                }
+            }
+        }
     }
 }
 

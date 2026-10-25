@@ -129,8 +129,8 @@ private struct WebhookRow: View {
                     .font(theme.font(size: 11, weight: .medium))
                     .foregroundStyle(theme.textSecondary)
                 Spacer(minLength: 8)
-                TimelineView(.periodic(from: .now, by: 30)) { context in
-                    WebhookDeliveryState(delivery: webhook.delivery, now: context.date)
+                WindowFrameTicker(interval: 30) { date in
+                    WebhookDeliveryState(delivery: webhook.delivery, now: date)
                 }
             }
 

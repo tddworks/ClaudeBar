@@ -27,11 +27,11 @@ struct SessionsCardView: View {
     var body: some View {
         // The durations read the clock, which no observable change drives;
         // ticking once a second keeps them moving while the popover is open.
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        WindowFrameTicker(interval: 1) { date in
             if sessionMonitor.sessions.count == 1, let session = sessionMonitor.activeSession {
                 SessionIndicatorView(session: session)
             } else {
-                manySessions(now: context.date)
+                manySessions(now: date)
             }
         }
     }

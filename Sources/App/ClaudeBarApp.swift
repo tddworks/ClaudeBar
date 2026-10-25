@@ -456,6 +456,7 @@ struct ClaudeBarApp: App {
             .environment(newSessions)
             .environment(quotaAlerts)
             .environment(restWhenEmpty)
+            .environment(\.isPopoverShown, isMenuPresented)
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
             // image. The dropdown's lifecycle maps 1:1 to those flips, so

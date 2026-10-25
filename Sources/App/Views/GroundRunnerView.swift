@@ -27,10 +27,10 @@ struct GroundRunnerView: View {
     }
 
     var body: some View {
-        TimelineView(.animation(paused: !isShown)) { timeline in
+        WindowFrameTicker(interval: 1.0 / 30.0, paused: !isShown) { date in
             Canvas { context, size in
-                level.advance(to: timeline.date, pace: runner.pace(for: status), width: size.width, reduceMotion: reduceMotion)
-                draw(in: &context, size: size, now: timeline.date)
+                level.advance(to: date, pace: runner.pace(for: status), width: size.width, reduceMotion: reduceMotion)
+                draw(in: &context, size: size, now: date)
             }
         }
         .frame(height: Self.headroom + runner.laneHeight + floorHeight)

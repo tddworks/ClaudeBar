@@ -79,35 +79,35 @@ struct QuestionBlockButton: View {
     let action: () -> Void
 
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bump = false
     @State private var coin = false
-    @State private var bob = false
 
     var body: some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.12)) { bump = true; coin = true }
-            withAnimation(.easeIn(duration: 0.14).delay(0.12)) { bump = false }
-            withAnimation(.easeOut(duration: 0.3).delay(0.35)) { coin = false }
-            action()
-        } label: {
-            ZStack {
-                PixelCoin(color: theme.statusWarning, edge: theme.glassBorder)
-                    .frame(width: 12, height: 17)
-                    .offset(y: coin ? -30 : 0)
-                    .opacity(coin ? 1 : 0)
+        WindowFrameTicker(interval: 1.0 / 30.0, paused: !isSyncing || reduceMotion) { date in
+            let bobOffset: CGFloat = (isSyncing && !reduceMotion)
+                ? CGFloat(-1.5 * (1 - cos(date.timeIntervalSinceReferenceDate * .pi / 0.35)))
+                : 0
+            Button {
+                withAnimation(.easeOut(duration: 0.12)) { bump = true; coin = true }
+                withAnimation(.easeIn(duration: 0.14).delay(0.12)) { bump = false }
+                withAnimation(.easeOut(duration: 0.3).delay(0.35)) { coin = false }
+                action()
+            } label: {
+                ZStack {
+                    PixelCoin(color: theme.statusWarning, edge: theme.glassBorder)
+                        .frame(width: 12, height: 17)
+                        .offset(y: coin ? -30 : 0)
+                        .opacity(coin ? 1 : 0)
 
-                block
-                    .offset(y: bump ? -7 : (bob ? -3 : 0))
+                    block
+                        .offset(y: bump ? -7 : bobOffset)
+                }
+                .frame(width: 38, height: 38)
             }
-            .frame(width: 38, height: 38)
+            .buttonStyle(.plain)
+            .accessibilityLabel(isSyncing ? "Syncing" : "Refresh")
         }
-        .buttonStyle(.plain)
-        .onChange(of: isSyncing, initial: true) { _, syncing in
-            withAnimation(syncing ? .easeInOut(duration: 0.35).repeatForever(autoreverses: true) : .default) {
-                bob = syncing
-            }
-        }
-        .accessibilityLabel(isSyncing ? "Syncing" : "Refresh")
     }
 
     private var block: some View {

@@ -47,6 +47,20 @@
   (Platformer's Pixelify Sans) reaches every word; without one it is the
   same system font.
 
+## Updates while a window is visible
+
+`WindowFrameTicker` owns periodic view updates: it advances only while the
+hosting window is visible and the caller has not paused it. In the popover it
+also follows the presentation flag; the notch and Settings use their own
+window's visibility. Closing a window with `orderOut` does not reliably call SwiftUI's
+`onDisappear`, so the ticker observes the actual window as well. Reopening
+starts the clock again with the current time.
+
+The runner, snowfall, loading and sync indicators, blinking badges, shimmer
+and live time labels use this clock. Sync indicators pause when syncing ends;
+the loading, pulse, shimmer and refresh-block animations also pause with
+Reduce Motion. No domain state or provider refresh depends on this clock.
+
 ## The runner
 
 A theme may put a runner on its floor (`runner`, `nil` by default; only
@@ -62,7 +76,7 @@ plays it: it shows the selected provider's status and nothing else. Mockup:
 | Where it is, which way it faces, turning at the edges, the jump, the fall and the new runner after a reset | `RunnerLevel`, told the time, the pace and the lane's width |
 | It jumps and a coin pops when a refresh finishes | the view tells `RunnerLevel.celebrate(at:)` when the ? block's `isSyncing` turns false; no new Monitor event |
 | Reduce motion: it stands still, a coin still shows, the fall skips to GAME OVER | `RunnerLevel`, told `reduceMotion` by the view |
-| No frames while the popover is closed | the view: its `TimelineView` pauses off screen |
+| No frames while the popover is closed | the view: `WindowFrameTicker` stops when the hosting window is hidden |
 
 It never takes input (`allowsHitTesting(false)`), makes no sound and never
 appears in the menu bar. It is original pixel art, like the ? block.

@@ -499,35 +499,35 @@ extension View {
 
 struct ShimmerEffect: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var phase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         let shimmerColor = colorScheme == .dark
             ? Color.white
             : AppTheme.purpleVibrant(for: colorScheme)
 
-        content
-            .overlay(
-                GeometryReader { geo in
-                    LinearGradient(
-                        colors: [
-                            shimmerColor.opacity(0),
-                            shimmerColor.opacity(0.15),
-                            shimmerColor.opacity(0)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: geo.size.width * 0.5)
-                    .offset(x: phase * geo.size.width * 1.5 - geo.size.width * 0.25)
-                }
-                .mask(content)
-            )
-            .onAppear {
-                withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
-                    phase = 1
-                }
-            }
+        WindowFrameTicker(interval: 1.0 / 24.0, paused: reduceMotion) { date in
+            let phase = reduceMotion
+                ? 0
+                : CGFloat(date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2.5) / 2.5)
+            content
+                .overlay(
+                    GeometryReader { geo in
+                        LinearGradient(
+                            colors: [
+                                shimmerColor.opacity(0),
+                                shimmerColor.opacity(0.15),
+                                shimmerColor.opacity(0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: geo.size.width * 0.5)
+                        .offset(x: phase * geo.size.width * 1.5 - geo.size.width * 0.25)
+                    }
+                    .mask(content)
+                )
+        }
     }
 }
 
@@ -611,8 +611,8 @@ struct Blinking: ViewModifier {
 
     func body(content: Content) -> some View {
         if isOn {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                let lit = Int(context.date.timeIntervalSinceReferenceDate * 2) % 2 == 0
+            WindowFrameTicker(interval: 0.5) { date in
+                let lit = Int(date.timeIntervalSinceReferenceDate * 2) % 2 == 0
                 content.opacity(lit ? 1 : 0.25)
             }
         } else {
@@ -905,7 +905,6 @@ struct ThemeProvider: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content
         content
             .environment(\.colorScheme, effectiveColorScheme)
             .environment(\.themeMode, themeMode)

@@ -240,7 +240,7 @@ private struct ElapsedLabel: View {
     let session: ClaudeSession
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
+        WindowFrameTicker(interval: 1) { _ in
             NotchMeta(session.durationDescription)
         }
     }
@@ -250,25 +250,24 @@ private struct PhaseDot: View {
     let color: Color
     var pulsing: Bool = false
 
-    @State private var isBreathing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 8, height: 8)
-            .overlay {
-                Circle()
-                    .fill(color.opacity(0.35))
-                    .frame(width: 16, height: 16)
-                    .scaleEffect(isBreathing ? 1.0 : 0.6)
-                    .opacity(isBreathing ? 0.1 : 0.4)
-            }
-            .onAppear {
-                guard pulsing else { return }
-                withAnimation(.easeInOut(duration: 1.9).repeatForever(autoreverses: true)) {
-                    isBreathing = true
+        WindowFrameTicker(interval: 1.0 / 24.0, paused: !pulsing || reduceMotion) { date in
+            let phase = (pulsing && !reduceMotion)
+                ? CGFloat(0.5 * (1 - cos(date.timeIntervalSinceReferenceDate * .pi / 1.9)))
+                : 0
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+                .overlay {
+                    Circle()
+                        .fill(color.opacity(0.35))
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(0.6 + 0.4 * phase)
+                        .opacity(Double(0.4 - 0.3 * phase))
                 }
-            }
+        }
     }
 }
 

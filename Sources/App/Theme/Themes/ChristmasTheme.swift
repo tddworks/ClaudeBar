@@ -338,8 +338,8 @@ struct SnowfallOverlay: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
+        WindowFrameTicker(interval: 1.0 / 30.0) { date in
+            let time = date.timeIntervalSinceReferenceDate
 
             Canvas { context, size in
                 guard let symbol = context.resolveSymbol(id: 0) else { return }
