@@ -32,6 +32,23 @@ struct WindowsPlatformTests {
         #expect(store.load() == nil)
     }
 
+    @Test func `should keep every change when several threads change keys at once`() {
+        let stores = (0..<8).map { thread in
+            (0..<20).map { CredentialManagerSigningKeyStore(target: store.target + "-\(thread)-\($0)") }
+        }
+        defer { stores.joined().forEach { $0.delete() } }
+
+        DispatchQueue.concurrentPerform(iterations: stores.count) { thread in
+            for store in stores[thread] {
+                store.save(Data("first".utf8))
+                store.save(Data("second".utf8))
+                store.delete()
+            }
+        }
+
+        #expect(stores.joined().filter { $0.load() != nil }.isEmpty)
+    }
+
     @Test func `should call this machine a PC, never a Mac, in everything the person reads`() {
         let label = DeviceLabel("Windows PC")!
         let errors: [LeaderboardError] = [

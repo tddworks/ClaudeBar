@@ -1,4 +1,5 @@
 #if os(Windows)
+import DataSources
 import Diagnostics
 import Foundation
 import WinSDK
@@ -6,14 +7,16 @@ import WinSDK
 /// The key in Windows Credential Manager: a generic credential, its blob the
 /// key's raw bytes, kept on this PC only (`CRED_PERSIST_LOCAL_MACHINE`): other
 /// sessions of the same person on this PC read it, and it never roams to
-/// another PC with the account. There is no plain-file fallback.
+/// another PC with the account. There is no plain-file fallback. Each call is
+/// made `CredentialManager.oneAtATime`, with the provider logins' store: a
+/// key saved while a login is refreshed must not be lost.
 struct CredentialManagerSigningKeyStore: SigningKeyStore {
     var target = "com.tddworks.claudebar/leaderboard-signing-key"
 
     func load() -> Data? {
         var credential: PCREDENTIALW?
-        let found = target.withCString(encodedAs: UTF16.self) { name in
-            CredReadW(name, DWORD(CRED_TYPE_GENERIC), 0, &credential)
+        let found = CredentialManager.oneAtATime {
+            target.withCString(encodedAs: UTF16.self) { CredReadW($0, DWORD(CRED_TYPE_GENERIC), 0, &credential) }
         }
         guard found, let credential else {
             let error = GetLastError()
@@ -36,15 +39,15 @@ struct CredentialManagerSigningKeyStore: SigningKeyStore {
                 credential.CredentialBlobSize = DWORD(blob.count)
                 credential.CredentialBlob = blob.baseAddress
                 credential.Persist = DWORD(CRED_PERSIST_LOCAL_MACHINE)
-                return CredWriteW(&credential, 0)
+                return CredentialManager.oneAtATime { CredWriteW(&credential, 0) }
             }
         }
         guard saved else { return logFailure("save", GetLastError()) }
     }
 
     func delete() {
-        let deleted = target.withCString(encodedAs: UTF16.self) { name in
-            CredDeleteW(name, DWORD(CRED_TYPE_GENERIC), 0)
+        let deleted = CredentialManager.oneAtATime {
+            target.withCString(encodedAs: UTF16.self) { CredDeleteW($0, DWORD(CRED_TYPE_GENERIC), 0) }
         }
         guard deleted else {
             let error = GetLastError()
