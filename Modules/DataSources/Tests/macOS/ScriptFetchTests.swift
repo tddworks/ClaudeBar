@@ -20,8 +20,7 @@ struct ScriptFetchTests {
     private func script(_ name: String, _ body: String) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent(name)
-        try Data("#!/bin/sh\n\(body)\n".utf8).write(to: url)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        try ExecutableFile.write("#!/bin/sh\n\(body)\n", to: url)
     }
 
     private func source(_ fetch: String, secrets: [String: String] = [:]) throws -> DataSource {

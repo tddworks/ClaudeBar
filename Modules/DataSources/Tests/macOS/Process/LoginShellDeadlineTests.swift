@@ -18,8 +18,7 @@ struct LoginShellDeadlineTests {
 
         init(_ body: String) throws {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try "#!/bin/sh\n\(body)\n".write(toFile: path, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path)
+            try ExecutableFile.write("#!/bin/sh\n\(body)\n", to: URL(fileURLWithPath: path))
         }
 
         func remove() {

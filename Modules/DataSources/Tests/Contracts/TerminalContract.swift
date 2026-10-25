@@ -76,10 +76,7 @@ struct TerminalContract {
     private func script(named name: String, _ text: String) throws -> String {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = folder.appendingPathComponent(name)
-        try Data(text.utf8).write(to: file, options: .atomic)
-        #if !os(Windows)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path)
-        #endif
+        try ExecutableFile.write(text, to: file)
         return file.path
     }
 

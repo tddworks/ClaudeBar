@@ -23,8 +23,7 @@ struct ProcessesContract {
     private func script(_ name: String, _ text: String) throws -> String {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = folder.appendingPathComponent("\(name).\(Programs.scriptExtension)")
-        try Data(text.utf8).write(to: file)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path)
+        try ExecutableFile.write(text, to: file)
         return file.path
     }
 

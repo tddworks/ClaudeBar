@@ -77,15 +77,14 @@ struct LinuxPlatformTests {
             unsetenv("CLAUDEBAR_TEST_SECRET_FILE")
         }
         let tool = folder.appendingPathComponent("secret-tool")
-        try """
+        try Self.writeExecutable("""
         #!/bin/sh
         case "$1" in
           store) cat > "$CLAUDEBAR_TEST_SECRET_FILE" ;;
           lookup) cat "$CLAUDEBAR_TEST_SECRET_FILE" 2>/dev/null ;;
           clear) rm -f "$CLAUDEBAR_TEST_SECRET_FILE" ;;
         esac
-        """.write(to: tool, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tool.path)
+        """, to: tool)
         setenv("CLAUDEBAR_TEST_SECRET_FILE", folder.appendingPathComponent("kept").path, 1)
         setenv("PATH", folder.path + ":" + path, 1)
 
@@ -97,6 +96,25 @@ struct LinuxPlatformTests {
 
         store.delete()
         #expect(store.load() == nil)
+    }
+
+    /// Writes a tool the test then runs, through a short-lived `sh`, never this
+    /// process: a child another test starts while this process holds the file
+    /// open for writing keeps that handle until it execs, and running the
+    /// file meanwhile fails with `ETXTBSY`. DataSources' tests write theirs
+    /// the same way (`ExecutableFile`).
+    private static func writeExecutable(_ text: String, to url: URL) throws {
+        let arguments = ["/bin/sh", "-c", #"printf '%s' "$2" > "$1" && chmod 755 "$1""#, "sh", url.path, text]
+        let argv: [UnsafeMutablePointer<CChar>?] = arguments.map { strdup($0) } + [nil]
+        // Its own environment: `environ` changes under `setenv` meanwhile.
+        let envp: [UnsafeMutablePointer<CChar>?] = [strdup("PATH=/usr/bin:/bin"), nil]
+        defer { (argv + envp).forEach { free($0) } }
+        var pid: pid_t = 0
+        let spawned = posix_spawn(&pid, "/bin/sh", nil, nil, argv, envp)
+        guard spawned == 0 else { throw POSIXError(POSIXErrorCode(rawValue: spawned) ?? .EIO) }
+        var status: Int32 = 0
+        while waitpid(pid, &status, 0) == -1 && errno == EINTR {}
+        guard status == 0 else { throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path]) }
     }
 }
 #endif
