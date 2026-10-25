@@ -59,13 +59,14 @@ extension ChildTeardown {
     /// `nil`). Answers whether it is gone.
     ///
     /// Nothing needs to wait for the exit to reap it: `Process` reaps its own
-    /// child when it sees it end.
+    /// child when it sees it end. Whether it has ended is the kernel's answer
+    /// (`Process.endStatus`), which Foundation can trail by seconds.
     @discardableResult
     static func end(_ process: Process, named name: String, grace: Duration?, afterKill: Duration = .seconds(2)) -> Bool {
         let pid = process.processIdentifier
         return end(
             named: "\(name) (pid \(pid))",
-            isRunning: { process.isRunning },
+            isRunning: { process.endStatus == nil },
             terminate: { process.terminate() },
             kill: { _ = kill(pid, SIGKILL) },
             grace: grace,

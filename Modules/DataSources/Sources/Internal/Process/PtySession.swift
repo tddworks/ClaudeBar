@@ -17,6 +17,7 @@ struct PtyEnds: Sendable {
 /// `Foundation.Process` with the pty's child end as its standard input,
 /// output and error, read without waiting from the session end, and ended
 /// with `SIGTERM`, then `SIGKILL` after the launch's grace (`ChildTeardown`).
+/// Whether it still runs is the kernel's answer (`Process.endStatus`).
 final class PtySession: TerminalSession, @unchecked Sendable {
     private let session: FileHandle
     private let child: FileHandle
@@ -77,9 +78,9 @@ final class PtySession: TerminalSession, @unchecked Sendable {
         try session.write(contentsOf: data)
     }
 
-    var isRunning: Bool { process.isRunning }
+    var isRunning: Bool { process.endStatus == nil }
 
-    var exitCode: Int32? { process.isRunning ? nil : process.terminationStatus }
+    var exitCode: Int32? { process.endStatus }
 
     func end() {
         let first: Bool = lock.withLock {

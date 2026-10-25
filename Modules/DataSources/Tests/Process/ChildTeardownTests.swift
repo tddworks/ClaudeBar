@@ -49,7 +49,10 @@ struct ChildTeardownTests {
         #expect(try ready.fileHandleForReading.read(upToCount: 1) == Data("r".utf8))
 
         #expect(ChildTeardown.end(process, named: "test child", grace: .milliseconds(200)))
-        try #require(!process.isRunning)
+        // Ended as the kernel says; Foundation, which can trail it by
+        // seconds on Linux, is waited for before asking how it ended.
+        try #require(process.endStatus != nil)
+        process.waitUntilExit()
         // Only SIGKILL ended it: the request to stop alone did not.
         #expect(process.terminationReason == .uncaughtSignal)
         #expect(process.terminationStatus == SIGKILL)
