@@ -44,11 +44,13 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI without the environment values it is told to drop`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
-        // Set a test env var that we'll verify is excluded
+        // The app has a value the call drops.
         let testKey = "CLAUDEBAR_TEST_EXCLUSION_VAR"
-        setEnvironmentVariable(testKey, "should_be_stripped")
-        defer { setEnvironmentVariable(testKey, nil) }
+        let runner = InteractiveRunner(
+            terminal: PlatformTerminal.terminal,
+            programs: PlatformTerminal.programs(appEnvironment: ProcessInfo.processInfo.environment
+                .merging([testKey: "should_be_stripped"]) { _, new in new })
+        )
 
         // Print the variable with the exclusion — its value should NOT appear
         let env = ShellProgram(sh: "env", powershell: "'\(testKey)=' + $env:\(testKey)")
@@ -63,10 +65,12 @@ struct InteractiveRunnerTests {
 
     @Test
     func `should start the CLI with this app's environment values when none are dropped`() throws {
-        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         let testKey = "CLAUDEBAR_TEST_PRESERVE_VAR"
-        setEnvironmentVariable(testKey, "should_be_present")
-        defer { setEnvironmentVariable(testKey, nil) }
+        let runner = InteractiveRunner(
+            terminal: PlatformTerminal.terminal,
+            programs: PlatformTerminal.programs(appEnvironment: ProcessInfo.processInfo.environment
+                .merging([testKey: "should_be_present"]) { _, new in new })
+        )
 
         // Print the variable without exclusion — its value SHOULD appear
         let env = ShellProgram(sh: "env", powershell: "'\(testKey)=' + $env:\(testKey)")

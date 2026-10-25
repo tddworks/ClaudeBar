@@ -5,6 +5,9 @@ import Foundation
 /// by `sh`, a variable read through the person's login shell, a child given
 /// the tool folders and ended with `SIGTERM` then `SIGKILL`.
 struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
+    /// The app's own environment, which a child's starts from.
+    var appEnvironment: @Sendable () -> [String: String] = { ProcessInfo.processInfo.environment }
+
     func find(_ name: String) -> String? {
         LinuxBinaryLocator().locate(name)
     }
@@ -28,7 +31,7 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     /// shell — an app started by a service gets a minimal one, which breaks a
     /// script whose shebang is `/usr/bin/env node` — then the call's changes.
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
+        var environment = appEnvironment()
         var entries = (environment["PATH"] ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
             .split(separator: ":").map(String.init)
         var seen = Set(entries)

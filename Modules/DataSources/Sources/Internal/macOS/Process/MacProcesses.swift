@@ -6,6 +6,9 @@ import Foundation
 /// shell, and a child given the tool folders and ended with `SIGTERM` then
 /// `SIGKILL`.
 struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
+    /// The app's own environment, which a child's starts from.
+    var appEnvironment: @Sendable () -> [String: String] = { ProcessInfo.processInfo.environment }
+
     func find(_ name: String) -> String? {
         BinaryLocator.which(name)
     }
@@ -27,7 +30,7 @@ struct MacProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     /// shell — an app started by launchd gets a minimal one, which breaks a
     /// script whose shebang is `/usr/bin/env node` — then the call's changes.
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
+        var environment = appEnvironment()
         var entries = (environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin").split(separator: ":").map(String.init)
         var seen = Set(entries)
         let ownDirectory = URL(fileURLWithPath: path).deletingLastPathComponent().path

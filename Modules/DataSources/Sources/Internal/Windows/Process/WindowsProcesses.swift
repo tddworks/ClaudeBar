@@ -6,6 +6,9 @@ import Foundation
 /// person's PowerShell profile, and a child in the app's environment ended
 /// with `TerminateProcess`.
 struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
+    /// The app's own environment, which a child's starts from.
+    var appEnvironment: @Sendable () -> [String: String] = { ProcessInfo.processInfo.environment }
+
     func find(_ name: String) -> String? {
         PathBinaryLocator().locate(name)
     }
@@ -23,7 +26,7 @@ struct WindowsProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch
     }
 
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        Self.environment(change)
+        Self.environment(change, base: appEnvironment())
     }
 
     // No step before the last kill, `TerminateProcess`: the child ends at

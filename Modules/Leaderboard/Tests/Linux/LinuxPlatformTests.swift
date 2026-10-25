@@ -6,10 +6,7 @@ import Testing
 /// Linux' connections (MODULAR_DESIGN §10): the key in the person's secret
 /// store through libsecret, with the app's own store behind it, and the person
 /// reading about this machine, not a Mac and not a PC.
-///
-/// Serialized: the last test puts a `secret-tool` of its own on `PATH`, which
-/// is the whole process's `PATH` for as long as it runs.
-@Suite(.serialized)
+@Suite
 struct LinuxPlatformTests {
     /// A store of its own, so a test never touches a member's key. The secret
     /// store is asked first and the app's own store keeps it when libsecret
@@ -62,33 +59,30 @@ struct LinuxPlatformTests {
     }
 
     /// The secret store's own path, not the fallback it hides behind: a
-    /// `secret-tool` of the test's own on `PATH` answers `store`, `lookup` and
-    /// `clear` from a file, so the key is really handed to a tool on its
-    /// standard input and read back from that tool. A CI runner, having no
-    /// secret service, would otherwise only ever exercise the fallback.
+    /// `secret-tool` of the test's own answers `store`, `lookup` and `clear`
+    /// from a file, so the key is really handed to a tool on its standard input
+    /// and read back from that tool. A CI runner, having no secret service,
+    /// would otherwise only ever exercise the fallback. The store is pointed
+    /// at the tool: the process' `PATH` stays as it is, since `setenv` while
+    /// other tests read the environment can crash them.
     @Test func `should keep the key in the secret tool and read the same key back`() throws {
         let folder = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("claudebar-secret-tool-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let path = ProcessInfo.processInfo.environment["PATH"] ?? ""
-        defer {
-            try? FileManager.default.removeItem(at: folder)
-            setenv("PATH", path, 1)
-            unsetenv("CLAUDEBAR_TEST_SECRET_FILE")
-        }
+        defer { try? FileManager.default.removeItem(at: folder) }
         let tool = folder.appendingPathComponent("secret-tool")
+        let kept = folder.appendingPathComponent("kept").path
         try Self.writeExecutable("""
         #!/bin/sh
         case "$1" in
-          store) cat > "$CLAUDEBAR_TEST_SECRET_FILE" ;;
-          lookup) cat "$CLAUDEBAR_TEST_SECRET_FILE" 2>/dev/null ;;
-          clear) rm -f "$CLAUDEBAR_TEST_SECRET_FILE" ;;
+          store) cat > '\(kept)' ;;
+          lookup) cat '\(kept)' 2>/dev/null ;;
+          clear) rm -f '\(kept)' ;;
         esac
         """, to: tool)
-        setenv("CLAUDEBAR_TEST_SECRET_FILE", folder.appendingPathComponent("kept").path, 1)
-        setenv("PATH", folder.path + ":" + path, 1)
 
-        let store = SecretToolSigningKeyStore(account: "com.tddworks.claudebar/test-\(UUID().uuidString)")
+        var store = SecretToolSigningKeyStore(account: "com.tddworks.claudebar/test-\(UUID().uuidString)")
+        store.tool = tool.path
         let key = Data((0..<32).map { _ in UInt8.random(in: .min ... .max) })
 
         store.save(key)
@@ -106,7 +100,7 @@ struct LinuxPlatformTests {
     private static func writeExecutable(_ text: String, to url: URL) throws {
         let arguments = ["/bin/sh", "-c", #"printf '%s' "$2" > "$1" && chmod 755 "$1""#, "sh", url.path, text]
         let argv: [UnsafeMutablePointer<CChar>?] = arguments.map { strdup($0) } + [nil]
-        // Its own environment: `environ` changes under `setenv` meanwhile.
+        // A fixed environment: the writer needs only `PATH`.
         let envp: [UnsafeMutablePointer<CChar>?] = [strdup("PATH=/usr/bin:/bin"), nil]
         defer { (argv + envp).forEach { free($0) } }
         var pid: pid_t = 0

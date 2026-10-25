@@ -1,9 +1,6 @@
 import Foundation
 import Testing
 @testable import DataSources
-#if os(Windows)
-import WinSDK
-#endif
 
 /// This platform's terminal and program finder, the adapters the platform's
 /// factory wires, for the suites over the neutral session — as
@@ -29,6 +26,19 @@ enum PlatformTerminal {
         #endif
     }()
 
+    /// This platform's program finder, for an app whose own environment is
+    /// `environment`. A test hands one in rather than change the process':
+    /// `setenv` while other tests read the environment can crash them.
+    static func programs(appEnvironment environment: [String: String]) -> any InstalledPrograms & ChildLaunch {
+        #if canImport(Darwin)
+        return MacProcesses(appEnvironment: { environment })
+        #elseif os(Windows)
+        return WindowsProcesses(appEnvironment: { environment })
+        #else
+        return LinuxProcesses(appEnvironment: { environment })
+        #endif
+    }
+
     /// The screen a person would see for `output`, as a fetch renders it.
     static func screen(_ output: String) -> String {
         TerminalRenderer().render(output)
@@ -51,18 +61,6 @@ struct ShellProgram {
         arguments = ["-c", sh]
         #endif
     }
-}
-
-/// Sets `name` in this process' environment, or removes it when `value` is nil.
-func setEnvironmentVariable(_ name: String, _ value: String?) {
-    #if os(Windows)
-    _ = name.withCString(encodedAs: UTF16.self) { key in
-        guard let value else { return SetEnvironmentVariableW(key, nil) }
-        return value.withCString(encodedAs: UTF16.self) { SetEnvironmentVariableW(key, $0) }
-    }
-    #else
-    if let value { setenv(name, value, 1) } else { unsetenv(name) }
-    #endif
 }
 
 extension Trait where Self == ConditionTrait {

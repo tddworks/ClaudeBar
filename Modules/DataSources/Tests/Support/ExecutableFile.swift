@@ -20,8 +20,8 @@ enum ExecutableFile {
         // `printf` is the shell's own, so the file is closed before `chmod` starts.
         let arguments = ["/bin/sh", "-c", #"printf '%s' "$2" > "$1" && chmod 755 "$1""#, "sh", url.path, text]
         let argv: [UnsafeMutablePointer<CChar>?] = arguments.map { strdup($0) } + [nil]
-        // Its own environment: other tests `setenv` while this runs, and
-        // `environ` read meanwhile can point at freed memory (`EFAULT`).
+        // A fixed environment: the writer needs only `PATH`, and `environ`
+        // read during a `setenv` can point at freed memory (`EFAULT`).
         let envp: [UnsafeMutablePointer<CChar>?] = [strdup("PATH=/usr/bin:/bin"), nil]
         defer { (argv + envp).forEach { free($0) } }
         var pid: pid_t = 0

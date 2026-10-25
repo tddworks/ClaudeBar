@@ -12,6 +12,8 @@ import Foundation
 struct SecretToolSigningKeyStore: SigningKeyStore {
     var service = "com.tddworks.claudebar.credentials"
     var account = "leaderboard-signing-key"
+    /// The tool, found on the person's `PATH` unless it is a path.
+    var tool = "secret-tool"
 
     func load() -> Data? {
         let answer = run(["lookup", "service", service, "account", account], input: nil)
@@ -47,7 +49,7 @@ struct SecretToolSigningKeyStore: SigningKeyStore {
     private func run(_ arguments: [String], input: Data?) -> (status: Int32, output: String, errors: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["secret-tool"] + arguments
+        process.arguments = [tool] + arguments
         let output = Pipe()
         let errors = Pipe()
         process.standardOutput = output
