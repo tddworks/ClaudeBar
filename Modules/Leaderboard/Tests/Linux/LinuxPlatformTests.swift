@@ -113,7 +113,10 @@ struct LinuxPlatformTests {
         let spawned = posix_spawn(&pid, "/bin/sh", nil, nil, argv, envp)
         guard spawned == 0 else { throw POSIXError(POSIXErrorCode(rawValue: spawned) ?? .EIO) }
         var status: Int32 = 0
-        while waitpid(pid, &status, 0) == -1 && errno == EINTR {}
+        var waited = waitpid(pid, &status, 0)
+        while waited == -1 && errno == EINTR { waited = waitpid(pid, &status, 0) }
+        // Only a reaped child's status says the file was written.
+        guard waited == pid else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         guard status == 0 else { throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path]) }
     }
 }
