@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A mapping script that never ends no longer stalls its provider**: a script gets 5 seconds and 256 MB; past either, that refresh fails with the error instead of hanging or filling memory. (PRNUM) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/ENGINE_DESIGN.md)
+
 ---
 
 ## [0.5.23] - 2026-10-26

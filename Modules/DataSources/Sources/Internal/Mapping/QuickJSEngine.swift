@@ -15,14 +15,22 @@ struct QuickJSEngine: ScriptEngine {
     /// Below the thread's stack, so a runaway recursion fails the mapping
     /// (a `RangeError`) instead of the process.
     static let stackLimit = 6 << 20
+    /// A run's time, from the start of `evaluate`: far above the slowest real
+    /// mapping (one `omp` read takes about 3 ms in a release build), so only a
+    /// script that never ends reaches it (#573).
+    static let deadline: TimeInterval = 5
+    /// A run's memory: far above a mapping's parsed answer, so only a script
+    /// that grows without end reaches it, and fails instead of the process.
+    static let memoryLimit = 256 << 20
 
     func evaluate(_ expression: String, after scripts: [String], strings: [String: String],
                   functions: [String: ScriptFunction], localTime: TimeZone) throws -> String? {
+        let end = DispatchTime.now().uptimeNanoseconds + UInt64(Self.deadline * 1_000_000_000)
         let outcome = Outcome()
         let done = DispatchSemaphore(value: 0)
         let thread = Thread {
             outcome.result = Result {
-                try Self.run(expression, after: scripts, strings: strings, functions: functions, localTime: localTime)
+                try Self.run(expression, after: scripts, strings: strings, functions: functions, localTime: localTime, until: end)
             }
             done.signal()
         }
@@ -33,10 +41,19 @@ struct QuickJSEngine: ScriptEngine {
     }
 
     private static func run(_ expression: String, after scripts: [String], strings: [String: String],
-                            functions: [String: ScriptFunction], localTime: TimeZone) throws -> String? {
+                            functions: [String: ScriptFunction], localTime: TimeZone, until end: UInt64) throws -> String? {
+        let deadline = Unmanaged.passRetained(Deadline(end: end))
+        defer { deadline.release() }
         guard let runtime = JS_NewRuntime() else { throw UsageError.executionFailed("QuickJS is unavailable") }
         defer { JS_FreeRuntime(runtime) }
         JS_SetMaxStackSize(runtime, stackLimit)
+        JS_SetMemoryLimit(runtime, memoryLimit)
+        // Asked now and then while a script runs; past the deadline, QuickJS
+        // throws an `InternalError: interrupted` no script can catch.
+        JS_SetInterruptHandler(runtime, { _, opaque in
+            guard let opaque else { return 0 }
+            return DispatchTime.now().uptimeNanoseconds >= Unmanaged<Deadline>.fromOpaque(opaque).takeUnretainedValue().end ? 1 : 0
+        }, deadline.toOpaque())
         guard let context = JS_NewContext(runtime) else { throw UsageError.executionFailed("QuickJS is unavailable") }
         defer { JS_FreeContext(context) }
 
@@ -98,6 +115,12 @@ struct QuickJSEngine: ScriptEngine {
     private final class Host {
         let functions: [ScriptFunction]
         init(functions: [ScriptFunction]) { self.functions = functions }
+    }
+
+    /// When a run must stop, on the uptime clock, for the interrupt handler.
+    private final class Deadline {
+        let end: UInt64
+        init(end: UInt64) { self.end = end }
     }
 
     /// A run's answer, handed from its thread back to the caller.

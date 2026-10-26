@@ -60,6 +60,49 @@ struct QuickJSEngineTests {
         }
     }
 
+    // MARK: - A run ends (#573)
+
+    /// What a run that never ends throws, and how long it took to throw it:
+    /// well within the deadline's few seconds past it, so a hang can't pass.
+    private func timed(_ body: () throws -> Void) -> (error: (any Error)?, seconds: Double) {
+        let start = Date()
+        do { try body(); return (nil, -start.timeIntervalSinceNow) } catch { return (error, -start.timeIntervalSinceNow) }
+    }
+
+    @Test func `should stop an expression that never ends at its deadline`() {
+        let (error, seconds) = timed { _ = try run("for (;;) {}") }
+        #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
+        #expect(seconds >= QuickJSEngine.deadline && seconds < QuickJSEngine.deadline + 10)
+    }
+
+    /// The interruption can't be caught: a script's own `catch` doesn't keep it going.
+    @Test func `should stop a function that never ends, even one that catches what it throws`() {
+        let (error, _) = timed {
+            _ = try run("spin()", after: ["function spin() { for (;;) { try { for (;;) {} } catch (e) {} } }"])
+        }
+        #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
+    }
+
+    @Test func `should stop a script that never finishes loading`() {
+        let (error, _) = timed { _ = try run("1", after: ["while (true) {}"]) }
+        #expect(error as? ScriptEngineError == .load("InternalError: interrupted"))
+    }
+
+    @Test func `should fail a script that grows without end instead of the process`() {
+        let (error, seconds) = timed {
+            _ = try run("grow()", after: ["function grow() { const all = []; for (;;) all.push(new Array(1 << 20).fill(1)); }"])
+        }
+        #expect(error as? ScriptEngineError == .run("InternalError: out of memory"))
+        #expect(seconds < QuickJSEngine.deadline)
+    }
+
+    /// The limits are far above a mapping's own work: a large answer, read
+    /// and summed, finishes as before.
+    @Test func `should finish a large mapping well inside its limits`() throws {
+        let rows = (0..<100_000).map { #"{"id":\#($0),"used":1}"# }.joined(separator: ",")
+        #expect(try run("JSON.parse(text).reduce((sum, row) => sum + row.used, 0)", strings: ["text": "[\(rows)]"]) == "100000")
+    }
+
     /// The forms the built-in scripts parse, as JavaScriptCore read them:
     /// fractions past milliseconds are cut, an offset may lose its colon, and
     /// a bare date is UTC midnight.

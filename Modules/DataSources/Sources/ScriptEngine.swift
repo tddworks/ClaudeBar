@@ -21,7 +21,9 @@ protocol ScriptEngine: Sendable {
     /// first instant.
     ///
     /// Throws `ScriptEngineError.load` when a script throws while loading,
-    /// and `.run` when `expression` throws.
+    /// and `.run` when `expression` throws. A run that doesn't finish in
+    /// time, or outgrows its memory, throws the same way: the mapping fails
+    /// and the process is unaffected (#573).
     func evaluate(_ expression: String, after scripts: [String], strings: [String: String],
                   functions: [String: ScriptFunction], localTime: TimeZone) throws -> String?
 }
