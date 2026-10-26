@@ -22,6 +22,12 @@ struct QuickJSEngine: ScriptEngine {
     /// A run's memory: far above a mapping's parsed answer, so only a script
     /// that grows without end reaches it, and fails instead of the process.
     static let memoryLimit = 256 << 20
+    /// How long past the deadline the caller waits for the run to stop itself.
+    /// QuickJS asks for the deadline once every 10,000 steps, so a loop whose
+    /// every step is slow (a large `JSON.parse`, a big `BigInt`) stops long
+    /// after it; the caller has its answer here instead, and the run ends on
+    /// its own thread at its next check.
+    static let grace: TimeInterval = 1
 
     func evaluate(_ expression: String, after scripts: [String], strings: [String: String],
                   functions: [String: ScriptFunction], localTime: TimeZone) throws -> String? {
@@ -36,7 +42,9 @@ struct QuickJSEngine: ScriptEngine {
         }
         thread.stackSize = Self.threadStack
         thread.start()
-        done.wait()
+        guard done.wait(timeout: DispatchTime(uptimeNanoseconds: end) + Self.grace) == .success else {
+            throw ScriptEngineError.run("InternalError: interrupted")
+        }
         return try outcome.result!.get()
     }
 
@@ -123,7 +131,9 @@ struct QuickJSEngine: ScriptEngine {
         init(end: UInt64) { self.end = end }
     }
 
-    /// A run's answer, handed from its thread back to the caller.
+    /// A run's answer, handed from its thread back to the caller; read only
+    /// once the run signalled, so a run the caller stopped waiting for writes
+    /// it for no one.
     private final class Outcome: @unchecked Sendable {
         var result: Result<String?, any Error>?
     }
