@@ -10,19 +10,15 @@ import WinSDK
 /// only (`CRED_PERSIST_LOCAL_MACHINE`), as go-keyring and the leaderboard's
 /// key store (#547) do.
 ///
-/// One call at a time, across the process: when several threads change items
-/// at once, Credential Manager answers each change as made and keeps only
-/// some. On a Windows 11 PC, 16 threads saving, overwriting and deleting items
-/// of their own left 51 to 72 of 640 items behind that had been deleted; none
-/// with the calls serialised. Providers refreshing together do exactly that.
+/// Each call is made `CredentialManager.oneAtATime`: providers refreshing
+/// together save from several threads, and on a Windows 11 PC 16 threads
+/// saving, overwriting and deleting items of their own left 51 to 72 of 640
+/// deleted items behind; none with the calls serialised.
 struct CredentialManagerKeychain: KeychainItems {
-    /// Held for every Credential Manager call this store makes.
-    static let oneAtATime = NSLock()
-
     func password(service: String, account: String?) -> String? {
         let target = Self.target(service, account)
         var credential: PCREDENTIALW?
-        let found = Self.oneAtATime.withLock {
+        let found = CredentialManager.oneAtATime {
             target.withCString(encodedAs: UTF16.self) { CredReadW($0, DWORD(CRED_TYPE_GENERIC), 0, &credential) }
         }
         guard found, let credential else {
@@ -49,7 +45,7 @@ struct CredentialManagerKeychain: KeychainItems {
                     credential.CredentialBlobSize = DWORD(blob.count)
                     credential.CredentialBlob = blob.baseAddress
                     credential.Persist = DWORD(CRED_PERSIST_LOCAL_MACHINE)
-                    return Self.oneAtATime.withLock { CredWriteW(&credential, 0) }
+                    return CredentialManager.oneAtATime { CredWriteW(&credential, 0) }
                 }
             }
         }

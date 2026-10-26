@@ -85,7 +85,7 @@ struct CredentialManagerKeychainTests {
                     credential.CredentialBlobSize = DWORD(bytes.count)
                     credential.CredentialBlob = bytes.baseAddress
                     credential.Persist = DWORD(CRED_PERSIST_LOCAL_MACHINE)
-                    return CredentialManagerKeychain.oneAtATime.withLock { CredWriteW(&credential, 0) }
+                    return CredentialManager.oneAtATime { CredWriteW(&credential, 0) }
                 }
             }
         }
@@ -98,7 +98,7 @@ struct CredentialManagerKeychainTests {
     }
 
     private static func delete(_ target: String) {
-        _ = CredentialManagerKeychain.oneAtATime.withLock {
+        _ = CredentialManager.oneAtATime {
             target.withCString(encodedAs: UTF16.self) { CredDeleteW($0, DWORD(CRED_TYPE_GENERIC), 0) }
         }
     }
@@ -106,7 +106,7 @@ struct CredentialManagerKeychainTests {
     private static func targets(startingWith prefix: String) -> [String] {
         var count: DWORD = 0
         var credentials: UnsafeMutablePointer<PCREDENTIALW?>?
-        let found = CredentialManagerKeychain.oneAtATime.withLock {
+        let found = CredentialManager.oneAtATime {
             (prefix + "*").withCString(encodedAs: UTF16.self) { CredEnumerateW($0, 0, &count, &credentials) }
         }
         guard found, let credentials else { return [] }
