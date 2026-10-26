@@ -36,20 +36,23 @@ struct QuickJSEngine: ScriptEngine {
         let done = DispatchSemaphore(value: 0)
         let thread = Thread {
             outcome.result = Result {
-                try Self.run(expression, after: scripts, strings: strings, functions: functions, localTime: localTime, until: end)
+                try Self.run(expression, after: scripts, strings: strings, functions: functions, localTime: localTime,
+                             until: end, whenLoaded: { outcome.loaded = true })
             }
             done.signal()
         }
         thread.stackSize = Self.threadStack
         thread.start()
         guard done.wait(timeout: DispatchTime(uptimeNanoseconds: end) + Self.grace) == .success else {
-            throw ScriptEngineError.run("InternalError: interrupted")
+            let interrupted = "InternalError: interrupted"
+            throw outcome.loaded ? ScriptEngineError.run(interrupted) : ScriptEngineError.load(interrupted)
         }
         return try outcome.result!.get()
     }
 
     private static func run(_ expression: String, after scripts: [String], strings: [String: String],
-                            functions: [String: ScriptFunction], localTime: TimeZone, until end: UInt64) throws -> String? {
+                            functions: [String: ScriptFunction], localTime: TimeZone, until end: UInt64,
+                            whenLoaded: () -> Void) throws -> String? {
         let deadline = Unmanaged.passRetained(Deadline(end: end))
         defer { deadline.release() }
         guard let runtime = JS_NewRuntime() else { throw UsageError.executionFailed("QuickJS is unavailable") }
@@ -99,6 +102,7 @@ struct QuickJSEngine: ScriptEngine {
             defer { JS_FreeValue(context, loaded) }
             if JS_IsException(loaded) { throw ScriptEngineError.load(exception(context)) }
         }
+        whenLoaded()
         let value = JS_Eval(context, expression, expression.utf8.count, "<expression>", Int32(JS_EVAL_TYPE_GLOBAL))
         defer { JS_FreeValue(context, value) }
         if JS_IsException(value) { throw ScriptEngineError.run(exception(context)) }
@@ -133,8 +137,15 @@ struct QuickJSEngine: ScriptEngine {
 
     /// A run's answer, handed from its thread back to the caller; read only
     /// once the run signalled, so a run the caller stopped waiting for writes
-    /// it for no one.
+    /// it for no one. Whether its scripts had loaded is read without waiting,
+    /// so it is locked.
     private final class Outcome: @unchecked Sendable {
         var result: Result<String?, any Error>?
+        private let lock = NSLock()
+        private var scriptsLoaded = false
+        var loaded: Bool {
+            get { lock.withLock { scriptsLoaded } }
+            set { lock.withLock { scriptsLoaded = newValue } }
+        }
     }
 }

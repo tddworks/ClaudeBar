@@ -97,6 +97,13 @@ struct QuickJSEngineTests {
         #expect(seconds < QuickJSEngine.deadline + 3)
     }
 
+    @Test func `should say a script was still loading when the caller stopped waiting`() {
+        let (error, _) = timed {
+            _ = try run("1", after: ["for (;;) { ((1n << 20000n) - 1n) * ((1n << 20000n) - 3n); }"])
+        }
+        #expect(error as? ScriptEngineError == .load("InternalError: interrupted"))
+    }
+
     @Test func `should fail a script that grows without end instead of the process`() {
         let (error, seconds) = timed {
             _ = try run("grow()", after: ["function grow() { const all = []; for (;;) all.push(new Array(1 << 20).fill(1)); }"])
