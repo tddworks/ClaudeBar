@@ -104,6 +104,15 @@ struct QuickJSEngineTests {
         #expect(error as? ScriptEngineError == .load("InternalError: interrupted"))
     }
 
+    /// An argument whose text never ends is interrupted while it is read; the
+    /// host function isn't called, and the interruption isn't lost.
+    @Test func `should stop a run whose host-function argument never turns into text`() {
+        let (error, _) = timed {
+            _ = try run("String(nothing({ toString() { for (;;) {} } }))", functions: ["nothing": { _ in nil }])
+        }
+        #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
+    }
+
     @Test func `should fail a script that grows without end instead of the process`() {
         let (error, seconds) = timed {
             _ = try run("grow()", after: ["function grow() { const all = []; for (;;) all.push(new Array(1 << 20).fill(1)); }"])

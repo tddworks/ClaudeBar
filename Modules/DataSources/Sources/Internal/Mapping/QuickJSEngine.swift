@@ -90,8 +90,15 @@ struct QuickJSEngine: ScriptEngine {
             let call = JS_NewCFunctionData(context, { context, _, count, arguments, index, _ in
                 guard let context, let opaque = JS_GetContextOpaque(context) else { return cqjs_undefined() }
                 let host = Unmanaged<Host>.fromOpaque(opaque).takeUnretainedValue()
-                let argument = count > 0 ? arguments.flatMap { QuickJSEngine.text(context, $0[0]) } : nil
-                guard let number = host.functions[Int(index)](argument ?? "") else { return cqjs_null() }
+                var argument = ""
+                if count > 0, let arguments {
+                    // An argument that can't become text threw while it was
+                    // read (interrupted, out of memory): that stays the call's
+                    // answer, so a run's deadline is never lost in a host call.
+                    guard let text = QuickJSEngine.text(context, arguments[0]) else { return cqjs_exception() }
+                    argument = text
+                }
+                guard let number = host.functions[Int(index)](argument) else { return cqjs_null() }
                 return JS_NewFloat64(context, number)
             }, 1, Int32(index), 0, nil)
             JS_SetPropertyStr(context, global, function.key, call)

@@ -7,5 +7,6 @@
 
 static inline JSValue cqjs_null(void) { return JS_NULL; }
 static inline JSValue cqjs_undefined(void) { return JS_UNDEFINED; }
+static inline JSValue cqjs_exception(void) { return JS_EXCEPTION; }
 
 #endif
