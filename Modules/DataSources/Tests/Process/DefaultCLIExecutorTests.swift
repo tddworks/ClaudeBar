@@ -21,7 +21,7 @@ struct DefaultCLIExecutorTests {
             binary: echo.binary,
             args: echo.arguments,
             input: "",
-            timeout: 20,
+            timeout: PlatformTerminal.deadline,
             workingDirectory: nil,
             autoResponses: [:]
         )
@@ -34,9 +34,7 @@ struct DefaultCLIExecutorTests {
     func `should wait past a quiet spell while Claude's usage screen is still filling in (#271)`() async throws {
         // issue #271: `claude /usage` paints a placeholder, goes quiet longer
         // than the idle cutoff, then appends the quota bars.
-        // The 60s ceiling is for a loaded machine — suites run concurrently,
-        // and PowerShell's spawn and its sleep stretch under that load; the
-        // rule still ends the happy path the moment the screen settles.
+        // The rule ends the happy path the moment the screen settles.
         let program = ShellProgram(
             sh: "printf 'Loading usage data...'; sleep 5; printf 'Current session 1%% used'",
             powershell: "[Console]::Write('Loading usage data...'); Start-Sleep 5; [Console]::Write('Current session 1% used')"
@@ -45,7 +43,7 @@ struct DefaultCLIExecutorTests {
             binary: program.binary,
             args: program.arguments,
             input: "",
-            timeout: 60,
+            timeout: PlatformTerminal.deadline,
             workingDirectory: nil,
             autoResponses: [:]
         )
@@ -57,7 +55,7 @@ struct DefaultCLIExecutorTests {
     func `should still deliver typed input after the stated delay`() async throws {
         // The program echoes back the line it reads; the delay must not lose
         // the input, and the session must stay open long enough to receive it.
-        // The 3s delay is the stated one: short next to the 60s ceiling, long
+        // The 3s delay is the stated one: short next to the ceiling, long
         // enough that a loaded machine's slow shell start — suites run their
         // terminals concurrently — no longer swallows the line mid-init.
         let echo = ShellProgram(sh: "cat", powershell: "'got ' + [Console]::ReadLine()")
@@ -65,7 +63,7 @@ struct DefaultCLIExecutorTests {
             binary: echo.binary,
             args: echo.arguments,
             input: "delayed-hello",
-            timeout: 60,
+            timeout: PlatformTerminal.deadline,
             workingDirectory: nil,
             autoResponses: [:]
         )
@@ -99,7 +97,7 @@ struct DefaultCLIExecutorTests {
             binary: pwd.binary,
             args: pwd.arguments,
             input: "",
-            timeout: 20,
+            timeout: PlatformTerminal.deadline,
             workingDirectory: folder,
             autoResponses: [:]
         )
@@ -121,7 +119,7 @@ struct DefaultCLIExecutorTests {
             binary: probe.binary,
             args: probe.arguments,
             input: "",
-            timeout: 20,
+            timeout: PlatformTerminal.deadline,
             workingDirectory: nil,
             autoResponses: [:]
         )
@@ -147,7 +145,7 @@ struct DefaultCLIExecutorTests {
                         binary: program.binary,
                         args: program.arguments,
                         input: "",
-                        timeout: 20,
+                        timeout: PlatformTerminal.deadline,
                         workingDirectory: nil,
                         autoResponses: [:]
                     )

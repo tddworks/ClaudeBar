@@ -13,7 +13,7 @@ struct InteractiveRunnerTests {
         let result = try runner.run(
             binary: echo.binary,
             input: "",
-            options: .init(arguments: echo.arguments)
+            options: .init(timeout: PlatformTerminal.deadline, arguments: echo.arguments)
         )
 
         #expect(result.exitCode == 0)
@@ -57,7 +57,7 @@ struct InteractiveRunnerTests {
         let result = try runner.run(
             binary: env.binary,
             input: "",
-            options: .init(arguments: env.arguments, environmentExclusions: [testKey])
+            options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments, environmentExclusions: [testKey])
         )
 
         #expect(!PlatformTerminal.screen(result.output).contains("CLAUDEBAR_TEST_EXCLUSION_VAR=should_be_stripped"))
@@ -77,7 +77,7 @@ struct InteractiveRunnerTests {
         let result = try runner.run(
             binary: env.binary,
             input: "",
-            options: .init(arguments: env.arguments)
+            options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments)
         )
 
         #expect(PlatformTerminal.screen(result.output).contains("CLAUDEBAR_TEST_PRESERVE_VAR=should_be_present"))
@@ -98,7 +98,7 @@ struct InteractiveRunnerTests {
         let result = try runner.run(
             binary: env.binary,
             input: "",
-            options: .init(arguments: env.arguments, environmentAdditions: ["CLAUDEBAR_PROBE": "1"])
+            options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments, environmentAdditions: ["CLAUDEBAR_PROBE": "1"])
         )
 
         #expect(PlatformTerminal.screen(result.output).contains("CLAUDEBAR_PROBE=1"))
@@ -132,7 +132,7 @@ struct InteractiveRunnerTests {
             binary: program.binary,
             input: "",
             options: .init(
-                timeout: 20.0,
+                timeout: PlatformTerminal.deadline,
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
@@ -176,7 +176,7 @@ struct InteractiveRunnerTests {
             binary: program.binary,
             input: "",
             options: .init(
-                timeout: 20.0,
+                timeout: PlatformTerminal.deadline,
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
@@ -201,7 +201,7 @@ struct InteractiveRunnerTests {
             binary: program.binary,
             input: "",
             options: .init(
-                timeout: 20.0,
+                timeout: PlatformTerminal.deadline,
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
