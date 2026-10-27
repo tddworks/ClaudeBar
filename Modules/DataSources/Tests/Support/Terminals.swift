@@ -39,11 +39,13 @@ enum PlatformTerminal {
         #endif
     }
 
-    /// How long a test gives a run in a real terminal: a ceiling for a
-    /// loaded machine, never a wait. The suites run their terminals at once,
-    /// and on a busy CI runner a PowerShell start alone can take tens of
-    /// seconds (#635); a run still ends the moment its program exits or its
-    /// screen rule is met.
+    /// The `timeout` a test hands a run in a real terminal: how long the run
+    /// reads the screen, a ceiling for a loaded machine, never a wait. The
+    /// suites run their terminals at once, and on a busy CI runner a
+    /// PowerShell start alone can take tens of seconds (#635); a run still
+    /// ends the moment its program exits or its screen rule is met. Finding
+    /// the program and starting the terminal come before it and aren't
+    /// counted, as in the app.
     static let deadline: TimeInterval = 60
 
     /// The screen a person would see for `output`, as a fetch renders it.
