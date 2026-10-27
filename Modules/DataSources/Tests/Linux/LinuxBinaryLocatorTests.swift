@@ -18,8 +18,8 @@ struct LinuxBinaryLocatorTests {
         return url.path
     }
 
-    private func locator(path: [String]) -> LinuxBinaryLocator {
-        LinuxBinaryLocator(environment: { ["PATH": path.joined(separator: ":")] })
+    private func locator(path: [String], toolFolders: [String] = []) -> LinuxBinaryLocator {
+        LinuxBinaryLocator(environment: { ["PATH": path.joined(separator: ":")] }, toolFolders: toolFolders)
     }
 
     @Test
@@ -40,6 +40,27 @@ struct LinuxBinaryLocatorTests {
         _ = try executable("bin/claude")
 
         #expect(locator(path: [root.appendingPathComponent("bin").path]).locate(tool) == tool)
+    }
+
+    @Test
+    func `should find a CLI in a tool folder the PATH lacks, as when the app runs as a service (#604)`() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let tool = try executable("home/.local/bin/claude")
+
+        let locator = locator(path: [root.appendingPathComponent("usr/bin").path],
+                              toolFolders: [root.appendingPathComponent("home/.local/bin").path])
+        #expect(locator.locate("claude") == tool)
+    }
+
+    @Test
+    func `should prefer the PATH's copy of a CLI to a tool folder's`() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let onPath = try executable("bin/claude")
+        _ = try executable("home/.local/bin/claude")
+
+        let locator = locator(path: [root.appendingPathComponent("bin").path],
+                              toolFolders: [root.appendingPathComponent("home/.local/bin").path])
+        #expect(locator.locate("claude") == onPath)
     }
 
     @Test

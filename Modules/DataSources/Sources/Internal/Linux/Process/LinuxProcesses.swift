@@ -27,30 +27,20 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
         return [binary, "-l", "-i", "-c", "printf '\(begin)%s\(end)\\n' \"$\(variable)\""]
     }
 
-    /// The app's environment with a PATH that finds tools outside a login
-    /// shell — an app started by a service gets a minimal one, which breaks a
-    /// script whose shebang is `/usr/bin/env node` — then the call's changes.
+    /// The app's environment with the tool folders on `PATH` (a service gives
+    /// an app a minimal one), then the call's changes.
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        var environment = appEnvironment()
-        var entries = (environment["PATH"] ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
-            .split(separator: ":").map(String.init)
-        var seen = Set(entries)
-        let ownDirectory = URL(fileURLWithPath: path).deletingLastPathComponent().path
-        for directory in [ownDirectory] + Self.commonPaths where seen.insert(directory).inserted {
-            entries.append(directory)
-        }
-        environment["PATH"] = entries.joined(separator: ":")
-        for name in change.unset { environment.removeValue(forKey: name) }
-        for (name, value) in change.defaults where environment[name] == nil { environment[name] = value }
-        environment.merge(change.set) { _, value in value }
-        return environment
+        ChildEnvironment.exactNames(appEnvironment(), program: path,
+                                    defaultPath: "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+                                    toolFolders: Self.commonPaths, change: change)
     }
 
     // Asked to stop (`SIGTERM`), then killed after two seconds.
     var stopGrace: Duration? { .seconds(2) }
 
     /// Where CLI tools are installed outside a login shell's `PATH`: the same
-    /// folders the Mac's locator falls back to, in Linux' spellings.
+    /// folders the Mac's locator falls back to, in Linux' spellings. A child's
+    /// `PATH` lists them, and the locator looks in them after `PATH`'s.
     static var commonPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return [

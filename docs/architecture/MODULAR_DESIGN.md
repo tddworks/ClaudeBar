@@ -393,6 +393,9 @@ TECHNICAL, neutral, one copy
   PipeCLIExecutor (the timeout race, stdout and stderr as one text)
   PipeConversation (a line at a time; Subprocess starts it, as the pipe runner does,
                     so the program gets its pipes and none of the app's other handles)
+  ToolFolders (a PATH's folders, then each tool folder it lacks, once) and
+  ChildEnvironment.exactNames (the Mac's and Linux' child environment): an
+                    adapter names its tool folders and default PATH, nothing else (#604)
 PORTS, Ports/Processes.swift: what each OS answers, one question each
   InstalledPrograms   find(name) → path?          login PATH + tool folders │ PATH + PATHEXT
   ScriptStart         command(path) → argv        sh 'exec "$1"'            │ the file itself
@@ -638,7 +641,7 @@ Modules/DataSources/Sources/
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
         ├── Time/LinuxTimeZone.swift     TimeZone.current; a zone with no tzdata
         │                                 file is the OS's offset, fixed
-        ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH),
+        ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH, then tool folders),
         │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill
         └── Logs/                    FileStamp+Linux · ByteSearch+Linux
 Modules/DataSources/Tests/
