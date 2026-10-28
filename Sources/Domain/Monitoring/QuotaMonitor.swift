@@ -197,12 +197,13 @@ public final class QuotaMonitor {
         }
     }
 
-    /// Refreshes a single provider.
+    /// Refreshes a single provider, answering whether it was refreshed.
     /// `kind` defaults to `.interactive`; the background monitoring loop passes
     /// `.background` so providers can skip non-glanceable work (issue #204).
-    private func refreshProvider(_ provider: Account, kind: RefreshKind = .interactive) async {
+    @discardableResult
+    private func refreshProvider(_ provider: Account, kind: RefreshKind = .interactive) async -> Bool {
         guard let product = providers.provider(of: provider), await product.isAvailable(provider) else {
-            return
+            return false
         }
 
         do {
@@ -210,12 +211,14 @@ public final class QuotaMonitor {
             // lands — so nothing is recorded and there is nothing to publish.
             _ = try await product.refresh(provider, kind)
             await refreshed(provider)
+            return true
         } catch {
             // Every failure is the login's, in `lastError`. A paused login's
             // refusal, or a fetch that landed after a pause, records nothing
             // and tells no one (CANONICAL §5).
-            guard !provider.isPaused else { return }
+            guard !provider.isPaused else { return false }
             await failed(provider)
+            return false
         }
     }
 
@@ -262,17 +265,24 @@ public final class QuotaMonitor {
 
     /// Refreshes the given providers once, preserving order and removing duplicates.
     public func refresh(providerIds: [String], kind: RefreshKind = .interactive) async {
-        var seen = Set<String>()
-        let uniqueProviderIds = providerIds.filter { providerId in
-            seen.insert(providerId).inserted
-        }
+        _ = await refreshAnswering(providerIds, kind: kind)
+    }
 
-        await withTaskGroup(of: Void.self) { group in
-            for providerId in uniqueProviderIds {
+    /// Refreshes the given logins once, de-duplicated, at once, and answers
+    /// the ids that were refreshed: a failed or paused login keeps its last
+    /// snapshot, which the background loop must not read as this tick's (#642).
+    private func refreshAnswering(_ providerIds: [String], kind: RefreshKind) async -> Set<String> {
+        var seen = Set<String>()
+        let logins = providerIds.filter { seen.insert($0).inserted }.compactMap(login(id:))
+        return await withTaskGroup(of: String?.self) { group in
+            for login in logins {
                 group.addTask {
-                    await self.refresh(providerId: providerId, kind: kind)
+                    await self.refreshProvider(login, kind: kind) ? login.id : nil
                 }
             }
+            var refreshed = Set<String>()
+            for await id in group { if let id { refreshed.insert(id) } }
+            return refreshed
         }
     }
 
@@ -636,12 +646,14 @@ public final class QuotaMonitor {
         return ids.compactMap { login(id: $0).flatMap(product(of:))?.backgroundRefreshFloor }
     }
 
-    /// What each refreshed login's shown quotas read now, keyed by login and
-    /// quota, for *Refresh faster while a quota moves* (#642). A hidden quota
-    /// is left out, as it sets no status or alert either.
-    private func readings(for providerIds: [String]?) -> [String: AdaptiveCadence.Reading] {
+    /// What the logins this tick refreshed show now, keyed by login and quota,
+    /// for *Refresh faster while a quota moves* (#642). A login whose refresh
+    /// failed or was paused is left out: it still holds an older snapshot,
+    /// perhaps one an interactive refresh read. A hidden quota is left out,
+    /// as it sets no status or alert either.
+    private func readings(of refreshed: Set<String>) -> [String: AdaptiveCadence.Reading] {
         var readings: [String: AdaptiveCadence.Reading] = [:]
-        for id in providerIds ?? [selectedProviderId] {
+        for id in refreshed {
             guard let login = login(id: id), let usage = usage(of: login) else { continue }
             for quota in usage.quotas {
                 readings["\(id)/\(quota.quotaType.quotaKey)"] =
@@ -699,12 +711,8 @@ public final class QuotaMonitor {
                     // bind a low (`.utility`) QoS so any CLI subprocess spawned
                     // during the refresh runs on efficiency cores / throttled —
                     // both keep idle energy use low (issue #204).
-                    await FetchContext.$qualityOfService.withValue(.utility) {
-                        if let providerIds {
-                            await self.refresh(providerIds: providerIds, kind: .background)
-                        } else {
-                            await self.refreshSelected(kind: .background)
-                        }
+                    let refreshed = await FetchContext.$qualityOfService.withValue(.utility) {
+                        await self.refreshAnswering(providerIds ?? [self.selectedProviderId], kind: .background)
                     }
                     continuation.yield(.refreshed)
 
@@ -713,7 +721,7 @@ public final class QuotaMonitor {
                     // 1-minute floor, then raised to any provider-imposed
                     // background floor (e.g. Claude API → 15 min). Resolved per
                     // tick so a live CLI↔API switch is honored without restarting.
-                    let requested = cadence?.next(after: self.readings(for: providerIds)) ?? interval
+                    let requested = cadence?.next(after: self.readings(of: refreshed)) ?? interval
                     let floors = self.backgroundRefreshFloors(for: providerIds)
                     var sleepInterval = Self.effectiveInterval(requested: requested, floors: floors)
 
