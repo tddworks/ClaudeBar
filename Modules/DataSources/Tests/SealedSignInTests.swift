@@ -163,15 +163,27 @@ struct SealedSignInTests {
     }
 
     @Test
-    func `should ask to sign in to the app again when its key doesn't open the sign-in`() async throws {
+    func `should ask to sign in to the app again when its key doesn't open the sign-in, asking for the key again only after a minute`() async throws {
         defer { try? FileManager.default.removeItem(at: home) }
-        let sent = Sent()
-        let source = try source(storing: sealed("tok-1", with: "old"), safeStorage: SafeStorage(Keys("new")), sent: sent)
+        let sent = Sent(), keys = Keys("new"), clock = Clock()
+        let source = try source(storing: sealed("tok-1", with: "old"), safeStorage: SafeStorage(keys, now: { clock.now }),
+                                sent: sent)
 
-        let failure = await failure(of: source)
+        let first = await failure(of: source)
+        clock.advance(SafeStorage.pause - 1)
+        let again = await failure(of: source)
 
-        #expect(failure?.contains("Acme's saved sign-in couldn't be opened with its key. Sign in to Acme again") == true)
+        #expect(first?.contains("Acme's saved sign-in couldn't be opened with its key. Sign in to Acme again") == true)
+        #expect(again == first)
+        #expect(keys.keyReads == 1)
         #expect(sent.all.isEmpty)
+
+        keys.replace(with: "old")
+        clock.advance(1)
+        _ = try await source.fetchResponse()
+
+        #expect(keys.keyReads == 2)
+        #expect(sent.all == ["Bearer tok-1"])
     }
 
     @Test
