@@ -277,15 +277,28 @@ struct SettingReader: CredentialFinding {
     }
 }
 
-/// A lookup refined: the named cookies read out of a Cookie-header token and
-/// the `with` values added where nothing was found, then no key unless each
-/// `match` pattern matches its value.
+/// A lookup refined: its `sealed` values opened, the named cookies read out of
+/// a Cookie-header token and the `with` values added where nothing was found,
+/// then no key unless each `match` pattern matches its value.
 struct RefinedReader: CredentialFinding {
     let base: any CredentialFinding
     let refinement: Refinement
+    /// Opens `sealed` values; `nil` on a platform with no safeStorage, where a
+    /// sealed value fails as `Unavailable` and a clear one still answers.
+    let safeStorage: SafeStorage?
+    /// The platform's `name`, for that failure.
+    let platform: String
 
     func find() throws -> FoundCredential? {
         guard var found = try base.find() else { return nil }
+        if let sealed = refinement.sealed {
+            for (name, value) in found.credential.values where value.hasPrefix(sealed.prefix) {
+                guard let safeStorage else {
+                    throw Unavailable(.lookup, "Opening a sign-in \(sealed.app) keeps sealed", on: platform).error
+                }
+                found.credential[name] = try safeStorage.open(value, sealed)
+            }
+        }
         if let header = found.credential["token"] {
             for (name, value) in refinement.cookieValues(in: header) where found.credential[name] == nil {
                 found.credential[name] = value

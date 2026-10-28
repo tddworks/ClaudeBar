@@ -30,7 +30,8 @@
               "query": "SELECT value AS token FROM ItemTable WHERE key = 'cursorAuth/accessToken'",
               "fields": { "token": "$.token" },
               "hint": "Sign in again in Cursor settings, then refresh."
-            }
+            },
+            "sealed": { "prefix": "cursor-safe-storage:v1:", "app": "Cursor" }
           },
           { "setting": "accessToken" }
         ]

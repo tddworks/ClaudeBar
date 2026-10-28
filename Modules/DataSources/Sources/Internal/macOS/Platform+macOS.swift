@@ -13,6 +13,7 @@ extension Platform {
             keychain: SecurityKeychain(),
             browserCookies: SystemBrowserCookies(),
             browserStorage: SystemBrowserStorage(),
+            safeStorage: SafeStorage(KeychainSafeStorageKeys()),
             localServers: LocalServers(MacLocalServers()),
             screenRenderer: { TerminalRenderer().render($0) },
             applicationData: { home, _ in home.appendingPathComponent("Library/Application Support", isDirectory: true) }

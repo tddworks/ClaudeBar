@@ -24,6 +24,9 @@ struct Platform: Sendable {
     var keychain: (any KeychainItems)?
     var browserCookies: (any BrowserCookieReading)?
     var browserStorage: (any BrowserStorageReading)?
+    /// Opens what an Electron app sealed with its safeStorage key, for a
+    /// `sealed` lookup. One per process, so a key is read once.
+    var safeStorage: SafeStorage?
     /// Finds an app's own server on this machine and asks it, for `localServer`.
     var localServers: LocalServers?
     /// Draws a terminal's raw output as the screen a person sees, for a
@@ -42,6 +45,7 @@ struct Platform: Sendable {
         keychain: (any KeychainItems)? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
+        safeStorage: SafeStorage? = nil,
         localServers: LocalServers? = nil,
         screenRenderer: (@Sendable (String) -> String)? = nil,
         applicationData: (@Sendable (URL, @Sendable (String) -> String?) -> URL)? = nil,
@@ -54,6 +58,7 @@ struct Platform: Sendable {
         self.keychain = keychain
         self.browserCookies = browserCookies
         self.browserStorage = browserStorage
+        self.safeStorage = safeStorage
         self.localServers = localServers
         self.screenRenderer = screenRenderer
         self.applicationData = applicationData

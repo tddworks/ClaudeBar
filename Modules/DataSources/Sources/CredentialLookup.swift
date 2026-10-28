@@ -121,7 +121,8 @@ public struct SQLiteCredential: Sendable, Equatable, Codable {
 /// `match`: a value must match its pattern, or the lookup has no key — a
 /// token is never sent to a host it wasn't meant for. `with`: fixed values
 /// added to what was found; they never replace a found value. `cookies`:
-/// named cookies read out of a Cookie-header token.
+/// named cookies read out of a Cookie-header token. `sealed`: values an app
+/// sealed with its safeStorage key, opened before the rest is checked.
 public struct Refinement: Sendable, Equatable, Codable {
     public let match: [String: String]
     public let with: [String: String]
@@ -129,11 +130,14 @@ public struct Refinement: Sendable, Equatable, Codable {
     /// own name — a console's `sec_token` or CSRF cookie. One the header
     /// lacks stays unknown.
     public let cookies: [String]
+    public let sealed: SealedValues?
 
-    public init(match: [String: String] = [:], with: [String: String] = [:], cookies: [String] = []) {
+    public init(match: [String: String] = [:], with: [String: String] = [:], cookies: [String] = [],
+                sealed: SealedValues? = nil) {
         self.match = match
         self.with = with
         self.cookies = cookies
+        self.sealed = sealed
     }
 
     /// The named cookies' values in a `name=value; …` header.
@@ -145,6 +149,22 @@ public struct Refinement: Sendable, Equatable, Codable {
             values[String(parts[0])] = String(parts[1])
         }
         return values
+    }
+}
+
+/// `{ "prefix": "cursor-safe-storage:v1:", "app": "Cursor" }` — a value that
+/// starts with `prefix` is the rest's base64, sealed with Electron's
+/// safeStorage under `app`'s key: on the Mac its Keychain item
+/// `"<app> Safe Storage"`, on Windows the key in `<app data>/<app>/Local
+/// State`. A value without the prefix is used as it is, so a login an older
+/// app wrote in the clear still answers.
+public struct SealedValues: Sendable, Equatable, Codable {
+    public let prefix: String
+    public let app: String
+
+    public init(prefix: String, app: String) {
+        self.prefix = prefix
+        self.app = app
     }
 }
 
@@ -440,8 +460,9 @@ extension CredentialLookup: Codable {
         let match = try container.decodeIfPresent([String: String].self, forKey: TagKey("match")) ?? [:]
         let with = try container.decodeIfPresent([String: String].self, forKey: TagKey("with")) ?? [:]
         let cookies = try container.decodeIfPresent([String].self, forKey: TagKey("cookies")) ?? []
-        if !match.isEmpty || !with.isEmpty || !cookies.isEmpty {
-            refined = .refined(base, Refinement(match: match, with: with, cookies: cookies))
+        let sealed = try container.decodeIfPresent(SealedValues.self, forKey: TagKey("sealed"))
+        if !match.isEmpty || !with.isEmpty || !cookies.isEmpty || sealed != nil {
+            refined = .refined(base, Refinement(match: match, with: with, cookies: cookies, sealed: sealed))
         }
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
@@ -482,6 +503,7 @@ extension CredentialLookup: Codable {
             if !refinement.match.isEmpty { try container.encode(refinement.match, forKey: TagKey("match")) }
             if !refinement.with.isEmpty { try container.encode(refinement.with, forKey: TagKey("with")) }
             if !refinement.cookies.isEmpty { try container.encode(refinement.cookies, forKey: TagKey("cookies")) }
+            if let sealed = refinement.sealed { try container.encode(sealed, forKey: TagKey("sealed")) }
         case .firstOf(let lookups):
             try container.encode(lookups, forKey: TagKey("firstOf"))
         case .refreshing(let base, let refresh):

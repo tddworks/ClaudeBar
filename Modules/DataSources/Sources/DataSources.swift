@@ -94,8 +94,8 @@ public enum DataSources {
     /// CLI and command runs on `cliExecutor`, whatever environment it asks
     /// for. A local server is found among `running` and asked through
     /// `network`, on every platform. This platform's screen renderer stays;
-    /// a `nil` browser store means none, and a `nil` keychain one holding
-    /// no item.
+    /// a `nil` browser store or safeStorage means none, and a `nil` keychain
+    /// one holding no item.
     public static func make(
         _ definition: DataSourceDefinition,
         providerId: String,
@@ -107,6 +107,7 @@ public enum DataSources {
         secrets: (any SecretStore)? = nil,
         browserCookies: (any BrowserCookieReading)? = nil,
         browserStorage: (any BrowserStorageReading)? = nil,
+        safeStorageKeys: (any SafeStorageKeys)? = nil,
         loginShell: (@Sendable (String) -> String?)? = nil,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
@@ -121,6 +122,7 @@ public enum DataSources {
         platform.keychain = keychain ?? NoKeychainItems()
         platform.browserCookies = browserCookies
         platform.browserStorage = browserStorage
+        platform.safeStorage = safeStorageKeys.map { SafeStorage($0) }
         platform.localServers = LocalServers(handing: running, network: network)
         return make(
             definition,
@@ -311,7 +313,8 @@ public enum DataSources {
             case .setting(let name):
                 return SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .refined(let base, let refinement):
-                return RefinedReader(base: reader(for: base), refinement: refinement)
+                return RefinedReader(base: reader(for: base), refinement: refinement,
+                                     safeStorage: platform.safeStorage, platform: platform.name)
             case .sqlite(let database):
                 return SQLiteReader(file: database, homeDirectory: homeDirectory, environment: pathEnvironment)
             case .browserCookies(let query):

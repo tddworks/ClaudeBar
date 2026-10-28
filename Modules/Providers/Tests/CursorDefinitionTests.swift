@@ -1043,4 +1043,43 @@ struct CursorDefinitionTests {
         await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() }
         #expect(provider.configuration.keyHint == "Sign in again in Cursor settings, then refresh.")
     }
+
+    /// A key that opens what was sealed as the key's bytes then the value's.
+    private struct FixtureKeys: SafeStorageKeys {
+        func key(app: String) throws -> Data { Data("\(app)-key".utf8) }
+        func open(_ sealed: Data, with key: Data) -> Data? { sealed.starts(with: key) ? sealed.dropFirst(key.count) : nil }
+    }
+
+    private final class Cookies: @unchecked Sendable {
+        private let lock = NSLock()
+        private var sent: [String] = []
+        func append(_ cookie: String?) { lock.withLock { sent.append(cookie ?? "") } }
+        var all: [String] { lock.withLock { sent } }
+    }
+
+    @Test func `should read the Cursor app's login when Cursor keeps it sealed (#655)`() async throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let token = "header.eyJzdWIiOiJmaXh0dXJlLXVzZXIifQ.signature"
+        let cell = "cursor-safe-storage:v1:" + Data(("Cursor-key" + token).utf8).base64EncodedString()
+        try SQLiteFiles.make(at: home.appendingPathComponent("Cursor/User/globalStorage/state.vscdb"),
+                             "CREATE TABLE ItemTable(key TEXT, value TEXT); INSERT INTO ItemTable VALUES ('cursorAuth/accessToken', '\(cell)');")
+        var platform = Platform.bare
+        platform.applicationData = { home, _ in home }
+        platform.safeStorage = SafeStorage(FixtureKeys())
+        let fixturePlatform = platform
+        let cookies = Cookies(), network = MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            cookies.append(request.value(forHTTPHeaderField: "Cookie"))
+            return (Data(#"{"isUnlimited":true}"#.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+        let provider = Provider(definition: try ProviderFactory.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, _ in
+            DataSources.make(source, providerId: "cursor", platform: fixturePlatform, network: network,
+                             scripts: ProviderFactory.builtInScripts, environment: { _ in nil }, homeDirectory: home, now: { Date() })
+        })
+
+        _ = try await provider.refreshPlain()
+
+        #expect(cookies.all == ["WorkosCursorSessionToken=fixture-user::" + token])
+    }
 }
