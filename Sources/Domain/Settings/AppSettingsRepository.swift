@@ -129,6 +129,11 @@ public protocol AppSettingsRepository: Sendable {
     func backgroundSyncInterval() -> TimeInterval
     func setBackgroundSyncInterval(_ interval: TimeInterval)
 
+    /// *Refresh faster while a quota moves* (#642): the background wait halves
+    /// while a quota rises, back up to the interval once quiet. Off by default.
+    func adaptiveRefreshEnabled() -> Bool
+    func setAdaptiveRefreshEnabled(_ enabled: Bool)
+
     // MARK: - Claude API Budget
 
     func claudeApiBudgetEnabled() -> Bool

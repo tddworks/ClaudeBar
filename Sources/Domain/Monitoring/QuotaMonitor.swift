@@ -595,7 +595,7 @@ public final class QuotaMonitor {
 
     /// The hard lower bound on the monitoring interval. Background refresh must
     /// never poll faster than once a minute (energy — issue #67).
-    public static let minimumInterval: Duration = .seconds(60)
+    nonisolated public static let minimumInterval: Duration = .seconds(60)
 
     /// How much to stretch the background cadence while on battery, to reduce
     /// drain when unplugged (issue #204). Applied on top of the effective
@@ -636,16 +636,34 @@ public final class QuotaMonitor {
         return ids.compactMap { login(id: $0).flatMap(product(of:))?.backgroundRefreshFloor }
     }
 
+    /// What each refreshed login's shown quotas read now, keyed by login and
+    /// quota, for *Refresh faster while a quota moves* (#642). A hidden quota
+    /// is left out, as it sets no status or alert either.
+    private func readings(for providerIds: [String]?) -> [String: AdaptiveCadence.Reading] {
+        var readings: [String: AdaptiveCadence.Reading] = [:]
+        for id in providerIds ?? [selectedProviderId] {
+            guard let login = login(id: id), let usage = usage(of: login) else { continue }
+            for quota in usage.quotas {
+                readings["\(id)/\(quota.quotaType.quotaKey)"] =
+                    AdaptiveCadence.Reading(percentUsed: quota.percentUsed, resetsAt: quota.resetsAt)
+            }
+        }
+        return readings
+    }
+
     /// Starts continuous monitoring at the specified interval.
     /// By default, refreshes the currently selected provider each cycle to minimize energy usage.
     /// When provider IDs are supplied, refreshes that de-duplicated provider set each cycle.
     /// The effective cadence is the requested interval clamped to a 1-minute
     /// floor, then raised to the slowest provider-imposed `backgroundRefreshFloor`
     /// in the active set (recomputed each tick so a live probe-mode switch is
-    /// honored without restarting). Returns an AsyncStream of monitoring events.
+    /// honored without restarting). With `adaptive`, the requested interval is
+    /// `AdaptiveCadence`'s: shorter while a quota moves, never past `interval`
+    /// (#642). Returns an AsyncStream of monitoring events.
     public func startMonitoring(
         interval: Duration = .seconds(60),
-        providerIds: [String]? = nil
+        providerIds: [String]? = nil,
+        adaptive: Bool = false
     ) -> AsyncStream<MonitoringEvent> {
         // Stop any existing monitoring
         monitoringTask?.cancel()
@@ -658,6 +676,7 @@ public final class QuotaMonitor {
                 // disabled (no power provider), so the loop below behaves exactly
                 // like the plain timed loop in that case.
                 var powerEvents = self.powerStateProvider?.events().makeAsyncIterator()
+                var cadence = adaptive ? AdaptiveCadence(ceiling: interval) : nil
 
                 while !Task.isCancelled {
                     // Energy awareness: while the display/system is asleep, pause
@@ -689,12 +708,14 @@ public final class QuotaMonitor {
                     }
                     continuation.yield(.refreshed)
 
-                    // Compute the sleep each tick: the requested interval clamped
-                    // to the 1-minute floor, then raised to any provider-imposed
+                    // Compute the sleep each tick: the requested interval (the
+                    // adaptive one while a quota moves, #642) clamped to the
+                    // 1-minute floor, then raised to any provider-imposed
                     // background floor (e.g. Claude API → 15 min). Resolved per
                     // tick so a live CLI↔API switch is honored without restarting.
+                    let requested = cadence?.next(after: self.readings(for: providerIds)) ?? interval
                     let floors = self.backgroundRefreshFloors(for: providerIds)
-                    var sleepInterval = Self.effectiveInterval(requested: interval, floors: floors)
+                    var sleepInterval = Self.effectiveInterval(requested: requested, floors: floors)
 
                     // Stretch the cadence while on battery to reduce drain (#204).
                     if self.powerStateProvider?.isOnBattery == true {

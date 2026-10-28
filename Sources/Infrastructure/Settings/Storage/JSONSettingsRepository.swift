@@ -328,6 +328,16 @@ public final class JSONSettingsRepository:
         store.write(value: amount, key: "app.claudeApiBudget")
     }
 
+    // MARK: - Refresh faster while a quota moves (#642)
+
+    public func adaptiveRefreshEnabled() -> Bool {
+        store.read(key: "app.adaptiveRefreshEnabled") ?? false
+    }
+
+    public func setAdaptiveRefreshEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "app.adaptiveRefreshEnabled")
+    }
+
     // MARK: - Warn when a quota will run out before it resets
     //
     // `app.burnRateThreshold`, the retired multiplier, is no longer read or

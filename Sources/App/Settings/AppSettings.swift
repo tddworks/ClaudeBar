@@ -401,6 +401,15 @@ public final class AppSettings {
         }
     }
 
+    /// *Refresh faster while a quota moves* (#642): the background wait halves
+    /// while a quota rises, never below a minute, and doubles back to
+    /// `refreshInterval` once nothing moves (default: false).
+    public var adaptiveRefreshEnabled: Bool {
+        didSet {
+            repository.setAdaptiveRefreshEnabled(adaptiveRefreshEnabled)
+        }
+    }
+
     // MARK: - Warn when a quota will run out before it resets
 
     /// Whether status follows the forecast: a quota turns low when, at its
@@ -499,6 +508,7 @@ public final class AppSettings {
         self.claudeApiBudget = Decimal(repository.claudeApiBudget())
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
+        self.adaptiveRefreshEnabled = repository.adaptiveRefreshEnabled()
         self.statusColorOverrides = repository.statusColorOverrides()
         self.nativeMenuBarIconsEnabled = repository.nativeMenuBarIconsEnabled()
         self.highContrastEnabled = repository.highContrastEnabled()

@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cursor shows usage again after its October update**: newer Cursor seals its sign-in, and cursor.com said "Session expired". ClaudeBar opens it with Cursor's own key: the Keychain item “Cursor Safe Storage” on the Mac (macOS asks to allow it), `Local State` on Windows. ([#655](https://github.com/tddworks/ClaudeBar/issues/655)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/cursor/README.md)
 - **A mapping script that never ends no longer stalls its provider**: a script gets 5 seconds and 256 MB; past either, that refresh fails with the error instead of hanging or filling memory. ([#651](https://github.com/tddworks/ClaudeBar/pull/651)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/ENGINE_DESIGN.md)
 
+### Added
+- **Refresh faster while a quota moves**: an opt-in switch under Sync & Alerts. While a quota rises, the background wait halves each time, down to a minute; once it stops, it grows back to your interval. ([#642](https://github.com/tddworks/ClaudeBar/issues/642)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/monitoring/adaptive-refresh/README.md)
+
 ---
 
 ## [0.5.23] - 2026-10-26

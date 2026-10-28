@@ -771,6 +771,7 @@ final class StatusItemLabelDriver {
         var isEnabled: Bool
         var seconds: Int
         var providerIds: [String]?
+        var adaptive: Bool
     }
 
     /// Starts watching the refresh cadence/target settings and (re)starts the
@@ -790,7 +791,8 @@ final class StatusItemLabelDriver {
         return RefreshLoopKey(
             isEnabled: interval.isEnabled,
             seconds: interval.seconds ?? 0,
-            providerIds: backgroundRefreshProviderIds
+            providerIds: backgroundRefreshProviderIds,
+            adaptive: settings.adaptiveRefreshEnabled
         )
     }
 
@@ -814,10 +816,11 @@ final class StatusItemLabelDriver {
             monitor.stopMonitoring()
             return
         }
-        AppLog.monitor.info("Background refresh starting (interval: \(key.seconds)s, providers: \(key.providerIds?.joined(separator: ",") ?? "selected"))")
+        AppLog.monitor.info("Background refresh starting (interval: \(key.seconds)s\(key.adaptive ? ", faster while a quota moves" : ""), providers: \(key.providerIds?.joined(separator: ",") ?? "selected"))")
         let stream = monitor.startMonitoring(
             interval: .seconds(key.seconds),
-            providerIds: key.providerIds
+            providerIds: key.providerIds,
+            adaptive: key.adaptive
         )
         streamConsumer = Task {
             // Each refresh tick imperatively forces a repaint. We can't rely on

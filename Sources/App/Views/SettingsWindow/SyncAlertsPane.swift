@@ -36,6 +36,16 @@ struct SyncAlertsPane: View {
                         selection: $settings.refreshInterval
                     )
                 }
+
+                SettingsRowDivider()
+
+                SettingsRow(
+                    title: "Refresh faster while a quota moves",
+                    subtitle: "While a quota is being used, wait half as long each time, down to a minute; back to the interval above once it stops."
+                ) {
+                    SettingsSwitch(isOn: $settings.adaptiveRefreshEnabled)
+                        .disabled(!settings.refreshInterval.isEnabled)
+                }
             }
 
             QuotaAlertsCard()
