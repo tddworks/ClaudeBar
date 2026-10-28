@@ -71,6 +71,15 @@ struct AdaptiveCadenceTests {
     }
 
     @Test
+    func `should count a reset time 15 minutes off as the same window, and 16 as a new one`() {
+        var cadence = AdaptiveCadence(ceiling: .seconds(600))
+        _ = cadence.next(after: reading(10))
+
+        #expect(cadence.next(after: reading(15, resetsAt: resetsAt.addingTimeInterval(15 * 60))) == .seconds(300))
+        #expect(cadence.next(after: reading(20, resetsAt: resetsAt.addingTimeInterval(31 * 60))) == .seconds(600))
+    }
+
+    @Test
     func `should count a rise in any one quota as movement`() {
         var cadence = AdaptiveCadence(ceiling: .seconds(600))
         let first: [String: AdaptiveCadence.Reading] = [

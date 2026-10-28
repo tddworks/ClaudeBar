@@ -62,7 +62,7 @@ public struct AdaptiveCadence: Sendable {
     private static func sameWindow(_ a: Date?, _ b: Date?) -> Bool {
         switch (a, b) {
         case (nil, nil): true
-        case let (a?, b?): abs(a.timeIntervalSince(b)) < windowDrift
+        case let (a?, b?): abs(a.timeIntervalSince(b)) <= windowDrift
         default: false
         }
     }
