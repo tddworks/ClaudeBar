@@ -187,6 +187,19 @@ struct SealedSignInTests {
     }
 
     @Test
+    func `should open a sign-in the app sealed again with a new key at once, after one its key didn't open`() async throws {
+        defer { try? FileManager.default.removeItem(at: home) }
+        let sent = Sent(), keys = Keys("k2"), clock = Clock(), storage = SafeStorage(keys, now: { clock.now })
+        _ = await failure(of: try source(storing: sealed("tok-1", with: "k1"), safeStorage: storage, sent: sent))
+
+        keys.replace(with: "k3")
+        _ = try await source(storing: sealed("tok-2", with: "k3"), safeStorage: storage, sent: sent).fetchResponse()
+
+        #expect(keys.keyReads == 2)
+        #expect(sent.all == ["Bearer tok-2"])
+    }
+
+    @Test
     func `should say a platform with no safeStorage can't open a sealed sign-in`() async throws {
         defer { try? FileManager.default.removeItem(at: home) }
         let sent = Sent()
