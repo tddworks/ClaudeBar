@@ -448,15 +448,18 @@ extension DataSources {
     /// A login's usage log, reading this platform's files or running this
     /// platform's commands. `scripts` finds the price file shipped beside
     /// the definition. Its days are the person's, in their OS's zone (#565).
+    /// With `scans`, a log read from `jsonLines` files keeps what it read in
+    /// that folder, so the next process reads only what was appended since.
     public static func makeUsageLog(
         _ definition: UsageLog.Definition,
         scripts: @escaping ScriptSource = { _ in nil },
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        scans: URL? = nil,
         now: @escaping @Sendable () -> Date = { Date() }
     ) -> UsageLog {
         makeUsageLog(definition, platform: .current, scripts: scripts, environment: environment,
-                     homeDirectory: homeDirectory, now: now)
+                     homeDirectory: homeDirectory, scans: scans, now: now)
     }
 
     static func makeUsageLog(
@@ -465,6 +468,7 @@ extension DataSources {
         scripts: @escaping ScriptSource = { _ in nil },
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        scans: URL? = nil,
         now: @escaping @Sendable () -> Date = { Date() }
     ) -> UsageLog {
         let pathsEnvironment = pathEnvironment(platform: platform, homeDirectory: homeDirectory, environment: environment)
@@ -495,10 +499,14 @@ extension DataSources {
         hash.update(data: Data((definition.prices.flatMap { scripts($0.file) } ?? "").utf8))
         hash.update(data: Data("\(DayAggregator.summingVersion)\n".utf8))
         let fingerprint = hash.finalize().map { String(format: "%02x", $0) }.joined()
+        // What a scan keeps is records, already timed in the person's zone: kept apart per zone.
+        let scanName = SHA256.hash(data: Data("\(fingerprint)\n\(platform.calendar.timeZone.identifier)".utf8))
+            .map { String(format: "%02x", $0) }.joined()
         return UsageLog(
             definition: definition,
             reader: LogReader(definition.records, expand: expand, platform: platform,
-                              homeDirectory: homeDirectory, environment: pathsEnvironment),
+                              homeDirectory: homeDirectory, environment: pathsEnvironment,
+                              kept: scans?.appendingPathComponent(scanName + ".json")),
             prices: definition.prices.flatMap { PriceList.load($0.file, from: scripts) },
             localEndpoint: definition.freeWhen?.localEndpoint.map { LocalEndpoint(file: Paths.resolve($0.file, homeDirectory: homeDirectory, environment: pathsEnvironment), url: $0.url) },
             calendar: platform.calendar,

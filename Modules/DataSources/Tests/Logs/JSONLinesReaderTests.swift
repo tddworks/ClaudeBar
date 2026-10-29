@@ -23,8 +23,8 @@ struct JSONLinesReaderTests {
 
     /// A reader with no glob of its own: these tests name the files, and read
     /// them whole, so what is under test is the scanning, not the finding.
-    private func reader(_ records: UsageLog.Records = Self.records) -> JSONLinesReader {
-        JSONLinesReader(glob: "", shapes: records.shapes.map { RecordShape($0, zone: Zones.seoul) })
+    private func reader(_ records: UsageLog.Records = Self.records, kept: URL? = nil) -> JSONLinesReader {
+        JSONLinesReader(glob: "", shapes: records.shapes.map { RecordShape($0, zone: Zones.seoul) }, kept: kept)
     }
 
     private func makeFile(_ content: String) throws -> URL {
@@ -316,5 +316,68 @@ struct JSONLinesReaderTests {
 
         #expect(records.map(\.model) == ["m-large"])
         #expect(await reader.cachedFileCount == 1)
+    }
+
+    // MARK: - Between processes
+    // A new reader over the same kept file is the next process: nothing in
+    // its memory but what the file holds.
+
+    private func keptFile(beside url: URL) -> URL {
+        url.deletingLastPathComponent().appendingPathComponent("scans/log.json")
+    }
+
+    @Test func `should count a log the last process read without rereading it`() async throws {
+        let url = try makeFile(Self.line("m-large") + "\n")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let kept = keptFile(beside: url)
+
+        _ = await reader(kept: kept).records(in: [url])
+        let next = reader(kept: kept)
+        let records = await next.records(in: [url])
+
+        #expect(records.map(\.model) == ["m-large"])
+        #expect(await next.lastScan == JSONLinesReader.ScanSummary(reused: 1, extended: 0, reparsed: 0))
+    }
+
+    @Test func `should read only the lines added since the last process read the log`() async throws {
+        let url = try makeFile(Self.line("m-large") + "\n")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let kept = keptFile(beside: url)
+
+        _ = await reader(kept: kept).records(in: [url])
+        try append(Self.line("m-small") + "\n", to: url)
+        let next = reader(kept: kept)
+        let records = await next.records(in: [url])
+
+        #expect(records.map(\.model) == ["m-large", "m-small"])
+        #expect(await next.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 1, reparsed: 0))
+    }
+
+    @Test func `should reread a log rewritten after the last process read it`() async throws {
+        let url = try makeFile(Self.line("m-large") + "\n")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let kept = keptFile(beside: url)
+
+        _ = await reader(kept: kept).records(in: [url])
+        try overwriteInPlace(Self.line("m-small") + "\n" + Self.line("m-tiny") + "\n", at: url)
+        let next = reader(kept: kept)
+        let records = await next.records(in: [url])
+
+        #expect(records.map(\.model) == ["m-small", "m-tiny"])
+        #expect(await next.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 0, reparsed: 1))
+    }
+
+    @Test func `should read the log in full when what the last process kept can't be read`() async throws {
+        let url = try makeFile(Self.line("m-large") + "\n")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let kept = keptFile(beside: url)
+        try FileManager.default.createDirectory(at: kept.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not what a scan keeps".utf8).write(to: kept)
+
+        let next = reader(kept: kept)
+        let records = await next.records(in: [url])
+
+        #expect(records.map(\.model) == ["m-large"])
+        #expect(await next.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 0, reparsed: 1))
     }
 }

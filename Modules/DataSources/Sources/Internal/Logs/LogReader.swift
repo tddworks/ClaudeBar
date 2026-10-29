@@ -13,13 +13,15 @@ enum LogReader: Sendable {
 
     /// - Parameter expand: the caller's path language — `~` and
     ///   `${VAR:-default}` — resolved the way the platform's paths are.
+    /// - Parameter kept: where a `jsonLines` reader keeps what it read
+    ///   between processes; `nil` keeps it in memory only.
     init(_ records: UsageLog.Records, expand: (String) -> String, platform: Platform, homeDirectory: URL,
-         environment: @escaping @Sendable (String) -> String?) {
+         environment: @escaping @Sendable (String) -> String?, kept: URL? = nil) {
         let shapes = records.shapes.map { RecordShape($0, zone: platform.timeZone) }
         switch records.source {
         case .files(let glob, let format):
             switch format {
-            case .jsonLines: self = .jsonLines(JSONLinesReader(glob: expand(glob), shapes: shapes))
+            case .jsonLines: self = .jsonLines(JSONLinesReader(glob: expand(glob), shapes: shapes, kept: kept))
             case .json: self = .json(JSONLogReader(glob: expand(glob), shapes: shapes))
             }
         case .command(let call):

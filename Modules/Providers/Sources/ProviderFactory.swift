@@ -99,14 +99,20 @@ public enum ProviderFactory {
         )
     }
 
-    /// A login's usage history on this Mac, its closed days kept under its lineup id.
+    /// A login's usage history on this Mac, its closed days kept under its lineup id,
+    /// and what its logs' scans read kept beside them, so a new process reads
+    /// only what was appended since the last one.
     @MainActor
     private static func history(_ definition: UsageLog.Definition, login: String,
                                 environment: @escaping @Sendable (String) -> String?) -> UsageHistory {
         UsageHistory(definition, login: login,
-                     log: { DataSources.makeUsageLog($0, scripts: builtInScripts, environment: environment) },
+                     log: { DataSources.makeUsageLog($0, scripts: builtInScripts, environment: environment, scans: scansDirectory) },
                      ledger: { DayLedger(store: FileLedgerStore(), key: $0) })
     }
+
+    /// `~/.claudebar/usage-history/scans/`: what each log's scans read, one file a log.
+    static let scansDirectory = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claudebar/usage-history/scans", isDirectory: true)
 
     /// A built-in provider by id — `ProviderFactory.make("codex", settings:)`.
     @MainActor

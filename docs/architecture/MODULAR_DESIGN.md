@@ -193,6 +193,7 @@ Modules/Providers/
 │   └── Internal/
 │       ├── DefinitionFiles.swift       reads *.json from Bundle.module or a folder
 │       └── DayLedger · FileLedgerStore closed days kept in ~/.claudebar/usage-history/
+│                                         (a log's scans beside them, in scans/)
 ├── Resources/Providers/                codex.json · claude.json · claude-*.js ·
 │                                       claude-prices.json · …   — the vendors
 └── Tests/

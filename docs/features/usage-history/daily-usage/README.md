@@ -34,7 +34,7 @@ The cards and the chart only read these files; nothing is sent anywhere. If you 
 
 ## How the numbers are worked out
 
-- **Days** are calendar days in your time zone. A day is summed once, an hour after it ends, and kept in `~/.claudebar/usage-history/`; after that only today's logs are read. Delete that folder to have every day summed again.
+- **Days** are calendar days in your time zone. A day is summed once, an hour after it ends, and kept in `~/.claudebar/usage-history/`; after that only today's logs are read, and of those only what was added since the last read, even after a relaunch. Delete that folder to have every day summed again.
 - **Oh My Pi** cost is what omp recorded for each model call; its tokens are omp's own counts per call.
 - **Mistral** cost and tokens are the totals Vibe itself records for each session. The rest of this section is about Claude.
 - **Cost** is an estimate: each message's tokens times the model's list price per million tokens (input, output, cache write, cache read). A cache write Claude Code keeps for an hour costs the higher 1-hour price; Claude Code writes most of its cache that way. Unknown Anthropic models are priced by family (Opus, Haiku), and anything else at Sonnet rates. It won't match your subscription bill, which is flat; it shows what the same work would cost on the API.

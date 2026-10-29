@@ -345,6 +345,17 @@ natural unit to keep:
 - **Open days** (today, and yesterday until it closes) are read from the logs
   every time — incrementally, as today, so a popover open reads only what
   was appended.
+- **What a scan read outlives the process.** `JSONLinesReader` keeps each
+  file's records, where it stopped and a SHA-256 of the read prefix's edges
+  in `~/.claudebar/usage-history/scans/`, one file a log, named by its
+  fingerprint and the person's zone. A new process (the app relaunched, the
+  Windows client's hourly uploader) starts from it, so today's files are read
+  only from where the last process stopped: on a PC with 3 GB of sessions
+  that was each process reading every session file touched today from its
+  first byte ([ClaudeBar-Windows#11](https://github.com/tddworks/ClaudeBar-Windows/issues/11)).
+  The file holds what the last scan kept, nothing older, and is checked as
+  memory is; one that can't be read is read past. A `Hasher` value can't be
+  kept: its seed is the process's.
 - **Dedupe stays exact**: a record's identity only has to be remembered
   while its day is open.
 - **A ledger is a cache, not a record**: deleting it re-reads the logs; a
@@ -393,7 +404,7 @@ something to show.
 |---|---|---|
 | `UsageLog.Definition` (`DataSources`) | the JSON, `Codable`, no behaviour | the constants in both analyzers |
 | `UsageLog` (`DataSources`) | `days(from:to:)`: the readers, prices and aggregator for one login | both analyzers' entry points |
-| `JSONLinesReader` (`DataSources/Internal`) | one record per line a shape picks out; reads only what was appended since the last scan, re-reads a file that changed under it; a byte prefilter from the shapes' `where` texts | `SessionJSONLParser` + `SessionLogCache`, generalised |
+| `JSONLinesReader` (`DataSources/Internal`) | one record per line a shape picks out; reads only what was appended since the last scan, in this process or the last one (`usage-history/scans/`), re-reads a file that changed under it; a byte prefilter from the shapes' `where` texts | `SessionJSONLParser` + `SessionLogCache`, generalised |
 | `RecordShape` (`DataSources/Internal`) | one per shape: whether its `where` holds, and the record read whole from its paths; the first shape whose `where` holds reads a line | — (new) |
 | `LogRecord` (`DataSources/Internal`) | the one form every reader produces | `TokenUsageRecord`, `ParsedSession` |
 | `PriceList` (`DataSources/Internal`) | the record's own cost, else the list (exact → longest prefix → family → free → `freeWhen` → otherwise); cache savings | `ModelPricing` |

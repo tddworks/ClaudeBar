@@ -1,3 +1,4 @@
+import Crypto
 import Foundation
 
 /// `jsonLines` — one JSON object per line, in files a tool appends to.
@@ -10,6 +11,12 @@ import Foundation
 /// the already-read prefix; it is not proven. Anything that fails these checks
 /// (a new inode, a shrink, coarse timestamps, changed head or tail bytes) is
 /// read again from the start.
+///
+/// With a `kept` file, what it read also outlives the process: a new process
+/// (an app relaunched, an hourly uploader started afresh) starts from the file,
+/// so a log it was given before is read only from where the last process
+/// stopped. The file is checked the same way the memory is, and holds what the
+/// last scan kept, nothing older; one that can't be read is read past.
 ///
 /// An actor, so overlapping scans run one after another and the later one
 /// finds the earlier one's work already kept.
@@ -33,12 +40,20 @@ actor JSONLinesReader {
         let tail: [LogRecord]
     }
 
-    private struct Entry {
+    private struct Entry: Codable {
         let stamp: FileStamp
         let endOffset: UInt64
-        let prefixGuard: Int
+        let prefixGuard: Data
         let records: [LogRecord]
         let tail: [LogRecord]
+    }
+
+    /// What a `kept` file holds: the entries by path, under the version of
+    /// this layout, so a file of another one is read past.
+    private struct Kept: Codable {
+        static let version = 1
+        let version: Int
+        let entries: [String: Entry]
     }
 
     private static let guardBytes: UInt64 = 64 * 1024
@@ -49,14 +64,19 @@ actor JSONLinesReader {
     private let shapes: [RecordShape]
     /// A line must hold one of these before it is decoded; `nil` reads every line.
     private let fragments: [[UInt8]]?
-    private var entries: [URL: Entry] = [:]
+    /// By the file's path, as kept on disk too.
+    private var entries: [String: Entry] = [:]
     private(set) var lastScan = ScanSummary()
+    /// Where what was read is kept between processes; `nil` keeps it in memory only.
+    private let kept: URL?
+    private var readKept = false
 
     var cachedFileCount: Int { entries.count }
 
-    init(glob: String, shapes: [RecordShape]) {
+    init(glob: String, shapes: [RecordShape], kept: URL? = nil) {
         self.glob = glob
         self.shapes = shapes
+        self.kept = kept
         fragments = shapes.fragments
     }
 
@@ -70,18 +90,44 @@ actor JSONLinesReader {
     /// Records from `files`, in file order and line order within each file.
     /// Files not in `files` are forgotten; unreadable ones are skipped.
     func records(in files: [URL]) -> [LogRecord] {
+        if !readKept {
+            readKept = true
+            if entries.isEmpty, let saved = loadKept() { entries = saved }
+        }
         var summary = ScanSummary()
-        var kept: [URL: Entry] = [:]
+        var kept: [String: Entry] = [:]
         var records: [LogRecord] = []
         for url in files {
             guard let entry = refreshedEntry(for: url, summary: &summary) else { continue }
-            kept[url] = entry
+            kept[url.path] = entry
             records.append(contentsOf: entry.records)
             records.append(contentsOf: entry.tail)
         }
+        let changed = summary.extended + summary.reparsed > 0 || Set(kept.keys) != Set(entries.keys)
         entries = kept
         lastScan = summary
+        if changed { saveKept() }
         return records
+    }
+
+    // MARK: - Kept between processes
+
+    private func loadKept() -> [String: Entry]? {
+        guard let kept, let data = FileManager.default.contents(atPath: kept.path),
+              let saved = try? JSONDecoder().decode(Kept.self, from: data), saved.version == Kept.version
+        else { return nil }
+        return saved.entries
+    }
+
+    /// Writes what this scan kept, whole and at once, so another process
+    /// reading meanwhile finds the old file or the new one. A file that can't
+    /// be written is left as it was; this process still has its memory.
+    private func saveKept() {
+        guard let kept else { return }
+        let saved = Kept(version: Kept.version, entries: entries)
+        guard let data = try? JSONEncoder().encode(saved) else { return }
+        try? FileManager.default.createDirectory(at: kept.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: kept, options: .atomic)
     }
 
     // MARK: - Reading a file
@@ -155,7 +201,7 @@ actor JSONLinesReader {
         // Stamp first: lines written while reading then show up as a change next scan.
         guard let stamp = FileStamp(url: url) else { return nil }
 
-        if let previous = entries[url], previous.stamp.isStrong, stamp.isStrong,
+        if let previous = entries[url.path], previous.stamp.isStrong, stamp.isStrong,
            previous.stamp.inode == stamp.inode {
             if previous.stamp == stamp {
                 summary.reused += 1
@@ -178,31 +224,33 @@ actor JSONLinesReader {
         return Entry(stamp: stamp, endOffset: chunk.endOffset, prefixGuard: guardHash, records: chunk.records, tail: chunk.tail)
     }
 
-    /// Hash of the first and last `guardBytes` of the file's first `length`
+    /// SHA-256 of the first and last `guardBytes` of the file's first `length`
     /// bytes. A bounded spot check, not a proof: it catches truncate-and-rewrite
     /// and changed edges, but not a same-length edit in the middle of a prefix
-    /// over 128 KB, which the append-only assumption above rules out.
-    private func prefixGuard(of url: URL, length: UInt64) -> Int? {
+    /// over 128 KB, which the append-only assumption above rules out. A digest
+    /// rather than `Hasher`, whose seed is the process's, so a guard kept in
+    /// one process still matches in the next.
+    private func prefixGuard(of url: URL, length: UInt64) -> Data? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
-        var hasher = Hasher()
-        hasher.combine(length)
+        var hash = SHA256()
+        withUnsafeBytes(of: length.littleEndian) { hash.update(bufferPointer: $0) }
         let headLength = min(length, Self.guardBytes)
         let tailStart = max(headLength, length - min(length, Self.guardBytes))
         do {
-            hasher.combine(try handle.read(upToCount: Int(headLength)) ?? Data())
+            hash.update(data: try handle.read(upToCount: Int(headLength)) ?? Data())
             try handle.seek(toOffset: tailStart)
-            hasher.combine(try handle.read(upToCount: Int(length - tailStart)) ?? Data())
+            hash.update(data: try handle.read(upToCount: Int(length - tailStart)) ?? Data())
         } catch {
             return nil
         }
-        return hasher.finalize()
+        return Data(hash.finalize())
     }
 }
 
 /// File metadata that changes whenever the file's content does. Each
 /// platform reads it its own way (`FileStamp+macOS`, `FileStamp+Windows`).
-struct FileStamp: Equatable, Sendable {
+struct FileStamp: Equatable, Sendable, Codable {
     let inode: UInt64
     let size: UInt64
     let modifiedNanos: Int64

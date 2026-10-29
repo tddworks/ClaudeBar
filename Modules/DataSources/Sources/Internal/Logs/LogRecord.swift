@@ -2,7 +2,7 @@ import Foundation
 
 /// One usage record, whatever log it came from — the shape every reader
 /// yields, so nothing after the reader knows which tool wrote it.
-struct LogRecord: Sendable, Equatable {
+struct LogRecord: Sendable, Equatable, Codable {
     let at: Date
     /// The record's identity, when every `id` path answered; `nil` is never
     /// merged with another record.
