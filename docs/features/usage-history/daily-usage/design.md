@@ -354,8 +354,9 @@ natural unit to keep:
   that was each process reading every session file touched today from its
   first byte ([ClaudeBar-Windows#11](https://github.com/tddworks/ClaudeBar-Windows/issues/11)).
   The file holds what the last scan kept, nothing older, and is checked as
-  memory is; one that can't be read is read past. A `Hasher` value can't be
-  kept: its seed is the process's.
+  memory is; one that can't be read is read past. A file no scan wrote for 7
+  days is deleted, the one a changed fingerprint or zone left behind among
+  them. A `Hasher` value can't be kept: its seed is the process's.
 - **Dedupe stays exact**: a record's identity only has to be remembered
   while its day is open.
 - **A ledger is a cache, not a record**: deleting it re-reads the logs; a

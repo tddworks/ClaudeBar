@@ -57,6 +57,10 @@ actor JSONLinesReader {
     }
 
     private static let guardBytes: UInt64 = 64 * 1024
+    /// A kept file no scan has written for this long is deleted: one a
+    /// changed definition, price file or zone left behind, or an idle log's,
+    /// which only costs it one full read.
+    static let keptFor: TimeInterval = 7 * 24 * 3600
     private static let readChunkSize = 1 << 20
     private static let newline = UInt8(ascii: "\n")
 
@@ -70,6 +74,7 @@ actor JSONLinesReader {
     /// Where what was read is kept between processes; `nil` keeps it in memory only.
     private let kept: URL?
     private var readKept = false
+    private var prunedKept = false
 
     var cachedFileCount: Int { entries.count }
 
@@ -126,8 +131,24 @@ actor JSONLinesReader {
         guard let kept else { return }
         let saved = Kept(version: Kept.version, entries: entries)
         guard let data = try? JSONEncoder().encode(saved) else { return }
-        try? FileManager.default.createDirectory(at: kept.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let folder = kept.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? data.write(to: kept, options: .atomic)
+        if !prunedKept {
+            prunedKept = true
+            Self.prune(folder, sparing: kept)
+        }
+    }
+
+    /// Deletes the folder's kept files older than `keptFor`, once a process.
+    private static func prune(_ folder: URL, sparing kept: URL) {
+        let cutoff = Date().addingTimeInterval(-keptFor)
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        for file in files where file.pathExtension == "json" && file.lastPathComponent != kept.lastPathComponent {
+            guard let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                  modified < cutoff else { continue }
+            try? FileManager.default.removeItem(at: file)
+        }
     }
 
     // MARK: - Reading a file

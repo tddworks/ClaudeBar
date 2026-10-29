@@ -380,4 +380,24 @@ struct JSONLinesReaderTests {
         #expect(records.map(\.model) == ["m-large"])
         #expect(await next.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 0, reparsed: 1))
     }
+
+    @Test func `should delete a kept file no scan wrote for a week, and keep a newer one`() async throws {
+        let url = try makeFile(Self.line("m-large") + "\n")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let kept = keptFile(beside: url)
+        let folder = kept.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let stale = folder.appendingPathComponent("left-behind.json")
+        let recent = folder.appendingPathComponent("another-log.json")
+        for (file, age) in [(stale, JSONLinesReader.keptFor + 3600), (recent, JSONLinesReader.keptFor - 3600)] {
+            try Data("{}".utf8).write(to: file)
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-age)], ofItemAtPath: file.path)
+        }
+
+        _ = await reader(kept: kept).records(in: [url])
+
+        #expect(!FileManager.default.fileExists(atPath: stale.path))
+        #expect(FileManager.default.fileExists(atPath: recent.path))
+        #expect(FileManager.default.fileExists(atPath: kept.path))
+    }
 }
