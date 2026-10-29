@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import Domain
+@testable import Monitoring
 
 /// *Refresh faster while a quota moves* (#642): after each background tick
 /// the wait halves when a quota rose, and doubles back to the chosen

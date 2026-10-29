@@ -37,6 +37,7 @@ let project = Project(
                 .external(name: "DataSources"),
                 .external(name: "Providers"),
                 .external(name: "Leaderboard"),
+                .external(name: "Monitoring"),
                 .external(name: "Mockable"),
             ],
             settings: .settings(

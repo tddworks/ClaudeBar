@@ -1,5 +1,4 @@
 import Foundation
-import Domain
 
 public struct SystemClock: Clock {
     public init() {}

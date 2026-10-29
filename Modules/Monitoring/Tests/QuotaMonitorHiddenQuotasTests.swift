@@ -1,24 +1,21 @@
 import Testing
 import Foundation
 import Mockable
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// Issue #140: hidden quota keys must stop driving the monitor's aggregates —
-/// lowest quota, overall status, selected-provider status and alerts. A hidden
-/// "Gemini Flash 2.0" must not color the provider.
+/// lowest quota, overall status and selected-provider status. A hidden
+/// "Gemini Flash 2.0" must not color the provider. That it sets no alert either
+/// is Alerting's, in DomainTests' `StatusAlertsHiddenQuotasTests`.
 @Suite
 @MainActor
 struct QuotaMonitorHiddenQuotasTests {
     private struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}
         func sleep(nanoseconds: UInt64) async throws {}
-    }
-
-    /// Records the status alerts it was told, so a test asserts state.
-    private final class Told {
-        let destination = RecordingDestination()
-        var alerts: [StatusAlert] { destination.statusAlerts }
     }
 
     /// Gemini-style snapshot: session and weekly healthy, flash critical (10%).
@@ -49,8 +46,7 @@ struct QuotaMonitorHiddenQuotasTests {
     }
 
     private func makeRefreshedGeminiMonitor(
-        hiddenKeys: Set<String>,
-        told: Told? = nil
+        hiddenKeys: Set<String>
     ) async -> (QuotaMonitor, MockProviderSettingsRepository) {
         let settings = makeSettings(hiddenKeys: hiddenKeys)
         let providerProduct = stubbedProduct("gemini", probe: makeGeminiProbe(), settings: settings)
@@ -60,7 +56,6 @@ struct QuotaMonitorHiddenQuotasTests {
             clock: TestClock(),
             settingsRepository: settings
         )
-        if let told { StatusAlerts(destination: told.destination).follow(monitor) }
         await monitor.refresh(providerId: "gemini")
         return (monitor, settings)
     }
@@ -174,27 +169,5 @@ struct QuotaMonitorHiddenQuotasTests {
 
         #expect(monitor.selectedProviderId == "gemini")
         #expect(monitor.selectedProviderStatus == .healthy)
-    }
-
-    // MARK: - Alerts
-
-    @Test
-    func `should not alert the person when only a hidden quota turns critical`() async {
-        // Given — the critical flash model is hidden
-        let told = Told()
-        _ = await makeRefreshedGeminiMonitor(hiddenKeys: ["model:gemini-2.0-flash"], told: told)
-
-        // Then — the visible status is healthy, so there is nothing to alert about
-        #expect(told.alerts.isEmpty)
-    }
-
-    @Test
-    func `should alert the person when a quota they can see turns critical`() async {
-        // Given — nothing hidden, so the snapshot is critical
-        let told = Told()
-        _ = await makeRefreshedGeminiMonitor(hiddenKeys: [], told: told)
-
-        // Then — healthy → critical on first refresh
-        #expect(told.alerts == [StatusAlert(login: "Gemini", providerId: "gemini", was: .healthy, now: .critical)])
     }
 }

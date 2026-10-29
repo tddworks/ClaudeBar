@@ -39,7 +39,7 @@ jobs:
         run: swift --version
 
       # The root Package.swift declares, on Linux, what builds there today:
-      # Quotas, Diagnostics, DataSources, Providers and Leaderboard, and their tests.
+      # Quotas, Diagnostics, DataSources, Providers, Leaderboard and Monitoring, and their tests.
       - name: Build and test
         run: swift test
 

@@ -2,8 +2,10 @@ import Testing
 import Foundation
 import Observation
 import Mockable
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// Issue #141: the popover pills, the overview and ⌘1–⌘9 must follow the
 /// user's persisted provider order instead of the fixed registration order.

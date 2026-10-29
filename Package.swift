@@ -47,12 +47,13 @@ let package = Package(
     name: "ClaudeBarKit",
     platforms: [.macOS(.v15)],
     products: [
-        .library(name: "ClaudeBarKit", targets: ["Quotas", "Diagnostics", "DataSources", "Providers", "Leaderboard", "AWSClients"]),
+        .library(name: "ClaudeBarKit", targets: ["Quotas", "Diagnostics", "DataSources", "Providers", "Leaderboard", "Monitoring", "AWSClients"]),
         .library(name: "Quotas", targets: ["Quotas"]),
         .library(name: "Diagnostics", targets: ["Diagnostics"]),
         .library(name: "DataSources", targets: ["DataSources"]),
         .library(name: "Providers", targets: ["Providers"]),
         .library(name: "Leaderboard", targets: ["Leaderboard"]),
+        .library(name: "Monitoring", targets: ["Monitoring"]),
         .library(name: "AWSClients", targets: ["AWSClients"]),
     ],
     dependencies: [
@@ -156,21 +157,38 @@ let package = Package(
             exclude: ["vectors.json"],
             swiftSettings: mocking
         ),
+
+        // Monitoring — QuotaMonitor: refreshes, the background loop and its cadence, the
+        // status of each login and product under the policy, and the tabs. Above Providers,
+        // below everything that follows a refresh (Alerting, the menu bar).
+        .target(
+            name: "Monitoring",
+            dependencies: ["Quotas", "DataSources", "Providers", mockable],
+            path: "Modules/Monitoring/Sources",
+            swiftSettings: mocking
+        ),
+        .testTarget(
+            name: "MonitoringTests",
+            dependencies: ["Monitoring", "Providers", "DataSources", "Quotas", mockable],
+            path: "Modules/Monitoring/Tests",
+            swiftSettings: mocking
+        ),
     ]
 )
 #else
-// What builds on Windows and Linux today (§10 phases 0–2 and 6): Quotas, Diagnostics,
-// DataSources, Providers and Leaderboard. SwiftTerm's core builds everywhere and carries
-// the Terminal port; SweetCookieKit and the AWS SDK are the Mac's.
+// What builds on Windows and Linux today (§10 phases 0–2 and 6, and phase 5's Monitoring):
+// Quotas, Diagnostics, DataSources, Providers, Leaderboard and Monitoring. SwiftTerm's core
+// builds everywhere and carries the Terminal port; SweetCookieKit and the AWS SDK are the Mac's.
 let package = Package(
     name: "ClaudeBarKit",
     products: [
-        .library(name: "ClaudeBarKit", targets: ["Quotas", "Diagnostics", "DataSources", "Providers", "Leaderboard"]),
+        .library(name: "ClaudeBarKit", targets: ["Quotas", "Diagnostics", "DataSources", "Providers", "Leaderboard", "Monitoring"]),
         .library(name: "Quotas", targets: ["Quotas"]),
         .library(name: "Diagnostics", targets: ["Diagnostics"]),
         .library(name: "DataSources", targets: ["DataSources"]),
         .library(name: "Providers", targets: ["Providers"]),
         .library(name: "Leaderboard", targets: ["Leaderboard"]),
+        .library(name: "Monitoring", targets: ["Monitoring"]),
     ],
     dependencies: [
         .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
@@ -235,6 +253,18 @@ let package = Package(
             dependencies: ["Leaderboard", "DataSources", "Quotas", mockable, crypto],
             path: "Modules/Leaderboard/Tests",
             exclude: ["vectors.json"],
+            swiftSettings: mocking
+        ),
+        .target(
+            name: "Monitoring",
+            dependencies: ["Quotas", "DataSources", "Providers", mockable],
+            path: "Modules/Monitoring/Sources",
+            swiftSettings: mocking
+        ),
+        .testTarget(
+            name: "MonitoringTests",
+            dependencies: ["Monitoring", "Providers", "DataSources", "Quotas", mockable],
+            path: "Modules/Monitoring/Tests",
             swiftSettings: mocking
         ),
     ]

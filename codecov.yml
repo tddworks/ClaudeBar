@@ -41,7 +41,7 @@ ignore:
   - "Sources/Infrastructure/Alerting/LocalAPI/LocalAPIServer.swift"  # a local socket server; its framing is LocalAPIRequestFrame's, tested
   - "Sources/Infrastructure/Alerting/SystemAlertSender.swift"  # NSAlert, notifications
   - "Sources/Infrastructure/Monitoring/SystemPowerStateProvider.swift"  # IOKit
-  - "Sources/Infrastructure/Monitoring/SystemClock.swift"  # the clock
+  - "Modules/Monitoring/Sources/SystemClock.swift"  # the clock
   - "Sources/Infrastructure/DataSources/SimpleCLIExecutor.swift"  # Process
   - "Sources/Infrastructure/Activity/Notch/NSScreen+NotchMetrics.swift"  # NSScreen
   - "Sources/Infrastructure/Settings/Storage/KeychainCredentialRepository.swift"  # Keychain

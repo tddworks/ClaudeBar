@@ -1,7 +1,10 @@
 import Foundation
 import Mockable
 import Testing
-@testable import Domain
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// A product's status as the person sees it — the one read the popover,
 /// the menu-bar icon and *Rest when empty* share: its healthiest counted login's — depleted only when
@@ -22,7 +25,7 @@ struct QuotaMonitorProductStatusTests {
     private func product(_ id: String, probe: any UsageProbe) -> (QuotaMonitor, Provider) {
         let settings = MockRepositoryFactory.makeSettingsRepository()
         let product = stubbedProduct(id, probe: probe, settings: settings)
-        return (QuotaMonitor(providers: kept([product])), product)
+        return (QuotaMonitor(providers: kept([product]), clock: SystemClock()), product)
     }
 
     @Test

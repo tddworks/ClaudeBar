@@ -39,7 +39,7 @@ jobs:
         run: swift --version
 
       # The root Package.swift declares, on Windows, what builds there today:
-      # Quotas, Diagnostics, DataSources and Providers, and their tests.
+      # Quotas, Diagnostics, DataSources, Providers, Leaderboard and Monitoring, and their tests.
       - name: Build and test
         run: swift test
 

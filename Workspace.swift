@@ -28,6 +28,7 @@ let modules: [(name: String, tests: String)] = [
     ("Quotas", "QuotasTests"),
     ("Diagnostics", "DiagnosticsTests"),
     ("Leaderboard", "LeaderboardTests"),
+    ("Monitoring", "MonitoringTests"),
 ]
 
 let claudeBar: Scheme = .scheme(

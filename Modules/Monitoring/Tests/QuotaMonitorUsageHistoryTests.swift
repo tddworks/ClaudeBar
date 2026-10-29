@@ -1,7 +1,10 @@
 import Foundation
 import Testing
 import Mockable
-@testable import Domain
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// *TODAY'S USAGE* read with a page: today and the thirty days, and never the
 /// year — the year is read only when a year section is shown
@@ -32,7 +35,7 @@ struct QuotaMonitorUsageHistoryTests {
         given(probe).probe().willReturn(UsageSnapshot(providerId: "acme", quotas: [], capturedAt: Date()))
         return QuotaMonitor(providers: kept([
             stubbedProduct("acme", probe: probe, settings: settings, usageHistory: history),
-        ]))
+        ]), clock: SystemClock())
     }
 
     @Test

@@ -1,8 +1,10 @@
 import Foundation
 import Testing
 import Mockable
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// A login paused from the popover: it stays on its product's page with a
 /// *Resume*, and is out of every judgement
@@ -10,20 +12,13 @@ import Mockable
 @MainActor
 @Suite
 struct PausedLoginsTests {
-    private struct TestClock: Clock {
-        func sleep(for duration: Duration) async throws {}
-        func sleep(nanoseconds: UInt64) async throws {}
-    }
-
-    private let temp = FileManager.default.temporaryDirectory.appendingPathComponent("paused-logins-\(UUID().uuidString)")
-
     /// Codex with two logins (*personal* and *work*), then Claude with one.
     private func twoLogins() throws -> (QuotaMonitor, codex: Provider, claude: Provider) {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("settings.json")))
+        let settings = InMemoryProviderSettings()
         let work = ProviderAccountConfig(accountId: "work", label: "work", probeConfig: ["folder": "/tmp/work", "accountId": "work"])
         let codex = try ProviderFactory.make("codex", settings: settings, accounts: [work])
         let claude = try ProviderFactory.make("claude", settings: settings)
-        return (QuotaMonitor(providers: kept([codex, claude])), codex, claude)
+        return (QuotaMonitor(providers: kept([codex, claude]), clock: SystemClock()), codex, claude)
     }
 
     private func quota(_ left: Double) -> UsageQuota {
@@ -34,36 +29,6 @@ struct PausedLoginsTests {
         UsageSnapshot(providerId: "p", quotas: quotas, capturedAt: Date())
     }
 
-    /// What the person was told, so a test can read it.
-    private final class Told {
-        let destination = RecordingDestination()
-        var alerts: [Alert] { destination.alerts }
-    }
-
-    /// A fetch that waits for `open()` — so a test can pause a login while its
-    /// refresh is still in flight.
-    private actor GatedProbe: UsageProbe {
-        private let usage: UsageSnapshot
-        private var isOpen = false
-        private var waiters: [CheckedContinuation<Void, Never>] = []
-
-        init(_ usage: UsageSnapshot) { self.usage = usage }
-
-        func isAvailable() async -> Bool { true }
-
-        func probe() async throws -> UsageSnapshot {
-            if !isOpen { await withCheckedContinuation { waiters.append($0) } }
-            return usage
-        }
-
-        func open() {
-            isOpen = true
-            let waiting = waiters
-            waiters = []
-            waiting.forEach { $0.resume() }
-        }
-    }
-
     /// A product whose fetch answers `usage`, counted until the person pauses it.
     private func watchedProduct(_ id: String, _ usage: UsageSnapshot) -> (QuotaMonitor, Provider) {
         let settings = MockRepositoryFactory.makeSettingsRepository()
@@ -71,7 +36,7 @@ struct PausedLoginsTests {
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willReturn(usage)
         let product = stubbedProduct(id, probe: probe, settings: settings)
-        return (QuotaMonitor(providers: kept([product])), product)
+        return (QuotaMonitor(providers: kept([product]), clock: SystemClock()), product)
     }
 
     // MARK: - The page
@@ -177,23 +142,6 @@ struct PausedLoginsTests {
     // MARK: - The other pages
 
     @Test
-    func `should leave a paused login out of the All page`() async throws {
-        let settings = MockRepositoryFactory.makeSettingsRepository()
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(snapshot(quota(9)))
-        let claude = stubbedProduct("claude", probe: probe, settings: settings)
-        let gemini = stubbedProduct("gemini", probe: probe, settings: settings)
-        let monitor = QuotaMonitor(providers: kept([claude, gemini]))
-        await monitor.refresh(providerId: "claude")
-        #expect(Overview(monitor).cards.map(\.id) == ["claude", "gemini"])
-
-        monitor.pause(claude.defaultAccount)
-
-        #expect(Overview(monitor).cards.map(\.id) == ["gemini"])
-    }
-
-    @Test
     func `should stop refreshing a login the person paused`() async throws {
         let (monitor, product) = watchedProduct("claude", snapshot(quota(62)))
         await monitor.refresh(providerId: "claude")
@@ -204,27 +152,5 @@ struct PausedLoginsTests {
 
         #expect(monitor.lineup.isEmpty)
         #expect(product.defaultAccount.snapshot?.capturedAt == seen)
-    }
-
-    @Test
-    func `should publish nothing for a login paused while its refresh is in flight`() async throws {
-        // Given — a fetch held open, so the login can be paused while it runs
-        let settings = MockRepositoryFactory.makeSettingsRepository()
-        let probe = GatedProbe(snapshot(quota(9)))
-        let product = stubbedProduct("claude", probe: probe, settings: settings)
-        let told = Told()
-        let monitor = QuotaMonitor(providers: kept([product]), clock: TestClock())
-        StatusAlerts(destination: told.destination).follow(monitor)
-
-        // When — she pauses the login, and only then lets the fetch land
-        let inFlight = Task { await monitor.refreshAll() }
-        try await Task.sleep(for: .milliseconds(50))
-        monitor.pause(product.defaultAccount)
-        await probe.open()
-        await inFlight.value
-
-        // Then — nothing was fetched into it, and nobody was paged about it
-        #expect(product.defaultAccount.snapshot == nil)
-        #expect(told.alerts.isEmpty)
     }
 }
