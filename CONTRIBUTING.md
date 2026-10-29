@@ -23,7 +23,7 @@ tuist build ClaudeBar -C Release
 
 ## How code is organised
 
-Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider` and `DataSource` (`Modules/`). Around them: `Sources/Domain` (`QuotaMonitor` as the single source of truth, sessions, Notify!), `Sources/Infrastructure` (storage, notifications, hooks) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels). Inside each, and in `docs/features/`, a feature sits in the folder of its bounded context (`Activity/`, `Alerting/`, `Monitoring/` …). The design, in the order to read it: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
+Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider` and `DataSource` (`Modules/`), and watched by `QuotaMonitor` (`Modules/Monitoring`), the single source of truth. Around them: `Sources/Domain` (the menu bar's readouts, sessions, Notify!), `Sources/Infrastructure` (storage, notifications, hooks) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels). Inside each, and in `docs/features/`, a feature sits in the folder of its bounded context (`Activity/`, `Alerting/`, `Monitoring/` …). The design, in the order to read it: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
 
 ## Adding a provider
 

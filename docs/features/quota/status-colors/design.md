@@ -99,7 +99,7 @@ absolute bands ([CANONICAL §8](../../../architecture/CANONICAL_MODEL.md#8--wher
 | `Modules/Quotas/Sources/QuotaStatus.swift` | the four statuses, the absolute bands, severity order |
 | `Modules/Quotas/Sources/SpendRate.swift` | the rate, the noise floor, the margin, `runsOutBeforeReset` |
 | `Modules/Quotas/Sources/StatusPolicy.swift` | the two policies; `status(under:)` and `overallStatus(under:)` |
-| `Sources/Domain/Monitoring/QuotaMonitor.swift` | holds the policy; the menu-bar label and a login's status read it |
+| `Modules/Monitoring/Sources/QuotaMonitor.swift` · `Sources/Domain/App/QuotaMonitor+MenuBar.swift` | holds the policy; the menu-bar label and a login's status read it |
 | `Sources/Domain/App/MenuBar{Percentage,Duration}Display.swift` | a menu-bar readout's status under the policy |
 | `Sources/Domain/Alerting/StatusAlerts/StatusAlerts.swift` | tells once when a login's status gets worse |
 | `Sources/App/Settings/AppSettings.swift` | `burnRateWarningEnabled` → `statusPolicy` |

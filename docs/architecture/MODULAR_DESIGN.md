@@ -62,11 +62,11 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 | Module | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | `Internal/` (the implementation) |
 |---|---|---|---|
 | `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O |
-| `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5) |
+| `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5); `SingleFlightCache` (`Process/`: one `PATH` or `which` lookup in flight for every login that asks) |
 | `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
 | `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository` | definition-file reading, `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
 | `Providers/Resources/Providers/` | — | **the built-in definitions**: `codex.json`, `deepseek.json`, … | |
-| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `RefreshKind`, `Clock`, `PowerStateProvider` | `SystemClock`, `SystemPowerStateProvider`, `SingleFlightCache` |
+| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `AdaptiveCadence`, `Clock` and `SystemClock`, `PowerStateProvider` and `PowerEvent`, `ProductTab`, `ProviderBadgeState`; `UsageProbe`, the stubbed login the tests build | — none. `SystemPowerStateProvider` (AppKit, IOKit) and the convenience `init` that injects it stay in the Mac app; the menu bar's readouts are `QuotaMonitor+MenuBar` in `Domain/App` ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
 | `Alerting` | Alerting | `QuotaAlerts`, `StatusAlerts`, `Alert`, `AlertDestination`, `Webhooks`, Notify! values, `NotifySettingsRepository`, `WebhookSettingsRepository` | `Notifications`, `SystemAlertSender`, `WebhookClient`, `NotifyGatewayClient` |
 | `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookSettingsRepository` | `HookHTTPServer`, `HookInstaller`, `PortFile` (shared with the local API), `SessionEventParser` |
 | `Leaderboard` | Leaderboard | `LeaderboardMembership`, `DailyTokens`, `Username`, `RequestSigner`, `LeaderboardUploader`, the devices' values (`Device`, `DeviceCode`, `DeviceLabel`), the ports `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` · `TokenLogs` ([its design §7](../features/leaderboard/design.md#7--architecture)); the factory `Leaderboard.makeAPI(client:)` · `makeKeyStore()` · `makeMachineIdentity()` | `LeaderboardHTTPClient`; `FallbackSigningKeyStore` over `KeychainSigningKeyStore` (macOS) and `DefaultsSigningKeyStore`; `IOKitMachineIdentity` with `MacModel` (macOS); `CredentialManagerSigningKeyStore` and `WindowsMachineIdentity` (Windows) |
@@ -217,7 +217,7 @@ for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
 | `SecretStore` | DataSources | the Keychain, for secrets a login saved | `Storage` |
 | `LedgerStore` | Providers | `~/.claudebar/usage-history/` | `Providers/Internal` (→ `Storage`) |
 | `ProviderSettingsRepository` · `CredentialRepository` | Providers | `settings.json`, the Keychain | `Storage` |
-| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `Monitoring/Internal` |
+| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `SystemClock` in `Monitoring`; `SystemPowerStateProvider` in the Mac app (`Infrastructure/Monitoring`) |
 | `AlertDestination` | Alerting | who hears an alert: this Mac's notifications, the person's webhooks | `Alerting/Internal` |
 | `WebhookSending` | Alerting | one POST to a webhook's URL | `Alerting/Internal` |
 | `DestinationSecrets` | Alerting | a destination's secret, in the Keychain or its fallback | `Storage` |
@@ -245,8 +245,8 @@ testability" alone.
 
 ## 8 · Still to carve
 
-`Quotas`, `Diagnostics`, `DataSources`, `AWSClients`, `Providers` and
-`Leaderboard` are built. `Domain` and `Infrastructure` re-export them (`@_exported import`), so
+`Quotas`, `Diagnostics`, `DataSources`, `AWSClients`, `Providers`,
+`Leaderboard` and `Monitoring` are built. `Domain` and `Infrastructure` re-export them (`@_exported import`), so
 no call site changes while files move, and each old target is deleted once
 it is empty.
 
@@ -255,15 +255,15 @@ so a folder already names its destination:
 
 | Today | Goes to |
 |---|---|
-| `Domain/Monitoring/`, `Infrastructure/Monitoring/` | `Monitoring` |
+| `Domain/Monitoring/` (the popover's pages: `Overview`, `PopoverPage`, *When empty*, *Rest when empty*; `ObservationRenderSync`), `Infrastructure/Monitoring/` (`SystemPowerStateProvider`, the `SystemClock` convenience `init`) | stay in the Mac app for now; `QuotaMonitor` and what it needs are `Monitoring` ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
 | `Domain/Alerting/`, `Infrastructure/Alerting/`, `App/Alerting/` (its drivers stay in the App) | `Alerting` |
 | `Domain/Activity/`, `Infrastructure/Activity/`, `App/Activity/` (views stay in the App) | `Activity` (`NSScreen+NotchMetrics` → App) |
 | `Domain/InUse/`, `Infrastructure/InUse/` | not decided: beside `InUse` in `Providers`, or a module of its own (§9) |
 | `Domain/Settings/`, `Infrastructure/Settings/` | `Storage` |
-| `Domain/App/` (page state, `StatusColorPolicy`, `MenuBarProviderSettings`, `PopoverTitle`), `Infrastructure/App/` (terminal theme import) | the App |
-| `Domain/Providers/`, `Infrastructure/Providers/` (`ClaudeGuestPassSource`) | deleted (`AccountInfo`, `UsageProbe` are unused); the guest-pass source to the App, the composition root naming its vendor |
+| `Domain/App/` (page state, `StatusColorPolicy`, `MenuBarProviderSettings`, `PopoverTitle`, `QuotaMonitor+MenuBar`), `Infrastructure/App/` (terminal theme import) | the App |
+| `Domain/Providers/`, `Infrastructure/Providers/` (`ClaudeGuestPassSource`) | deleted (`AccountInfo` is unused; `UsageProbe`, the tests' stubbed login, moved to `Monitoring`); the guest-pass source to the App, the composition root naming its vendor |
 | `Infrastructure/DataSources/` (`ShellEnvironment`, `SimpleCLIExecutor`) | `DataSources` |
-| `Tests/DomainTests`, `InfrastructureTests`, `AppTests` | split per module, following their sources' context folders; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests` |
+| `Tests/DomainTests`, `InfrastructureTests`, `AppTests` | split per module, following their sources' context folders; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests`, the Monitor's in `MonitoringTests` |
 
 The kernel still holds a few types that belong elsewhere; each carries a
 `- Note: Interim` naming its final shape, and the canonical model lists them
@@ -652,8 +652,8 @@ Modules/DataSources/Tests/
 ├── UnavailableTests.swift     the factory with Platform.bare — runs on the Mac too
 ├── …                          everything else: every OS, no skips
 └── macOS/ · Windows/ · Linux/   an adapter's own tests, under #if os(…)
-Modules/Monitoring/            QuotaMonitor's neutral core (slice 6, its own design
-                               review first)
+Modules/Monitoring/            QuotaMonitor and its loop, neutral: every OS, no
+                               platform folder (slice 6, #648)
 ```
 
 - **`Platform` is a value, and `Platform.current` is its only `#if`.** Each

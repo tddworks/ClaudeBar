@@ -624,7 +624,7 @@ is built is not listed — the code is its record. What isn't yet:
 | `Usage` | carries `extensionMetrics` and `dailyUsageReport` | kernel fields only — usage history is read from `account.usageHistory` |
 | `Account.budget` | `app.claudeApiBudget` (Claude's card) and Bedrock's `dailyBudget` as a quota | a `Budget` beside the login's `Cost`, judged as `BudgetStatus`; the old keys read as the default login's budget |
 | `StatusPolicy` | `StatusColorPolicy` is in `Domain` | colours move to the App |
-| page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`; `menuBarLabel(…)` on `QuotaMonitor` | the App |
+| page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`, with the menu-bar builders (`menuBarLabel(…)` and its siblings) as `QuotaMonitor+MenuBar` beside them, so the `Monitoring` module returns none of them | the App |
 | `Day` | `DailyUsageReport` / `DailyUsageStat` (with `lines`) | `Day` — the sum of its lines, one per model; records with no model, one unnamed line |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
 | In use | folder logins only | an environment-variable record for API-key providers |

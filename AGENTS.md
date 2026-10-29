@@ -30,7 +30,8 @@ swift test                               # the modules alone, from the root Pack
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
 | `Modules/Diagnostics` | `AppLog` |
-| `Sources/Domain` | `QuotaMonitor`, Notify!, sessions, In use. Re-exports the modules |
+| `Modules/Monitoring` | `QuotaMonitor`: refreshes, the background loop and its cadence, each login's and product's status under the policy, the tabs |
+| `Sources/Domain` | the menu bar's readouts (`QuotaMonitor+MenuBar`), the popover's pages, Notify!, sessions, In use. Re-exports the modules |
 | `Sources/Infrastructure` | storage, notifications, hooks, Claude's guest-pass source |
 | `Sources/App` | SwiftUI views that read the domain directly; the composition root |
 
