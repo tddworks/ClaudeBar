@@ -737,7 +737,7 @@ Phase 5's slices, each its own issue and PR
 | 3 | **`LocalNetwork`**, with the localhost-certificate spike | its tests run on Windows — built ([#588](https://github.com/tddworks/ClaudeBar/issues/588)): a `localServer` fetch (Antigravity's `local` source) runs on Windows |
 | 4 | **`Terminal`**, with the SwiftTerm-on-Windows spike | its tests run on Windows — built ([#625](https://github.com/tddworks/ClaudeBar/pull/625)): `cli` fetches read a CLI's screen through a pseudo console, and the runner's own suites run on all three platforms |
 | 5 | **`Secrets`**: Credential Manager; browser cookies and storage stay `Unavailable` | its tests run on Windows — built ([#640](https://github.com/tddworks/ClaudeBar/issues/640)): a `keychain` lookup reads a Credential Manager item, the GitHub CLI's login included, and saves a renewed login back to an unencoded one |
-| 6 | **`Monitoring` into the package**, so no platform rewrites refresh scheduling and alert logic; the menu bar and Notify! stay in the Mac app | its own design review first, since it reshapes the domain's root |
+| 6 | **`Monitoring` into the package**, so no platform rewrites refresh scheduling and alert logic; the menu bar and Notify! stay in the Mac app | its own design review first, since it reshapes the domain's root ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) — built ([#661](https://github.com/tddworks/ClaudeBar/pull/661)): `QuotaMonitor` is the `Monitoring` library, and its 108 tests in `MonitoringTests` need no platform worker, so Windows skips none; the menu bar's readouts, the popover's pages and the power source stay in the Mac app |
 
 ### Open
 
