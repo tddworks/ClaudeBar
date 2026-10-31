@@ -18,7 +18,7 @@ ClaudeBar reads the plan the app saves in its app-data folder, read-only: `~/Lib
 - **The numbers only change while Windsurf runs.** Windsurf updates its saved plan itself; with Windsurf closed, ClaudeBar shows the last numbers it saved.
 - **"Windsurf's saved plan is out of date. Open Windsurf to update it."** The saved plan's billing period has ended, so its numbers are old. Open Windsurf.
 - **"Open Windsurf and sign in …"** Windsurf hasn't saved a plan yet. Until Windsurf has run once on this Mac, the card shows as not set up.
-- **A free plan** has nothing to measure, so the card shows no data.
+- **A free plan** shows its message pool when it saves one (Devin Desktop's free plan: messages left of the total, with no reset); a plan with nothing to measure shows no data.
 - **Windows path support does not yet supply SQLite or mapping scripts.** Until those connections are implemented, the source reports *Unavailable*; it does not try a Mac command.
 
 ## See also

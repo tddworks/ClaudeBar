@@ -24,12 +24,18 @@ struct WindsurfDefinitionTests {
     /// `plan` saved by the app whose data folder is `app`, the database last
     /// changed at `changed` when given.
     private func save(_ plan: String, app: String, in home: URL, changed: Date? = nil) throws {
+        try save(plan.isEmpty ? [] : [("windsurf.settings.cachedPlanInfo", plan)], app: app, in: home, changed: changed)
+    }
+
+    /// `rows` (key, value) saved by the app whose data folder is `app`.
+    private func save(_ rows: [(String, String)], app: String, in home: URL, changed: Date? = nil) throws {
         let folder = home.appendingPathComponent("Library/Application Support/\(app)/User/globalStorage")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let quoted = plan.replacingOccurrences(of: "'", with: "''")
-        let insert = plan.isEmpty ? "" : "INSERT INTO ItemTable VALUES ('windsurf.settings.cachedPlanInfo', CAST('\(quoted)' AS BLOB));"
+        let inserts = rows.map { key, value in
+            "INSERT INTO ItemTable VALUES ('\(key)', CAST('\(value.replacingOccurrences(of: "'", with: "''"))' AS BLOB));"
+        }.joined(separator: " ")
         let database = folder.appendingPathComponent("state.vscdb")
-        try SQLiteFiles.make(at: database, "CREATE TABLE ItemTable(key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB); \(insert)")
+        try SQLiteFiles.make(at: database, "CREATE TABLE ItemTable(key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB); \(inserts)")
         if let changed { try FileManager.default.setAttributes([.modificationDate: changed], ofItemAtPath: database.path) }
     }
 
@@ -140,5 +146,69 @@ struct WindsurfDefinitionTests {
         try save(Self.plan, app: "Devin", in: home)
         let usage = try await make(home: home).refreshPlain()
         #expect(usage.quota(for: .weekly)?.percentRemaining == 54)
+    }
+
+    // MARK: - Devin Desktop's own key
+
+    /// Devin Desktop saves the plan under `windsurf.reactSettings.cachedPlanInfoData:<user id>`,
+    /// with the quota at the top level. Shapes from Pulse's fixtures
+    /// (qunqin24/Pulse `Tests/PulseTests/Fixtures/devin-*.json`, Apache-2.0),
+    /// captured from Devin.app 3.10.23 on 2026-09-14; the user id is made up.
+    static let devinKey = "windsurf.reactSettings.cachedPlanInfoData:user-0123456789abcdef0123456789abcdef"
+    static let devinNow = Date(timeIntervalSince1970: 1789300000)
+    static let devinPro = #"{"planName":"Pro","billingStrategy":"quota","duration":29,"startTimestamp":1789296110000,"endTimestamp":1791888110000,"remainingMessages":-1,"totalMessages":-1,"remainingFlexCredits":0,"dailyRemainingPercent":98,"weeklyRemainingPercent":99,"overageBalanceMicros":10000000,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200,"hideDailyQuota":false,"hideWeeklyQuota":false,"isFreeOrTrial":false,"isDevinFree":false}"#
+    static let devinFree = #"{"planName":"Free","billingStrategy":"quota","duration":0,"startTimestamp":0,"endTimestamp":0,"remainingMessages":1750,"totalMessages":2500,"remainingFlexCredits":0,"dailyRemainingPercent":100,"weeklyRemainingPercent":100,"overageBalanceMicros":0,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200,"hideDailyQuota":false,"hideWeeklyQuota":false,"isFreeOrTrial":true,"isDevinFree":true}"#
+    static let devinHiddenDaily = #"{"planName":"Team","billingStrategy":"quota","remainingMessages":-1,"totalMessages":-1,"dailyRemainingPercent":100,"weeklyRemainingPercent":42,"overageBalanceMicros":2500000,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200,"hideDailyQuota":true,"hideWeeklyQuota":false}"#
+
+    private func devin(_ rows: [(String, String)]) async throws -> UsageSnapshot {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try save(rows, app: "Devin", in: home)
+        return try await make(home: home, now: Self.devinNow).refreshPlain()
+    }
+
+    @Test
+    func `should read the plan Devin Desktop saves under its own key`() async throws {
+        let usage = try await devin([(Self.devinKey, Self.devinPro)])
+        let daily = try #require(usage.quotas.first { $0.quotaType == .timeLimit("Daily") })
+        #expect(daily.percentRemaining == 98)
+        #expect(daily.resetsAt == Date(timeIntervalSince1970: 1789372800))
+        let weekly = try #require(usage.quota(for: .weekly))
+        #expect(weekly.percentRemaining == 99)
+        #expect(weekly.resetsAt == Date(timeIntervalSince1970: 1789891200))
+        #expect(usage.accountTier == .custom("Pro"))
+        #expect(!usage.quotas.contains { $0.quotaType == .modelSpecific("Messages") })
+    }
+
+    @Test
+    func `should read Devin Desktop's own key before the key Windsurf used`() async throws {
+        let usage = try await devin([("windsurf.settings.cachedPlanInfo", Self.plan), (Self.devinKey, Self.devinPro)])
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 99)
+    }
+
+    @Test
+    func `should show a free plan's message pool, which has no period, beside its daily and weekly quota`() async throws {
+        let usage = try await devin([(Self.devinKey, Self.devinFree)])
+        let messages = try #require(usage.quotas.first { $0.quotaType == .modelSpecific("Messages") })
+        #expect(messages.percentRemaining == 70)
+        #expect(messages.resetText == "750/2500 used")
+        #expect(messages.resetsAt == nil)
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 100)
+        #expect(usage.accountTier == .custom("Free"))
+    }
+
+    @Test
+    func `should leave out a quota Devin Desktop hides`() async throws {
+        let usage = try await devin([(Self.devinKey, Self.devinHiddenDaily)])
+        #expect(!usage.quotas.contains { $0.quotaType == .timeLimit("Daily") })
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 42)
+    }
+
+    @Test
+    func `should read the account whose plan runs longest when two signed in on this computer`() async throws {
+        let ended = Self.devinPro.replacingOccurrences(of: #""weeklyRemainingPercent":99"#, with: #""weeklyRemainingPercent":5"#)
+            .replacingOccurrences(of: "1791888110000", with: "1789299000000")
+        let usage = try await devin([("windsurf.reactSettings.cachedPlanInfoData:user-ffffffffffffffffffffffffffffffff", ended),
+                                     (Self.devinKey, Self.devinPro)])
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 99)
     }
 }
