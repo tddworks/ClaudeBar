@@ -41,7 +41,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
   - `/v1internal:fetchAvailableModels`: legacy per-model quotas. Models with `isInternal` are dropped.
   - `/v1internal:loadCodeAssist`: plan name (`paidTier.name`, else `currentTier.name`), shown as the account tier.
 - A 401/403 on any base URL means the token is bad, and the probe stops. Any other failure moves on to the next base URL or endpoint. If every attempt fails: "Could not reach the Antigravity quota API".
-- The summary is asked first; the model list is asked only when the summary states no `gemini-` bucket, because since 2026-10-31 Google's summary states the Claude and GPT pool alone for some accounts and leaves the Gemini pool to the model list. A summary that already states Gemini costs no extra request.
+- The summary is asked first (daily, with production fallback), followed by the model list (daily, with production fallback) to recover any missing pools such as Argon 5h or Gemini 5h, followed by loadCodeAssist.
 
 ## Quota summary
 

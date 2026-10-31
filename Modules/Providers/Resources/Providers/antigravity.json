@@ -128,11 +128,8 @@
                 }
               },
               "keep": {
-                "answered": {
+                "summaryAnswered": {
                   "pattern": "^\\s*(\\{)"
-                },
-                "gemini5hStated": {
-                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-5h\")"
                 }
               }
             },
@@ -151,13 +148,10 @@
                   "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "answered",
+              "unless": "summaryAnswered",
               "keep": {
-                "answered": {
+                "summaryAnswered": {
                   "pattern": "^\\s*(\\{)"
-                },
-                "gemini5hStated": {
-                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-5h\")"
                 }
               }
             },
@@ -176,13 +170,9 @@
                   "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "gemini5hStated",
               "keep": {
-                "answered": {
+                "modelsAnswered": {
                   "pattern": "^\\s*(\\{)"
-                },
-                "gemini5hStated": {
-                  "pattern": "(\"gemini-5h\")"
                 }
               }
             },
@@ -201,13 +191,10 @@
                   "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "gemini5hStated",
+              "unless": "modelsAnswered",
               "keep": {
-                "answered": {
+                "modelsAnswered": {
                   "pattern": "^\\s*(\\{)"
-                },
-                "gemini5hStated": {
-                  "pattern": "(\"gemini-5h\")"
                 }
               }
             },
