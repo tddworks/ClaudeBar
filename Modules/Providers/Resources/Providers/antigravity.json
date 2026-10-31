@@ -124,12 +124,15 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
+                },
+                "geminiStated": {
+                  "pattern": "\"bucketId\"\\s*:\\s*\"gemini-"
                 }
               }
             },
@@ -145,13 +148,16 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
               "unless": "answered",
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
+                },
+                "geminiStated": {
+                  "pattern": "\"bucketId\"\\s*:\\s*\"gemini-"
                 }
               }
             },
@@ -167,13 +173,16 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "answered",
+              "unless": "geminiStated",
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
+                },
+                "geminiStated": {
+                  "pattern": "\"gemini-"
                 }
               }
             },
@@ -189,13 +198,16 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "answered",
+              "unless": "geminiStated",
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
+                },
+                "geminiStated": {
+                  "pattern": "\"gemini-"
                 }
               }
             },
@@ -211,7 +223,7 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
               "keep": {
@@ -233,7 +245,7 @@
                   "Content-Type": "application/json",
                   "Accept": "application/json",
                   "Authorization": "Bearer {{token}}",
-                  "User-Agent": "antigravity"
+                  "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
               "unless": "plan"

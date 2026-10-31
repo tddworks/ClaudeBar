@@ -35,13 +35,13 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 ## Cloud Code (app closed)
 
 - **Token**: `security find-generic-password -s gemini -a antigravity -w`. The value is `go-keyring-base64:`-wrapped JSON `{ "token": { "access_token", "refresh_token", "expiry" } }`; `accessToken`/`expires_at`/`expiresAt` are also accepted. ClaudeBar only reads this item and never writes back to it.
-- **On Windows** the same lookup asks Credential Manager for `gemini:antigravity`, the name go-keyring gives that item there. Antigravity 2.0.6 writes it once you sign in: the same JSON `{ "auth_method", "token": { "access_token", "refresh_token", "expiry", "token_type" } }`, stored as it is, without the Mac's `go-keyring-base64:` wrapping, which the reader takes either way. On a Windows 11 PC, `cloud` read Google's quota with it; that account's summary held only the "Claude and GPT models" group (`3p-5h`, `3p-weekly`), so the Gemini pools came from `local` alone. Build 1.13.3 kept no login there ([#640](https://github.com/tddworks/ClaudeBar/issues/640#issuecomment-6368841550)).
 - **Renewed by `agy`, not by ClaudeBar.** The token is sent as it is; it lives about an hour. Refreshing it with OAuth would mean embedding Antigravity's client credentials, so ClaudeBar doesn't: on a 401 it runs `agy models` once (30 s timeout), which renews the item, reads it again and retries. Still rejected → `sessionExpired("Sign in to Antigravity or run `agy` again.")`; `agy` not installed → `authenticationRequired`.
-- **Endpoints**: `POST` to `https://daily-cloudcode-pa.googleapis.com` first, then `https://cloudcode-pa.googleapis.com`, with `User-Agent: antigravity` and full TLS validation:
+- **Endpoints**: `POST` to `https://daily-cloudcode-pa.googleapis.com` first, then `https://cloudcode-pa.googleapis.com`, with the CLI `User-Agent` (`antigravity/cli/1.4.12...`) and full TLS validation:
   - `/v1internal:retrieveUserQuotaSummary`: the pooled summary.
   - `/v1internal:fetchAvailableModels`: legacy per-model quotas. Models with `isInternal` are dropped.
   - `/v1internal:loadCodeAssist`: plan name (`paidTier.name`, else `currentTier.name`), shown as the account tier.
 - A 401/403 on any base URL means the token is bad, and the probe stops. Any other failure moves on to the next base URL or endpoint. If every attempt fails: "Could not reach the Antigravity quota API".
+- The summary is asked first; the model list is asked only when the summary states no `gemini-` bucket, because since 2026-10-31 Google's summary states the Claude and GPT pool alone for some accounts and leaves the Gemini pool to the model list. A summary that already states Gemini costs no extra request.
 
 ## Quota summary
 
@@ -56,6 +56,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 | `gemini-argon-wtu-weekly` | model "Argon Weekly" | Argon Weekly | Argon Weekly |
 
 - Buckets without a usable `remainingFraction` are dropped rather than reported as 0%. The legacy per-model parsers do the opposite: a missing `remainingFraction` there means the quota is used up.
+- **The Gemini pool when the summary leaves it out.** A summary that states no `gemini-` bucket is not a summary without Gemini: the model list's `models` carry `quotaInfo`, and every Gemini model in it shares one 5-hour pool. One card, "Gemini 5h", is taken from the first Gemini model that states a `remainingFraction`; a model whose key or name says Argon gets "Argon 5h". Nothing is added when the summary already stated the pool.
 - If the result isn't a summary at all, fall back to the legacy endpoints. A parsed summary, even an empty one, is final.
 - **The third-party pool's names carry their window** — "Claude 5h" and "Claude 7d", not "Claude" and "Claude Weekly". A window's name is the only thing that says which window it is when several of them sit side by side, which is what the Notify! tile does (#589): "Antigravity Claude" beside "Antigravity 7d" is a name that cannot be told from the weekly one at a glance. The window is in the name because the name is what every surface shows.
 

@@ -27,6 +27,10 @@ struct AntigravityDefinitionTests {
     nonisolated static let summary = #"{"groups":[{"displayName":"Gemini","buckets":[{"bucketId":"gemini-5h","remainingFraction":0.8,"resetTime":"2025-01-01T05:00:00Z"},{"bucketId":"gemini-weekly","remainingFraction":0.6,"resetTime":"2025-01-07T00:00:00Z"}]},{"displayName":"Claude & others","buckets":[{"bucketId":"3p-5h","remainingFraction":0.4},{"bucketId":"3p-weekly","remainingFraction":0.2},{"bucketId":"gemini-image-5h","remainingFraction":1.0}]}]}"#
     nonisolated static let summaryWithArgon = #"{"groups":[{"displayName":"Gemini Models","buckets":[{"bucketId":"gemini-weekly","window":"weekly","remainingFraction":1,"resetTime":"2025-01-07T00:00:00Z"},{"bucketId":"gemini-5h","window":"5h","remainingFraction":1,"resetTime":"2025-01-01T05:00:00Z"}]},{"displayName":"Claude and GPT models","buckets":[{"bucketId":"3p-weekly","window":"weekly","remainingFraction":1,"resetTime":"2025-01-07T00:00:00Z"},{"bucketId":"3p-5h","window":"5h","remainingFraction":1,"resetTime":"2025-01-01T05:00:00Z"}]},{"displayName":"Gemini 4 Argon","buckets":[{"bucketId":"gemini-argon-wtu-weekly","window":"weekly","remainingFraction":0.95,"resetTime":"2025-01-07T00:00:00Z"}]}]}"#
     nonisolated static let userStatus = #"{"userStatus":{"email":"user@example.com","planStatus":{"planInfo":{"planName":"Pro"}},"cascadeModelConfigData":{"clientModelConfigs":[{"label":"Claude Sonnet","quotaInfo":{"remainingFraction":0.75,"resetTime":"2025-01-01T00:00:00Z"}},{"label":"Gemini Pro","quotaInfo":{"remainingFraction":0.5,"resetTime":"1735689600"}},{"label":"No Quota Model"}]}}}"#
+    /// Google answers the summary with the Claude and GPT pool only; by 2026-10-31
+    /// the Gemini pool is stated per model in the model list instead.
+    nonisolated static let summaryWithoutGemini = #"{"groups":[{"displayName":"Claude and GPT models","buckets":[{"bucketId":"3p-weekly","window":"weekly","remainingFraction":0.4762284,"resetTime":"2026-11-07T07:55:38Z"},{"bucketId":"3p-5h","window":"5h","remainingFraction":0,"resetTime":"2026-10-31T12:55:38Z"}]}]}"#
+    nonisolated static let models = #"{"models":{"gemini-3-flash":{"displayName":"Gemini 3 Flash","quotaInfo":{"remainingFraction":0.95313627,"resetTime":"2026-10-31T12:46:31Z"}},"gemini-3.5-flash-lite":{"displayName":"Gemini 3.5 Flash Lite","quotaInfo":{"remainingFraction":0.95313627,"resetTime":"2026-10-31T12:46:31Z"}},"claude-opus-5-5-low":{"displayName":"Claude Opus 5.5 (Low)","quotaInfo":{"resetTime":"2026-10-31T12:55:38Z"}},"chat_20706":{"isInternal":true,"quotaInfo":{"remainingFraction":1}}}}"#
 
     final class Seen: @unchecked Sendable {
         private let lock = NSLock()
@@ -72,9 +76,9 @@ struct AntigravityDefinitionTests {
         return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { source, _ in
             DataSources.make(source, providerId: definition.id, cliExecutor: commands, network: network,
                              makeTransport: { _, _, _, _ in MockRPCTransport() },
-                             keychain: StubKeychain { service, account in
-                                 guard let keychain = login.value, service == "gemini", account == "antigravity" else { return nil }
-                                 return "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString()
+                             security: { @Sendable arguments in
+                                 guard let keychain = login.value, arguments.contains("gemini"), arguments.contains("antigravity") else { return (44, "") }
+                                 return (0, "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString())
                              },
                              scripts: ProviderFactory.builtInScripts, environment: { _ in nil },
                              homeDirectory: FileManager.default.temporaryDirectory,
@@ -125,8 +129,7 @@ struct AntigravityDefinitionTests {
 
     // MARK: - The app closed: Google, with its saved login
 
-    @Test func `should show Google's quota with the saved login when the app is closed`() async throws {
-        let seen = Seen()
+    @Test func `should show Google's quota with the saved login when the app is closed`() async throws {        let seen = Seen()
         let provider = try make(running: false, answers: [
             "retrieveUserQuotaSummary": (200, Self.summary),
             "loadCodeAssist": (200, #"{"paidTier":{"name":"Ultra"}}"#),
@@ -137,6 +140,16 @@ struct AntigravityDefinitionTests {
         let first = try #require(seen.requests.first)
         #expect(first.url?.host == "daily-cloudcode-pa.googleapis.com")
         #expect(first.value(forHTTPHeaderField: "Authorization") == "Bearer ya29.valid")
+    }
+
+    @Test func `should show Gemini's pool from the model list when Google's summary leaves it out`() async throws {
+        let provider = try make(running: false, answers: [
+            "retrieveUserQuotaSummary": (200, Self.summaryWithoutGemini),
+            "fetchAvailableModels": (200, Self.models),
+        ], keychain: #"{"token":{"access_token":"ya29.valid","refresh_token":"1//r"}}"#)
+        let quotas = try await provider.refreshPlain().quotas
+        #expect(quotas.map(\.quotaType) == [.modelSpecific("Claude 5h"), .modelSpecific("Claude 7d"), .modelSpecific("Gemini 5h")])
+        #expect(quotas.map { Int($0.percentRemaining.rounded()) } == [0, 48, 95])
     }
 
     @Test func `should ask to sign in when the saved login is refused and agy isn't there to renew it`() async throws {
