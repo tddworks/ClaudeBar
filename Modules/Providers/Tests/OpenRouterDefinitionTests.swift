@@ -104,7 +104,7 @@ struct OpenRouterDefinitionTests {
         let product = try make(body: #"{"error":{"code":403,"message":"Only management keys can perform this operation"}}"#, status: 403)
         let account = product.defaultAccount
         await #expect(throws: UsageError.executionFailed(
-            "OpenRouter shows credits only to a Management key; a regular API key gets 403. Create one at openrouter.ai/settings/management-keys and paste it as the key.")) {
+            "OpenRouter shows credits only to a Management key; a regular API key gets 403. Create one at openrouter.ai/settings/management-keys and paste it as the key. A key in the environment variable (OPENROUTER_API_KEY by default) is used first: unset it or change the Environment variable setting.")) {
             try await product.refresh(account)
         }
         #expect(account.lastFailedStep == .fetch)
