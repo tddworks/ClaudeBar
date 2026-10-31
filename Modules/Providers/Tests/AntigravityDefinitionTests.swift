@@ -142,14 +142,26 @@ struct AntigravityDefinitionTests {
         #expect(first.value(forHTTPHeaderField: "Authorization") == "Bearer ya29.valid")
     }
 
-    @Test func `should show Gemini's pool from the model list when Google's summary leaves it out`() async throws {
-        let provider = try make(running: false, answers: [
-            "retrieveUserQuotaSummary": (200, Self.summaryWithoutGemini),
-            "fetchAvailableModels": (200, Self.models),
-        ], keychain: #"{"token":{"access_token":"ya29.valid","refresh_token":"1//r"}}"#)
-        let quotas = try await provider.refreshPlain().quotas
-        #expect(quotas.map(\.quotaType) == [.modelSpecific("Claude 5h"), .modelSpecific("Claude 7d"), .modelSpecific("Gemini 5h")])
-        #expect(quotas.map { Int($0.percentRemaining.rounded()) } == [0, 48, 95])
+    @Test func `should show Gemini's pool from the model list when Google's summary leaves it out`() async throws {\
+        let provider = try make(running: false, answers: [\
+            "retrieveUserQuotaSummary": (200, Self.summaryWithoutGemini),\
+            "fetchAvailableModels": (200, Self.models),\
+        ], keychain: #"{"token":{"access_token":"ya29.valid","refresh_token":"1//r"}}"#)\
+        let quotas = try await provider.refreshPlain().quotas\
+        #expect(quotas.map(\.quotaType) == [.modelSpecific("Claude 5h"), .modelSpecific("Claude 7d"), .modelSpecific("Gemini 5h")])\
+        #expect(quotas.map { Int($0.percentRemaining.rounded()) } == [0, 48, 95])\
+    }\
+
+    @Test func `should fetch missing 5h quotas from model list when summary only has weekly buckets`() async throws {\
+        let partialSummary = #"{"groups":[{"displayName":"Gemini Models","buckets":[{"bucketId":"gemini-weekly","window":"weekly","remainingFraction":0.8,"resetTime":"2025-01-07T00:00:00Z"},{"bucketId":"gemini-argon-wtu-weekly","window":"weekly","remainingFraction":0.9,"resetTime":"2025-01-07T00:00:00Z"}]}]}"#\
+        let modelsWithArgon = #"{"models":{"gemini-3-flash":{"displayName":"Gemini 3 Flash","quotaInfo":{"remainingFraction":0.75,"resetTime":"2026-10-31T12:46:31Z"}},"gemini-argon":{"displayName":"Argon","quotaInfo":{"remainingFraction":0.5,"resetTime":"2026-10-31T12:46:31Z"}}}}"#\
+        let provider = try make(running: false, answers: [\
+            "retrieveUserQuotaSummary": (200, partialSummary),\
+            "fetchAvailableModels": (200, modelsWithArgon),\
+        ], keychain: #"{"token":{"access_token":"ya29.valid","refresh_token":"1//r"}}"#)\
+        let quotas = try await provider.refreshPlain().quotas\
+        #expect(quotas.map(\.quotaType) == [.weekly, .modelSpecific("Argon Weekly"), .modelSpecific("Gemini 5h"), .modelSpecific("Argon 5h")])\
+        #expect(quotas.map { Int($0.percentRemaining.rounded()) } == [80, 90, 75, 50])\
     }
 
     @Test func `should ask to sign in when the saved login is refused and agy isn't there to renew it`() async throws {

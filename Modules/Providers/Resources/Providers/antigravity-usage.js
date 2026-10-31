@@ -87,10 +87,8 @@ function read(response) {
             const gemini = modelQuota(models.models, /gemini/i, 'Gemini 5h', /argon/i);
             if (gemini) quotas.push(gemini);
         }
-        if (!stated['gemini-argon-wtu-weekly']) {
-            const argon = modelQuota(models.models, /argon/i, 'Argon 5h');
-            if (argon) quotas.push(argon);
-        }
+        const argon = modelQuota(models.models, /argon/i, 'Argon 5h');
+        if (argon) quotas.push(argon);
     }
     if (quotas.length) {
         const result = {quotas};

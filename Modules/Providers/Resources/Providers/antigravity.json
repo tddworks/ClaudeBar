@@ -131,8 +131,8 @@
                 "answered": {
                   "pattern": "^\\s*(\\{)"
                 },
-                "geminiStated": {
-                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-)"
+                "gemini5hStated": {
+                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-5h\")"
                 }
               }
             },
@@ -156,8 +156,8 @@
                 "answered": {
                   "pattern": "^\\s*(\\{)"
                 },
-                "geminiStated": {
-                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-)"
+                "gemini5hStated": {
+                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-5h\")"
                 }
               }
             },
@@ -176,13 +176,13 @@
                   "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "geminiStated",
+              "unless": "gemini5hStated",
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
                 },
-                "geminiStated": {
-                  "pattern": "(\"gemini-)"
+                "gemini5hStated": {
+                  "pattern": "(\"gemini-5h\")"
                 }
               }
             },
@@ -201,13 +201,13 @@
                   "User-Agent": "antigravity/cli/1.4.12 (aidev_client; os_type=darwin; arch=arm64; auth_method=consumer)"
                 }
               },
-              "unless": "geminiStated",
+              "unless": "gemini5hStated",
               "keep": {
                 "answered": {
                   "pattern": "^\\s*(\\{)"
                 },
-                "geminiStated": {
-                  "pattern": "(\"gemini-)"
+                "gemini5hStated": {
+                  "pattern": "(\"gemini-5h\")"
                 }
               }
             },
