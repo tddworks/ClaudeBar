@@ -132,7 +132,7 @@
                   "pattern": "^\\s*(\\{)"
                 },
                 "geminiStated": {
-                  "pattern": "\"bucketId\"\\s*:\\s*\"gemini-"
+                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-)"
                 }
               }
             },
@@ -157,7 +157,7 @@
                   "pattern": "^\\s*(\\{)"
                 },
                 "geminiStated": {
-                  "pattern": "\"bucketId\"\\s*:\\s*\"gemini-"
+                  "pattern": "(\"(?:bucketId|id)\"\\s*:\\s*\"gemini-)"
                 }
               }
             },
@@ -182,7 +182,7 @@
                   "pattern": "^\\s*(\\{)"
                 },
                 "geminiStated": {
-                  "pattern": "\"gemini-"
+                  "pattern": "(\"gemini-)"
                 }
               }
             },
@@ -207,7 +207,7 @@
                   "pattern": "^\\s*(\\{)"
                 },
                 "geminiStated": {
-                  "pattern": "\"gemini-"
+                  "pattern": "(\"gemini-)"
                 }
               }
             },
