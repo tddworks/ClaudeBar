@@ -43,8 +43,17 @@ function read(response, context) {
     var hidden = function (flag) { return usage[flag] === true || plan[flag] === true; };
     var daily = hidden('hideDailyQuota') ? null : number(usage.dailyRemainingPercent);
     var weekly = hidden('hideWeeklyQuota') ? null : number(usage.weeklyRemainingPercent);
-    if (daily !== null) quotas.push(left('time', 'Daily', daily, number(usage.dailyResetAtUnix), 86400));
-    if (weekly !== null) quotas.push(left('weekly', null, weekly, number(usage.weeklyResetAtUnix), 604800));
+    // Devin Desktop writes the row when it launches, not while it runs, so a
+    // window whose reset has passed holds the percent of a window that no
+    // longer exists: it is left out, and the rest still shows.
+    var reset = [];
+    var window = function (type, name, percent, resetsAt, seconds, label) {
+        if (percent === null) return;
+        if (resetsAt !== null && resetsAt <= context.now) { reset.push(label); return; }
+        quotas.push(left(type, name, percent, resetsAt, seconds));
+    };
+    window('time', 'Daily', daily, number(usage.dailyResetAtUnix), 86400, 'Daily');
+    window('weekly', null, weekly, number(usage.weeklyResetAtUnix), 604800, 'Weekly');
 
     // Devin Desktop's message pool has no period, so no reset.
     var pool = number(plan.totalMessages), poolLeft = number(plan.remainingMessages);
@@ -69,6 +78,9 @@ function read(response, context) {
         });
     }
 
+    if (!quotas.length && reset.length) {
+        return { error: { executionFailed: "Windsurf's saved quota is from Devin Desktop's last launch and has reset since. Reopen Devin Desktop to update it." } };
+    }
     if (!quotas.length) return { error: 'noData' };
     var result = { quotas: quotas };
     if (typeof plan.planName === 'string' && plan.planName.trim()) result.plan = plan.planName.trim();

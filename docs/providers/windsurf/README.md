@@ -15,7 +15,8 @@ ClaudeBar reads the plan the app saves in its app-data folder, read-only: `~/Lib
 
 ## Gotchas
 
-- **The numbers only change while Windsurf runs.** Windsurf updates its saved plan itself; with Windsurf closed, ClaudeBar shows the last numbers it saved.
+- **The numbers are from the app's last launch.** Devin Desktop saves its plan when it launches, not while it runs ([tokei](https://github.com/cclank/tokei/blob/main/docs/devin.md): "那一行是应用启动时写入的，不是运行中持续刷新的" — the row is written when the app starts, not refreshed while it runs). So a Daily or Weekly window whose reset has passed since then is left out: its percent belongs to a window that no longer exists. The other window and the message pool still show.
+- **"Windsurf's saved quota is from Devin Desktop's last launch and has reset since. Reopen Devin Desktop to update it."** Every window has reset since the last launch and there's nothing else to show. Quit and reopen Devin Desktop.
 - **"Windsurf's saved plan is out of date. Open Windsurf to update it."** The saved plan's billing period has ended, so its numbers are old. Open Windsurf.
 - **"Open Windsurf and sign in …"** Windsurf hasn't saved a plan yet. Until Windsurf has run once on this Mac, the card shows as not set up.
 - **A free plan** shows its message pool when it saves one (Devin Desktop's free plan: messages left of the total, with no reset); a plan with nothing to measure shows no data.

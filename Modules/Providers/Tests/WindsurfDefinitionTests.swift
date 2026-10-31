@@ -160,10 +160,14 @@ struct WindsurfDefinitionTests {
     static let devinFree = #"{"planName":"Free","billingStrategy":"quota","duration":0,"startTimestamp":0,"endTimestamp":0,"remainingMessages":1750,"totalMessages":2500,"remainingFlexCredits":0,"dailyRemainingPercent":100,"weeklyRemainingPercent":100,"overageBalanceMicros":0,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200,"hideDailyQuota":false,"hideWeeklyQuota":false,"isFreeOrTrial":true,"isDevinFree":true}"#
     static let devinHiddenDaily = #"{"planName":"Team","billingStrategy":"quota","remainingMessages":-1,"totalMessages":-1,"dailyRemainingPercent":100,"weeklyRemainingPercent":42,"overageBalanceMicros":2500000,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200,"hideDailyQuota":true,"hideWeeklyQuota":false}"#
 
-    private func devin(_ rows: [(String, String)]) async throws -> UsageSnapshot {
+    private func devin(_ rows: [(String, String)], now: Date = Self.devinNow) async throws -> UsageSnapshot {
+        try await devinProvider(rows, now: now).refreshPlain()
+    }
+
+    private func devinProvider(_ rows: [(String, String)], now: Date = Self.devinNow) throws -> Provider {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try save(rows, app: "Devin", in: home)
-        return try await make(home: home, now: Self.devinNow).refreshPlain()
+        return try make(home: home, now: now)
     }
 
     @Test
@@ -218,5 +222,34 @@ struct WindsurfDefinitionTests {
         let usage = try await devin([("windsurf.reactSettings.cachedPlanInfoData:user-ffffffffffffffffffffffffffffffff", ended),
                                      (Self.devinKey, Self.devinFree)])
         #expect(usage.quotas.first { $0.quotaType == .modelSpecific("Messages") }?.percentRemaining == 70)
+    }
+
+    // MARK: - Windows reset since the last launch
+
+    /// Devin Desktop writes the row when it launches, not while it runs
+    /// (tokei's docs/devin.md), so a window whose reset has passed holds the
+    /// percent of a window that no longer exists.
+    @Test
+    func `should leave out a window that has reset since Devin Desktop saved it, and keep the one that hasn't`() async throws {
+        let usage = try await devin([(Self.devinKey, Self.devinPro)], now: Date(timeIntervalSince1970: 1789400000))
+        #expect(!usage.quotas.contains { $0.quotaType == .timeLimit("Daily") })
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 99)
+    }
+
+    @Test
+    func `should say to reopen Devin Desktop when every window has reset since it saved them`() async throws {
+        let windsurf = try devinProvider([(Self.devinKey, Self.devinPro)], now: Date(timeIntervalSince1970: 1789900000))
+        let account = windsurf.defaultAccount
+        await #expect(throws: UsageError.executionFailed(
+            "Windsurf's saved quota is from Devin Desktop's last launch and has reset since. Reopen Devin Desktop to update it.")) {
+            try await windsurf.refresh(account)
+        }
+        #expect(account.lastFailedStep == .mapping)
+    }
+
+    @Test
+    func `should still show a free plan's message pool when its windows have reset`() async throws {
+        let usage = try await devin([(Self.devinKey, Self.devinFree)], now: Date(timeIntervalSince1970: 1789900000))
+        #expect(usage.quotas.map(\.quotaType) == [.modelSpecific("Messages")])
     }
 }
