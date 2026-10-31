@@ -35,7 +35,7 @@
       },
       "mapping": { "script": { "file": "openrouter-credits.js" } },
       "errors": {
-        "http.403": { "executionFailed": "OpenRouter shows credits only to a Management key; a regular API key gets 403. Create one at openrouter.ai/settings/management-keys and paste it as the key. A key in the environment variable (OPENROUTER_API_KEY by default) is used first: unset it or change the Environment variable setting." }
+        "http.403": { "executionFailed": "OpenRouter shows credits only to a Management key; a regular API key gets 403. Create one at openrouter.ai/settings/management-keys and paste it as the key. On the default account, a key in the environment variable (OPENROUTER_API_KEY by default) is used first: unset it or change the Environment variable setting. An added account uses only its own saved key." }
       }
     }
   ]

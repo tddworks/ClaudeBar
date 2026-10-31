@@ -17,7 +17,7 @@ Shows your OpenRouter credit balance — total credits minus total usage, in USD
 
 ## Gotchas
 
-- **"OpenRouter shows credits only to a Management key …"** means OpenRouter answered 403: the key is a regular API key. Create a Management key (step 1) and paste that instead. If it still says so after you saved a Management key, the environment variable holds a regular key and is used first: unset it, or change **Environment variable** to a name that isn't set.
+- **"OpenRouter shows credits only to a Management key …"** means OpenRouter answered 403: the key is a regular API key. Create a Management key (step 1) and paste that instead. If the default account still says so after you saved a Management key, the environment variable holds a regular key and is used first: unset it, or change **Environment variable** to a name that isn't set. An added account reads only its own saved key, so for one of those, replace that account's key with a Management key.
 - **"Authentication required"** means OpenRouter answered 401: the key is wrong, deleted or expired. Check you copied the whole key and that it belongs to the account you funded.
 - **"No data" after enabling** means neither the environment variable nor a saved key was found.
 - **The environment variable must be in ClaudeBar's own environment.** It's read from the app process, so a variable exported only in `~/.zshrc` isn't seen when ClaudeBar starts from Finder or at login. Pasting the key is the reliable option.
