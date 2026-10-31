@@ -14,7 +14,7 @@ fetch.sqlite  {{platform.appData}}/Devin/User/globalStorage/state.vscdb
         ▼     [ { "key": "…", "value": "{…}" } ]   (a BLOB read as its UTF-8 or UTF-16LE text)
 windsurf-plan.js
   no row → "Open Windsurf and sign in, so it saves your plan on this Mac."
-  a cachedPlanInfoData row first (the latest endTimestamp of several), else cachedPlanInfo
+  a cachedPlanInfoData row first (one whose period hasn't ended, then the latest endTimestamp), else cachedPlanInfo
   endTimestamp (ms) in the past → "saved plan is out of date"; 0 is no period
   [quotaUsage.]daily/weeklyRemainingPercent + *ResetAtUnix, unless hide*Quota → time "Daily" · weekly
   totalMessages/remainingMessages ≥ 0 → model "Messages", no reset (-1 on a paid plan: not applicable)

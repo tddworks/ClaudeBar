@@ -16,8 +16,11 @@ function read(response, context) {
         return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
     };
     var saved = rows.filter(function (row) { return typeof row.key === 'string' && row.key.indexOf('windsurf.reactSettings.cachedPlanInfoData') === 0 && text(row); });
+    // A plan whose period has ended ranks below any that hasn't (0, no
+    // period, included); then the one that runs longest.
+    var ended = function (p) { var end = number(p.endTimestamp); return end !== null && end > 0 && end / 1000 < context.now; };
     var devin = saved.map(parse).filter(function (p) { return p; })
-        .sort(function (a, b) { return (number(b.endTimestamp) || 0) - (number(a.endTimestamp) || 0); });
+        .sort(function (a, b) { return (ended(a) - ended(b)) || ((number(b.endTimestamp) || 0) - (number(a.endTimestamp) || 0)); });
     var legacy = rows.filter(function (row) { return row.key === 'windsurf.settings.cachedPlanInfo' && text(row); })[0];
     if (!saved.length && !legacy) {
         return { error: { sessionExpired: 'Open Windsurf and sign in, so it saves your plan on this Mac.' } };

@@ -211,4 +211,12 @@ struct WindsurfDefinitionTests {
                                      (Self.devinKey, Self.devinPro)])
         #expect(usage.quota(for: .weekly)?.percentRemaining == 99)
     }
+
+    @Test
+    func `should read a signed-in account's plan with no period over another's that has ended`() async throws {
+        let ended = Self.devinPro.replacingOccurrences(of: "1791888110000", with: "1789299000000")
+        let usage = try await devin([("windsurf.reactSettings.cachedPlanInfoData:user-ffffffffffffffffffffffffffffffff", ended),
+                                     (Self.devinKey, Self.devinFree)])
+        #expect(usage.quotas.first { $0.quotaType == .modelSpecific("Messages") }?.percentRemaining == 70)
+    }
 }
