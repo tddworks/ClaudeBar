@@ -300,7 +300,9 @@ public enum ErrorRef: Sendable, Equatable, Codable {
 
 /// Reads a JSON response by paths — *Used · Remaining · Limit · Resets*.
 public struct JSONMapping: Sendable, Equatable, Codable {
-    public let plan: PlanRule?
+    /// The first rule whose `when` holds and that answers — one rule, or a
+    /// list where a plan two fields tell apart comes before the plain one.
+    public let plan: [PlanRule]
     public let quotas: [QuotaRule]
     /// Counts the answer sends that are not limits — nothing is left of them
     /// and nothing refills — each shown as a note beside the quotas.
@@ -316,7 +318,7 @@ public struct JSONMapping: Sendable, Equatable, Codable {
     public let notAnObject: String?
 
     public init(
-        plan: PlanRule? = nil,
+        plan: [PlanRule] = [],
         quotas: [QuotaRule],
         notes: [NoteRule] = [],
         cost: [CostRule] = [],
@@ -335,7 +337,11 @@ public struct JSONMapping: Sendable, Equatable, Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        plan = try container.decodeIfPresent(PlanRule.self, forKey: .plan)
+        if let list = try? container.decodeIfPresent([PlanRule].self, forKey: .plan) {
+            plan = list
+        } else {
+            plan = try container.decodeIfPresent(PlanRule.self, forKey: .plan).map { [$0] } ?? []
+        }
         quotas = try container.decodeIfPresent([QuotaRule].self, forKey: .quotas) ?? []
         notes = try container.decodeIfPresent([NoteRule].self, forKey: .notes) ?? []
         if let list = try? container.decodeIfPresent([CostRule].self, forKey: .cost) {
@@ -561,16 +567,20 @@ public struct QuotaRule: Sendable, Equatable, Codable {
 /// The plan badge — "PLUS", "PRO" — from a field (`$credential.` included),
 /// upper-cased unless `badges` names it. With `plans`, a value is one of the
 /// well-known plans by name (`claudeMax`, `claudePro`, `claudeApi`), and any
-/// other is kept as written.
+/// other is kept as written. With `when`, the rule answers only while its
+/// condition holds: `{ "when": { "path": "$credential.tier", "equals": "top" },
+/// "path": "$credential.plan", "plans": { "max": "ULTRA" } }`.
 public struct PlanRule: Sendable, Equatable, Codable {
     public let path: String
     public let badges: [String: String]
     public let plans: [String: String]
+    public let when: Match?
 
-    public init(path: String, badges: [String: String] = [:], plans: [String: String] = [:]) {
+    public init(path: String, badges: [String: String] = [:], plans: [String: String] = [:], when: Match? = nil) {
         self.path = path
         self.badges = badges
         self.plans = plans
+        self.when = when
     }
 
     public init(from decoder: Decoder) throws {
@@ -582,7 +592,8 @@ public struct PlanRule: Sendable, Equatable, Codable {
         self.init(
             path: try container.decode(String.self, forKey: .path),
             badges: try container.decodeIfPresent([String: String].self, forKey: .badges) ?? [:],
-            plans: try container.decodeIfPresent([String: String].self, forKey: .plans) ?? [:]
+            plans: try container.decodeIfPresent([String: String].self, forKey: .plans) ?? [:],
+            when: try container.decodeIfPresent(Match.self, forKey: .when)
         )
     }
 }

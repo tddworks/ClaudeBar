@@ -100,8 +100,8 @@ struct EngineTests {
     }
 
     @Test
-    func `should read guest passes as declared in the definition`() throws {
-        #expect(try ProviderFactory.builtIn("claude").guestPasses)
-        #expect(try ProviderFactory.builtIn("codex").guestPasses == false)
+    func `should read the plans that can send guest passes as declared in the definition`() throws {
+        #expect(try ProviderFactory.builtIn("claude").guestPassPlans == ["claudeMax", "ULTRA"])
+        #expect(try ProviderFactory.builtIn("codex").guestPassPlans == nil)
     }
 }

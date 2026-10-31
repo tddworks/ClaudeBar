@@ -4,7 +4,8 @@
   "models": [
     { "id": "claude-fable-5-1", "name": "Claude Fable 5.1", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheWrite1h": "20", "cacheRead": "0.25" },
     { "id": "claude-opus-5-5", "name": "Claude Opus 5.5", "input": "4", "output": "20", "cacheWrite": "5", "cacheWrite1h": "8", "cacheRead": "0.20" },
-    { "id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5", "input": "2", "output": "10", "cacheWrite": "2.50", "cacheWrite1h": "4", "cacheRead": "0.20" },
+    { "id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5", "input": "2", "output": "10", "cacheWrite": "2.50", "cacheWrite1h": "4", "cacheRead": "0.10" },
+    { "id": "claude-haiku-5-5", "name": "Claude Haiku 5.5", "input": "0.10", "output": "0.50", "cacheWrite": "0.125", "cacheWrite1h": "0.20", "cacheRead": "0.01" },
     { "id": "claude-haiku-4-5", "name": "Claude Haiku 4.5", "input": "1", "output": "5", "cacheWrite": "1.25", "cacheWrite1h": "2", "cacheRead": "0.10" },
     { "id": "claude-mythos-5-1", "name": "Claude Mythos 5.1", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheWrite1h": "20", "cacheRead": "0.25" },
     { "id": "claude-fable-5", "name": "Claude Fable 5", "input": "10", "output": "50", "cacheWrite": "12.50", "cacheWrite1h": "20", "cacheRead": "1" },
@@ -27,7 +28,7 @@
     { "contains": "fable", "as": "claude-fable-5-1" },
     { "contains": "mythos", "as": "claude-mythos-5-1" },
     { "contains": "opus", "as": "claude-opus-4-6" },
-    { "contains": "haiku", "as": "claude-haiku-4-5" }
+    { "contains": "haiku", "as": "claude-haiku-5-5" }
   ],
   "free": [
     "qwen", "llama", "gemma", "mistral", "mixtral", "codestral", "devstral",

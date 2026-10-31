@@ -147,7 +147,7 @@ struct ClaudeAccountsTests {
         let provider = try claude.provider(
             settings: Self.api,
             accounts: [config("w", folder: work, email: "work@example.com")],
-            guestPasses: GuestPasses(source: MockGuestPassSource())
+            guestPasses: GuestPasses(source: MockGuestPassSource(), plans: ["claudeMax"])
         )
 
         #expect(provider.accounts[1].guestPasses == nil)

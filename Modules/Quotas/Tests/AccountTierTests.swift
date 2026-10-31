@@ -48,30 +48,6 @@ struct AccountTierTests {
         #expect(AccountTier.custom("ULTRA").badgeText == "ULTRA")
     }
 
-    // MARK: - Guest Pass Eligibility Tests
-
-    @Test
-    func `should offer guest passes on Claude Max`() {
-        #expect(AccountTier.claudeMax.supportsGuestPasses == true)
-    }
-
-    @Test
-    func `should offer no guest passes on Claude Pro`() {
-        // Anthropic only issues Claude Code invitation links to Max subscribers.
-        #expect(AccountTier.claudePro.supportsGuestPasses == false)
-    }
-
-    @Test
-    func `should offer no guest passes on the Claude API plan`() {
-        #expect(AccountTier.claudeApi.supportsGuestPasses == false)
-    }
-
-    @Test
-    func `should offer no guest passes on another plan, even one badged MAX`() {
-        #expect(AccountTier.custom("MAX").supportsGuestPasses == false)
-        #expect(AccountTier.custom("ULTRA").supportsGuestPasses == false)
-    }
-
     // MARK: - Equality Tests
 
     @Test

@@ -15,11 +15,12 @@ struct ClaudeAPITests {
 
     // MARK: - Helpers
 
-    /// A usage body read with a valid credentials file whose plan is `subscriptionType`.
-    private func usage(_ json: String, subscriptionType: String? = "claude_pro") async throws -> UsageSnapshot {
+    /// A usage body read with a valid credentials file whose plan is
+    /// `subscriptionType` on the `rateLimitTier` Claude Code stores beside it.
+    private func usage(_ json: String, subscriptionType: String? = "claude_pro", rateLimitTier: String? = nil) async throws -> UsageSnapshot {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
-        return try await claude.readAPIResponse(json, subscriptionType: subscriptionType)
+        return try await claude.readAPIResponse(json, subscriptionType: subscriptionType, rateLimitTier: rateLimitTier)
     }
 
     /// The `UsageError` a fetch threw, or `nil` when it succeeded.
@@ -626,6 +627,128 @@ struct ClaudeAPITests {
 
         #expect(snapshot.accountTier == .claudePro)
     }
+
+    // MARK: - Ultra (the old Max 20x) and Max (5x)
+
+    @Test
+    func `should badge an Ultra account ULTRA, not MAX`() async throws {
+        // Max 20x was renamed Ultra; Claude Code still stores `subscriptionType: "max"`,
+        // and only its `rateLimitTier` tells the two apart.
+        let snapshot = try await usage(Self.ultraUnverified, subscriptionType: "max", rateLimitTier: "default_claude_max_20x")
+
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+        #expect(snapshot.accountTier?.badgeText == "ULTRA")
+    }
+
+    @Test
+    func `should badge a Max 5x account MAX`() async throws {
+        let snapshot = try await usage(Self.ultraUnverified, subscriptionType: "max", rateLimitTier: "default_claude_max_5x")
+
+        #expect(snapshot.accountTier == .claudeMax)
+    }
+
+    @Test
+    func `should badge a team premium seat TEAM, not MAX`() async throws {
+        // A premium team seat has the Max 5x limits: `subscriptionType: "team"`,
+        // `rateLimitTier: "default_claude_max_5x"`.
+        let snapshot = try await usage(Self.ultraUnverified, subscriptionType: "team", rateLimitTier: "default_claude_max_5x")
+
+        #expect(snapshot.accountTier == .custom("TEAM"))
+    }
+
+    @Test
+    func `should show an unverified Ultra account's session beside its weekly and Fable limits`() async throws {
+        // Live 2026-10-30, anonymised: weekly and Fable report `is_active: false`
+        // while they carry numbers — `is_active` marks the binding limit, not presence.
+        let snapshot = try await usage(Self.ultraUnverified, subscriptionType: "max", rateLimitTier: "default_claude_max_20x")
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.session, .weekly, .modelSpecific("fable")])
+        #expect(snapshot.sessionQuota?.percentRemaining == 95)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 97)
+        #expect(snapshot.quota(for: .modelSpecific("fable"))?.percentRemaining == 100)
+    }
+
+    @Test
+    func `should show only the weekly and Fable limits for a verified Ultra account, which has no 5-hour limit`() async throws {
+        // [Inferred] the verified shape: the live unverified answer with `five_hour: null`
+        // and no `session` entry in `limits` (support.claude.com/en/articles/17728952).
+        let snapshot = try await usage(Self.ultraVerified, subscriptionType: "max", rateLimitTier: "default_claude_max_20x")
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.weekly, .modelSpecific("fable")])
+        #expect(snapshot.sessionQuota == nil)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 97)
+        #expect(snapshot.weeklyQuota?.resetsAt != nil)
+        let fable = snapshot.quota(for: .modelSpecific("fable"))
+        #expect(fable?.percentRemaining == 100)
+        #expect(fable?.resetsAt != nil)
+        #expect(snapshot.costUsage == nil)  // extra usage is off (out of credits)
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+
+    /// `/api/oauth/usage` for an unverified Ultra account, live 2026-10-30,
+    /// anonymised (amounts zeroed, codename keys left out: they were null).
+    static let ultraUnverified = """
+    {
+      "five_hour": { "utilization": 5.0, "resets_at": "2026-10-30T20:00:00.679947+00:00",
+                     "limit_dollars": null, "used_dollars": null, "remaining_dollars": null, "locked_reason": null },
+      "seven_day": { "utilization": 3.0, "resets_at": "2026-11-06T13:00:00.679966+00:00",
+                     "limit_dollars": null, "used_dollars": null, "remaining_dollars": null, "locked_reason": null },
+      "seven_day_opus": null,
+      "seven_day_sonnet": null,
+      "seven_day_oauth_apps": null,
+      "seven_day_cowork": null,
+      "limits": [
+        { "kind": "session", "group": "session", "percent": 5, "severity": "normal",
+          "resets_at": "2026-10-30T20:00:00.931676+00:00", "scope": null, "is_active": true },
+        { "kind": "weekly_all", "group": "weekly", "percent": 3, "severity": "normal",
+          "resets_at": "2026-11-06T13:00:00.931699+00:00", "scope": null, "is_active": false },
+        { "kind": "weekly_scoped", "group": "weekly", "percent": 0, "severity": "normal",
+          "resets_at": "2026-11-06T13:00:00+00:00",
+          "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null }, "is_active": false }
+      ],
+      "weekly_scoped_shares": [ { "limit_index": 2, "used_percent_of_weekly": 0, "allowance_percent_of_weekly": 50 } ],
+      "seven_day_breakdown": {
+        "window_started_at": "2026-10-30T13:00:00.931699+00:00",
+        "rows": [
+          { "key": "claude_code", "display_name": "Claude Code", "percent": 100 },
+          { "key": "chat", "display_name": "Chats", "percent": 0 },
+          { "key": "cowork", "display_name": "Cowork", "percent": 0 },
+          { "key": "other", "display_name": "Other", "percent": 0 }
+        ]
+      },
+      "extra_usage": { "is_enabled": false, "monthly_limit": null, "used_credits": 0, "utilization": null, "currency": "USD",
+                       "decimal_places": 2, "disabled_reason": "out_of_credits", "user_disabled": false,
+                       "spend_limit_reached": false, "credits_ever_enabled": true, "daily": null, "weekly": null },
+      "spend": { "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 }, "limit": null, "percent": 0,
+                 "severity": "normal", "enabled": false, "disabled_reason": "out_of_credits", "cap": null,
+                 "balance": null, "auto_reload": null, "can_purchase_credits": false, "can_toggle": false },
+      "member_dashboard_available": false
+    }
+    """
+
+    /// [Inferred] a verified Ultra account: `ultraUnverified` with no 5-hour limit.
+    static let ultraVerified = """
+    {
+      "five_hour": null,
+      "seven_day": { "utilization": 3.0, "resets_at": "2026-11-06T13:00:00.679966+00:00",
+                     "limit_dollars": null, "used_dollars": null, "remaining_dollars": null, "locked_reason": null },
+      "seven_day_opus": null,
+      "seven_day_sonnet": null,
+      "limits": [
+        { "kind": "weekly_all", "group": "weekly", "percent": 3, "severity": "normal",
+          "resets_at": "2026-11-06T13:00:00.931699+00:00", "scope": null, "is_active": false },
+        { "kind": "weekly_scoped", "group": "weekly", "percent": 0, "severity": "normal",
+          "resets_at": "2026-11-06T13:00:00+00:00",
+          "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null }, "is_active": false }
+      ],
+      "weekly_scoped_shares": [ { "limit_index": 1, "used_percent_of_weekly": 0, "allowance_percent_of_weekly": 50 } ],
+      "extra_usage": { "is_enabled": false, "monthly_limit": null, "used_credits": 0, "currency": "USD",
+                       "decimal_places": 2, "disabled_reason": "out_of_credits" },
+      "spend": { "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 }, "limit": null,
+                 "enabled": false, "disabled_reason": "out_of_credits" },
+      "member_dashboard_available": false
+    }
+    """
 
     // MARK: - Errors
 

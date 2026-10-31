@@ -87,10 +87,11 @@ struct ClaudeHarness {
         try unwrapped { try dataSource("cliCost").read(Response(text: screen)) }
     }
 
-    /// A usage API body through claude.json's JSON mapping, with the plan the
-    /// credential would carry. Throws the `UsageError` the old probe threw.
-    func readAPIResponse(_ json: String, subscriptionType: String? = nil) async throws -> UsageSnapshot {
-        try writeCredentials(subscriptionType: subscriptionType)
+    /// A usage body read with a valid credentials file whose plan is
+    /// `subscriptionType` (and `rateLimitTier`, which tells Ultra from Max),
+    /// through claude.json's JSON mapping. Throws the `UsageError` the old probe threw.
+    func readAPIResponse(_ json: String, subscriptionType: String? = nil, rateLimitTier: String? = nil) async throws -> UsageSnapshot {
+        try writeCredentials(subscriptionType: subscriptionType, extra: rateLimitTier.map { ["rateLimitTier": $0] } ?? [:])
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((Data(json.utf8), Self.response(200)))
         let definition = try ProviderFactory.builtIn("claude")

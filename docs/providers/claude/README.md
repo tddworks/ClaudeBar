@@ -4,7 +4,7 @@ description: Track Claude 5-hour session, weekly and per-model (Opus, Sonnet, Fa
 
 # Claude
 
-Shows your Claude Code 5-hour session and weekly limits, any model-specific weekly limits (Opus, Sonnet, Fable), Extra Usage spend when it's turned on, and today's cost and tokens from your local session logs. Pay-as-you-go API accounts get a cost card instead of quota bars.
+Shows your Claude Code 5-hour session and weekly limits, any model-specific weekly limits (Opus, Sonnet, Fable), Extra Usage spend when it's turned on, and today's cost and tokens from your local session logs. Pay-as-you-go API accounts get a cost card instead of quota bars. The badge names your plan: PRO, MAX, ULTRA (the plan that used to be Max 20x), TEAM or ENTERPRISE.
 
 ## Setup
 
@@ -45,7 +45,9 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 - **More than one Claude login?** Use **Accounts → Add Account** in the provider settings to sign in with your browser or choose a `CLAUDE_CONFIG_DIR` folder. See [multiple accounts](../../features/providers/multi-account/README.md). Each account shows its own today's cost and 30-day chart, read from its own folder's logs; guest passes stay with your usual login.
 - **Daily cost and token cards** read `~/.claude/projects/*/*.jsonl`. They're only calculated when the popover is open, not during background refreshes.
 - **Claude Desktop's tokens** appear as their own **Claude Desktop · Token Usage** card on your usual login, read from Desktop's app-data folder: `~/Library/Application Support/Claude/buddy-tokens.json` on macOS, `%APPDATA%\Claude\buddy-tokens.json` on Windows (or `~/AppData/Roaming/Claude/buddy-tokens.json` if `APPDATA` is empty or unset). It counts Desktop on this computer only, shows no cost, and doesn't change your limits or the menu bar. Your session and weekly limits still need Claude Code: without it, Claude says so in a card with a *Set up Claude Code* button, with the Desktop card below it.
-- **Share Claude Code** (guest passes) only appears for Max accounts.
+- **No session bar on Ultra.** A verified Ultra account has no 5-hour limit, so Claude shows only the weekly and model limits, and so does ClaudeBar. An Ultra account Anthropic hasn't verified yet still has a temporary session limit, and ClaudeBar shows it.
+- **Today's cost for Claude Haiku 5.5 can read low.** Anthropic charges Haiku 5.5 more for a request whose prompt is over 100,000 tokens; ClaudeBar prices every Haiku 5.5 request at the lower price.
+- **Share Claude Code** (guest passes) only appears for Max and Ultra accounts.
 - **Claude API Budget** in the same pane only applies to pay-as-you-go API accounts, not to Max or Pro Extra Usage.
 
 ## See also

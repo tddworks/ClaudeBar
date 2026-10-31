@@ -184,15 +184,20 @@ struct ClaudeProviderTests {
     // MARK: - Guest passes
 
     @Test
-    func `should offer guest passes to Max, not to Pro or API, nor before a refresh`() async throws {
-        let claude = try ClaudeHarness()
-        defer { claude.cleanUp() }
-        let passes = GuestPasses(source: MockGuestPassSource())
+    func `should offer guest passes to Max and Ultra, not to Pro or API, nor before a refresh`() async throws {
+        // support.claude.com/en/articles/13456702: Ultra (the old Max 20x) sends guest passes too.
+        let plans = try #require(try ProviderFactory.builtIn("claude").guestPassPlans)
+        let passes = GuestPasses(source: MockGuestPassSource(), plans: plans)
+        func offered(_ plan: AccountTier) -> Bool {
+            passes.isOffered(for: UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: plan))
+        }
 
         #expect(passes.isOffered(for: nil) == false)
-        #expect(passes.isOffered(for: UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: .claudeMax)))
-        #expect(passes.isOffered(for: UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: .claudePro)) == false)
-        #expect(passes.isOffered(for: UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: .claudeApi)) == false)
+        #expect(offered(.claudeMax))
+        #expect(offered(.custom("ULTRA")))
+        #expect(offered(.claudePro) == false)
+        #expect(offered(.claudeApi) == false)
+        #expect(offered(.custom("TEAM")) == false)
     }
 
     @Test
@@ -200,7 +205,7 @@ struct ClaudeProviderTests {
         let source = MockGuestPassSource()
         let pass = GuestPass(passesRemaining: 3, referralURL: URL(string: "https://claude.ai/referral/abc")!)
         given(source).fetch().willReturn(pass)
-        let passes = GuestPasses(source: source)
+        let passes = GuestPasses(source: source, plans: ["claudeMax"])
 
         try await passes.fetch()
 
@@ -216,7 +221,7 @@ struct ClaudeProviderTests {
         answerCLI(claude, Self.usageScreen)
         let source = MockGuestPassSource()
         given(source).fetch().willThrow(UsageError.parseFailed("Could not find referral URL"))
-        let passes = GuestPasses(source: source)
+        let passes = GuestPasses(source: source, plans: ["claudeMax"])
         let provider = try claude.provider(guestPasses: passes)
         try await provider.refreshPlain()
 

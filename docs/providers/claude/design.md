@@ -13,7 +13,7 @@ plus two mapping scripts beside it (the `/usage` and `/cost` screens), run by th
 |---|---|---|---|
 | `cli` (default) | `cli`: `claude /usage --allowed-tools ""` in the probe directory, `CLAUDE_CODE_OAUTH_TOKEN` unset, `CLAUDEBAR_PROBE=1`, the ready markers, screen rendered by the terminal emulator | `claude-usage-screen.js`, with `~/.claude.json`'s account fields as context | `subscriptionRequired` hands off to `cliCost`; any other failure falls back to `api`; `folderTrustRequired` patches `projects[<probe dir>].hasTrustDialogAccepted` once and retries |
 | `cliCost` (hidden) | `cli`: `claude /cost`, no ready markers | `claude-cost-screen.js` | falls back to `api` |
-| `api` | `http` `GET …/api/oauth/usage`; key from `~/.claude/.credentials.json`, the Keychain item, then `CLAUDE_CODE_OAUTH_TOKEN`; OAuth refresh with a JSON body 5 minutes before `expiresAt` (written back as a number) | a JSON mapping: windows by path (over the limit stays negative, countdowns in hours), model limits from `limits[]` where `kind` is `weekly_scoped` named by the model's first word (first one wins), the plan from the credential's `subscriptionType`, and money from `spend` in minor units, else legacy `extra_usage` | cached 15 minutes (the background floor); a 429 is remembered; falls back to `cli` unless `claude.cliFallbackEnabled` is off |
+| `api` | `http` `GET …/api/oauth/usage`; key from `~/.claude/.credentials.json`, the Keychain item, then `CLAUDE_CODE_OAUTH_TOKEN`; OAuth refresh with a JSON body 5 minutes before `expiresAt` (written back as a number) | a JSON mapping: windows by path (over the limit stays negative, countdowns in hours), model limits from `limits[]` where `kind` is `weekly_scoped` named by the model's first word (first one wins), the plan from the credential's `subscriptionType` and `rateLimitTier` (see [Plans](#plans)), and money from `spend` in minor units, else legacy `extra_usage` | cached 15 minutes (the background floor); a 429 is remembered; falls back to `cli` unless `claude.cliFallbackEnabled` is off |
 
 The scripts run in QuickJS with no file, network or process access;
 reset text is parsed by the host's `humanDate()`. Daily usage and guest passes
@@ -31,8 +31,8 @@ still hold — they are now lines in `claude.json`, pinned by
 | CLI, pay-as-you-go | `claude /cost` | Used only when `/usage` says it's "only available for subscription plans", or shows the API-billing panel for an account that isn't a subscription |
 | API | `GET https://api.anthropic.com/api/oauth/usage`, header `anthropic-beta: oauth-2025-04-20` | Uses the Claude Code OAuth token |
 | Token refresh | `POST https://platform.claude.com/v1/oauth/token` with Claude Code's public `client_id` | Scopes: the ones the login was granted, read from its own `scopes` (`$.claudeAiOauth.scopes#joined`) and asked for verbatim, so a renewed token is never narrower than the one it replaced (RFC 6749 §6: a token is issued for what was asked). A login that names no scopes falls back to `user:profile user:inference user:sessions:claude_code` |
-| Account identity | `~/.claude.json` → `oauthAccount` (email, display name, `billingType`) — read by every data source as the `account` context file, so the email shows whether the CLI or the API answered | CLI v2.1.79+ moved account details to a separate Status tab |
-| Guest passes | `claude /passes`, which copies the link to the clipboard | Max only (#243) |
+| Account identity | `~/.claude.json` → `oauthAccount` (email, display name, `billingType`, `organizationType`, `organizationRateLimitTier`) — read by every data source as the `account` context file, so the email shows whether the CLI or the API answered | CLI v2.1.79+ moved account details to a separate Status tab |
+| Guest passes | `claude /passes`, which copies the link to the clipboard | Offered to the plans `"guestPasses": { "plans": [...] }` names: Max and Ultra (#243, support.claude.com/en/articles/13456702) |
 | Daily usage | `~/.claude/projects/*/*.jsonl` | Deduplicated by `(message.id, requestId)`, because Claude Code writes the same usage more than once. Every line carries the `cwd` it was written in, read as the record's `project` and named at aggregation — the folder part of [quota-by-project](../../features/usage-history/quota-by-project/design.md) |
 | Claude Desktop tokens | `{{platform.appData}}/Claude/buddy-tokens.json` | Today's `tokens-today.date` and `tokens-today.tokens`; tokens only, no cost |
 
@@ -77,7 +77,8 @@ The Desktop path is a platform fact supplied through `DataSources`: macOS keeps
 - **A `/cost` screen that reports a failure is not a cost of zero.** The parse checks for the same errors `/usage` does, before it looks for a number. A throttled or logged-out CLI still paints the panel, and `$0.0000` off it used to succeed — wrong, and final (#317).
 - **Deduplicate "Resets …".** When the CLI redraws with cursor positioning, wide progress-bar characters can shift columns, so a line reads `Resets 4:59pm (TZ)Resets 4:59pm (TZ)`. The parser keeps the last occurrence.
 - **Reset text formats**: relative (`2h 15m`), time only (`4:59pm`), `Dec 28`, `Jan 15, 3:30pm`, `Dec 25 at 4:59am`, with or without an explicit year and a trailing `(Area/City)` timezone. Newer CLIs put the percentage on the same line (`Resets 3pm (Europe/Amsterdam)  27% used`). Dates without a year roll forward to the next future occurrence.
-- **Section labels**: "Current session", "Current week (all models)", "Current week (Opus)", "Current week (Sonnet only)" / "(Sonnet)", and "Current week (Fable". The Fable label is matched only up to the opening parenthesis so that a future "(Fable 5)" still matches. Fable resets at its own time and falls back to the all-models weekly reset.
+- **Section labels**: "Current session", "Current week (all models)", "Current week (Opus)", "Current week (Sonnet only)" / "(Sonnet)", and "Current week (Fable". The Fable label is matched only up to the opening parenthesis so that a future "(Fable 5)" still matches. Fable resets at its own time and falls back to the all-models weekly reset. A section's number and reset are looked for below its label up to the next row that starts a section ("Current session", "Current week…", "Extra usage", or the advice heading "What's contributing to your limits usage?", case-insensitive), within 12 and 14 lines, so a session row still waiting for its number never takes the weekly bar's number or reset, and the last bar never takes one from the advice below it.
+- **No session row on Ultra is a plan without a 5-hour limit, not a failure.** A verified Ultra account has no 5-hour limit ("If you don't see a Current session bar, your account is verified", support.claude.com/en/articles/17728952). When the plan reads ULTRA (the header, else `~/.claude.json`'s organization type and tier), no row *starts* with "Current session" and the all-models weekly bar has its number, the screen is read as weekly and model limits only. Pro and Max always have a session limit, so on their screens a missing session row is a capture taken before the row was painted: it fails as "Could not find session usage" and the API fallback runs, as does a session row without its number on any plan. The verified screen is inferred from the support article; no capture of one exists yet.
 - **Trust prompt**: the CLI auto-answers "Esc to cancel", "Ready to code here?", "Press Enter to continue", "ctrl+t to disable" and "Yes, I trust this folder". If the prompt is still on screen afterwards, ClaudeBar writes `projects["<probe dir>"].hasTrustDialogAccepted = true` into `.claude.json` (respecting `CLAUDE_CONFIG_DIR`) and retries. It leaves the file alone if the file is missing, isn't valid JSON, or contains types it doesn't expect.
 - **A cost panel without its header is still a cost panel.** A full-screen redraw can drop the *API Usage Billing* header and leave `Total cost` and `Total duration (API)`; those two together mean the same as the header. A subscription account is told to run `claude auth login` again; an API-billed one goes to `/cost`.
 - **Rate-limit text**: "rate limited", "rate limit exceeded" and "too many requests" count as errors, but lines containing "rate limits are" don't. That excludes promotions such as "rate limits are 2x higher".
@@ -90,11 +91,28 @@ The Desktop path is a platform fact supplied through `DataSources`: macOS keeps
 
 ## API fields
 
-- `five_hour`, `seven_day`: `utilization` (percent used) and `resets_at` (ISO 8601).
+- `five_hour`, `seven_day`: `utilization` (percent used) and `resets_at` (ISO 8601). A verified Ultra account answers `five_hour: null` with no `kind: "session"` entry in `limits[]` [inferred from the unverified answer and the support article]; the session rule then answers nothing, and the weekly and Fable limits show alone.
+- `limits[].is_active` marks the limit currently binding, not whether it exists: live on 2026-10-30, an unverified Ultra account's `weekly_all` and Fable `weekly_scoped` carried `is_active: false` beside their numbers, and on 2026-10-31 the flag had moved to `weekly_all` with `session` false. No rule reads it.
+- `weekly_scoped_shares[].allowance_percent_of_weekly` (50 for Fable on Max and Ultra) and `used_percent_of_weekly` say how much of the all-models weekly limit a model may take and has taken. Not read: the Fable row is that limit's own `percent`, the number Claude's usage screen shows under "Current week (Fable)", so it is right without them.
 - `seven_day_opus` and `seven_day_sonnet` are legacy and now `null`. Model-scoped limits arrive in the generic `limits[]` array as `kind: "weekly_scoped"`, with `percent` and `scope.model.display_name` (e.g. "Fable 5"). The quota key is the first word of the display name, lowercased (`fable`). It **must** match the key the CLI probe hard-codes, or a saved `model:<name>` menu-bar selection stops working when the user switches modes. Entries in `limits[]` that duplicate `five_hour`/`seven_day` are skipped for now. If those legacy fields ever go `null`, extend the loop to the `session`/`weekly_all` kinds.
 - Remaining quota isn't clamped, so a model over its quota shows a negative value.
 - Extra Usage: prefer `spend` (`used`, `limit`, `enabled`) and fall back to legacy `extra_usage`. A missing or `null` limit means no cap. A limit that's present but invalid drops the whole entry, so it isn't mistaken for "uncapped".
-- Tier: `claude_max`/`max`, `claude_pro`/`pro`, `api`/`claude_api`.
+- Tier: see [Plans](#plans).
+
+## Plans
+
+Max 20x was renamed Ultra (support.claude.com/en/articles/17728952); Max is now the 5x plan alone. Claude Code still stores `subscriptionType: "max"` for both, so the plan is told apart by the limits tier, the way Claude Code does itself (`subscriptionType === "max" && rateLimitTier === "default_claude_max_20x"`):
+
+| Account | Credential `subscriptionType` · `rateLimitTier` | `~/.claude.json` `organizationType` · `organizationRateLimitTier` | Badge |
+|---|---|---|---|
+| Ultra (old Max 20x) | `max` · `default_claude_max_20x` | `claude_max` · `default_claude_max_20x` | ULTRA |
+| Max (5x) | `max` · `default_claude_max_5x` | `claude_max` · `default_claude_max_5x` | MAX |
+| Team premium seat | `team` · `default_claude_max_5x` | `claude_team` · `default_claude_max_5x` | TEAM |
+| Pro | `pro` | `claude_pro` | PRO |
+
+- **API**: two plan rules — the first holds only while the credential's `rateLimitTier` is the 20x tier and names `max` ULTRA; the second maps `subscriptionType` as before. A credential without `rateLimitTier` (an older Claude Code) shows MAX.
+- **CLI**: the `/usage` header names the plan (`· Claude Pro`, `· Claude Ultra`, `· Claude Team`). Claude Code prints "Claude Max" for an Ultra account until it has the plan's display name from the profile, so a Max header, or none, takes the plan from `~/.claude.json`'s `organizationType` and `organizationRateLimitTier`.
+- **Why not `GET /api/oauth/profile`'s `plan_display_name`** ("Ultra")? It is one more call to an endpoint that throttles hard (see [Rate limiting](#rate-limiting-api)). The credential and `~/.claude.json` are already read on every refresh, and Claude Code writes both from that same profile.
 
 ## Credentials
 
@@ -129,3 +147,4 @@ A second Claude login lives in its own config folder, as `CLAUDE_CONFIG_DIR=<fol
 
 - The default login's credential file path ignores `CLAUDE_CONFIG_DIR`. Only the trust write and `.claude.json` lookup respect it. An added login's paths all use its folder.
 - The OAuth `client_id` is Claude Code's. If Claude Code changes it, token refresh breaks.
+- Claude Haiku 5.5 costs more for a request whose prompt is over 100,000 tokens (cache reads and writes count). `claude-prices.json` has one price per model, so every Haiku 5.5 request is priced at the lower, up-to-100K price, and a long-prompt day reads low.

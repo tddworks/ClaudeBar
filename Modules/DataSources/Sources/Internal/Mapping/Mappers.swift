@@ -46,7 +46,7 @@ struct JSONMapper: Reading {
             quotas: quotas,
             capturedAt: now(),
             accountEmail: mapping.email.lazy.compactMap { scope.string($0) }.first { !$0.isEmpty },
-            accountTier: mapping.plan.flatMap { plan(for: $0, in: scope) },
+            accountTier: mapping.plan.lazy.compactMap { plan(for: $0, in: scope) }.first,
             costUsage: cost,
             extensionMetrics: notes.isEmpty ? nil : notes
         )
@@ -237,6 +237,7 @@ struct JSONMapper: Reading {
     }
 
     private func plan(for rule: PlanRule, in scope: JSONScope) -> AccountTier? {
+        if let condition = rule.when, !Self.holds(condition, in: scope) { return nil }
         guard let value = scope.string(rule.path), !value.isEmpty else { return nil }
         if !rule.plans.isEmpty {
             return ScriptOutput.tier(rule.plans[value.lowercased()] ?? value)

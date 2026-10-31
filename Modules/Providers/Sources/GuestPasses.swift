@@ -15,14 +15,19 @@ public final class GuestPasses {
     public private(set) var error: Error?
 
     private let source: any GuestPassSource
+    /// The plans that can send passes, as the definition names them
+    /// (`claudeMax`, a badge such as `ULTRA`).
+    private let plans: Set<String>
 
-    public init(source: any GuestPassSource) {
+    public init(source: any GuestPassSource, plans: [String]) {
         self.source = source
+        self.plans = Set(plans)
     }
 
-    /// Offered only to a plan that can issue passes (#243).
+    /// Offered only to a plan the definition says can send passes (#243).
     public func isOffered(for usage: UsageSnapshot?) -> Bool {
-        usage?.accountTier?.supportsGuestPasses == true
+        guard let plan = usage?.accountTier else { return false }
+        return plans.contains(plan.definitionName)
     }
 
     @discardableResult

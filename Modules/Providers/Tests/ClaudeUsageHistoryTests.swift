@@ -146,6 +146,16 @@ struct ClaudeUsageHistoryTests {
         #expect(try await report().today.totalCost == Decimal(string: "7.1"))
     }
 
+    @Test func `should price Sonnet 5.5 cache reads, Haiku 5.5, and a newer Haiku as the current one`() async throws {
+        try write([Self.line("claude-sonnet-5-5", input: 0, output: 0, cacheRead: 1_000_000, message: "a", request: "1"),
+                   Self.line("claude-haiku-5-5", input: 1_000_000, output: 1_000_000, cacheRead: 1_000_000, message: "b", request: "2"),
+                   Self.line("claude-haiku-6", input: 1_000_000, output: 0, message: "c", request: "3")]
+            .joined(separator: "\n"))
+        // Sonnet 5.5 reads at 0.05× input: $0.10. Haiku 5.5 at its prompts-up-to-100K
+        // prices: $0.10 + $0.50 + $0.01. An unlisted Haiku at Haiku 5.5's $0.10 input.
+        #expect(try await report().today.totalCost == Decimal(string: "0.81"))
+    }
+
     @Test func `should charge the one-hour price for cache writes kept an hour`() async throws {
         let line = #"{"type":"assistant","message":{"model":"claude-opus-5-5","usage":{"input_tokens":1000,"output_tokens":500,"cache_creation_input_tokens":1000000,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":100000,"ephemeral_1h_input_tokens":900000}}},"timestamp":"\#(Self.stamp())"}"#
         try write(line)

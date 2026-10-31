@@ -1173,6 +1173,189 @@ struct ClaudeUsageScreenTests {
         #expect(snapshot.weeklyQuota?.percentRemaining == 40)
     }
 
+    // MARK: - Ultra (the old Max 20x), Max (5x) and team seats
+
+    /// [Inferred] `/usage` for a verified Ultra account: Claude says "If you
+    /// don't see a Current session bar, your account is verified"
+    /// (support.claude.com/en/articles/17728952), so only the weekly bars remain.
+    static let verifiedUltraOutput = """
+    Claude Code v2.1.301
+    Opus 5.5 · Claude Ultra · user@example.com's Organization
+
+    Current week (all models)
+    █░░░░░░░░░░░░░░░░░░░ 3% used
+    Resets Nov 6 at 1pm (UTC)
+
+    Current week (Fable)
+    ░░░░░░░░░░░░░░░░░░░░ 0% used
+    Resets Nov 6 at 1pm (UTC)
+    """
+
+    @Test
+    func `should show only the weekly and Fable limits when a verified Ultra account has no session bar`() throws {
+        let snapshot = try read(Self.verifiedUltraOutput)
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.weekly, .modelSpecific("fable")])
+        #expect(snapshot.sessionQuota == nil)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 97)
+        #expect(snapshot.quota(for: .modelSpecific("fable"))?.percentRemaining == 100)
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+
+    @Test
+    func `should still say the usage was not found when the screen has neither a session nor a weekly bar`() {
+        #expect(throws: UsageError.parseFailed("Could not find session usage")) {
+            try read("Opus 5.5 · Claude Ultra · Organization\n\nNothing to show")
+        }
+    }
+
+    @Test
+    func `should show an Ultra account without a session bar when only Claude Code's config names Ultra`() throws {
+        // The header still says Max; `~/.claude.json` has the account on the Ultra (20x) limits.
+        let output = Self.verifiedUltraOutput.replacingOccurrences(of: "Claude Ultra", with: "Claude Max")
+
+        let snapshot = try read(output, config: account("claude_max", "default_claude_max_20x"))
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.weekly, .modelSpecific("fable")])
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+
+    @Test
+    func `should still say the session was not found when a Max screen has a weekly bar but no session row yet`() {
+        // A capture taken before the session row was painted: only Ultra has no 5-hour limit.
+        let output = Self.verifiedUltraOutput.replacingOccurrences(of: "Claude Ultra", with: "Claude Max")
+
+        #expect(throws: UsageError.parseFailed("Could not find session usage")) {
+            try read(output, config: account("claude_max", "default_claude_max_5x"))
+        }
+    }
+
+    @Test
+    func `should still say the session was not found when a Pro screen has a weekly bar but no session row yet`() {
+        let output = Self.verifiedUltraOutput.replacingOccurrences(of: "Claude Ultra", with: "Claude Pro")
+
+        #expect(throws: UsageError.parseFailed("Could not find session usage")) {
+            try read(output)
+        }
+    }
+
+    @Test
+    func `should not take a number from the contributing-usage section for a weekly row that has none yet`() throws {
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+
+        Current session
+        █████░░░░░░░░░░░░░░░ 25% used
+        Resets 3:59pm (UTC)
+
+        Current week (all models)
+        ░░░░░░░░░░░░░░░░░░░░
+
+        What's contributing to your limits usage?
+        Approximate, based on local sessions on this machine
+        Subagents  40% used
+        """
+
+        let snapshot = try read(output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 75)
+        #expect(snapshot.weeklyQuota == nil)
+    }
+
+    @Test
+    func `should not take the contributing-usage heading for the weekly reset when the weekly row prints none`() throws {
+        let output = """
+        Current session
+        █████░░░░░░░░░░░░░░░ 25% used
+
+        Current week (all models)
+        ████████████░░░░░░░░ 60% used
+
+        what's contributing to your limits usage?
+        Approximate, based on local sessions on this machine
+        """
+
+        let snapshot = try read(output)
+
+        #expect(snapshot.weeklyQuota?.percentRemaining == 40)
+        #expect(snapshot.weeklyQuota?.resetText == nil)
+    }
+
+    @Test
+    func `should not take the weekly bar's number for a session row that has none yet`() {
+        // The session row is painted, its bar not filled yet; the weekly bar below has its number.
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+
+        Current session
+        ░░░░░░░░░░░░░░░░░░░░
+
+        Current week (all models)
+        █████░░░░░░░░░░░░░░░ 25% used
+        Resets Nov 6 at 1pm (UTC)
+        """
+
+        #expect(throws: UsageError.parseFailed("Could not find session usage")) {
+            try read(output)
+        }
+    }
+
+    @Test
+    func `should not give the session the weekly reset when the session prints none`() throws {
+        let output = """
+        Current session
+        █████░░░░░░░░░░░░░░░ 25% used
+
+        Current week (all models)
+        ████████████░░░░░░░░ 60% used
+        Resets Nov 6 at 1pm (UTC)
+        """
+
+        let snapshot = try read(output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 75)
+        #expect(snapshot.sessionQuota?.resetText == nil)
+        #expect(snapshot.sessionQuota?.resetsAt == nil)
+        #expect(snapshot.weeklyQuota?.resetText?.contains("Nov 6") == true)
+    }
+
+    /// `~/.claude.json` as Claude Code keeps it after reading the profile.
+    private func account(_ organizationType: String, _ tier: String) -> String {
+        #"{"oauthAccount":{"billingType":"stripe_subscription","organizationType":"\#(organizationType)","organizationRateLimitTier":"\#(tier)"}}"#
+    }
+
+    @Test
+    func `should badge ULTRA when the header says Max but the account is on the Ultra (20x) limits`() throws {
+        // Claude Code prints "Claude Max" for an Ultra account until it has the plan's new name.
+        let snapshot = try read(Self.maxHeaderOutput, config: account("claude_max", "default_claude_max_20x"))
+
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+
+    @Test
+    func `should badge MAX for a Max 5x account`() throws {
+        let snapshot = try read(Self.maxHeaderOutput, config: account("claude_max", "default_claude_max_5x"))
+
+        #expect(snapshot.accountTier == .claudeMax)
+    }
+
+    @Test
+    func `should badge TEAM, not MAX, for a team premium seat on the Max 5x limits`() throws {
+        let output = """
+        Opus 5.5 · Claude Team · Example Org
+
+        Current session
+        ████ 25% used
+
+        Current week (all models)
+        ████ 60% used
+        """
+
+        let snapshot = try read(output, config: account("claude_team", "default_claude_max_5x"))
+
+        #expect(snapshot.accountTier == .custom("TEAM"))
+    }
+
     // MARK: - Helpers
 
     /// The screen as the `cli` data source reads it: rendered, then scripted,

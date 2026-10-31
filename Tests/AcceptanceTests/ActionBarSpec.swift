@@ -89,36 +89,42 @@ struct ActionBarSpec {
             UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date(), accountTier: tier)
         }
 
+        /// Claude's guest passes, offered to the plans its definition names.
+        private static func passes(_ source: MockGuestPassSource = MockGuestPassSource()) throws -> GuestPasses {
+            GuestPasses(source: source, plans: try ProviderFactory.builtIn("claude").guestPassPlans ?? [])
+        }
+
         @Test
         func `should offer Claude guest passes only when ClaudeBar can read them (#25)`() throws {
             let settings = isolatedSettings()
             let withoutPasses = try ProviderFactory.make("claude", settings: settings).defaultAccount
-            let withPasses = try ProviderFactory.make("claude", settings: settings, guestPasses: GuestPasses(source: MockGuestPassSource())).defaultAccount
+            let withPasses = try ProviderFactory.make("claude", settings: settings, guestPasses: Self.passes()).defaultAccount
 
             #expect(withoutPasses.guestPasses == nil)
             #expect(withPasses.guestPasses != nil)
         }
 
         @Test
-        func `should show the Share button to a Max account (#25)`() {
-            let passes = GuestPasses(source: MockGuestPassSource())
-
-            #expect(passes.isOffered(for: Self.usage(.claudeMax)))
+        func `should show the Share button to a Max account (#25)`() throws {
+            #expect(try Self.passes().isOffered(for: Self.usage(.claudeMax)))
         }
 
         @Test
-        func `should not show the Share button to a Pro account (#243)`() {
-            // Issue #243: Anthropic issues invitation links to Max plans only.
-            let passes = GuestPasses(source: MockGuestPassSource())
-
-            #expect(passes.isOffered(for: Self.usage(.claudePro)) == false)
+        func `should show the Share button to an Ultra account, the old Max 20x`() throws {
+            #expect(try Self.passes().isOffered(for: Self.usage(.custom("ULTRA"))))
         }
 
         @Test
-        func `should report a failure, not stay silent, when guest passes cannot be fetched (#25)`() async {
+        func `should not show the Share button to a Pro account (#243)`() throws {
+            // Issue #243: Anthropic issued invitation links to Max plans only.
+            #expect(try Self.passes().isOffered(for: Self.usage(.claudePro)) == false)
+        }
+
+        @Test
+        func `should report a failure, not stay silent, when guest passes cannot be fetched (#25)`() async throws {
             let passSource = MockGuestPassSource()
             given(passSource).fetch().willThrow(UsageError.parseFailed("Could not find referral URL"))
-            let passes = GuestPasses(source: passSource)
+            let passes = try Self.passes(passSource)
 
             do {
                 _ = try await passes.fetch()

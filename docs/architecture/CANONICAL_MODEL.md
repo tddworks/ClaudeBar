@@ -206,8 +206,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │       │                           model form one unnamed line · one line per project
 │       │       │                           when the log names the working directory · sessions ·
 │       │       │                           time · cache savings
-│       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": {}`,
-│       │       │                           run by the engine; `nil` when not declared
+│       │       ├── guestPasses: GuestPasses?   CAPABILITY — "share a trial": declared `"guestPasses": { "plans": [...] }`,
+│       │       │                           run by the engine; offered to those plans only; `nil` when not declared
 │       │       └── status                  DERIVED — QUOTA HEALTH: the worst quota in its usage.
 │       │                                   The pill's and the menu-bar entry's colour
 │       ├── inUse: InUse?  ◆                CAPABILITY (§2.1) — "New terminal sessions use work":
@@ -346,7 +346,7 @@ its definition and **hands it out per login**; its own context runs it:
 | Capability | The person's question | Declared as | Run by | Reached as |
 |---|---|---|---|---|
 | Usage History | *how much did I use, day by day?* | `usageHistory` | the login's `UsageHistory`, over a `UsageLog` the data-source machinery runs | `account.usageHistory` → `days(in:)` |
-| Guest passes | *can I share a trial?* | `"guestPasses": {}` — Claude's alone; its runner is supplied by the engine ([TARGET §10](TARGET_ARCHITECTURE.md#10--a-definition-on-disk-is-a-provider)) | `ClaudeGuestPassSource`, at the declaring definition's CLI | `account.guestPasses` |
+| Guest passes | *can I share a trial?* | `"guestPasses": { "plans": ["claudeMax", "ULTRA"] }` — Claude's alone, offered to the plans it names; its runner is supplied by the engine ([TARGET §10](TARGET_ARCHITECTURE.md#10--a-definition-on-disk-is-a-provider)) | `ClaudeGuestPassSource`, at the declaring definition's CLI | `account.guestPasses` |
 | Budget | *am I spending more than I meant to?* | an account-scope setting on the cost | the cost judges it | `account.budget` |
 | Sign-in | *add another login* | `accounts.signIn` | `AccountSignIn` | `provider.signIn` |
 | In use | *which login does my next terminal session start with?* | `accounts.signIn` — its CLI and the variable that points it at a folder | `InUse` over the `LoginsInUse` record; `NewSessions` over the `ShellLines` port for the shell | `provider.inUse` · `account.isInUse` |

@@ -51,7 +51,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         /// The dashboard for the plan the last usage reported, else the
         /// default with a login's settings filled in — `Setting.fills`.
         public func dashboard(for plan: AccountTier?, settings: [String: String] = [:]) -> URL? {
-            if let plan, let url = dashboardByPlan[Self.key(for: plan)] { return url }
+            if let plan, let url = dashboardByPlan[plan.definitionName] { return url }
             return dashboard(filling: settings)
         }
 
@@ -64,15 +64,6 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             guard var text = dashboardTemplate else { return nil }
             for (name, value) in settings { text = text.replacingOccurrences(of: "{{setting.\(name)}}", with: value) }
             return text.contains("{{") ? nil : URL(string: text)
-        }
-
-        static func key(for plan: AccountTier) -> String {
-            switch plan {
-            case .claudeMax: "claudeMax"
-            case .claudePro: "claudePro"
-            case .claudeApi: "claudeApi"
-            case .custom(let badge): badge
-            }
         }
     }
 
@@ -90,9 +81,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// Where the product sits in the lineup by default; none → after the
     /// rest, by name. The person's own order wins (TARGET_ARCHITECTURE §10).
     public let order: Int?
-    /// The guest-passes capability (CANONICAL §2.1), declared `"guestPasses": {}`;
-    /// the engine runs it at this definition's CLI.
-    public let guestPasses: Bool
+    /// The guest-passes capability (CANONICAL §2.1), declared
+    /// `"guestPasses": { "plans": ["claudeMax", "ULTRA"] }`: the plans that can
+    /// send passes, `nil` when not declared. The engine runs it at this definition's CLI.
+    public let guestPassPlans: [String]?
     public let dataSources: [DataSourceDefinition]
     public let defaultDataSource: String
     /// `"together": true` — every data source answers on each refresh, the
@@ -271,10 +263,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         usageHistory: UsageLog.Definition? = nil,
         setup: Setup? = nil,
         order: Int? = nil,
-        guestPasses: Bool = false
+        guestPassPlans: [String]? = nil
     ) {
         self.order = order
-        self.guestPasses = guestPasses
+        self.guestPassPlans = guestPassPlans
         self.together = together
         self.usageHistory = usageHistory
         self.setup = setup
@@ -321,7 +313,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             usageHistory: try container.decodeIfPresent(UsageLog.Definition.self, forKey: .usageHistory),
             setup: try container.decodeIfPresent(Setup.self, forKey: .setup),
             order: try container.decodeIfPresent(Int.self, forKey: .order),
-            guestPasses: try container.decodeIfPresent([String: JSONValue].self, forKey: .guestPasses) != nil
+            guestPassPlans: try container.decodeIfPresent(GuestPassesDeclaration.self, forKey: .guestPasses)?.plans
         )
         try validateSettings()
     }
@@ -342,11 +334,23 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         if !settings.isEmpty { try container.encode(settings, forKey: .settings) }
         try container.encodeIfPresent(usageHistory, forKey: .usageHistory)
         try container.encodeIfPresent(setup, forKey: .setup)
-        if guestPasses { try container.encode([String: JSONValue](), forKey: .guestPasses) }
+        if let guestPassPlans { try container.encode(GuestPassesDeclaration(plans: guestPassPlans), forKey: .guestPasses) }
     }
 
     enum CodingKeys: String, CodingKey {
         case profile, cli, enabledByDefault, order, guestPasses, dataSources, defaultDataSource, together, accounts, settings, usageHistory, setup
+    }
+
+    /// `"guestPasses": { "plans": [...] }` — no plans named, none can send passes.
+    private struct GuestPassesDeclaration: Codable {
+        let plans: [String]
+
+        init(plans: [String]) { self.plans = plans }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            plans = try container.decodeIfPresent([String].self, forKey: .plans) ?? []
+        }
     }
 
     /// Each setting's id is used once.
@@ -643,4 +647,18 @@ public enum AddAccountWay: Sendable, Equatable {
     case folder
     /// The account's own settings — *Enter API key*
     case form
+}
+
+extension AccountTier {
+    /// The plan as a definition names it — the well-known plans by the names
+    /// mapping scripts use (`claudeMax`, `claudePro`, `claudeApi`), any other
+    /// by its badge as written (`ULTRA`).
+    var definitionName: String {
+        switch self {
+        case .claudeMax: "claudeMax"
+        case .claudePro: "claudePro"
+        case .claudeApi: "claudeApi"
+        case .custom(let badge): badge
+        }
+    }
 }

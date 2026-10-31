@@ -4,8 +4,8 @@ import Foundation
 /// Supports both well-known tiers (Claude Max/Pro/API) and custom tiers from other providers.
 /// - Note: Interim — today's shape, moved unchanged into the kernel.
 ///   Final version (docs/architecture/CANONICAL_MODEL.md): Becomes `Plan`: a name and a badge. The Claude cases are vendor words that
-///   don't belong in the kernel; whether a plan can issue guest passes is a fact
-///   the definition states (§6).
+///   don't belong in the kernel; which plans can send guest passes is a fact
+///   the definition states (`"guestPasses": { "plans": [...] }`).
 public enum AccountTier: Sendable, Equatable, Hashable {
     /// Claude Max subscription with session/weekly quotas + optional extra usage cost tracking
     case claudeMax
@@ -35,18 +35,6 @@ public enum AccountTier: Sendable, Equatable, Hashable {
         case .claudePro: return "PRO"
         case .claudeApi: return "API"
         case .custom(let badge): return badge
-        }
-    }
-
-    // MARK: - Entitlements
-
-    /// Whether the tier can issue Claude Code guest passes (invitation links).
-    /// Anthropic only hands these out to Max subscribers, so surfacing the
-    /// feature anywhere else offers an action that can only fail (issue #243).
-    public var supportsGuestPasses: Bool {
-        switch self {
-        case .claudeMax: return true
-        case .claudePro, .claudeApi, .custom: return false
         }
     }
 }

@@ -83,9 +83,9 @@ extension ProviderFactory {
         let cloud = readsCloud ? engine.cloudPorts() : nil
         let settings = engine.settings
         let cli = definition.cli ?? id
-        let guestPasses = definition.guestPasses ? engine.guestPasses.map { run in
-            GuestPasses(source: run({ settings.cliPath(forProvider: id) ?? cli }))
-        } : nil
+        let guestPasses = definition.guestPassPlans.flatMap { plans in engine.guestPasses.map { run in
+            GuestPasses(source: run({ settings.cliPath(forProvider: id) ?? cli }), plans: plans)
+        } }
         return make(definition, settings: settings, accounts: settings.accounts(forProvider: id), secrets: engine.vault,
                     guestPasses: guestPasses, environment: engine.environment, loginShell: engine.loginShell,
                     cloudWatch: cloud?.0, priceCatalog: cloud?.1, loginsInUse: engine.loginsInUse)

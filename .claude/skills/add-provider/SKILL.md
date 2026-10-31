@@ -72,7 +72,7 @@ the user to confirm before writing code.
   "cli": "acme",                        // optional
   "enabledByDefault": true,
   "order": 280,                         // its default place in the lineup; none → after the rest, by name
-  "guestPasses": {},                    // optional: a capability the engine runs (Claude's)
+  "guestPasses": { "plans": ["claudeMax"] },  // optional: a capability the engine runs (Claude's), for the plans named
   "defaultDataSource": "api",
   "dataSources": [
     {
@@ -169,7 +169,8 @@ where they are read: a path list (`["{{account.folder}}/.claude.json",
 
 ```jsonc
 "json": {
-  "plan":  { "path": "$credential.plan", "plans": { "max": "claudeMax" } },   // or "badges"
+  "plan":  { "path": "$credential.plan", "plans": { "max": "claudeMax" } },   // or "badges"; a list = the first
+                                                // rule whose "when" holds and that answers
   "email": ["$.account.email", "$credential.email"],
   "quotas": [
     { "kind": "session", "at": "$.five_hour", "usedPercent": "utilization",
@@ -293,7 +294,7 @@ still wins. `DetectionTests` lists the built-ins in order — add your id there.
 
 Every provider gets the same `Engine`: settings, the vault, the login shell (for
 a lookup with `"loginShell": true`), the cloud ports (for a `cloudWatch` fetch),
-the guest-passes runner (for `"guestPasses": {}`). Ask for one in the JSON;
+the guest-passes runner (for `"guestPasses": { "plans": [...] }`). Ask for one in the JSON;
 never pass one in Swift.
 
 Its name, symbol and colours are `profile.look` in the JSON — no `switch id`

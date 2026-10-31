@@ -492,7 +492,7 @@ names one.**
 | Bedrock's `cloudWatch:` and `priceCatalog:` | the engine's cloud ports, made on first use by any `cloudWatch` fetch |
 | Z.ai's closure reading one variable from the login shell (#170) | `{ "environment": "{{setting.glmAuthEnvVar}}", "loginShell": true }` |
 | DeepSeek's closure renaming its variable | `"settings": [{ "id": "authEnvVar", "default": "DEEPSEEK_API_KEY" }]` and `{{setting.authEnvVar}}` — the card already saves `deepseek.authEnvVar` |
-| Claude's `guestPasses:` argument | `"guestPasses": {}` in `claude.json`; the engine runs it |
+| Claude's `guestPasses:` argument | `"guestPasses": { "plans": [...] }` in `claude.json`, offered to the plans it names; the engine runs it |
 | the custom and extension loops | the same `detect()` — every origin made on the same engine |
 
 ### 10.2 · The pieces
