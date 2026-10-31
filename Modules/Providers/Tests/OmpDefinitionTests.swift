@@ -774,6 +774,19 @@ struct OmpDefinitionTests {
     }
 
     @Test
+    func `should round the dollars left that omp reports, not the spend worked out from them`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "cursor",
+            "limits": [ { "label": "Included", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80.255, "limit": 100, "unit": "usd" } } ]
+        } ] }
+        """
+        let quota = try #require(try OmpFixtures.parse(json).quotas.first)
+
+        #expect(quota.left == .money(Money(Decimal(string: "80.26")!, currency: "USD"), of: Money(100, currency: "USD")))
+    }
+
+    @Test
     func `should show a balance beside the windows of the same account`() throws {
         let json = """
         { "reports": [ {

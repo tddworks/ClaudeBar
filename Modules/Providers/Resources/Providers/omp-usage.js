@@ -69,9 +69,11 @@ function read(response, context) {
         // What is left with no limit to measure it against: a credit balance.
         const balance = percent == null && num(amount.remaining) != null && !(monetary && amount.used != null)
             ? (monetary ? money(amount.remaining) : count(amount.remaining) + (unit ? ' ' + unit.toLowerCase() : '')) + ' left' : null;
-        // Spent of a cap, or what the cap leaves when omp reports only that.
+        // Spent of a cap, or what the cap leaves when omp reports only that:
+        // worked out in cents, so the dollars left are omp's, rounded once.
         const spent = amount.used != null ? amount.used
-            : (num(amount.remaining) != null && num(amount.limit) > 0 ? decimalAdd(amount.limit, decimalMultiply(amount.remaining, '-1')) : null);
+            : (num(amount.remaining) != null && num(amount.limit) > 0
+                ? decimalAdd(decimalCents(amount.limit), decimalMultiply(decimalCents(amount.remaining), '-1')) : null);
         return {
             scope, window, amount, monetary, windowToken, token, percent, balance,
             name: str(l.label) ? l.label.trim() : null,
