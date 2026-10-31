@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Usage history no longer re-reads today's logs after a relaunch**: what a scan read is kept in `~/.claudebar/usage-history/scans/`, so a new process reads only what was added since. On Windows the hourly upload's read went from 117 s to 3 s. ([#659](https://github.com/tddworks/ClaudeBar/pull/659)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 
 ### Fixed
-- **Antigravity restores Gemini Weekly and Gemini 4 Argon quota pools**: uses the official CLI User-Agent so Google's Cloud Code PA quota summary returns both Gemini rolling pools and the dedicated Argon Weekly bucket. ([#646](https://github.com/tddworks/ClaudeBar/issues/646)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/antigravity/README.md)
+- **Antigravity restores Gemini Weekly and Argon quota pools**: uses the official CLI User-Agent to retrieve Gemini rolling pools and the dedicated Argon Weekly bucket. ([#646](https://github.com/tddworks/ClaudeBar/issues/646)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/antigravity/README.md)
 
 ---
 

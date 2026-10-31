@@ -21,11 +21,12 @@ function read(response) {
         return q;
     };
     // The first model in the list whose key or name matches, its quota.
-    const modelQuota = (models, pattern, label) => {
+    const modelQuota = (models, pattern, label, excludePattern) => {
         for (const key of Object.keys(models).sort()) {
             const m = models[key];
             if (!object(m) || m.isInternal === true || !object(m.quotaInfo)) continue;
             const name = typeof m.displayName === 'string' ? m.displayName : key;
+            if (excludePattern && (excludePattern.test(key) || excludePattern.test(name))) continue;
             if (!pattern.test(key) && !pattern.test(name)) continue;
             if (typeof m.quotaInfo.remainingFraction !== 'number' || !Number.isFinite(m.quotaInfo.remainingFraction)) continue;
             return model(label, m.quotaInfo);
@@ -54,11 +55,15 @@ function read(response) {
     const groups = (object(data.response) && Array.isArray(data.response.groups)) ? data.response.groups : data.groups;
     if (Array.isArray(groups)) {
         const byId = {};
+        let fallbackArgon = null;
         for (const g of groups) for (const b of (object(g) && Array.isArray(g.buckets) ? g.buckets : [])) {
             if (!object(b)) continue;
             const id = typeof b.bucketId === 'string' ? b.bucketId : typeof b.id === 'string' ? b.id : null;
             if (id && !(id in byId)) byId[id] = b;
-            if (id && id.includes('argon') && !('gemini-argon-wtu-weekly' in byId)) byId['gemini-argon-wtu-weekly'] = b;
+            if (id && id.includes('argon') && !fallbackArgon) fallbackArgon = b;
+        }
+        if (!('gemini-argon-wtu-weekly' in byId) && fallbackArgon) {
+            byId['gemini-argon-wtu-weekly'] = fallbackArgon;
         }
         const specs = [['gemini-5h', {type: 'session', windowSeconds: 18000}], ['gemini-weekly', {type: 'weekly', windowSeconds: 604800}],
                        ['3p-5h', {type: 'model', name: 'Claude 5h', windowSeconds: 18000}], ['3p-weekly', {type: 'model', name: 'Claude 7d', windowSeconds: 604800}],
@@ -77,11 +82,15 @@ function read(response) {
     }
     // Gemini's pool, when the summary didn't state it: the model list does,
     // every Gemini model in it sharing one pool, and Argon its own.
-    if (!stated['gemini-5h'] && object(models) && object(models.models)) {
-        const gemini = modelQuota(models.models, /gemini/i, 'Gemini 5h');
-        if (gemini) quotas.push(gemini);
-        const argon = modelQuota(models.models, /argon/i, 'Argon 5h');
-        if (argon) quotas.push(argon);
+    if (object(models) && object(models.models)) {
+        if (!stated['gemini-5h']) {
+            const gemini = modelQuota(models.models, /gemini/i, 'Gemini 5h', /argon/i);
+            if (gemini) quotas.push(gemini);
+        }
+        if (!stated['gemini-argon-wtu-weekly']) {
+            const argon = modelQuota(models.models, /argon/i, 'Argon 5h');
+            if (argon) quotas.push(argon);
+        }
     }
     if (quotas.length) {
         const result = {quotas};
