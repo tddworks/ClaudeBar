@@ -24,7 +24,7 @@
             "{{platform.appData}}/Devin/User/globalStorage/state.vscdb",
             "{{platform.appData}}/Windsurf/User/globalStorage/state.vscdb"
           ],
-          "query": "SELECT value FROM ItemTable WHERE key = 'windsurf.settings.cachedPlanInfo' LIMIT 1"
+          "query": "SELECT key, value FROM ItemTable WHERE key LIKE 'windsurf.reactSettings.cachedPlanInfoData%' OR key = 'windsurf.settings.cachedPlanInfo'"
         }
       },
       "mapping": { "script": { "file": "windsurf-plan.js" } }

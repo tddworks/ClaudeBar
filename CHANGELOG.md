@@ -13,20 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Oh My Pi no longer drops what omp reports**: an account omp signed out reads "Signed out" and why, a balance with no limit shows what's left, saved resets show with their expiry, and Kimi's weekly quota is listed once. ([#663](https://github.com/tddworks/ClaudeBar/pull/663)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/omp/README.md)
-
-### Fixed
 - **Codex Pro's weekly limit is called Weekly, not Session**: Pro has no 5-hour limit. RPC mode now shows your plan too, and a card shows how many usage limit resets you have. ([#664](https://github.com/tddworks/ClaudeBar/pull/664)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/codex/README.md)
-
-### Fixed
-- **OpenRouter says when a key can't read credits**: OpenRouter now shows the balance only to a Management key, and a regular API key's 403 read as "Authentication required". The card now says to create a Management key. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/openrouter/README.md)
+- **OpenRouter says when a key can't read credits**: OpenRouter now shows the balance only to a Management key, and ClaudeBar showed the 403 a regular API key gets as "Authentication required". The card now says to create a Management key. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/openrouter/README.md)
 - **Bedrock prices Claude through `global.` profiles, and Claude 5 and 5.5**: they cost $0 before, and Opus 4.5 was priced at $15/$75 instead of $5/$25. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/bedrock/README.md)
-- **Windsurf reads Devin Desktop's plan**: since Windsurf became Devin Desktop, the plan is saved in a `Devin` folder; the card showed the old Windsurf copy or nothing. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/windsurf/README.md)
-- **Gemini says the personal login was retired**: since 2026-06-18 Google refuses the Gemini CLI's Login with Google for personal, AI Pro and Ultra accounts. The card now says so and points to Code Assist Standard/Enterprise or Antigravity. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/gemini/README.md)
-
-### Fixed
+- **Windsurf reads Devin Desktop's plan**: since Windsurf became Devin Desktop, the plan is saved in a `Devin` folder and under a new name; the card showed the old Windsurf copy or nothing. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/windsurf/README.md)
+- **Gemini says Google retired its login for individual tiers**: since 2026-06-18 Google refuses the Gemini CLI's Login with Google for Code Assist for individuals, AI Pro and Ultra. The card now says so and points to a Code Assist Standard/Enterprise license or Antigravity. ([#665](https://github.com/tddworks/ClaudeBar/pull/665)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/gemini/README.md)
 - **Antigravity restores Gemini Weekly and Argon quota pools**: uses the official CLI User-Agent to retrieve Gemini rolling pools and the dedicated Argon Weekly bucket. ([#646](https://github.com/tddworks/ClaudeBar/issues/646)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/antigravity/README.md)
-
-### Fixed
 - **Grok shows full remaining for periods without usage, and Kiro parses ISO dates**: an unmetered Grok period displays 100% remaining with countdown, Kiro parses YYYY-MM-DD dates, and empty snapshots show a fallback message. ([#667](https://github.com/tddworks/ClaudeBar/issues/667)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/grok/README.md)
 
 ---

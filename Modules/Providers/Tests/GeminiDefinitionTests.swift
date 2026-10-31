@@ -143,15 +143,15 @@ struct GeminiDefinitionTests {
         await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() }
     }
 
-    nonisolated static let retired = "Session expired. Google retired the Gemini CLI's Login with Google for personal, Google AI Pro and Ultra accounts on 2026-06-18. A Code Assist Standard or Enterprise login still works; otherwise use Antigravity. https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals"
+    nonisolated static let retired = "Session expired. Google retired the Gemini CLI's Login with Google for Code Assist for individuals, Google AI Pro and Ultra on 2026-06-18. An account with a Code Assist Standard or Enterprise license still works; otherwise use Antigravity. https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals"
 
-    @Test func `should say Google retired the personal login when Code Assist forbids it`() async throws {
+    @Test func `should say Google retired the individual tiers' login when Code Assist forbids it`() async throws {
         let (provider, _) = try make(quotaStatus: 403)
         let error = await #expect(throws: UsageError.self) { try await provider.refreshPlain() }
         #expect(error?.errorDescription == Self.retired)
     }
 
-    @Test func `should say Google retired the personal login when renewing it with the Gemini CLI doesn't help`() async throws {
+    @Test func `should say Google retired the individual tiers' login when renewing it with the Gemini CLI doesn't help`() async throws {
         let (provider, _) = try make(token: "stale", refuseStale: true, renews: false)
         let error = await #expect(throws: UsageError.self) { try await provider.refreshPlain() }
         #expect(error?.errorDescription == Self.retired)

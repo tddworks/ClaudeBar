@@ -174,6 +174,7 @@ where they are read: a path list (`["{{account.folder}}/.claude.json",
   "quotas": [
     { "kind": "session", "at": "$.five_hour", "usedPercent": "utilization",
       "resetsAt": { "iso8601": "resets_at" },                // or epochSeconds / secondsFromNow
+      "window": [{ "seconds": "window_seconds" }, { "hours": 5 }],    // kindByWindow reads this length
       "kindByWindow": [{ "atLeast": { "days": 7 }, "kind": "weekly" }] },  // named by its length, not its place
     { "kind": "model", "each": "$.limits", "where": { "path": "kind", "equals": "weekly" },
       "name": { "firstOf": ["model.name"], "firstWord": true, "lowercase": true },

@@ -8,7 +8,7 @@ Shows your OpenRouter credit balance — total credits minus total usage, in USD
 
 ## Setup
 
-1. Create a **Management key** at [openrouter.ai/settings/management-keys](https://openrouter.ai/settings/management-keys). OpenRouter shows the credit balance only to a Management key; a regular API key from [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) is refused with 403 ([OpenRouter's reference](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)). A Management key can't make completion calls, but it can create and delete your other keys: give it an expiry, and replace it before it expires.
+1. Create a **Management key** at [openrouter.ai/settings/management-keys](https://openrouter.ai/settings/management-keys). OpenRouter shows the credit balance only to a Management key; a regular API key from [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) is refused with 403 ([OpenRouter's reference](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)). A Management key can't make completion calls, but it can create and delete your other keys: give it an expiry, and replace it before it expires. OpenRouter's Free plan has no Management keys; they come with its pay-as-you-go plans ([pricing](https://openrouter.ai/pricing)).
 2. Settings → Providers → OpenRouter: turn it on. It's **off by default**.
 3. In **Settings**, paste the key into **API key** and press **Save**, then **Test Connection** in **OpenRouter Configuration**.
 4. A second OpenRouter account: **Accounts → Add Account** asks for that account's own API key.
@@ -17,7 +17,7 @@ Shows your OpenRouter credit balance — total credits minus total usage, in USD
 
 ## Gotchas
 
-- **"OpenRouter shows credits only to a Management key …"** means OpenRouter answered 403: the key is a regular API key. Create a Management key (step 1) and paste that instead.
+- **"OpenRouter shows credits only to a Management key …"** means OpenRouter answered 403: the key is a regular API key. Create a Management key (step 1) and paste that instead. If the default account still says so after you saved a Management key, the environment variable holds a regular key and is used first: unset it, or change **Environment variable** to a name that isn't set. An added account reads only its own saved key, so for one of those, replace that account's key with a Management key.
 - **"Authentication required"** means OpenRouter answered 401: the key is wrong, deleted or expired. Check you copied the whole key and that it belongs to the account you funded.
 - **"No data" after enabling** means neither the environment variable nor a saved key was found.
 - **The environment variable must be in ClaudeBar's own environment.** It's read from the app process, so a variable exported only in `~/.zshrc` isn't seen when ClaudeBar starts from Finder or at login. Pasting the key is the reliable option.
