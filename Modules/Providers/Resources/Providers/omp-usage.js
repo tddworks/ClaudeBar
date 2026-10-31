@@ -65,14 +65,18 @@ function read(response, context) {
         if (num(amount.remainingFraction) != null) percent = num(amount.remainingFraction) * 100;
         else if (num(amount.usedFraction) != null) percent = (1 - num(amount.usedFraction)) * 100;
         else if (num(amount.used) != null && num(amount.limit) > 0) percent = (num(amount.limit) - num(amount.used)) / num(amount.limit) * 100;
+        else if (num(amount.remaining) != null && num(amount.limit) > 0) percent = num(amount.remaining) / num(amount.limit) * 100;
         // What is left with no limit to measure it against: a credit balance.
         const balance = percent == null && num(amount.remaining) != null && !(monetary && amount.used != null)
             ? (monetary ? money(amount.remaining) : count(amount.remaining) + (unit ? ' ' + unit.toLowerCase() : '')) + ' left' : null;
+        // Spent of a cap, or what the cap leaves when omp reports only that.
+        const spent = amount.used != null ? amount.used
+            : (num(amount.remaining) != null && num(amount.limit) > 0 ? decimalAdd(amount.limit, decimalMultiply(amount.remaining, '-1')) : null);
         return {
             scope, window, amount, monetary, windowToken, token, percent, balance,
             name: str(l.label) ? l.label.trim() : null,
             groupKey: (scope.tier || '') + '|' + windowToken,
-            capped: monetary && num(amount.limit) > 0 && amount.used != null ? {used: decimalCents(amount.used), cap: decimalCents(amount.limit)} : null,
+            capped: monetary && num(amount.limit) > 0 && spent != null ? {used: decimalCents(spent), cap: decimalCents(amount.limit)} : null,
             uncapped: monetary && amount.limit == null && amount.used != null ? decimalCents(amount.used) : null,
             meter: !monetary && unit ? capitalized(unit) : null,
             resetsAt: num(window.resetsAt) != null ? num(window.resetsAt) / 1000 : null,

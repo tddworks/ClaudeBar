@@ -744,6 +744,35 @@ struct OmpDefinitionTests {
 
         #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Command Code 5h"])
         #expect(try #require(snapshot.extensionMetrics).map(\.value) == ["94 credits left"])
+    @Test
+    func `should show what is left of a capped limit as a quota, not a balance`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "commandcode",
+            "limits": [ { "label": "Monthly credits", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80, "limit": 100, "unit": "credits" } } ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.extensionMetrics == nil)
+        #expect(snapshot.quota(for: .timeLimit("Command Code monthly"))?.percentRemaining == 80)
+    }
+
+    @Test
+    func `should show dollars left of a cap as dollars left of that cap, not a balance`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "cursor",
+            "limits": [ { "label": "Included", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80.25, "limit": 100, "unit": "usd" } } ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.extensionMetrics == nil)
+        let quota = try #require(snapshot.quotas.first)
+        #expect(quota.left == .money(Money(Decimal(string: "80.25")!, currency: "USD"), of: Money(100, currency: "USD")))
+    }
+
     }
 
     // MARK: - Saved Resets
