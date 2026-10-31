@@ -116,14 +116,17 @@ function read(response, context) {
         // One pool omp reports once per model family (Antigravity's Claude and
         // GPT) carries one `sharedGroup`: it is one quota, shown from the first
         // member with an amount to show.
-        const shows = l => l.uncapped != null || (l.percent != null && (!l.monetary || l.capped != null));
+        const quota = l => l.percent != null && (!l.monetary || l.capped != null);
+        const shows = l => l.uncapped != null || quota(l);
         const pools = new Set();
         // Kimi reports its weekly quota twice: the `7d` row omp builds from
         // Kimi's summary, and Kimi's aggregate `limit_7d`, the same quota with
         // the same reset (omp drops the 5-hour aggregate, `limit_5h`, itself).
-        // An aggregate `limit_<window>` beside a row for that window is shown once, as that row.
+        // An aggregate `limit_<window>` beside a row that shows a quota for
+        // that window is shown once, as that row; beside one with nothing to
+        // show, the aggregate is that window's quota.
         const mapped = report.limits.filter(object).map(limitOf);
-        const windows = new Set(mapped.map(l => l.windowToken));
+        const windows = new Set(mapped.filter(quota).map(l => l.windowToken));
         const limits = mapped.filter(l => {
             const aggregate = /^limit_(\d+[a-z]+)$/.exec(l.windowToken);
             if (aggregate && windows.has(aggregate[1])) return false;

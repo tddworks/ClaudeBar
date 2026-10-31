@@ -654,6 +654,22 @@ struct OmpDefinitionTests {
         #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Kimi 5h", "Kimi limit_7d"])
     }
 
+    @Test
+    func `should keep an aggregate quota when the row for its window has no amount to show`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "kimi-code",
+            "limits": [
+              { "label": "Weekly limit", "scope": { "windowId": "7d" }, "amount": { "unit": "unknown" } },
+              { "label": "limit_7d", "scope": { "windowId": "limit_7d" }, "amount": { "unit": "percent", "remainingFraction": 0.8761 } }
+            ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Kimi limit_7d"])
+    }
+
     /// Devin's three credit buckets as omp v18.14.0's `devin.ts` builds
     /// them: one plan tier, one monthly window, `unit: "unknown"`.
     @Test
@@ -729,22 +745,6 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `should show a balance beside the windows of the same account`() throws {
-        let json = """
-        { "reports": [ {
-            "provider": "commandcode",
-            "limits": [
-              { "label": "5-hour limit", "scope": { "windowId": "5h" }, "window": { "id": "5h", "durationMs": 18000000 },
-                "amount": { "used": 20, "limit": 100, "usedFraction": 0.2, "unit": "credits" } },
-              { "label": "Credit balance", "scope": { "windowId": "balance" }, "amount": { "remaining": 94, "unit": "credits" } }
-            ]
-        } ] }
-        """
-        let snapshot = try OmpFixtures.parse(json)
-
-        #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Command Code 5h"])
-        #expect(try #require(snapshot.extensionMetrics).map(\.value) == ["94 credits left"])
-    @Test
     func `should show what is left of a capped limit as a quota, not a balance`() throws {
         let json = """
         { "reports": [ {
@@ -773,6 +773,22 @@ struct OmpDefinitionTests {
         #expect(quota.left == .money(Money(Decimal(string: "80.25")!, currency: "USD"), of: Money(100, currency: "USD")))
     }
 
+    @Test
+    func `should show a balance beside the windows of the same account`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "commandcode",
+            "limits": [
+              { "label": "5-hour limit", "scope": { "windowId": "5h" }, "window": { "id": "5h", "durationMs": 18000000 },
+                "amount": { "used": 20, "limit": 100, "usedFraction": 0.2, "unit": "credits" } },
+              { "label": "Credit balance", "scope": { "windowId": "balance" }, "amount": { "remaining": 94, "unit": "credits" } }
+            ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Command Code 5h"])
+        #expect(try #require(snapshot.extensionMetrics).map(\.value) == ["94 credits left"])
     }
 
     // MARK: - Saved Resets
