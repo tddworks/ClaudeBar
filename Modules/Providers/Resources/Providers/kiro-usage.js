@@ -9,12 +9,22 @@ function read(response, context) {
 }
 
 // `{billingCycleReset: "2026-12-01", usageBreakdowns: [...], bonusCredits: [...]}`.
+// One grant is "Bonus credits"; more get their own names, so each has its own
+// card and can be hidden alone.
 function fromAccount(data, context, now) {
     const quotas = [];
-    for (const b of Array.isArray(data.bonusCredits) ? data.bonusCredits : []) {
-        const bonus = bonusQuota(b.used, b.total, typeof b.daysUntilExpiry === "number" ? b.daysUntilExpiry : null, context);
-        if (bonus) quotas.push(bonus);
-    }
+    const grants = (Array.isArray(data.bonusCredits) ? data.bonusCredits : [])
+        .map(b => ({name: String(b.name || "").trim(),
+            quota: bonusQuota(b.used, b.total, typeof b.daysUntilExpiry === "number" ? b.daysUntilExpiry : null, context)}))
+        .filter(g => g.quota);
+    const names = grants.map(g => g.name);
+    grants.forEach((g, i) => {
+        if (grants.length > 1) {
+            const unique = g.name && names.indexOf(g.name) === names.lastIndexOf(g.name);
+            g.quota.name = unique ? "Bonus credits: " + g.name : "Bonus credits " + (i + 1);
+        }
+        quotas.push(g.quota);
+    });
     const reset = /^(\d{4})-(\d{2})-(\d{2})/.exec(data.billingCycleReset || "");
     for (const b of Array.isArray(data.usageBreakdowns) ? data.usageBreakdowns : []) {
         if (!b.hasLimit) continue;
@@ -69,8 +79,10 @@ function monthlyQuota(used, limit, reset, now) {
         const targetYear = full ? year : candidate.getFullYear();
         if (candidate.getFullYear() === targetYear && candidate.getMonth() === month && candidate.getDate() === day) {
             date = candidate;
-            // The month that ends on the reset date — its real length.
-            const start = new Date(date.getFullYear(), date.getMonth() - 1, date.getDate());
+            // The month that ends on the reset date — its real length. A
+            // reset on the 31st starts on the last day of a shorter month.
+            const lastOfPrevious = new Date(date.getFullYear(), date.getMonth(), 0).getDate();
+            const start = new Date(date.getFullYear(), date.getMonth() - 1, Math.min(date.getDate(), lastOfPrevious));
             windowSeconds = (date.getTime() - start.getTime()) / 1000;
             const pad = n => (n < 10 ? "0" : "") + n;
             resetText = "Resets on " + pad(month + 1) + "/" + pad(day);
