@@ -169,7 +169,11 @@ example of a definition; the file itself is the truth.
             "name": { "firstOf": ["limitName", "limitId", "$key"], "dropPrefix": "codex_", "capitalize": true },
             "windows": [ { "at": "primary" }, { "at": "secondary", "suffix": " 7d" } ],
             "usedPercent": "usedPercent", "resetsAt": { "epochSeconds": "resetsAt" },
-            "window": { "minutes": "windowDurationMins" } } ] } },
+            "window": { "minutes": "windowDurationMins" } } ],
+        "notes": [
+          { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.unlimited", "equals": true }, "text": "Unlimited" },
+          { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.hasCredits", "equals": true },
+            "value": "$.result.rateLimits.credits.balance", "unit": "credits", "round": 0 } ] } },
       "fallback": "tty"
     },
     {
@@ -199,8 +203,10 @@ example of a definition; the file itself is the truth.
             "name": { "firstOf": ["limit_name", "metered_feature"], "dropPrefix": "codex_", "capitalize": true },
             "windows": [ { "at": "rate_limit.primary_window" }, { "at": "rate_limit.secondary_window", "suffix": " 7d" } ],
             "…": "same shape" } ],
-        "cost": { "kind": "extraUsage", "limit": 1000,
-                  "remaining": ["$header.x-codex-credits-balance", "$.credits.balance"] } } }
+        "notes": [
+          { "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },
+          { "label": "Credits", "when": { "path": "$.credits.has_credits", "equals": true },
+            "value": ["$header.x-codex-credits-balance", "$.credits.balance"], "unit": "credits", "round": 0 } ] } }
     },
     {
       "kind": "tty", "label": "Terminal", "hidden": true,
