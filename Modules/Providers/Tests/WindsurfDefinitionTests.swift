@@ -248,6 +248,17 @@ struct WindsurfDefinitionTests {
     }
 
     @Test
+    func `should say to reopen Windsurf when every window of its own saved plan has reset`() async throws {
+        let plan = #"{"planName":"Pro","endTimestamp":1791888110000,"quotaUsage":{"dailyRemainingPercent":9,"weeklyRemainingPercent":54,"dailyResetAtUnix":1789372800,"weeklyResetAtUnix":1789891200}}"#
+        let windsurf = try devinProvider([("windsurf.settings.cachedPlanInfo", plan)], now: Date(timeIntervalSince1970: 1789900000))
+        let account = windsurf.defaultAccount
+        await #expect(throws: UsageError.executionFailed(
+            "Windsurf's saved quota has reset since Windsurf last saved it. Reopen Windsurf to update it.")) {
+            try await windsurf.refresh(account)
+        }
+    }
+
+    @Test
     func `should still show a free plan's message pool when its windows have reset`() async throws {
         let usage = try await devin([(Self.devinKey, Self.devinFree)], now: Date(timeIntervalSince1970: 1789900000))
         #expect(usage.quotas.map(\.quotaType) == [.modelSpecific("Messages")])

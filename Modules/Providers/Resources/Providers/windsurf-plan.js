@@ -79,7 +79,9 @@ function read(response, context) {
     }
 
     if (!quotas.length && reset.length) {
-        return { error: { executionFailed: "Windsurf's saved quota is from Devin Desktop's last launch and has reset since. Reopen Devin Desktop to update it." } };
+        return { error: { executionFailed: devin[0]
+            ? "Windsurf's saved quota is from Devin Desktop's last launch and has reset since. Reopen Devin Desktop to update it."
+            : "Windsurf's saved quota has reset since Windsurf last saved it. Reopen Windsurf to update it." } };
     }
     if (!quotas.length) return { error: 'noData' };
     var result = { quotas: quotas };
