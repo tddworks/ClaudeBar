@@ -4,7 +4,7 @@ description: Track Cursor's monthly included usage, Auto and API when reported, 
 
 # Cursor
 
-Shows your Cursor plan's included usage for the current billing month as separate Monthly, Auto and API cards when the usage API reports those fields, plus on-demand usage and team credits (Enterprise) when they're turned on, and your plan (Free, Pro, Business, Ultra, Enterprise). Everything resets at the end of Cursor's billing cycle. Auto is Cursor's Auto mode, Composer, and Agent-driven IDE operations.
+Shows your Cursor plan's included usage for the current billing month as separate Monthly, Auto and API cards when the usage API reports those fields, plus on-demand usage and team credits (Enterprise) when they're turned on, and your plan (Free, Pro, Business, Ultra, Enterprise). A team seat that Cursor gives a spend cap instead of a plan shows Monthly in dollars, and a team that shares a pool shows Team Pool. Everything resets at the end of Cursor's billing cycle. Auto is Cursor's Auto mode, Composer, and Agent-driven IDE operations.
 
 ## Setup
 
@@ -22,7 +22,7 @@ Shows your Cursor plan's included usage for the current billing month as separat
 - **The menu bar still defaults to Monthly.** To see the combined total and the API figure at the same time, keep Quota on Monthly and set Secondary Quota to API under Settings → [Menu Bar](../../features/app/menu-bar/README.md).
 - **On-demand and team cards only appear when that usage is enabled and has a limit.** Uncapped on-demand spend doesn't get a card.
 - **An unlimited plan shows its plan and no quota.** There is no ceiling to measure against, so ClaudeBar no longer shows a "100%" card for it.
-- **"No usage data found in Cursor response"** means the account reported no plan usage, on-demand limit, team credits or unlimited flag. Some free accounts look like this.
+- **"No usage data found in Cursor response"** means the account reported no plan usage, spend cap, on-demand limit, team credits, team pool or unlimited flag. Some free accounts look like this, and so may a team seat whose cap Cursor keeps elsewhere: if yours does, please share a redacted response in [#614](https://github.com/tddworks/ClaudeBar/issues/614).
 - **On The X Subscription, check usage at grok.com.** Cursor joined The X Subscription on 2026-10-12: its included usage is one weekly pool shared with Grok, shown under **Usage** at [grok.com/dashboard](https://grok.com/dashboard). A legacy Cursor plan keeps its monthly pools, on the [Spending](https://cursor.com/dashboard/spending) tab ([Cursor's usage limits](https://cursor.com/help/models-and-usage/usage-limits)). ClaudeBar reads the monthly figures; what cursor.com reports for an X Subscription account hasn't been checked, so its card may not match the weekly pool.
 - **Windows path support does not yet supply SQLite or mapping scripts.** Until those connections are implemented, the source reports *Unavailable* rather than reading through a Mac command.
 
