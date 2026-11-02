@@ -1349,13 +1349,15 @@ struct ClaudeUsageScreenTests {
         #expect(snapshot.weeklyQuota?.percentRemaining == 25)
     }
 
-    /// An error in place of the bars, in each of the three phrases the screen
-    /// counts as a rate limit: with no bar to read, the usage API is tried.
-    @Test(arguments: [
+    /// The three phrases the screen counts as a rate limit, as a CLI-wide error prints them.
+    static let rateLimitErrors = [
         "Error: Usage endpoint is rate limited. Please try again in a moment.",
         "Error: Rate limit exceeded",
         "API Error: 429 Too many requests",
-    ])
+    ]
+
+    /// An error in place of the bars: with no bar to read, the usage API is tried.
+    @Test(arguments: rateLimitErrors)
     func `should still say it is rate limited when the CLI shows a rate-limit error instead of the bars`(error: String) {
         #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
             try read(Self.stillLoadingOutput + "\n" + error)
@@ -1382,6 +1384,73 @@ struct ClaudeUsageScreenTests {
         #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
             try read(output)
         }
+    }
+
+    @Test(arguments: rateLimitErrors)
+    func `should say it is rate limited when a rate-limit error follows bars that have their numbers`(error: String) {
+        // No advice heading above the error: it is the CLI's, not the breakdown's.
+        let output = Self.usedPercentOutput + "\n\n" + error
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test(arguments: rateLimitErrors)
+    func `should say it is rate limited when a redraw leaves an earlier frame's bars in scrollback above a rate-limit error`(error: String) {
+        // The renderer keeps the rows a frame scrolled off the screen; clearing
+        // the screen for the next frame erases only the visible rows.
+        let filler = (1...60).map { "contributing insight line \($0)" }.joined(separator: "\n")
+        let output = Self.usedPercentOutput + "\n" + filler + "\u{1B}[2J\u{1B}[H" + error
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test(arguments: contributingHeadings)
+    func `should say it is rate limited when a rate-limit error sits above the contributing-usage heading`(heading: String) {
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+
+          Current session
+          ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 20% used
+
+          Current week (all models)
+          █████████████████████████████████████▌             75% used
+
+          Error: Rate limit exceeded
+
+          \(heading)
+          Per-model breakdown unavailable (rate limited until 4:31pm)
+        """
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test
+    func `should show the limits when the screen promotes higher rate limits`() throws {
+        // "Rate limits are 2x higher" is news, not an error, wherever it sits.
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+        Rate limits are 2x higher this week
+
+          Current session
+          ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 20% used
+
+          Current week (all models)
+          █████████████████████████████████████▌             75% used
+
+          What's contributing to your usage?
+          Per-model breakdown unavailable (rate limited until 4:31pm)
+        """
+
+        let snapshot = try read(output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 80)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 25)
     }
 
     @Test

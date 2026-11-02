@@ -34,11 +34,15 @@ function read(response, context) {
   // row at all, only the weekly ones. Pro and Max always have one, so on their
   // screens, as on a session row without its number, the row is still loading.
   var noSessionLimit = plan === "ULTRA" && session === null && weekly !== null && !hasRow(lines, "Current session");
-  if (session === null && !noSessionLimit) {
-    // A rate limit decides only when no bar has its number: a throttled
-    // per-model breakdown below the bars is not the bars' failure (#677).
-    // Not `rateLimited`: the CLI's limit is not the API's, so the API fallback still runs.
-    if (rateLimited(lower)) return { error: { executionFailed: "Rate limited - too many requests" } };
+  var barsRead = session !== null || noSessionLimit;
+  // A rate limit fails the read, so the API fallback runs — not `rateLimited`:
+  // the CLI's limit is not the API's. Once the bars have their numbers, a
+  // throttled per-model breakdown under the advice heading is not theirs (#677);
+  // rate-limit text anywhere else is, even below bars a redraw left in scrollback.
+  if (rateLimited(lower) && !(barsRead && rateLimitOnlyInAdvice(lines))) {
+    return { error: { executionFailed: "Rate limited - too many requests" } };
+  }
+  if (!barsRead) {
     if (lower.indexOf("loading usage data") !== -1) {
       return { error: { executionFailed: "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment." } };
     }
@@ -101,10 +105,28 @@ function usageError(lower) {
 
 // "rate limits are" is a promotion ("rate limits are 2x higher"), not an error.
 function rateLimited(lower) {
-  return (lower.indexOf("rate limited") !== -1 ||
-          lower.indexOf("rate limit exceeded") !== -1 ||
-          lower.indexOf("too many requests") !== -1) &&
-         lower.indexOf("rate limits are") === -1;
+  return hasRateLimitPhrase(lower) && lower.indexOf("rate limits are") === -1;
+}
+
+function hasRateLimitPhrase(lower) {
+  return lower.indexOf("rate limited") !== -1 ||
+         lower.indexOf("rate limit exceeded") !== -1 ||
+         lower.indexOf("too many requests") !== -1;
+}
+
+// Every row with a rate-limit phrase sits in the advice section: the section
+// label nearest above it is the advice heading. The breakdown's own line always
+// follows that heading, so a capture with the line has the heading too.
+function rateLimitOnlyInAdvice(lines) {
+  var inAdvice = false;
+  for (var i = 0; i < lines.length; i++) {
+    if (isSectionStart(lines[i])) {
+      inAdvice = lines[i].trim().toLowerCase().indexOf(ADVICE_HEADING) === 0;
+    } else if (!inAdvice && hasRateLimitPhrase(lines[i].toLowerCase())) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // The plan the header names ("· Claude Pro", "· Claude Ultra", "· Claude Team").
@@ -145,7 +167,8 @@ function hasRow(lines, label) {
 // The rows the TUI paints as a section's label: where the section above ends.
 // "What's contributing to your limits usage?" (2.1.289) or "…to your usage?"
 // (2.1.316) heads the advice below the bars.
-var SECTION_STARTS = ["current session", "current week", "extra usage", "what's contributing to your"];
+var ADVICE_HEADING = "what's contributing to your";
+var SECTION_STARTS = ["current session", "current week", "extra usage", ADVICE_HEADING];
 
 function isSectionStart(line) {
   var row = line.trim().toLowerCase();
