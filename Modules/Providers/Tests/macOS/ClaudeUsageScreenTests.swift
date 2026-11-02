@@ -1454,6 +1454,38 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
+    func `should say it is rate limited when a rate-limit error is on its own row below a promotion of higher rate limits`() {
+        // The promotion clears only its own row, not an error elsewhere on the screen.
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+        Rate limits are 2x higher this week
+
+        """ + Self.usedPercentOutput + "\n\nError: Rate limit exceeded"
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test
+    func `should say it is rate limited when a later frame's usage panel shows a rate-limit error below an earlier frame's advice`() {
+        // The earlier frame's bars and advice scrolled into scrollback; the
+        // later frame's "Session" panel ends that advice section.
+        let earlier = Self.usedPercentOutput + """
+
+
+        What's contributing to your usage?
+        Per-model breakdown unavailable (rate limited until 4:31pm)
+
+        """ + (1...60).map { "contributing insight line \($0)" }.joined(separator: "\n")
+        let output = earlier + "\u{1B}[2J\u{1B}[H" + Self.stillLoadingOutput + "\nError: Rate limit exceeded"
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test
     func `should not take the weekly bar's number for a session row that has none yet`() {
         // The session row is painted, its bar not filled yet; the weekly bar below has its number.
         let output = """

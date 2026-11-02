@@ -39,7 +39,7 @@ function read(response, context) {
   // the CLI's limit is not the API's. Once the bars have their numbers, a
   // throttled per-model breakdown under the advice heading is not theirs (#677);
   // rate-limit text anywhere else is, even below bars a redraw left in scrollback.
-  if (rateLimited(lower) && !(barsRead && rateLimitOnlyInAdvice(lines))) {
+  if (rateLimited(lines) && !(barsRead && rateLimitOnlyInAdvice(lines))) {
     return { error: { executionFailed: "Rate limited - too many requests" } };
   }
   if (!barsRead) {
@@ -103,26 +103,35 @@ function usageError(lower) {
   return null;
 }
 
-// "rate limits are" is a promotion ("rate limits are 2x higher"), not an error.
-function rateLimited(lower) {
-  return hasRateLimitPhrase(lower) && lower.indexOf("rate limits are") === -1;
+function rateLimited(lines) {
+  for (var i = 0; i < lines.length; i++) {
+    if (isRateLimitRow(lines[i])) return true;
+  }
+  return false;
 }
 
-function hasRateLimitPhrase(lower) {
-  return lower.indexOf("rate limited") !== -1 ||
-         lower.indexOf("rate limit exceeded") !== -1 ||
-         lower.indexOf("too many requests") !== -1;
+// A row that says the CLI is rate limited. "rate limits are" is a promotion
+// ("rate limits are 2x higher"), not an error; it clears only its own row, so
+// an error row elsewhere still counts.
+function isRateLimitRow(line) {
+  var lower = line.toLowerCase();
+  return (lower.indexOf("rate limited") !== -1 ||
+          lower.indexOf("rate limit exceeded") !== -1 ||
+          lower.indexOf("too many requests") !== -1) &&
+         lower.indexOf("rate limits are") === -1;
 }
 
-// Every row with a rate-limit phrase sits in the advice section: the section
-// label nearest above it is the advice heading. The breakdown's own line always
-// follows that heading, so a capture with the line has the heading too.
+// Every rate-limit row sits in the advice section: below the advice heading,
+// with no section label between them. The usage panel's "Session" heading,
+// which a later frame paints, ends the advice too. The breakdown's own line
+// always follows its heading, so a capture with the line has the heading too.
 function rateLimitOnlyInAdvice(lines) {
   var inAdvice = false;
   for (var i = 0; i < lines.length; i++) {
-    if (isSectionStart(lines[i])) {
-      inAdvice = lines[i].trim().toLowerCase().indexOf(ADVICE_HEADING) === 0;
-    } else if (!inAdvice && hasRateLimitPhrase(lines[i].toLowerCase())) {
+    var row = lines[i].trim().toLowerCase();
+    if (isSectionStart(lines[i]) || row === "session") {
+      inAdvice = row.indexOf(ADVICE_HEADING) === 0;
+    } else if (!inAdvice && isRateLimitRow(lines[i])) {
       return false;
     }
   }
