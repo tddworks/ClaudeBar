@@ -49,10 +49,34 @@ struct PriceCatalogTests {
         ("anthropic.claude-opus-4-7", "Claude Opus 4.7", "5", "25"),
         ("anthropic.claude-opus-4-6-v1", "Claude Opus 4.6", "5", "25"),
         ("anthropic.claude-sonnet-4-6", "Claude Sonnet 4.6", "3", "15"),
+        ("anthropic.claude-mythos-5-1", "Claude Mythos 5.1", "10", "50"),
+        ("anthropic.claude-sonnet-4-5-20250929-v1:0", "Claude Sonnet 4.5", "3", "15"),
+        ("anthropic.claude-opus-4-5-20251101-v1:0", "Claude Opus 4.5", "5", "25"),
+        ("anthropic.claude-haiku-4-5-20251001-v1:0", "Claude Haiku 4.5", "1", "5"),
+        ("anthropic.claude-sonnet-4-20250514-v1:0", "Claude Sonnet 4", "3", "15"),
     ])
-    func `should price Claude 4.6 and later at Bedrock's global prices when the price list can't answer`(
+    func `should price Claude at Bedrock's global prices when the price list can't answer`(
         _ id: String, _ name: String, _ input: String, _ output: String) throws {
         for modelId in [id, "global.\(id)"] {
+            let model = try #require(DefaultBedrockPricing.model(for: modelId))
+            #expect(model.displayName == name)
+            #expect(model.vendor == "Anthropic")
+            #expect(model.inputPricePer1M == Decimal(string: input)!)
+            #expect(model.outputPricePer1M == Decimal(string: output)!)
+        }
+    }
+
+    /// AWS lists no global price for these: their on-demand regional price.
+    @Test(arguments: [
+        ("anthropic.claude-mythos-5", "Claude Mythos 5", "11", "55"),
+        ("anthropic.claude-mythos-preview", "Claude Mythos Preview", "27.50", "137.50"),
+        ("anthropic.claude-opus-4-1-20250805-v1:0", "Claude Opus 4.1", "15", "75"),
+        ("anthropic.claude-opus-4-20250514-v1:0", "Claude Opus 4", "15", "75"),
+        ("anthropic.claude-3-7-sonnet-20250219-v1:0", "Claude 3.7 Sonnet", "3", "15"),
+    ])
+    func `should price a Claude model with no global price at Bedrock's regional on-demand price`(
+        _ id: String, _ name: String, _ input: String, _ output: String) throws {
+        for modelId in [id, "us.\(id)"] {
             let model = try #require(DefaultBedrockPricing.model(for: modelId))
             #expect(model.displayName == name)
             #expect(model.vendor == "Anthropic")

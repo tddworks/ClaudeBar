@@ -299,6 +299,13 @@ enum DefaultBedrockPricing {
             inputPricePer1M: 10.00,
             outputPricePer1M: 50.00
         ),
+        "anthropic.claude-mythos-5-1": BedrockModel(
+            id: "anthropic.claude-mythos-5-1",
+            displayName: "Claude Mythos 5.1",
+            vendor: "Anthropic",
+            inputPricePer1M: 10.00,
+            outputPricePer1M: 50.00
+        ),
         "anthropic.claude-opus-5-5": BedrockModel(
             id: "anthropic.claude-opus-5-5",
             displayName: "Claude Opus 5.5",
@@ -377,7 +384,52 @@ enum DefaultBedrockPricing {
             inputPricePer1M: 1.00,
             outputPricePer1M: 5.00
         ),
-        // Older Claude models (as of Jan 2025)
+        "anthropic.claude-sonnet-4-5-20250929-v1:0": BedrockModel(
+            id: "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            displayName: "Claude Sonnet 4.5",
+            vendor: "Anthropic",
+            inputPricePer1M: 3.00,
+            outputPricePer1M: 15.00
+        ),
+        // AWS lists no global price for these: the on-demand regional price
+        // (us-east-1, the same price list).
+        "anthropic.claude-mythos-5": BedrockModel(
+            id: "anthropic.claude-mythos-5",
+            displayName: "Claude Mythos 5",
+            vendor: "Anthropic",
+            inputPricePer1M: 11.00,
+            outputPricePer1M: 55.00
+        ),
+        "anthropic.claude-mythos-preview": BedrockModel(
+            id: "anthropic.claude-mythos-preview",
+            displayName: "Claude Mythos Preview",
+            vendor: "Anthropic",
+            inputPricePer1M: 27.50,
+            outputPricePer1M: 137.50
+        ),
+        "anthropic.claude-opus-4-1-20250805-v1:0": BedrockModel(
+            id: "anthropic.claude-opus-4-1-20250805-v1:0",
+            displayName: "Claude Opus 4.1",
+            vendor: "Anthropic",
+            inputPricePer1M: 15.00,
+            outputPricePer1M: 75.00
+        ),
+        "anthropic.claude-opus-4-20250514-v1:0": BedrockModel(
+            id: "anthropic.claude-opus-4-20250514-v1:0",
+            displayName: "Claude Opus 4",
+            vendor: "Anthropic",
+            inputPricePer1M: 15.00,
+            outputPricePer1M: 75.00
+        ),
+        "anthropic.claude-3-7-sonnet-20250219-v1:0": BedrockModel(
+            id: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+            displayName: "Claude 3.7 Sonnet",
+            vendor: "Anthropic",
+            inputPricePer1M: 3.00,
+            outputPricePer1M: 15.00
+        ),
+        // Older Claude models; their prices match the same price list
+        // (Sonnet 4's global price is its regional one).
         "anthropic.claude-sonnet-4-20250514-v1:0": BedrockModel(
             id: "anthropic.claude-sonnet-4-20250514-v1:0",
             displayName: "Claude Sonnet 4",
