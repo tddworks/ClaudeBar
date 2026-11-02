@@ -153,6 +153,25 @@ struct CodexDefinitionTests {
     }
 
     @Test
+    func `should show the credits balance Codex reports over RPC, in credits with no limit`() async throws {
+        let cases: [(credits: String, shown: [ExtensionMetric]?)] = [
+            (#"{"hasCredits":true,"unlimited":false,"balance":"62500.0000000000"}"#, [ExtensionMetric(label: "Credits", value: "62,500", unit: "credits")]),
+            (#"{"hasCredits":true,"unlimited":true,"balance":null}"#, [ExtensionMetric(label: "Credits", value: "Unlimited", unit: "")]),
+            (#"{"hasCredits":false,"unlimited":false,"balance":"0"}"#, nil),
+        ]
+        for (credits, shown) in cases {
+            let stub = try StubbedProvider(providerId: "codex")
+            defer { stub.cleanUp() }
+            stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":32,"windowDurationMins":10080},"credits":\#(credits)}}}"#)
+
+            let usage = try await stub.make("codex").refreshPlain()
+
+            #expect(usage.extensionMetrics == shown)
+            #expect(usage.costUsage == nil)
+        }
+    }
+
+    @Test
     func `should show neither the main bucket twice nor buckets that have no window`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
@@ -288,7 +307,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `should show the plan and the credits spent from the balance`() async throws {
+    func `should show the plan and the credits balance the headers report over the body's`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -298,8 +317,7 @@ struct CodexDefinitionTests {
         let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.accountTier == .custom("PLUS"))
-        #expect(usage.costUsage?.totalCost == 250)
-        #expect(usage.costUsage?.budget == 1000)
+        #expect(usage.extensionMetrics == [ExtensionMetric(label: "Credits", value: "750", unit: "credits")])
     }
 
     /// The shape `wham/usage` answered for a Pro login on 2026-10-31, with
@@ -325,7 +343,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `should show how many usage limit resets are available through the API`() async throws {
+    func `should show the usage limit resets and the credits balance, in credits with no limit, through the API`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -333,7 +351,24 @@ struct CodexDefinitionTests {
 
         let usage = try await stub.make("codex").refreshPlain()
 
-        #expect(usage.extensionMetrics == [ExtensionMetric(label: "Usage limit resets", value: "1", unit: "available")])
+        #expect(usage.extensionMetrics == [
+            ExtensionMetric(label: "Usage limit resets", value: "1", unit: "available"),
+            ExtensionMetric(label: "Credits", value: "62,500", unit: "credits"),
+        ])
+        #expect(usage.costUsage == nil)
+    }
+
+    @Test
+    func `should show unlimited credits as Unlimited through the API`() async throws {
+        let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
+        defer { stub.cleanUp() }
+        try stub.writeCodexAuth()
+        stub.answerHTTP(#"{"plan_type":"enterprise","rate_limit":{"primary_window":{"used_percent":0}},"credits":{"has_credits":true,"unlimited":true,"balance":null}}"#)
+
+        let usage = try await stub.make("codex").refreshPlain()
+
+        #expect(usage.extensionMetrics == [ExtensionMetric(label: "Credits", value: "Unlimited", unit: "")])
+        #expect(usage.costUsage == nil)
     }
 
     @Test
@@ -351,7 +386,7 @@ struct CodexDefinitionTests {
 
     // https://github.com/tddworks/ClaudeBar/issues/444
     @Test
-    func `should show no cost when the account has no credits (#444)`() async throws {
+    func `should show no credits when the account has none (#444)`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -360,6 +395,7 @@ struct CodexDefinitionTests {
         let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.costUsage == nil)
+        #expect(usage.extensionMetrics == nil)
     }
 
     @Test

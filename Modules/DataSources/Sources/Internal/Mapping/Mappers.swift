@@ -36,8 +36,10 @@ struct JSONMapper: Reading {
         // Nothing answering is not a failure unless `whenEmpty` says so: a
         // provider that has no usage yet reports none (*No usage data*).
         let cost = mapping.cost.lazy.compactMap { self.cost(for: $0, in: scope, providerId: providerId) }.first
+        var noted = Set<String>()
         let notes = mapping.notes.compactMap { rule -> ExtensionMetric? in
-            guard let text = rule.value.lazy.compactMap({ Self.noteText(scope.value($0)) }).first else { return nil }
+            guard !noted.contains(rule.label), let text = noteText(rule, in: scope) else { return nil }
+            noted.insert(rule.label)
             return ExtensionMetric(label: rule.label, value: text, unit: rule.unit)
         }
 
@@ -158,6 +160,17 @@ struct JSONMapper: Reading {
         return rule.kindByWindow.last { window >= $0.atLeast }?.kind ?? rule.kind
     }
 
+    /// What a note shows: the definition's words, or the first value that
+    /// answers — `nil` while its condition doesn't hold.
+    private func noteText(_ rule: NoteRule, in scope: JSONScope) -> String? {
+        if let condition = rule.when, !Self.holds(condition, in: scope) { return nil }
+        if let text = rule.text { return text }
+        if let places = rule.round {
+            return rule.value.lazy.compactMap { scope.number($0) }.first.map { Self.number($0, places: places) }
+        }
+        return rule.value.lazy.compactMap { Self.noteText(scope.value($0)) }.first
+    }
+
     /// A note's text: words as sent, or a number — never a flag.
     static func noteText(_ value: Any?) -> String? {
         switch value {
@@ -165,6 +178,21 @@ struct JSONMapper: Reading {
         case let number as NSNumber where !number.isBoolean: number.stringValue
         default: nil
         }
+    }
+
+    /// `62500` → `62,500`; at most `places` decimals, none that are zero.
+    static func number(_ value: Double, places: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSeparator = ","
+        formatter.decimalSeparator = "."
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = places
+        formatter.roundingMode = .halfUp
+        let text = formatter.string(from: NSNumber(value: value)) ?? String(value)
+        return text == "-0" ? "0" : text
     }
 
     static func quotaType(_ kind: QuotaKind, name: String?) -> QuotaType? {

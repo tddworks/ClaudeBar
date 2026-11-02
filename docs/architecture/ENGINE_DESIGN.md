@@ -46,6 +46,7 @@ needs; each became a generic piece, never a vendor type:
 | a variable name the person chose (DeepSeek) | a setting with a default, `{{setting.authEnvVar}}` in the lookup — a blank one means the default |
 | a plan whose only window is a week, listed where the 5-hour one usually is (Codex Pro) | `kindByWindow` on a quota rule: `[{"atLeast": {"days": 7}, "kind": "weekly"}, …]`, the last entry the window's length reaches names the quota, never its place in the answer |
 | a count the answer sends that is not a limit (Codex's usage limit resets) | `notes` on a JSON mapping: `{label, value, unit}`, the first path that answers, shown as a note beside the quotas; none when no path answers, so unknown never reads as zero |
+| a balance with no limit, in a unit that isn't money, sent as a decimal string, or a word when there is no limit (Codex's credits) | a note's `when` (only while it holds), `text` (the definition's own words, *Unlimited*) and `round` (a number to at most that many places, thousands grouped: `"62500.0000000000"` → `62,500`); one note per label, the first rule that answers wins |
 
 ## 2 · The engine
 
