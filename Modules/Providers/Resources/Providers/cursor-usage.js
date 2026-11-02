@@ -27,6 +27,17 @@ function read(response) {
             });
         }
     }
+    // A team seat's spend cap (individualUsage.overall) and the team's pool (teamUsage.pooled)
+    // are cents of a ceiling, so they are money, not a share (steipete/CodexBar#813).
+    const spend=(object,label)=>{
+        if(!object || object.enabled!==true)return;
+        const used=integer(object.used), limit=integer(object.limit);
+        if(limit<=0)return;
+        const q={type:"time",name:label,left:{money:(Math.max(0,limit-used)/100).toFixed(2),of:(limit/100).toFixed(2),currency:"USD"}};
+        if(end!=null)q.resetsAt=Date.parse(end)/1000;
+        quotas.push(q);
+    };
+    if(!quotas.some(q=>q.name==='Monthly'))spend(individual.overall,'Monthly');
     const demand=(object,label,text)=>{
         if(!object || object.enabled!==true)return;
         const used=integer(object.used), limit=integer(object.limit);
@@ -34,6 +45,7 @@ function read(response) {
     };
     demand(individual.onDemand,'On-Demand','on-demand');
     if(json.limitType==='team')demand((json.teamUsage||{}).onDemand,'Team','team credits');
+    spend((json.teamUsage||{}).pooled,'Team Pool');
     const member=typeof json.membershipType==='string'?json.membershipType:'unknown';
     // An unlimited plan has no ceiling to show: the plan, and no made-up 100% (the Left law).
     if(json.isUnlimited===true && !quotas.length)return {quotas:[],plan:member.toUpperCase()};

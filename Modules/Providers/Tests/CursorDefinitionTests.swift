@@ -451,6 +451,98 @@ struct CursorDefinitionTests {
         #expect(abs(quota.percentRemaining - 50.0) < 0.5)
     }
 
+    @Test
+    func `should show a team seat's personal spend cap and the team's shared pool when Cursor reports no plan (#614)`() async throws {
+        // Sanitized live Enterprise response from steipete/CodexBar#813: no `plan`
+        // block; spend sits under `individualUsage.overall` and `teamUsage.pooled`, in cents.
+        let json = """
+        {
+          "membershipType": "enterprise",
+          "limitType": "team",
+          "isUnlimited": false,
+          "individualUsage": {
+            "overall": { "enabled": true, "used": 7384, "limit": 10000, "remaining": 2616 }
+          },
+          "teamUsage": {
+            "onDemand": { "enabled": true, "used": 0, "limit": null, "remaining": null },
+            "pooled":   { "enabled": true, "used": 12725135, "limit": 28122000, "remaining": 15396865 }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try await parse(json)
+
+        #expect(snapshot.accountTier == .custom("ENTERPRISE"))
+        #expect(snapshot.quotas.map(\.quotaType) == [.timeLimit("Monthly"), .timeLimit("Team Pool")])
+        let monthly = snapshot.quotas[0]
+        #expect(monthly.left == .money(Money(Decimal(string: "26.16")!, currency: "USD"), of: Money(100, currency: "USD")))
+        #expect(monthly.dollarUsed == Decimal(string: "73.84"))
+        let pool = snapshot.quotas[1]
+        #expect(pool.left == .money(Money(Decimal(string: "153968.65")!, currency: "USD"), of: Money(281220, currency: "USD")))
+    }
+
+    @Test
+    func `should reset a team seat's spend cap with the billing cycle and show nothing left, not below zero, past the cap`() async throws {
+        let json = """
+        {
+          "billingCycleStart": "2026-03-01T00:00:00.000Z",
+          "billingCycleEnd": "2026-04-01T00:00:00.000Z",
+          "membershipType": "enterprise",
+          "limitType": "team",
+          "isUnlimited": false,
+          "individualUsage": {
+            "overall": { "enabled": true, "used": 12050, "limit": 10000, "remaining": 0 }
+          },
+          "teamUsage": {}
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try await parse(json)
+
+        #expect(snapshot.quotas.count == 1)
+        let monthly = snapshot.quotas[0]
+        #expect(monthly.quotaType == .timeLimit("Monthly"))
+        #expect(monthly.left == .money(Money(0, currency: "USD"), of: Money(100, currency: "USD")))
+        #expect(monthly.resetsAt == ISO8601DateFormatter().date(from: "2026-04-01T00:00:00Z"))
+    }
+
+    @Test
+    func `should keep the plan's monthly card, not add a second, when Cursor also reports a personal spend cap`() async throws {
+        let json = """
+        {
+          "membershipType": "enterprise",
+          "limitType": "team",
+          "isUnlimited": false,
+          "individualUsage": {
+            "plan": { "enabled": true, "used": 500, "limit": 2000, "remaining": 1500 },
+            "overall": { "enabled": true, "used": 7384, "limit": 10000, "remaining": 2616 }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try await parse(json)
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.timeLimit("Monthly")])
+        #expect(snapshot.quotas[0].resetText == "500/2000 requests")
+    }
+
+    @Test
+    func `should not measure a team seat's spend when Cursor gives it no cap`() async {
+        let json = """
+        {
+          "membershipType": "enterprise",
+          "limitType": "team",
+          "isUnlimited": false,
+          "individualUsage": { "overall": { "enabled": true, "used": 17, "limit": null } },
+          "teamUsage": { "pooled": { "enabled": true, "used": 100, "limit": null } }
+        }
+        """.data(using: .utf8)!
+
+        await #expect(throws: UsageError.self) {
+            try await parse(json)
+        }
+    }
+
     // MARK: - Error Cases
 
     @Test
