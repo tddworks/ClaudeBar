@@ -1239,8 +1239,15 @@ struct ClaudeUsageScreenTests {
         }
     }
 
-    @Test
-    func `should not take a number from the contributing-usage section for a weekly row that has none yet`() throws {
+    /// The advice section's heading, as Claude Code words it: "limits usage" in
+    /// 2.1.289, "usage" on the 2.1.316 screen #677 quotes.
+    static let contributingHeadings = [
+        "What's contributing to your limits usage?",
+        "What's contributing to your usage?",
+    ]
+
+    @Test(arguments: contributingHeadings)
+    func `should not take a number from the contributing-usage section for a weekly row that has none yet`(heading: String) throws {
         let output = """
         Opus 5.5 · Claude Max · Organization
 
@@ -1251,7 +1258,7 @@ struct ClaudeUsageScreenTests {
         Current week (all models)
         ░░░░░░░░░░░░░░░░░░░░
 
-        What's contributing to your limits usage?
+        \(heading)
         Approximate, based on local sessions on this machine
         Subagents  40% used
         """
@@ -1262,8 +1269,8 @@ struct ClaudeUsageScreenTests {
         #expect(snapshot.weeklyQuota == nil)
     }
 
-    @Test
-    func `should not take the contributing-usage heading for the weekly reset when the weekly row prints none`() throws {
+    @Test(arguments: contributingHeadings.map { $0.lowercased() })
+    func `should not take the contributing-usage heading for the weekly reset when the weekly row prints none`(heading: String) throws {
         let output = """
         Current session
         █████░░░░░░░░░░░░░░░ 25% used
@@ -1271,7 +1278,7 @@ struct ClaudeUsageScreenTests {
         Current week (all models)
         ████████████░░░░░░░░ 60% used
 
-        what's contributing to your limits usage?
+        \(heading)
         Approximate, based on local sessions on this machine
         """
 
@@ -1279,6 +1286,102 @@ struct ClaudeUsageScreenTests {
 
         #expect(snapshot.weeklyQuota?.percentRemaining == 40)
         #expect(snapshot.weeklyQuota?.resetText == nil)
+    }
+
+    // MARK: - A throttled per-model breakdown below the bars (#677)
+
+    /// Claude Code 2.1.316's `/usage` for a verified Ultra account when only the
+    /// per-model breakdown is throttled. The weekly bar, its reset, the heading
+    /// and the two breakdown rows are #677's capture; the header and the Fable
+    /// row around them are [Inferred] from `verifiedUltraOutput`.
+    static let ultraBreakdownRateLimitedOutput = """
+    Claude Code v2.1.316
+    Opus 5.5 · Claude Ultra · user@example.com's Organization
+
+      Settings  Status  Config  Usage  Stats
+
+      Current week (all models)
+      █████████████████████████████████████▌             75% used
+      Resets Nov 4 at 12am (America/New_York)
+
+      Current week (Fable)
+      ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 8% used
+      Resets Nov 4 at 12am (America/New_York)
+
+      What's contributing to your usage?
+      Per-model breakdown unavailable (rate limited until 4:31pm)
+      r to retry · Esc to cancel
+    """
+
+    @Test
+    func `should show an Ultra account's weekly limits when only the per-model breakdown is rate limited (#677)`() throws {
+        let snapshot = try read(Self.ultraBreakdownRateLimitedOutput)
+
+        #expect(snapshot.quotas.map(\.quotaType) == [.weekly, .modelSpecific("fable")])
+        #expect(snapshot.weeklyQuota?.percentRemaining == 25)
+        #expect(snapshot.weeklyQuota?.resetText?.contains("Nov 4") == true)
+        #expect(snapshot.quota(for: .modelSpecific("fable"))?.percentRemaining == 92)
+        #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+
+    @Test(arguments: contributingHeadings)
+    func `should show the session and weekly limits when only the per-model breakdown is rate limited (#677)`(heading: String) throws {
+        let output = """
+        Claude Code v2.1.316
+        Opus 5.5 · Claude Max · user@example.com's Organization
+
+          Current session
+          ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 20% used
+          Resets 4:59pm (America/New_York)
+
+          Current week (all models)
+          █████████████████████████████████████▌             75% used
+          Resets Nov 4 at 12am (America/New_York)
+
+          \(heading)
+          Per-model breakdown unavailable (rate limited until 4:31pm)
+          r to retry · Esc to cancel
+        """
+
+        let snapshot = try read(output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 80)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 25)
+    }
+
+    /// An error in place of the bars, in each of the three phrases the screen
+    /// counts as a rate limit: with no bar to read, the usage API is tried.
+    @Test(arguments: [
+        "Error: Usage endpoint is rate limited. Please try again in a moment.",
+        "Error: Rate limit exceeded",
+        "API Error: 429 Too many requests",
+    ])
+    func `should still say it is rate limited when the CLI shows a rate-limit error instead of the bars`(error: String) {
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(Self.stillLoadingOutput + "\n" + error)
+        }
+    }
+
+    @Test
+    func `should still say it is rate limited when the bars have no numbers and the breakdown is rate limited`() {
+        // A capture the breakdown's "rate limited" ready marker ended before any
+        // bar had its number: nothing to show, so the usage API is tried.
+        let output = """
+        Opus 5.5 · Claude Max · Organization
+
+          Current session
+          ░░░░░░░░░░░░░░░░░░░░
+
+          Current week (all models)
+          ░░░░░░░░░░░░░░░░░░░░
+
+          What's contributing to your usage?
+          Per-model breakdown unavailable (rate limited until 4:31pm)
+        """
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
     }
 
     @Test

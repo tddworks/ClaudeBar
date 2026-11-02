@@ -35,6 +35,10 @@ function read(response, context) {
   // screens, as on a session row without its number, the row is still loading.
   var noSessionLimit = plan === "ULTRA" && session === null && weekly !== null && !hasRow(lines, "Current session");
   if (session === null && !noSessionLimit) {
+    // A rate limit decides only when no bar has its number: a throttled
+    // per-model breakdown below the bars is not the bars' failure (#677).
+    // Not `rateLimited`: the CLI's limit is not the API's, so the API fallback still runs.
+    if (rateLimited(lower)) return { error: { executionFailed: "Rate limited - too many requests" } };
     if (lower.indexOf("loading usage data") !== -1) {
       return { error: { executionFailed: "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment." } };
     }
@@ -92,13 +96,15 @@ function usageError(lower) {
   if (lower.indexOf("not logged in") !== -1 || lower.indexOf("please log in") !== -1) return "authenticationRequired";
   if (lower.indexOf("update required") !== -1 || lower.indexOf("please update") !== -1) return "updateRequired";
   if (lower.indexOf("/usage is only available for subscription plans") !== -1) return "subscriptionRequired";
-  var rateLimited = (lower.indexOf("rate limited") !== -1 ||
-                     lower.indexOf("rate limit exceeded") !== -1 ||
-                     lower.indexOf("too many requests") !== -1) &&
-                    lower.indexOf("rate limits are") === -1;
-  // Not `rateLimited`: the CLI's limit is not the API's, so the API fallback still runs.
-  if (rateLimited) return { executionFailed: "Rate limited - too many requests" };
   return null;
+}
+
+// "rate limits are" is a promotion ("rate limits are 2x higher"), not an error.
+function rateLimited(lower) {
+  return (lower.indexOf("rate limited") !== -1 ||
+          lower.indexOf("rate limit exceeded") !== -1 ||
+          lower.indexOf("too many requests") !== -1) &&
+         lower.indexOf("rate limits are") === -1;
 }
 
 // The plan the header names ("· Claude Pro", "· Claude Ultra", "· Claude Team").
@@ -137,8 +143,9 @@ function hasRow(lines, label) {
 }
 
 // The rows the TUI paints as a section's label: where the section above ends.
-// "What's contributing to your limits usage?" heads the advice below the bars.
-var SECTION_STARTS = ["current session", "current week", "extra usage", "what's contributing to your limits usage"];
+// "What's contributing to your limits usage?" (2.1.289) or "…to your usage?"
+// (2.1.316) heads the advice below the bars.
+var SECTION_STARTS = ["current session", "current week", "extra usage", "what's contributing to your"];
 
 function isSectionStart(line) {
   var row = line.trim().toLowerCase();
