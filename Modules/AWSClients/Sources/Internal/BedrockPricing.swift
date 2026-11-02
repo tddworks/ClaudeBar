@@ -335,6 +335,34 @@ enum DefaultBedrockPricing {
             inputPricePer1M: 0.10,
             outputPricePer1M: 0.50
         ),
+        "anthropic.claude-opus-4-8": BedrockModel(
+            id: "anthropic.claude-opus-4-8",
+            displayName: "Claude Opus 4.8",
+            vendor: "Anthropic",
+            inputPricePer1M: 5.00,
+            outputPricePer1M: 25.00
+        ),
+        "anthropic.claude-opus-4-7": BedrockModel(
+            id: "anthropic.claude-opus-4-7",
+            displayName: "Claude Opus 4.7",
+            vendor: "Anthropic",
+            inputPricePer1M: 5.00,
+            outputPricePer1M: 25.00
+        ),
+        "anthropic.claude-opus-4-6-v1": BedrockModel(
+            id: "anthropic.claude-opus-4-6-v1",
+            displayName: "Claude Opus 4.6",
+            vendor: "Anthropic",
+            inputPricePer1M: 5.00,
+            outputPricePer1M: 25.00
+        ),
+        "anthropic.claude-sonnet-4-6": BedrockModel(
+            id: "anthropic.claude-sonnet-4-6",
+            displayName: "Claude Sonnet 4.6",
+            vendor: "Anthropic",
+            inputPricePer1M: 3.00,
+            outputPricePer1M: 15.00
+        ),
         "anthropic.claude-opus-4-5-20251101-v1:0": BedrockModel(
             id: "anthropic.claude-opus-4-5-20251101-v1:0",
             displayName: "Claude Opus 4.5",

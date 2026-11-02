@@ -9,7 +9,8 @@ import Foundation
 /// longest id it starts with (or that starts with it), a family its name
 /// contains, a free family (a local, open-weight model), an unpriced model
 /// on a local route, and otherwise the fallback — a hedge for models newer
-/// than the file, never zero by omission.
+/// than the file, never zero by omission. A price may change with the
+/// prompt's length (`above`); each record is priced by its own prompt.
 struct PriceList: Sendable, Equatable, Decodable {
     struct Price: Sendable, Equatable, Decodable {
         let input: Decimal
@@ -18,15 +19,19 @@ struct PriceList: Sendable, Equatable, Decodable {
         /// A write kept an hour; unset is the five-minute price.
         let cacheWrite1h: Decimal?
         let cacheRead: Decimal
+        /// The prices of a longer prompt, when the model has them.
+        let above: Above?
 
         static let free = Price(input: 0, output: 0, cacheWrite: 0, cacheWrite1h: 0, cacheRead: 0)
 
-        init(input: Decimal, output: Decimal, cacheWrite: Decimal, cacheWrite1h: Decimal? = nil, cacheRead: Decimal) {
+        init(input: Decimal, output: Decimal, cacheWrite: Decimal, cacheWrite1h: Decimal? = nil, cacheRead: Decimal,
+             above: Above? = nil) {
             self.input = input
             self.output = output
             self.cacheWrite = cacheWrite
             self.cacheWrite1h = cacheWrite1h
             self.cacheRead = cacheRead
+            self.above = above
         }
 
         init(from decoder: Decoder) throws {
@@ -36,9 +41,33 @@ struct PriceList: Sendable, Equatable, Decodable {
             cacheWrite = try PriceAmount.decode(container, .cacheWrite)
             cacheWrite1h = container.contains(.cacheWrite1h) ? try PriceAmount.decode(container, .cacheWrite1h) : nil
             cacheRead = try PriceAmount.decode(container, .cacheRead)
+            above = try container.decodeIfPresent(Above.self, forKey: .above)
         }
 
-        enum CodingKeys: String, CodingKey { case input, output, cacheWrite, cacheWrite1h, cacheRead }
+        /// The prices a request pays whose prompt — input, cache writes and
+        /// cache reads together — is `tokens` long.
+        func forPrompt(of tokens: Int) -> Price {
+            guard let above, tokens > above.prompt else { return self }
+            return above.price
+        }
+
+        enum CodingKeys: String, CodingKey { case input, output, cacheWrite, cacheWrite1h, cacheRead, above }
+    }
+
+    /// What a request pays whose prompt is over `prompt` tokens. A class, so
+    /// a price can hold another.
+    final class Above: Sendable, Equatable, Decodable {
+        let prompt: Int
+        let price: Price
+
+        required init(from decoder: Decoder) throws {
+            prompt = try decoder.container(keyedBy: CodingKeys.self).decode(Int.self, forKey: .prompt)
+            price = try Price(from: decoder)
+        }
+
+        static func == (lhs: Above, rhs: Above) -> Bool { lhs.prompt == rhs.prompt && lhs.price == rhs.price }
+
+        private enum CodingKeys: String, CodingKey { case prompt }
     }
 
     struct Model: Sendable, Equatable, Decodable {
@@ -111,7 +140,7 @@ struct PriceList: Sendable, Equatable, Decodable {
     }
 
     func cost(of record: LogRecord, servedLocally: Bool = false) -> Decimal {
-        let price = price(for: record.model ?? "", servedLocally: servedLocally)
+        let price = price(of: record, servedLocally: servedLocally)
         return Decimal(record.input) / per * price.input
             + Decimal(record.output) / per * price.output
             + Decimal(record.cacheWrite - record.cacheWrite1h) / per * price.cacheWrite
@@ -121,8 +150,15 @@ struct PriceList: Sendable, Equatable, Decodable {
 
     /// What cache reads saved: their tokens at the input price, less what they cost.
     func savings(of record: LogRecord, servedLocally: Bool = false) -> Decimal {
-        let price = price(for: record.model ?? "", servedLocally: servedLocally)
+        let price = price(of: record, servedLocally: servedLocally)
         return Decimal(record.cacheRead) / per * (price.input - price.cacheRead)
+    }
+
+    /// The record's model's prices for the record's own prompt: a record is
+    /// one request, billed on its own.
+    private func price(of record: LogRecord, servedLocally: Bool) -> Price {
+        price(for: record.model ?? "", servedLocally: servedLocally)
+            .forPrompt(of: record.input + record.cacheWrite + record.cacheRead)
     }
 }
 

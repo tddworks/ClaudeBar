@@ -45,8 +45,12 @@ struct PriceCatalogTests {
         ("anthropic.claude-sonnet-5-5", "Claude Sonnet 5.5", "2", "10"),
         ("anthropic.claude-sonnet-5", "Claude Sonnet 5", "2", "10"),
         ("anthropic.claude-haiku-5-5", "Claude Haiku 5.5", "0.10", "0.50"),
+        ("anthropic.claude-opus-4-8", "Claude Opus 4.8", "5", "25"),
+        ("anthropic.claude-opus-4-7", "Claude Opus 4.7", "5", "25"),
+        ("anthropic.claude-opus-4-6-v1", "Claude Opus 4.6", "5", "25"),
+        ("anthropic.claude-sonnet-4-6", "Claude Sonnet 4.6", "3", "15"),
     ])
-    func `should price the Claude 5 and 5.5 models at Bedrock's global prices when the price list can't answer`(
+    func `should price Claude 4.6 and later at Bedrock's global prices when the price list can't answer`(
         _ id: String, _ name: String, _ input: String, _ output: String) throws {
         for modelId in [id, "global.\(id)"] {
             let model = try #require(DefaultBedrockPricing.model(for: modelId))
