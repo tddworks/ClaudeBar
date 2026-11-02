@@ -101,7 +101,7 @@ let package = Package(
         ),
 
         // AWSClients — the only module that links the AWS SDK: CloudWatch sums and the
-        // Bedrock price list, behind DataSources' ports.
+        // Bedrock price list, behind DataSources' ports; its fallback price table is data.
         .target(
             name: "AWSClients",
             dependencies: [
@@ -114,7 +114,10 @@ let package = Package(
                 .product(name: "AWSSSO", package: "aws-sdk-swift"),
                 .product(name: "AWSSSOOIDC", package: "aws-sdk-swift"),
             ],
-            path: "Modules/AWSClients/Sources"
+            path: "Modules/AWSClients",
+            exclude: ["Tests"],
+            sources: ["Sources"],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "AWSClientsTests",

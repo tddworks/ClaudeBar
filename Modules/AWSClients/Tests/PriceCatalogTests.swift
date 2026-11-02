@@ -28,6 +28,20 @@ struct PriceCatalogTests {
         #expect(await SDKPriceCatalog(pricing: Prices(models: [:])).prices(service: "AmazonEC2", ids: ["x"]).isEmpty)
     }
 
+    @Test func `should price from a price table file: rows by id, vendors named by the file`() throws {
+        let table = try DefaultBedrockPricing.Table(json: """
+        { "vendors": { "acme": "Acme Labs" },
+          "models": [ { "id": "acme.rocket-1", "name": "Rocket 1", "input": "0.30", "output": "1.20" } ] }
+        """)
+        #expect(table.model(for: "us.acme.rocket-1:0") == BedrockModel(
+            id: "us.acme.rocket-1:0", displayName: "Rocket 1", vendor: "Acme Labs",
+            inputPricePer1M: Decimal(string: "0.30")!, outputPricePer1M: Decimal(string: "1.20")!))
+        #expect(table.model(for: "acme.rocket-2") == nil)
+        #expect(table.vendor(of: "global.acme.rocket-2") == "Acme Labs")
+        #expect(table.vendor(of: "zeta.comet-1") == "Zeta")
+        #expect(throws: (any Error).self) { try DefaultBedrockPricing.Table(json: #"{ "models": [ { "id": "x" } ] }"#) }
+    }
+
     @Test(arguments: ["global", "us", "eu", "jp", "apac", "au"])
     func `should price an inference profile like its base model in the bundled price table`(_ profile: String) throws {
         let routed = try #require(DefaultBedrockPricing.model(for: "\(profile).anthropic.claude-opus-4-5-20251101-v1:0"))
