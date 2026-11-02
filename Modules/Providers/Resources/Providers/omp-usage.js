@@ -65,14 +65,20 @@ function read(response, context) {
         if (num(amount.remainingFraction) != null) percent = num(amount.remainingFraction) * 100;
         else if (num(amount.usedFraction) != null) percent = (1 - num(amount.usedFraction)) * 100;
         else if (num(amount.used) != null && num(amount.limit) > 0) percent = (num(amount.limit) - num(amount.used)) / num(amount.limit) * 100;
+        else if (num(amount.remaining) != null && num(amount.limit) > 0) percent = num(amount.remaining) / num(amount.limit) * 100;
         // What is left with no limit to measure it against: a credit balance.
         const balance = percent == null && num(amount.remaining) != null && !(monetary && amount.used != null)
             ? (monetary ? money(amount.remaining) : count(amount.remaining) + (unit ? ' ' + unit.toLowerCase() : '')) + ' left' : null;
+        // Spent of a cap, or what the cap leaves when omp reports only that:
+        // worked out in cents, so the dollars left are omp's, rounded once.
+        const spent = amount.used != null ? amount.used
+            : (num(amount.remaining) != null && num(amount.limit) > 0
+                ? decimalAdd(decimalCents(amount.limit), decimalMultiply(decimalCents(amount.remaining), '-1')) : null);
         return {
             scope, window, amount, monetary, windowToken, token, percent, balance,
             name: str(l.label) ? l.label.trim() : null,
             groupKey: (scope.tier || '') + '|' + windowToken,
-            capped: monetary && num(amount.limit) > 0 && amount.used != null ? {used: decimalCents(amount.used), cap: decimalCents(amount.limit)} : null,
+            capped: monetary && num(amount.limit) > 0 && spent != null ? {used: decimalCents(spent), cap: decimalCents(amount.limit)} : null,
             uncapped: monetary && amount.limit == null && amount.used != null ? decimalCents(amount.used) : null,
             meter: !monetary && unit ? capitalized(unit) : null,
             resetsAt: num(window.resetsAt) != null ? num(window.resetsAt) / 1000 : null,
@@ -112,14 +118,17 @@ function read(response, context) {
         // One pool omp reports once per model family (Antigravity's Claude and
         // GPT) carries one `sharedGroup`: it is one quota, shown from the first
         // member with an amount to show.
-        const shows = l => l.uncapped != null || (l.percent != null && (!l.monetary || l.capped != null));
+        const quota = l => l.percent != null && (!l.monetary || l.capped != null);
+        const shows = l => l.uncapped != null || quota(l);
         const pools = new Set();
         // Kimi reports its weekly quota twice: the `7d` row omp builds from
         // Kimi's summary, and Kimi's aggregate `limit_7d`, the same quota with
         // the same reset (omp drops the 5-hour aggregate, `limit_5h`, itself).
-        // An aggregate `limit_<window>` beside a row for that window is shown once, as that row.
+        // An aggregate `limit_<window>` beside a row that shows a quota for
+        // that window is shown once, as that row; beside one with nothing to
+        // show, the aggregate is that window's quota.
         const mapped = report.limits.filter(object).map(limitOf);
-        const windows = new Set(mapped.map(l => l.windowToken));
+        const windows = new Set(mapped.filter(quota).map(l => l.windowToken));
         const limits = mapped.filter(l => {
             const aggregate = /^limit_(\d+[a-z]+)$/.exec(l.windowToken);
             if (aggregate && windows.has(aggregate[1])) return false;

@@ -654,6 +654,22 @@ struct OmpDefinitionTests {
         #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Kimi 5h", "Kimi limit_7d"])
     }
 
+    @Test
+    func `should keep an aggregate quota when the row for its window has no amount to show`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "kimi-code",
+            "limits": [
+              { "label": "Weekly limit", "scope": { "windowId": "7d" }, "amount": { "unit": "unknown" } },
+              { "label": "limit_7d", "scope": { "windowId": "limit_7d" }, "amount": { "unit": "percent", "remainingFraction": 0.8761 } }
+            ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.quotas.map(\.quotaType.displayName) == ["Kimi limit_7d"])
+    }
+
     /// Devin's three credit buckets as omp v18.14.0's `devin.ts` builds
     /// them: one plan tier, one monthly window, `unit: "unknown"`.
     @Test
@@ -726,6 +742,48 @@ struct OmpDefinitionTests {
         let snapshot = try OmpFixtures.parse(json)
 
         #expect(try #require(snapshot.extensionMetrics).map(\.value) == ["$12.50 left"])
+    }
+
+    @Test
+    func `should show what is left of a capped limit as a quota, not a balance`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "commandcode",
+            "limits": [ { "label": "Monthly credits", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80, "limit": 100, "unit": "credits" } } ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.extensionMetrics == nil)
+        #expect(snapshot.quota(for: .timeLimit("Command Code monthly"))?.percentRemaining == 80)
+    }
+
+    @Test
+    func `should show dollars left of a cap as dollars left of that cap, not a balance`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "cursor",
+            "limits": [ { "label": "Included", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80.25, "limit": 100, "unit": "usd" } } ]
+        } ] }
+        """
+        let snapshot = try OmpFixtures.parse(json)
+
+        #expect(snapshot.extensionMetrics == nil)
+        let quota = try #require(snapshot.quotas.first)
+        #expect(quota.left == .money(Money(Decimal(string: "80.25")!, currency: "USD"), of: Money(100, currency: "USD")))
+    }
+
+    @Test
+    func `should round the dollars left that omp reports, not the spend worked out from them`() throws {
+        let json = """
+        { "reports": [ {
+            "provider": "cursor",
+            "limits": [ { "label": "Included", "scope": { "windowId": "monthly" }, "amount": { "remaining": 80.255, "limit": 100, "unit": "usd" } } ]
+        } ] }
+        """
+        let quota = try #require(try OmpFixtures.parse(json).quotas.first)
+
+        #expect(quota.left == .money(Money(Decimal(string: "80.26")!, currency: "USD"), of: Money(100, currency: "USD")))
     }
 
     @Test
