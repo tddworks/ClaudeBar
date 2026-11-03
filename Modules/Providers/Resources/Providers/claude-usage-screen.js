@@ -34,7 +34,15 @@ function read(response, context) {
   // row at all, only the weekly ones. Pro and Max always have one, so on their
   // screens, as on a session row without its number, the row is still loading.
   var noSessionLimit = plan === "ULTRA" && session === null && weekly !== null && !hasRow(lines, "Current session");
-  if (session === null && !noSessionLimit) {
+  var barsRead = session !== null || noSessionLimit;
+  // A rate limit fails the read, so the API fallback runs — not `rateLimited`:
+  // the CLI's limit is not the API's. Once the bars have their numbers, a
+  // throttled per-model breakdown under the advice heading is not theirs (#677);
+  // rate-limit text anywhere else is, even below bars a redraw left in scrollback.
+  if (rateLimited(lines) && !(barsRead && onlyBreakdownRateLimited(lines))) {
+    return { error: { executionFailed: "Rate limited - too many requests" } };
+  }
+  if (!barsRead) {
     if (lower.indexOf("loading usage data") !== -1) {
       return { error: { executionFailed: "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment." } };
     }
@@ -92,13 +100,46 @@ function usageError(lower) {
   if (lower.indexOf("not logged in") !== -1 || lower.indexOf("please log in") !== -1) return "authenticationRequired";
   if (lower.indexOf("update required") !== -1 || lower.indexOf("please update") !== -1) return "updateRequired";
   if (lower.indexOf("/usage is only available for subscription plans") !== -1) return "subscriptionRequired";
-  var rateLimited = (lower.indexOf("rate limited") !== -1 ||
-                     lower.indexOf("rate limit exceeded") !== -1 ||
-                     lower.indexOf("too many requests") !== -1) &&
-                    lower.indexOf("rate limits are") === -1;
-  // Not `rateLimited`: the CLI's limit is not the API's, so the API fallback still runs.
-  if (rateLimited) return { executionFailed: "Rate limited - too many requests" };
   return null;
+}
+
+function rateLimited(lines) {
+  for (var i = 0; i < lines.length; i++) {
+    if (isRateLimitRow(lines[i])) return true;
+  }
+  return false;
+}
+
+// A row that says the CLI is rate limited. "rate limits are" is a promotion
+// ("rate limits are 2x higher"), not an error; it clears only its own row, so
+// an error row elsewhere still counts.
+function isRateLimitRow(line) {
+  var lower = line.toLowerCase();
+  return (lower.indexOf("rate limited") !== -1 ||
+          lower.indexOf("rate limit exceeded") !== -1 ||
+          lower.indexOf("too many requests") !== -1) &&
+         lower.indexOf("rate limits are") === -1;
+}
+
+// Every rate-limit row is the throttled breakdown's own line ("Per-model
+// breakdown unavailable (rate limited …)"): a row that mentions the breakdown,
+// below the advice heading with no section label between them. The usage
+// panel's "Session" heading, which a later frame paints, ends the advice too.
+// The breakdown's line always follows its heading, so a capture with the line
+// has the heading too. Any other rate-limit row, even one under the heading in
+// scrollback, is a later frame's CLI-wide error.
+function onlyBreakdownRateLimited(lines) {
+  var inAdvice = false;
+  for (var i = 0; i < lines.length; i++) {
+    var row = lines[i].trim().toLowerCase();
+    var label = isSectionStart(lines[i]) || row === "session";
+    // A label's own row, the advice heading's included, isn't advice: a later
+    // frame can paint an error over it.
+    var breakdown = inAdvice && !label && row.indexOf("breakdown") !== -1;
+    if (isRateLimitRow(lines[i]) && !breakdown) return false;
+    if (label) inAdvice = row.indexOf(ADVICE_HEADING) === 0;
+  }
+  return true;
 }
 
 // The plan the header names ("· Claude Pro", "· Claude Ultra", "· Claude Team").
@@ -137,8 +178,10 @@ function hasRow(lines, label) {
 }
 
 // The rows the TUI paints as a section's label: where the section above ends.
-// "What's contributing to your limits usage?" heads the advice below the bars.
-var SECTION_STARTS = ["current session", "current week", "extra usage", "what's contributing to your limits usage"];
+// "What's contributing to your limits usage?" (2.1.289) or "…to your usage?"
+// (2.1.316) heads the advice below the bars.
+var ADVICE_HEADING = "what's contributing to your";
+var SECTION_STARTS = ["current session", "current week", "extra usage", ADVICE_HEADING];
 
 function isSectionStart(line) {
   var row = line.trim().toLowerCase();
