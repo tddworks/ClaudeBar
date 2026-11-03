@@ -142,7 +142,7 @@
     {
       "kind": "billing",
       "label": "Billing API",
-      "summary": "Reads this month's AI credits from GitHub billing with a fine-grained token, against your plan's allowance",
+      "summary": "Reads this month's usage from GitHub billing with a fine-grained token, against your plan's allowance",
       "credential": {
         "firstOf": [
           {

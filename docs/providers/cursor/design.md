@@ -47,17 +47,36 @@ The probe is available only when `state.vscdb` exists, so a computer without Cur
 }
 ```
 
-- `billingCycleEnd` is the reset time for Monthly, On-Demand and Team (ISO 8601, with or without fractional seconds).
+- `billingCycleEnd` is the reset time for Monthly, On-Demand, Team and Team Pool (ISO 8601, with or without fractional seconds).
 - **`plan` → "Monthly" card.** Capacity is `max(limit, breakdown.total)`. `used`/`limit` describe only the included base: with bonus credits the base reads maxed (`used == limit`) while `breakdown.total` is included + bonus, and Enterprise reports `limit: 0` with everything in the breakdown. Percent comes from `totalPercentUsed` when present (it matches Cursor's "You've used X%" message) and from `used/limit` otherwise ([#230](https://github.com/tddworks/ClaudeBar/pull/230), [#136](https://github.com/tddworks/ClaudeBar/issues/136)). Request-count `resetText` stays on this card only.
 - **`plan.autoPercentUsed` → "Auto" card** and **`plan.apiPercentUsed` → "API" card**, only when the field is a finite non-negative number (JSON ints such as `0` count). Remaining is `max(0, 100 - percentUsed)`. The three percentages are shown as the API reports them; ClaudeBar does not derive one from the others. When both `billingCycleStart` and `billingCycleEnd` parse and end is after start, these cards get that length as `windowDuration` and the same reset date as Monthly. If start is missing or the dates are unusable, the cards still appear but without `resetsAt`, so pace does not fall back to the generic 7-day `.timeLimit` window. Negative, null, boolean and other non-numeric values omit the card.
 - **`onDemand` → "On-Demand" card**, only when `enabled` and `limit > 0`.
 - **`teamUsage.onDemand` → "Team" card**, only when `limitType == "team"` and it's enabled with a limit (Enterprise, #136).
-- **`isUnlimited: true`** adds a 100% "Monthly" card labelled "Unlimited".
+- **`individualUsage.overall` → "Monthly" card in dollars**, when there is no plan card. Some team seats (Enterprise) get no `plan` block: their spend and its cap are `overall`, in cents. The card is the money left of the cap. Only when `enabled` and `limit > 0` ([#614](https://github.com/tddworks/ClaudeBar/issues/614)).
+- **`teamUsage.pooled` → "Team Pool" card in dollars**: the usage the whole team shares (Enterprise), cents left of the pool's limit, same rule.
+- **`isUnlimited: true`** with no other card gives the plan and no quota (the Left law above).
 - `membershipType` becomes the tier badge (`pro`, `business`, `free`, `ultra`, `enterprise`; anything else is upper-cased).
 - Numbers can arrive as ints or doubles; both are accepted.
 
+A team seat without a `plan`, as CodexBar recorded it from a live Enterprise account ([steipete/CodexBar#813](https://github.com/steipete/CodexBar/pull/813)); ClaudeBar's test uses it as it is:
+
+```json
+{
+  "membershipType": "enterprise",
+  "limitType": "team",
+  "isUnlimited": false,
+  "individualUsage": {
+    "overall": { "enabled": true, "used": 7384, "limit": 10000, "remaining": 2616 }
+  },
+  "teamUsage": {
+    "onDemand": { "enabled": true, "used": 0, "limit": null, "remaining": null },
+    "pooled":   { "enabled": true, "used": 12725135, "limit": 28122000, "remaining": 15396865 }
+  }
+}
+```
+
 ## Known limits
 
-- **Units.** The card text says "requests" (`2767/9770 requests`), but the values look like US cents: a Pro plan reports `limit: 2000` ($20 included) and an Ultra plan `limit: 40000`. Unconfirmed; don't build dollar maths on it without checking against the dashboard.
-- **Unlimited plus plan.** If a response had both `isUnlimited: true` and an enabled plan, two "Monthly" cards would be produced. No such response has been seen.
+- **Units.** The plan card's text says "requests" (`2767/9770 requests`), but the values look like US cents: a Pro plan reports `limit: 2000` ($20 included) and an Ultra plan `limit: 40000`. Unconfirmed; don't build dollar maths on it without checking against the dashboard. `overall` and `pooled` are cents: CodexBar and CursorMeter both matched them to the dashboard's dollars.
+- **A seat's cap that isn't in the response.** CursorMeter reports that token-based Enterprise seats send `overall` with `limit: null` and read the cap from `POST /api/dashboard/get-hard-limit` with the team's id ([API reference](https://github.com/WoojinAhn/CursorMeter/blob/main/docs/API_REFERENCE.md)). ClaudeBar makes one request, so such a seat still reads "No usage data". No response of this kind has been shared with ClaudeBar yet.
 - The endpoint and cookie are private to cursor.com and can change without notice. The first fix after launch (`822ebc4`) was exactly that: the real response nests usage under `individualUsage.plan` / `individualUsage.onDemand`, not the top-level `planUsage` / `onDemandUsage` first assumed.
