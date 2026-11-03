@@ -4,7 +4,7 @@ description: Track Codex 5-hour and weekly limits through the codex app-server R
 
 # Codex
 
-Shows your OpenAI Codex rate-limit windows with reset countdowns: the 5-hour session and the weekly limit, or only the weekly one on plans without a 5-hour limit, such as Pro. Each window is called Session or Weekly by its length. Your plan shows as a badge in both modes, and **Usage limit resets** shows how many saved resets your account has to use. API mode also shows your Codex credits balance when ChatGPT reports one. Separate preview buckets such as GPT-5.3-Codex-Spark appear as extra rows after your main windows.
+Shows your OpenAI Codex rate-limit windows with reset countdowns: the 5-hour session and the weekly limit, or only the weekly one on plans without a 5-hour limit, such as Pro. Each window is called Session or Weekly by its length. Your plan shows as a badge in both modes, and **Usage limit resets** shows how many saved resets your account has to use. **Credits** shows your ChatGPT credit balance in credits, the unit Codex's `/status` uses, when your account has credits, or *Unlimited*. A credit isn't a fixed dollar amount (its price depends on your plan) and the balance has no limit, so there's no bar. Separate preview buckets such as GPT-5.3-Codex-Spark appear as extra rows after your main windows.
 
 ## Setup
 

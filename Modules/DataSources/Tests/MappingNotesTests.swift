@@ -46,4 +46,63 @@ struct MappingNotesTests {
 
         #expect(usage.extensionMetrics == nil)
     }
+
+    private func notes(_ rules: String, _ body: String) throws -> [ExtensionMetric]? {
+        let definition = try JSONDecoder().decode(DataSourceDefinition.self, from: Data("""
+        { "kind": "api", "fetch": { "http": { "url": "https://example.com" } }, "mapping": { "json": {
+          "quotas": [], "notes": \(rules)
+        } } }
+        """.utf8))
+        return try DataSources.make(definition, providerId: "codex").read(Response(status: 200, body: Data(body.utf8))).extensionMetrics
+    }
+
+    /// A balance with no limit, as Codex sends it: a string with ten decimals.
+    private let balance = #"[{ "label": "Credits", "when": { "path": "$.credits.has_credits", "equals": true }, "value": "$.credits.balance", "unit": "credits", "round": 0 }]"#
+
+    @Test
+    func `should show a balance as a whole number with its thousands grouped`() throws {
+        let notes = try notes(balance, #"{"credits":{"has_credits":true,"balance":"62500.0000000000"}}"#)
+
+        #expect(notes == [ExtensionMetric(label: "Credits", value: "62,500", unit: "credits")])
+    }
+
+    @Test(arguments: [("1234.5", 1, "1,234.5"), ("0.0000000000", 0, "0"), ("-12.6", 0, "-13"), ("7", 2, "7")])
+    func `should show a number to the places the definition keeps, no more`(_ sent: String, _ places: Int, _ shown: String) throws {
+        let notes = try notes(#"[{ "label": "Credits", "value": "$.balance", "round": \#(places) }]"#, #"{"balance":"\#(sent)"}"#)
+
+        #expect(notes?.first?.value == shown)
+    }
+
+    @Test
+    func `should read the next place when a number is wanted and the first sends words`() throws {
+        let notes = try notes(#"[{ "label": "Credits", "value": ["$header.x-balance", "$.balance", "$.legacy"], "round": 0 }]"#, #"{"balance":"n/a","legacy":3.2}"#)
+
+        #expect(notes?.first?.value == "3")
+    }
+
+    @Test
+    func `should show no note while its condition doesn't hold`() throws {
+        let notes = try notes(balance, #"{"credits":{"has_credits":false,"balance":"0"}}"#)
+
+        #expect(notes == nil)
+    }
+
+    @Test
+    func `should show the words the definition gives while its condition holds`() throws {
+        let rules = #"[{ "label": "Credits", "when": { "path": "$.unlimited", "equals": true }, "text": "Unlimited" }]"#
+
+        #expect(try notes(rules, #"{"unlimited":true}"#) == [ExtensionMetric(label: "Credits", value: "Unlimited", unit: "")])
+        #expect(try notes(rules, #"{"unlimited":false}"#) == nil)
+    }
+
+    @Test
+    func `should show one note per label, the first that answers`() throws {
+        let rules = #"""
+        [{ "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },
+         { "label": "Credits", "when": { "path": "$.credits.has_credits", "equals": true }, "value": "$.credits.balance", "unit": "credits", "round": 0 }]
+        """#
+
+        #expect(try notes(rules, #"{"credits":{"has_credits":true,"unlimited":true,"balance":"10"}}"#) == [ExtensionMetric(label: "Credits", value: "Unlimited", unit: "")])
+        #expect(try notes(rules, #"{"credits":{"has_credits":true,"unlimited":false,"balance":"10"}}"#) == [ExtensionMetric(label: "Credits", value: "10", unit: "credits")])
+    }
 }
