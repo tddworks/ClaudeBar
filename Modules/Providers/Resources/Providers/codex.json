@@ -153,7 +153,9 @@
             }
           ],
           "notes": [
-            { "label": "Usage limit resets", "value": "$.result.rateLimitResetCredits.availableCount", "unit": "available" }
+            { "label": "Usage limit resets", "value": "$.result.rateLimitResetCredits.availableCount", "unit": "available" },
+            { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.unlimited", "equals": true }, "text": "Unlimited" },
+            { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.hasCredits", "equals": true }, "value": "$.result.rateLimits.credits.balance", "unit": "credits", "round": 0 }
           ],
           "whenEmpty": {
             "if": {
@@ -315,16 +317,10 @@
             }
           ],
           "notes": [
-            { "label": "Usage limit resets", "value": "$.rate_limit_reset_credits.available_count", "unit": "available" }
+            { "label": "Usage limit resets", "value": "$.rate_limit_reset_credits.available_count", "unit": "available" },
+            { "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },
+            { "label": "Credits", "when": { "path": "$.credits.has_credits", "equals": true }, "value": ["$header.x-codex-credits-balance", "$.credits.balance"], "unit": "credits", "round": 0 }
           ],
-          "cost": {
-            "when": {
-              "path": "$.credits.has_credits",
-              "equals": true
-            },
-            "remaining":["$header.x-codex-credits-balance", "$.credits.balance"],
-            "limit": 1000
-          },
           "email": ["$credential.email"]
         }
       }

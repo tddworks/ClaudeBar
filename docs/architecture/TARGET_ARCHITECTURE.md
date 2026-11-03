@@ -169,7 +169,11 @@ example of a definition; the file itself is the truth.
             "name": { "firstOf": ["limitName", "limitId", "$key"], "dropPrefix": "codex_", "capitalize": true },
             "windows": [ { "at": "primary" }, { "at": "secondary", "suffix": " 7d" } ],
             "usedPercent": "usedPercent", "resetsAt": { "epochSeconds": "resetsAt" },
-            "window": { "minutes": "windowDurationMins" } } ] } },
+            "window": { "minutes": "windowDurationMins" } } ],
+        "notes": [
+          { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.unlimited", "equals": true }, "text": "Unlimited" },
+          { "label": "Credits", "when": { "path": "$.result.rateLimits.credits.hasCredits", "equals": true },
+            "value": "$.result.rateLimits.credits.balance", "unit": "credits", "round": 0 } ] } },
       "fallback": "tty"
     },
     {
@@ -199,8 +203,10 @@ example of a definition; the file itself is the truth.
             "name": { "firstOf": ["limit_name", "metered_feature"], "dropPrefix": "codex_", "capitalize": true },
             "windows": [ { "at": "rate_limit.primary_window" }, { "at": "rate_limit.secondary_window", "suffix": " 7d" } ],
             "…": "same shape" } ],
-        "cost": { "kind": "extraUsage", "limit": 1000,
-                  "remaining": ["$header.x-codex-credits-balance", "$.credits.balance"] } } }
+        "notes": [
+          { "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },
+          { "label": "Credits", "when": { "path": "$.credits.has_credits", "equals": true },
+            "value": ["$header.x-codex-credits-balance", "$.credits.balance"], "unit": "credits", "round": 0 } ] } }
     },
     {
       "kind": "tty", "label": "Terminal", "hidden": true,
@@ -224,9 +230,8 @@ provider gets**, never a Codex special case:
 | `resetsAt`: `epochSeconds` · `secondsFromNow` · `iso8601` | both shapes occur | all |
 | `window`: `seconds` · `minutes` | the window length is the provider's word ([the law](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | all |
 | `kindByWindow` | Pro lists its only window, a week, where Plus lists its 5-hour one | any provider whose plans differ in their windows |
-| `notes` | the number of usage limit resets is a count, not a limit | any provider that reports a count beside its limits |
+| `notes` · `when` · `text` · `round` | the number of usage limit resets is a count, not a limit; the credit balance has no limit and isn't money | any provider that reports a count or a balance beside its limits |
 | name rules: `firstOf`, `dropPrefix`, `capitalize`, `suffix` | `codex_spark` → `Spark`, `Spark 7d` | any provider with model names |
-| constants (`"limit": 1000`) | credits have a fixed ceiling | balance providers |
 
 **A rule the language cannot say yet** (today's free-plan defaults in the RPC
 client are one) becomes a new mapping feature with its own test, or — if no
