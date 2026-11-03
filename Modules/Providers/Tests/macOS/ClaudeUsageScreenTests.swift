@@ -1486,6 +1486,16 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
+    func `should say it is rate limited when a rate-limit error shares a row with a section label`() {
+        // A later frame painted over a label's row: the label doesn't hide the error.
+        let output = Self.usedPercentOutput + "\n\nCurrent week (all models)    Error: Rate limit exceeded"
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
+    @Test
     func `should not take the weekly bar's number for a session row that has none yet`() {
         // The session row is painted, its bar not filled yet; the weekly bar below has its number.
         let output = """

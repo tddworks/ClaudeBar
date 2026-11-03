@@ -131,9 +131,9 @@ function rateLimitOnlyInAdvice(lines) {
     var row = lines[i].trim().toLowerCase();
     if (isSectionStart(lines[i]) || row === "session") {
       inAdvice = row.indexOf(ADVICE_HEADING) === 0;
-    } else if (!inAdvice && isRateLimitRow(lines[i])) {
-      return false;
     }
+    // A label's own row counts too: a later frame can paint an error over it.
+    if (!inAdvice && isRateLimitRow(lines[i])) return false;
   }
   return true;
 }
