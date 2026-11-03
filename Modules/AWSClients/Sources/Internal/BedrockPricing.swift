@@ -9,7 +9,7 @@ import Diagnostics
 /// Abstracted for testability - production uses AWS Pricing API with caching.
 protocol BedrockPricingService: Sendable {
     /// Gets pricing information for a Bedrock model
-    /// - Parameter modelId: The AWS Bedrock model ID (e.g., "anthropic.claude-opus-4-5-20251101-v1:0")
+    /// - Parameter modelId: The AWS Bedrock model ID (`<vendor>.<model>-<date>-v1:0`)
     /// - Returns: BedrockModel with pricing information
     func getModelPricing(modelId: String) async throws -> BedrockModel
 }
@@ -196,8 +196,7 @@ final class AWSBedrockPricingService: BedrockPricingService, @unchecked Sendable
 
         let normalizedId = DefaultBedrockPricing.baseModelId(modelId)
 
-        // Parse model ID format: provider.model-name-version:variant
-        // e.g., "anthropic.claude-opus-4-5-20251101-v1:0"
+        // Parse model ID format: <vendor>.<model-name>-<date>-v<N>:<variant>
         let parts = normalizedId.split(separator: ".")
         guard parts.count >= 2 else { return modelId }
 
@@ -213,21 +212,7 @@ final class AWSBedrockPricingService: BedrockPricingService, @unchecked Sendable
     }
 
     private func extractVendor(from modelId: String) -> String {
-        let normalizedId = DefaultBedrockPricing.baseModelId(modelId)
-
-        let parts = normalizedId.split(separator: ".")
-        guard let vendor = parts.first else { return "Unknown" }
-
-        switch vendor.lowercased() {
-        case "anthropic": return "Anthropic"
-        case "amazon": return "Amazon"
-        case "meta": return "Meta"
-        case "mistral": return "Mistral AI"
-        case "cohere": return "Cohere"
-        case "ai21": return "AI21 Labs"
-        case "stability": return "Stability AI"
-        default: return String(vendor).capitalized
-        }
+        DefaultBedrockPricing.vendor(of: modelId)
     }
 }
 
@@ -240,263 +225,102 @@ enum PricingError: Error {
 
 // MARK: - Default Bundled Pricing
 
-/// Bundled default pricing for common Bedrock models
-/// Updated periodically - serves as fallback when Pricing API is unavailable
+/// The bundled price table, `bedrock-prices.json`: what answers when the
+/// Pricing API can't. Data, so a price change edits the file, never Swift
+/// (MODULAR_DESIGN §2: no module's Swift names a vendor).
 enum DefaultBedrockPricing {
 
     /// The base model an ID names: an inference profile's prefix dropped.
-    /// CloudWatch reports the ID that was called ("global.anthropic.claude-…",
-    /// "us.anthropic.claude-…"); prices are kept per base model.
+    /// CloudWatch reports the ID that was called ("global.<vendor>.<model>",
+    /// "us.<vendor>.<model>"); prices are kept per base model.
     static func baseModelId(_ modelId: String) -> String {
         modelId.replacingOccurrences(of: "^(global|us|eu|jp|apac|au|ap|sa|ca|me|af)\\.", with: "", options: .regularExpression)
     }
 
-    /// Returns bundled pricing for known models, nil for unknown models
-    static func model(for modelId: String) -> BedrockModel? {
-        let normalizedId = baseModelId(modelId)
+    /// The bundled table's price for `modelId`, nil for a model it doesn't list.
+    static func model(for modelId: String) -> BedrockModel? { bundled.model(for: modelId) }
 
-        // Check exact match first (with normalized ID)
-        if let model = models[normalizedId] {
-            return BedrockModel(
-                id: modelId, // Preserve original ID with regional prefix
-                displayName: model.displayName,
-                vendor: model.vendor,
-                inputPricePer1M: model.inputPricePer1M,
-                outputPricePer1M: model.outputPricePer1M
-            )
+    /// The vendor an ID's first segment names, as the bundled table writes it.
+    static func vendor(of modelId: String) -> String { bundled.vendor(of: modelId) }
+
+    /// `bedrock-prices.json`, or an empty table — logged — when it is missing or malformed.
+    private static let bundled: Table = {
+        do {
+            guard let url = Bundle.module.url(forResource: "bedrock-prices", withExtension: "json") else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return try JSONDecoder().decode(Table.self, from: Data(contentsOf: url))
+        } catch {
+            AppLog.probes.error("Bedrock: bundled price table unreadable: \(error.localizedDescription)")
+            return Table(vendors: [:], models: [])
+        }
+    }()
+
+    /// A price table: each model's name and input/output prices per million
+    /// tokens, and the vendor names the IDs' first segments stand for.
+    struct Table: Decodable {
+        struct Row: Decodable {
+            let id: String
+            let name: String
+            let input: Decimal
+            let output: Decimal
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                id = try container.decode(String.self, forKey: .id)
+                name = try container.decode(String.self, forKey: .name)
+                input = try Self.amount(container, .input)
+                output = try Self.amount(container, .output)
+            }
+
+            /// `"0.30"`, read as an exact `Decimal` from its text.
+            private static func amount(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) throws -> Decimal {
+                let text = try container.decode(String.self, forKey: key)
+                guard let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
+                    throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "not an amount: \(text)")
+                }
+                return value
+            }
+
+            private enum CodingKeys: String, CodingKey { case id, name, input, output }
         }
 
-        // Check partial match (without version suffix)
-        let baseModelId = normalizedId.replacingOccurrences(of: ":\\d+$", with: "", options: .regularExpression)
-        if let model = models[baseModelId] {
-            return BedrockModel(
-                id: modelId, // Preserve original ID
-                displayName: model.displayName,
-                vendor: model.vendor,
-                inputPricePer1M: model.inputPricePer1M,
-                outputPricePer1M: model.outputPricePer1M
-            )
+        let vendors: [String: String]
+        private let rows: [String: Row]
+
+        init(vendors: [String: String], models: [Row]) {
+            self.vendors = vendors
+            rows = Dictionary(models.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         }
 
-        return nil
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(vendors: try container.decodeIfPresent([String: String].self, forKey: .vendors) ?? [:],
+                      models: try container.decode([Row].self, forKey: .models))
+        }
+
+        init(json: String) throws {
+            self = try JSONDecoder().decode(Table.self, from: Data(json.utf8))
+        }
+
+        /// The row for `modelId`'s base model, exactly or without its `:N`
+        /// version, priced under the ID that was called.
+        func model(for modelId: String) -> BedrockModel? {
+            let base = DefaultBedrockPricing.baseModelId(modelId)
+            let unversioned = base.replacingOccurrences(of: ":\\d+$", with: "", options: .regularExpression)
+            guard let row = rows[base] ?? rows[unversioned] else { return nil }
+            return BedrockModel(id: modelId, displayName: row.name, vendor: vendor(of: modelId),
+                                inputPricePer1M: row.input, outputPricePer1M: row.output)
+        }
+
+        /// The vendor `modelId`'s first segment names; unlisted, the segment capitalized.
+        func vendor(of modelId: String) -> String {
+            guard let segment = DefaultBedrockPricing.baseModelId(modelId).split(separator: ".").first else { return "Unknown" }
+            return vendors[segment.lowercased()] ?? String(segment).capitalized
+        }
+
+        private enum CodingKeys: String, CodingKey { case vendors, models }
     }
-
-    private static let models: [String: BedrockModel] = [
-        // Anthropic Claude 4.5 and later: Bedrock's on-demand global prices
-        // (Global Cross-region Inference, us-east-1, AWS price list of 2026-10-12).
-        // Regional and geographic profiles cost 10% more.
-        "anthropic.claude-fable-5-1": BedrockModel(
-            id: "anthropic.claude-fable-5-1",
-            displayName: "Claude Fable 5.1",
-            vendor: "Anthropic",
-            inputPricePer1M: 10.00,
-            outputPricePer1M: 50.00
-        ),
-        "anthropic.claude-fable-5": BedrockModel(
-            id: "anthropic.claude-fable-5",
-            displayName: "Claude Fable 5",
-            vendor: "Anthropic",
-            inputPricePer1M: 10.00,
-            outputPricePer1M: 50.00
-        ),
-        "anthropic.claude-opus-5-5": BedrockModel(
-            id: "anthropic.claude-opus-5-5",
-            displayName: "Claude Opus 5.5",
-            vendor: "Anthropic",
-            inputPricePer1M: 4.00,
-            outputPricePer1M: 20.00
-        ),
-        "anthropic.claude-opus-5": BedrockModel(
-            id: "anthropic.claude-opus-5",
-            displayName: "Claude Opus 5",
-            vendor: "Anthropic",
-            inputPricePer1M: 5.00,
-            outputPricePer1M: 25.00
-        ),
-        "anthropic.claude-sonnet-5-5": BedrockModel(
-            id: "anthropic.claude-sonnet-5-5",
-            displayName: "Claude Sonnet 5.5",
-            vendor: "Anthropic",
-            inputPricePer1M: 2.00,
-            outputPricePer1M: 10.00
-        ),
-        "anthropic.claude-sonnet-5": BedrockModel(
-            id: "anthropic.claude-sonnet-5",
-            displayName: "Claude Sonnet 5",
-            vendor: "Anthropic",
-            inputPricePer1M: 2.00,
-            outputPricePer1M: 10.00
-        ),
-        // Prompts over 100,000 tokens cost five times more; one price per model.
-        "anthropic.claude-haiku-5-5": BedrockModel(
-            id: "anthropic.claude-haiku-5-5",
-            displayName: "Claude Haiku 5.5",
-            vendor: "Anthropic",
-            inputPricePer1M: 0.10,
-            outputPricePer1M: 0.50
-        ),
-        "anthropic.claude-opus-4-5-20251101-v1:0": BedrockModel(
-            id: "anthropic.claude-opus-4-5-20251101-v1:0",
-            displayName: "Claude Opus 4.5",
-            vendor: "Anthropic",
-            inputPricePer1M: 5.00,
-            outputPricePer1M: 25.00
-        ),
-        "anthropic.claude-haiku-4-5-20251001-v1:0": BedrockModel(
-            id: "anthropic.claude-haiku-4-5-20251001-v1:0",
-            displayName: "Claude Haiku 4.5",
-            vendor: "Anthropic",
-            inputPricePer1M: 1.00,
-            outputPricePer1M: 5.00
-        ),
-        // Older Claude models (as of Jan 2025)
-        "anthropic.claude-sonnet-4-20250514-v1:0": BedrockModel(
-            id: "anthropic.claude-sonnet-4-20250514-v1:0",
-            displayName: "Claude Sonnet 4",
-            vendor: "Anthropic",
-            inputPricePer1M: 3.00,
-            outputPricePer1M: 15.00
-        ),
-        "anthropic.claude-3-5-sonnet-20241022-v2:0": BedrockModel(
-            id: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            displayName: "Claude 3.5 Sonnet v2",
-            vendor: "Anthropic",
-            inputPricePer1M: 3.00,
-            outputPricePer1M: 15.00
-        ),
-        "anthropic.claude-3-5-sonnet-20240620-v1:0": BedrockModel(
-            id: "anthropic.claude-3-5-sonnet-20240620-v1:0",
-            displayName: "Claude 3.5 Sonnet",
-            vendor: "Anthropic",
-            inputPricePer1M: 3.00,
-            outputPricePer1M: 15.00
-        ),
-        "anthropic.claude-3-5-haiku-20241022-v1:0": BedrockModel(
-            id: "anthropic.claude-3-5-haiku-20241022-v1:0",
-            displayName: "Claude 3.5 Haiku",
-            vendor: "Anthropic",
-            inputPricePer1M: 0.80,
-            outputPricePer1M: 4.00
-        ),
-        "anthropic.claude-3-opus-20240229-v1:0": BedrockModel(
-            id: "anthropic.claude-3-opus-20240229-v1:0",
-            displayName: "Claude 3 Opus",
-            vendor: "Anthropic",
-            inputPricePer1M: 15.00,
-            outputPricePer1M: 75.00
-        ),
-        "anthropic.claude-3-sonnet-20240229-v1:0": BedrockModel(
-            id: "anthropic.claude-3-sonnet-20240229-v1:0",
-            displayName: "Claude 3 Sonnet",
-            vendor: "Anthropic",
-            inputPricePer1M: 3.00,
-            outputPricePer1M: 15.00
-        ),
-        "anthropic.claude-3-haiku-20240307-v1:0": BedrockModel(
-            id: "anthropic.claude-3-haiku-20240307-v1:0",
-            displayName: "Claude 3 Haiku",
-            vendor: "Anthropic",
-            inputPricePer1M: 0.25,
-            outputPricePer1M: 1.25
-        ),
-
-        // Amazon Titan models
-        "amazon.titan-text-premier-v1:0": BedrockModel(
-            id: "amazon.titan-text-premier-v1:0",
-            displayName: "Titan Text Premier",
-            vendor: "Amazon",
-            inputPricePer1M: 0.50,
-            outputPricePer1M: 1.50
-        ),
-        "amazon.titan-text-express-v1": BedrockModel(
-            id: "amazon.titan-text-express-v1",
-            displayName: "Titan Text Express",
-            vendor: "Amazon",
-            inputPricePer1M: 0.20,
-            outputPricePer1M: 0.60
-        ),
-        "amazon.titan-text-lite-v1": BedrockModel(
-            id: "amazon.titan-text-lite-v1",
-            displayName: "Titan Text Lite",
-            vendor: "Amazon",
-            inputPricePer1M: 0.15,
-            outputPricePer1M: 0.20
-        ),
-
-        // Meta Llama models
-        "meta.llama3-2-90b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-2-90b-instruct-v1:0",
-            displayName: "Llama 3.2 90B",
-            vendor: "Meta",
-            inputPricePer1M: 0.72,
-            outputPricePer1M: 0.72
-        ),
-        "meta.llama3-2-11b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-2-11b-instruct-v1:0",
-            displayName: "Llama 3.2 11B",
-            vendor: "Meta",
-            inputPricePer1M: 0.16,
-            outputPricePer1M: 0.16
-        ),
-        "meta.llama3-2-3b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-2-3b-instruct-v1:0",
-            displayName: "Llama 3.2 3B",
-            vendor: "Meta",
-            inputPricePer1M: 0.10,
-            outputPricePer1M: 0.10
-        ),
-        "meta.llama3-2-1b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-2-1b-instruct-v1:0",
-            displayName: "Llama 3.2 1B",
-            vendor: "Meta",
-            inputPricePer1M: 0.10,
-            outputPricePer1M: 0.10
-        ),
-        "meta.llama3-1-405b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-1-405b-instruct-v1:0",
-            displayName: "Llama 3.1 405B",
-            vendor: "Meta",
-            inputPricePer1M: 2.40,
-            outputPricePer1M: 2.40
-        ),
-        "meta.llama3-1-70b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-1-70b-instruct-v1:0",
-            displayName: "Llama 3.1 70B",
-            vendor: "Meta",
-            inputPricePer1M: 0.72,
-            outputPricePer1M: 0.72
-        ),
-        "meta.llama3-1-8b-instruct-v1:0": BedrockModel(
-            id: "meta.llama3-1-8b-instruct-v1:0",
-            displayName: "Llama 3.1 8B",
-            vendor: "Meta",
-            inputPricePer1M: 0.22,
-            outputPricePer1M: 0.22
-        ),
-
-        // Mistral models
-        "mistral.mistral-large-2407-v1:0": BedrockModel(
-            id: "mistral.mistral-large-2407-v1:0",
-            displayName: "Mistral Large",
-            vendor: "Mistral AI",
-            inputPricePer1M: 3.00,
-            outputPricePer1M: 9.00
-        ),
-        "mistral.mistral-small-2402-v1:0": BedrockModel(
-            id: "mistral.mistral-small-2402-v1:0",
-            displayName: "Mistral Small",
-            vendor: "Mistral AI",
-            inputPricePer1M: 0.10,
-            outputPricePer1M: 0.30
-        ),
-        "mistral.mixtral-8x7b-instruct-v0:1": BedrockModel(
-            id: "mistral.mixtral-8x7b-instruct-v0:1",
-            displayName: "Mixtral 8x7B",
-            vendor: "Mistral AI",
-            inputPricePer1M: 0.45,
-            outputPricePer1M: 0.70
-        ),
-    ]
 }
 
 

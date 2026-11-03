@@ -108,10 +108,11 @@ writes a record more than one way lists its `shapes` (below).
 {
   "currency": "USD", "per": 1000000,
   "models": [                                     // exact id first, then the longest prefix
-    { "id": "claude-opus-5",   "name": "Claude Opus 5",   "input": "5", "output": "25", "cacheWrite": "6.25", "cacheRead": "0.50" },
-    { "id": "claude-sonnet-5", "name": "Claude Sonnet 5", "input": "2", "output": "10", "cacheWrite": "2.50", "cacheRead": "0.20" }
+    { "id": "claude-opus-5-5", "name": "Claude Opus 5.5", "input": "4", "output": "20", "cacheWrite": "5", "cacheWrite1h": "8", "cacheRead": "0.20" },
+    { "id": "claude-haiku-5-5", "name": "Claude Haiku 5.5", "input": "0.10", "output": "0.50", "cacheWrite": "0.125", "cacheWrite1h": "0.20", "cacheRead": "0.01",
+      "above": { "prompt": 100000, "input": "0.50", "output": "2.50", "cacheWrite": "0.625", "cacheWrite1h": "1", "cacheRead": "0.05" } }   // a longer prompt's prices
   ],
-  "families": [ { "contains": "opus", "as": "claude-opus-4-6" }, { "contains": "haiku", "as": "claude-haiku-4-5-20251001" } ],
+  "families": [ { "contains": "opus", "as": "claude-opus-5-5" }, { "contains": "haiku", "as": "claude-haiku-5-5" } ],   // the newest of each
   "free": [ "qwen", "llama", "gemma", "mistral", "gpt-oss", "ollama" ],   // a model of a local family costs nothing
   "otherwise": { "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" }
 }
@@ -123,6 +124,12 @@ writes a record more than one way lists its `shapes` (below).
   price list (`{ "service": … }`) is fetched through the `PriceCatalog` port
   Bedrock uses (#417) into the same `PriceList`. A tool that writes its own
   cost needs neither.
+- **A price can depend on the prompt's length.** A model's `above` gives the
+  prices a record pays when its prompt — input, cache writes and cache reads
+  together — is over `above.prompt` tokens. Each record is priced on its own,
+  as Anthropic bills each request (Claude Haiku 5.5 over 100,000 tokens), so
+  a day of short prompts and a few long ones costs what each one did. A model
+  priced through a family pays the long-prompt prices too.
 - **Per login, like data sources.** `usageHistory` is written once, for any
   login (#577): the default login fills `{{account.folder}}` from
   `folder.default`; an added login reads it with its own folder, so an added
@@ -408,7 +415,7 @@ something to show.
 | `JSONLinesReader` (`DataSources/Internal`) | one record per line a shape picks out; reads only what was appended since the last scan, in this process or the last one (`usage-history/scans/`), re-reads a file that changed under it; a byte prefilter from the shapes' `where` texts | `SessionJSONLParser` + `SessionLogCache`, generalised |
 | `RecordShape` (`DataSources/Internal`) | one per shape: whether its `where` holds, and the record read whole from its paths; the first shape whose `where` holds reads a line | — (new) |
 | `LogRecord` (`DataSources/Internal`) | the one form every reader produces | `TokenUsageRecord`, `ParsedSession` |
-| `PriceList` (`DataSources/Internal`) | the record's own cost, else the list (exact → longest prefix → family → free → `freeWhen` → otherwise); cache savings | `ModelPricing` |
+| `PriceList` (`DataSources/Internal`) | the record's own cost, else the list (exact → longest prefix → family → free → `freeWhen` → otherwise), at the longer prompt's prices when the record's prompt is over the model's `above`; cache savings | `ModelPricing` |
 | `LocalEndpoint` (`DataSources/Internal`) | `freeWhen.localEndpoint`: is the route in that file on this Mac? | `ClaudeLocalInferenceDetector` |
 | `JSONLogReader` (`DataSources/Internal`) | one record per file, by the same first-matching-shape rule; `at.fromPath` reads the time from the path; finds its own files | `VibeSessionLogAnalyzer.loadSessions` |
 | `CommandLogReader` (`DataSources/Internal`) | one command's JSON array, by the same first-matching-shape rule; the answer arrives through `CommandFetcher` | — (new) |
@@ -443,7 +450,7 @@ the units `Days` offers (no cost when no day holds one).
 | A person or a contributor wants… | They change |
 |---|---|
 | a *Last 30 days* chart, a week view, a month total | the page only: another range of `days` |
-| a new model's price, or a price cut | `claude-prices.json` |
+| a new model's price, a price cut, or a model priced by prompt length | `claude-prices.json` (`above` for a longer prompt's prices) |
 | *TODAY'S USAGE* for another tool that logs JSON | that tool's definition: a `usageHistory` block |
 | Codex's usage history (`~/.codex/sessions/**/rollout-*.jsonl`, whose `token_count` events carry a session's **running total**) | `codex.json`'s `usageHistory`, plus one reader option, `"cumulative": true` (the last record per session counts), with a neutral test |
 | Oh My Pi's usage history (turns, subagents and side calls in `~/.omp/agent/sessions/**/*.jsonl`, copied whole into forked sessions) | `omp.json`'s `usageHistory`: one log, two `shapes`, and `id: [$.id, $.timestamp]` — the identity omp's own stats use for fork copies |
