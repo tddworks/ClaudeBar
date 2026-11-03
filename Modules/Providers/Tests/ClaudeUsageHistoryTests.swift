@@ -129,13 +129,15 @@ struct ClaudeUsageHistoryTests {
 
     // MARK: - Prices from claude-prices.json
 
-    @Test func `should price models as Anthropic lists them, estimating unknown ones`() async throws {
+    @Test func `should price models as Anthropic lists them, estimating unknown ones at the newest of their family`() async throws {
         // 1M in / 100K out / 1M cache write / 1M cache read each.
         try write([Self.line("claude-sonnet-4-6", input: 1_000_000, output: 100_000, cacheWrite: 1_000_000, cacheRead: 1_000_000, message: "a", request: "1"),
                    Self.line("claude-opus-4-99-20260101", input: 1_000_000, output: 0, message: "b", request: "2"),
+                   Self.line("claude-sonnet-6", input: 1_000_000, output: 0, message: "d", request: "4"),
                    Self.line("glm-4.6", input: 1_000_000, output: 0, message: "c", request: "3")].joined(separator: "\n"))
-        // Sonnet $8.55, an unknown Opus at Opus 4.6's $5 input, a paid gateway's model at the Sonnet estimate $3.
-        #expect(try await report().today.totalCost == Decimal(string: "16.55"))
+        // Sonnet $8.55, an unknown Opus at Opus 5.5's $4 input, an unknown Sonnet at Sonnet 5.5's $2,
+        // a paid gateway's model at the Sonnet estimate $3.
+        #expect(try await report().today.totalCost == Decimal(string: "17.55"))
     }
 
     @Test func `should price the current models at today's list prices`() async throws {
@@ -146,14 +148,26 @@ struct ClaudeUsageHistoryTests {
         #expect(try await report().today.totalCost == Decimal(string: "7.1"))
     }
 
-    @Test func `should price Sonnet 5.5 cache reads, Haiku 5.5, and a newer Haiku as the current one`() async throws {
+    @Test func `should price Sonnet 5.5 cache reads, a short Haiku 5.5 prompt, and a newer Haiku as the current one`() async throws {
         try write([Self.line("claude-sonnet-5-5", input: 0, output: 0, cacheRead: 1_000_000, message: "a", request: "1"),
-                   Self.line("claude-haiku-5-5", input: 1_000_000, output: 1_000_000, cacheRead: 1_000_000, message: "b", request: "2"),
+                   Self.line("claude-haiku-5-5", input: 50_000, output: 1_000_000, cacheRead: 50_000, message: "b", request: "2"),
                    Self.line("claude-haiku-6", input: 1_000_000, output: 0, message: "c", request: "3")]
             .joined(separator: "\n"))
-        // Sonnet 5.5 reads at 0.05× input: $0.10. Haiku 5.5 at its prompts-up-to-100K
-        // prices: $0.10 + $0.50 + $0.01. An unlisted Haiku at Haiku 5.5's $0.10 input.
-        #expect(try await report().today.totalCost == Decimal(string: "0.81"))
+        // Sonnet 5.5 reads at 0.05× input: $0.10. Haiku 5.5's 100,000-token prompt at its
+        // up-to-100K prices: $0.005 + $0.50 + $0.0005. An unlisted Haiku as Haiku 5.5:
+        // its 1M-token prompt at the over-100K $0.50.
+        #expect(try await report().today.totalCost == Decimal(string: "1.1055"))
+    }
+
+    @Test func `should price a Haiku 5.5 request over 100,000 prompt tokens at the higher prices, cache reads and writes included`() async throws {
+        try write([Self.line("claude-haiku-5-5", input: 100_000, output: 1_000_000, message: "a", request: "1"),
+                   Self.line("claude-haiku-5-5", input: 1_000, output: 0, cacheRead: 100_000, message: "b", request: "2"),
+                   Self.line("claude-haiku-5-5", input: 0, output: 1_000_000, cacheWrite: 200_000, message: "c", request: "3")]
+            .joined(separator: "\n"))
+        // Exactly 100,000: $0.01 + $0.50. Each other request on its own, over: 1,000 in at $0.50
+        // and 100,000 reads at $0.05 = $0.0055; 200,000 five-minute writes at $0.625 and 1M out
+        // at $2.50 = $2.625.
+        #expect(try await report().today.totalCost == Decimal(string: "3.1405"))
     }
 
     @Test func `should charge the one-hour price for cache writes kept an hour`() async throws {

@@ -12,9 +12,11 @@ struct PriceListTests {
       "models": [
         { "id": "m-large-2", "input": "5", "output": "25", "cacheWrite": "6.25", "cacheWrite1h": "10", "cacheRead": "0.50" },
         { "id": "m-medium-2", "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" },
-        { "id": "m-small-1", "input": "1", "output": "5", "cacheWrite": "1.25", "cacheRead": "0.10" }
+        { "id": "m-small-1", "input": "1", "output": "5", "cacheWrite": "1.25", "cacheRead": "0.10" },
+        { "id": "m-tiered-1", "input": "1", "output": "5", "cacheWrite": "1.25", "cacheWrite1h": "2", "cacheRead": "0.10",
+          "above": { "prompt": 1000, "input": "2", "output": "10", "cacheWrite": "2.50", "cacheWrite1h": "4", "cacheRead": "0.20" } }
       ],
-      "families": [ { "contains": "large", "as": "m-large-2" }, { "contains": "small", "as": "m-small-1" } ],
+      "families": [ { "contains": "large", "as": "m-large-2" }, { "contains": "small", "as": "m-small-1" }, { "contains": "tiered", "as": "m-tiered-1" } ],
       "free": [ "llama", "qwen" ],
       "otherwise": { "input": "3", "output": "15", "cacheWrite": "3.75", "cacheRead": "0.30" }
     }
@@ -85,5 +87,43 @@ struct PriceListTests {
     @Test func `should have no price list when its file is missing or broken`() {
         #expect(PriceList.load("prices.json", from: { _ in nil }) == nil)
         #expect(PriceList.load("prices.json", from: { _ in "{" }) == nil)
+    }
+
+    // MARK: - A longer prompt's prices
+
+    /// A prompt of 300 + `input` tokens: `input` in, 300 cache writes (100 kept an hour), 300 cache reads; 1,000 out.
+    private func prompt(_ model: String = "m-tiered-1", input: Int) -> LogRecord {
+        LogRecord(at: Date(), model: model, input: input, output: 1000, cacheWrite: 300, cacheWrite1h: 100, cacheRead: 300)
+    }
+
+    @Test func `should price a prompt up to the threshold at the model's own prices`() {
+        // 1,000 prompt tokens: 400 × $1 + 1,000 × $5 + 200 × $1.25 + 100 × $2 + 300 × $0.10, per million.
+        #expect(prices.cost(of: prompt(input: 400)) == Decimal(string: "0.00588"))
+    }
+
+    @Test func `should price a prompt over the threshold at the longer prompt's prices, every kind of token`() {
+        // 1,001 prompt tokens: 401 × $2 + 1,000 × $10 + 200 × $2.50 + 100 × $4 + 300 × $0.20, per million.
+        #expect(prices.cost(of: prompt(input: 401)) == Decimal(string: "0.011762"))
+    }
+
+    @Test func `should count cache reads and writes in the prompt's length, and save at the longer prompt's prices`() {
+        let reads = LogRecord(at: Date(), model: "m-tiered-1", cacheRead: 1001)
+        #expect(prices.cost(of: reads) == Decimal(string: "0.0002002"))
+        // 1,001 × ($2 − $0.20), per million.
+        #expect(prices.savings(of: reads) == Decimal(string: "0.0018018"))
+    }
+
+    @Test func `should price each record by its own prompt, never the day's`() {
+        let short = LogRecord(at: Date(), model: "m-tiered-1", input: 600)
+        #expect(prices.cost(of: short) + prices.cost(of: short) == Decimal(string: "0.0012"))
+    }
+
+    @Test func `should give a model priced through its family the family's longer prompt prices`() {
+        #expect(prices.cost(of: LogRecord(at: Date(), model: "m-tiered-9", input: 1001)) == Decimal(string: "0.002002"))
+    }
+
+    @Test func `should have no price list when a longer prompt's prices don't say how long`() {
+        let file = PriceListTests.file.replacingOccurrences(of: #""prompt": 1000, "#, with: "")
+        #expect(PriceList.load("prices.json", from: { _ in file }) == nil)
     }
 }
