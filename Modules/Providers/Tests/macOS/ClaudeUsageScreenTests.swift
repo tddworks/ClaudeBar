@@ -1495,6 +1495,16 @@ struct ClaudeUsageScreenTests {
         }
     }
 
+    @Test(arguments: contributingHeadings)
+    func `should say it is rate limited when a rate-limit error shares a row with the contributing-usage heading`(heading: String) {
+        // Only the rows below the heading are its advice, not the heading's own row.
+        let output = Self.usedPercentOutput + "\n\n\(heading)    Error: Rate limit exceeded"
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
     @Test
     func `should not take the weekly bar's number for a session row that has none yet`() {
         // The session row is painted, its bar not filled yet; the weekly bar below has its number.
