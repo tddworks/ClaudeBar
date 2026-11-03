@@ -39,7 +39,7 @@ function read(response, context) {
   // the CLI's limit is not the API's. Once the bars have their numbers, a
   // throttled per-model breakdown under the advice heading is not theirs (#677);
   // rate-limit text anywhere else is, even below bars a redraw left in scrollback.
-  if (rateLimited(lines) && !(barsRead && rateLimitOnlyInAdvice(lines))) {
+  if (rateLimited(lines) && !(barsRead && onlyBreakdownRateLimited(lines))) {
     return { error: { executionFailed: "Rate limited - too many requests" } };
   }
   if (!barsRead) {
@@ -121,18 +121,22 @@ function isRateLimitRow(line) {
          lower.indexOf("rate limits are") === -1;
 }
 
-// Every rate-limit row sits in the advice section: below the advice heading,
-// with no section label between them. The usage panel's "Session" heading,
-// which a later frame paints, ends the advice too. The breakdown's own line
-// always follows its heading, so a capture with the line has the heading too.
-function rateLimitOnlyInAdvice(lines) {
+// Every rate-limit row is the throttled breakdown's own line ("Per-model
+// breakdown unavailable (rate limited …)"): a row that mentions the breakdown,
+// below the advice heading with no section label between them. The usage
+// panel's "Session" heading, which a later frame paints, ends the advice too.
+// The breakdown's line always follows its heading, so a capture with the line
+// has the heading too. Any other rate-limit row, even one under the heading in
+// scrollback, is a later frame's CLI-wide error.
+function onlyBreakdownRateLimited(lines) {
   var inAdvice = false;
   for (var i = 0; i < lines.length; i++) {
     var row = lines[i].trim().toLowerCase();
     var label = isSectionStart(lines[i]) || row === "session";
     // A label's own row, the advice heading's included, isn't advice: a later
     // frame can paint an error over it.
-    if (isRateLimitRow(lines[i]) && (label || !inAdvice)) return false;
+    var breakdown = inAdvice && !label && row.indexOf("breakdown") !== -1;
+    if (isRateLimitRow(lines[i]) && !breakdown) return false;
     if (label) inAdvice = row.indexOf(ADVICE_HEADING) === 0;
   }
   return true;

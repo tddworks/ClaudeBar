@@ -1505,6 +1505,25 @@ struct ClaudeUsageScreenTests {
         }
     }
 
+    @Test(arguments: rateLimitErrors)
+    func `should say it is rate limited when a later frame prints only a rate-limit error below an earlier frame's advice`(error: String) {
+        // The earlier frame's bars and throttled breakdown scrolled into
+        // scrollback; the later frame has no label of its own, but its error
+        // doesn't speak for the breakdown.
+        let earlier = Self.usedPercentOutput + """
+
+
+        What's contributing to your usage?
+        Per-model breakdown unavailable (rate limited until 4:31pm)
+
+        """ + (1...60).map { "contributing insight line \($0)" }.joined(separator: "\n")
+        let output = earlier + "\u{1B}[2J\u{1B}[H" + error
+
+        #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
+            try read(output)
+        }
+    }
+
     @Test
     func `should not take the weekly bar's number for a session row that has none yet`() {
         // The session row is painted, its bar not filled yet; the weekly bar below has its number.
