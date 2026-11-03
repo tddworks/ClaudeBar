@@ -175,6 +175,7 @@ where they are read: a path list (`["{{account.folder}}/.claude.json",
   "quotas": [
     { "kind": "session", "at": "$.five_hour", "usedPercent": "utilization",
       "resetsAt": { "iso8601": "resets_at" },                // or epochSeconds / secondsFromNow
+      "window": [{ "seconds": "window_seconds" }, { "hours": 5 }],    // kindByWindow reads this length
       "kindByWindow": [{ "atLeast": { "days": 7 }, "kind": "weekly" }] },  // named by its length, not its place
     { "kind": "model", "each": "$.limits", "where": { "path": "kind", "equals": "weekly" },
       "name": { "firstOf": ["model.name"], "firstWord": true, "lowercase": true },
@@ -183,7 +184,9 @@ where they are read: a path list (`["{{account.folder}}/.claude.json",
     { "kind": "time", "name": "Credits",                             // money, not a percentage:
       "left": { "money": "$.data.remaining", "of": "$.data.limit", "currency": "USD" } }  // no "of" = a balance
   ],
-  "notes": [{ "label": "Usage limit resets", "value": "$.resets.count", "unit": "available" }],  // a count, not a limit
+  "notes": [{ "label": "Usage limit resets", "value": "$.resets.count", "unit": "available" },  // a count, not a limit
+    { "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },  // one note per label:
+    { "label": "Credits", "value": "$.credits.balance", "unit": "credits", "round": 0 }],                  // the first that answers
   "cost": [                                                    // the first shape that answers
     { "kind": "extraUsage", "when": { "path": "$.spend.enabled", "equals": true },
       "used":  { "amount": "$.spend.used.amount_minor", "decimals": "$.spend.used.exponent" },

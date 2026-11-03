@@ -362,27 +362,52 @@ public struct JSONMapping: Sendable, Equatable, Codable {
 /// `{ "label": "Usage limit resets", "value": "$.count", "unit": "available" }` —
 /// a number or text the answer sends, shown as a note under its label. No
 /// note when no path answers: an absent count is unknown, not zero.
+///
+/// - `when`: only while the condition holds.
+/// - `text`: the definition's own words in place of a value —
+///   `{ "label": "Credits", "when": { "path": "$.unlimited", "equals": true }, "text": "Unlimited" }`.
+/// - `round`: the value is a number, shown to at most that many decimal
+///   places with its thousands grouped (`"62500.0000000000"` with `0` →
+///   `62,500`); a place that sends no number doesn't answer.
+///
+/// One note per label: the first rule that answers wins, so a later rule
+/// can say what the label shows otherwise.
 public struct NoteRule: Sendable, Equatable, Codable {
     public let label: String
     /// The first that answers.
     public let value: [String]
     public let unit: String
+    public let when: Match?
+    public let text: String?
+    public let round: Int?
 
-    public init(label: String, value: [String], unit: String = "") {
+    public init(label: String, value: [String] = [], unit: String = "", when: Match? = nil, text: String? = nil, round: Int? = nil) {
         self.label = label
         self.value = value
         self.unit = unit
+        self.when = when
+        self.text = text
+        self.round = round
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         label = try container.decode(String.self, forKey: .label)
+        text = try container.decodeIfPresent(String.self, forKey: .text)
         if let one = try? container.decode(String.self, forKey: .value) {
             value = [one]
+        } else if text != nil {
+            value = try container.decodeIfPresent([String].self, forKey: .value) ?? []
         } else {
             value = try container.decode([String].self, forKey: .value)
         }
         unit = try container.decodeIfPresent(String.self, forKey: .unit) ?? ""
+        when = try container.decodeIfPresent(Match.self, forKey: .when)
+        round = try container.decodeIfPresent(Int.self, forKey: .round)
+        if let round, round < 0 {
+            throw DecodingError.dataCorruptedError(forKey: .round, in: container,
+                                                   debugDescription: "a note's round is a number of decimal places, 0 or more")
+        }
     }
 }
 

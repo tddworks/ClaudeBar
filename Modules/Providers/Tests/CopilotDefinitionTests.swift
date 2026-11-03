@@ -66,6 +66,11 @@ struct CopilotDefinitionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://github.com/settings/copilot/features")
     }
 
+    @Test func `should describe Billing in no one plan's unit, since annual plans count premium requests`() throws {
+        let billing = try #require(try ProviderFactory.builtIn("copilot").dataSources.first { $0.kind == "billing" })
+        #expect(billing.summary == "Reads this month's usage from GitHub billing with a fine-grained token, against your plan's allowance")
+    }
+
     // MARK: - Billing API
 
     @Test func `should show this month's Copilot AI credits against Pro's allowance when read from GitHub billing`() async throws {
