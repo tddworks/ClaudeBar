@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.25] - 2026-11-03
+
 ### Changed
 - **Usage history no longer re-reads today's logs after a relaunch**: what a scan read is kept in `~/.claudebar/usage-history/scans/`, so a new process reads only what was added since. On Windows the hourly upload's read went from 117 s to 3 s. ([#659](https://github.com/tddworks/ClaudeBar/pull/659)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/daily-usage/README.md)
 - **Copilot measures your AI credits against your plan**: Billing reads GitHub's AI credit report and asks for your Copilot plan (Pro 1,500 credits, Pro+ 7,000, Max 20,000, Business 1,900, Enterprise 3,900) instead of a number that defaulted to 50. ([#662](https://github.com/tddworks/ClaudeBar/pull/662)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/copilot/README.md)
@@ -400,7 +404,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.24...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...HEAD
+[0.5.25]: https://github.com/tddworks/ClaudeBar/compare/v0.5.24...v0.5.25
 [0.5.24]: https://github.com/tddworks/ClaudeBar/compare/v0.5.23...v0.5.24
 [0.5.23]: https://github.com/tddworks/ClaudeBar/compare/v0.5.22...v0.5.23
 [0.5.22]: https://github.com/tddworks/ClaudeBar/compare/v0.5.21...v0.5.22
