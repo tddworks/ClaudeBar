@@ -150,5 +150,29 @@ struct LinuxVersionManagersTests {
             #expect(folders.contains(folder), "\(folder) on the child's PATH")
         }
     }
+
+    @Test(arguments: [
+        ".nvm/versions/node/v22.0.0/bin/codex",
+        "data/fnm/aliases/default/bin/gemini",
+        ".asdf/shims/kimi",
+    ])
+    func `should put a version manager's folder first on its CLI's PATH, so env node finds the manager's Node`(
+        _ installed: String
+    ) throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let tool = try executable(installed)
+        let data = root.appendingPathComponent("data").path
+        let home = root.path
+
+        // A distro's own, older `node` in /usr/bin would win after the app's PATH.
+        let programs = LinuxProcesses(appEnvironment: { ["PATH": "/usr/bin:/bin", "XDG_DATA_HOME": data] },
+                                      home: { home })
+        let path = programs.environment(for: tool, ProcessEnvironment())["PATH"] ?? ""
+        let folders = path.split(separator: ":").map(String.init)
+
+        let folder = URL(fileURLWithPath: tool).deletingLastPathComponent().path
+        #expect(Array(folders.prefix(3)) == [folder, "/usr/bin", "/bin"])
+        #expect(folders.filter { $0 == folder }.count == 1)
+    }
 }
 #endif

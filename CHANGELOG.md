@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **Linux finds a CLI installed with nvm, Volta, fnm, mise or asdf without a shell**: a service or `wsl.exe -e` didn't read the shell setup that puts their folders on `PATH`. nvm's default version comes first, and a CLI's child gets the same folders. ([#682](https://github.com/tddworks/ClaudeBar/issues/682)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/architecture/MODULAR_DESIGN.md#10--one-package-three-platforms)
+- **Linux finds a CLI installed with nvm, Volta, fnm, mise or asdf without a shell**: a service or `wsl.exe -e` didn't read the shell setup that puts their folders on `PATH`. nvm's default version comes first, and the CLI runs on its manager's Node, not an older one in `/usr/bin`. ([#682](https://github.com/tddworks/ClaudeBar/issues/682))
 
 ---
 

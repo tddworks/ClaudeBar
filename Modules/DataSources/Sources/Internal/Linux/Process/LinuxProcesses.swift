@@ -30,14 +30,25 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     }
 
     /// The app's environment with the tool folders on `PATH` (a service gives
-    /// an app a minimal one), then the call's changes.
+    /// an app a minimal one), then the call's changes. A program in a version
+    /// manager's folder gets that folder first, as the manager's shell setup
+    /// puts it, so its `env node` finds the manager's Node, not an older one
+    /// in `/usr/bin` (#682).
     func environment(for path: String, _ change: ProcessEnvironment) -> [String: String] {
-        let app = appEnvironment()
-        return ChildEnvironment.exactNames(app, program: path,
-                                           defaultPath: "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-                                           toolFolders: Self.commonPaths(home: home(), environment: app),
+        var app = appEnvironment()
+        let home = self.home()
+        let folder = URL(fileURLWithPath: path).deletingLastPathComponent().path
+        if Self.versionManagerFolders(home: home, environment: app).contains(folder) {
+            let inherited = (app["PATH"] ?? Self.defaultPath).split(separator: ":").map(String.init)
+            app["PATH"] = ToolFolders.folders(folder, adding: inherited, separator: ":").joined(separator: ":")
+        }
+        return ChildEnvironment.exactNames(app, program: path, defaultPath: Self.defaultPath,
+                                           toolFolders: Self.commonPaths(home: home, environment: app),
                                            change: change)
     }
+
+    /// A child's `PATH` when the app has none.
+    private static let defaultPath = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
     // Asked to stop (`SIGTERM`), then killed after two seconds.
     var stopGrace: Duration? { .seconds(2) }
@@ -54,22 +65,13 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     /// The tool folders of a person whose home is `home`; `environment` gives
     /// the XDG data and config folders, where fnm, mise and nvm can live.
     static func commonPaths(home: String, environment: [String: String]) -> [String] {
-        let data = xdgFolders(environment["XDG_DATA_HOME"], default: "\(home)/.local/share")
-        let config = xdgFolders(environment["XDG_CONFIG_HOME"], default: "\(home)/.config")
         let userLocal = [
             "\(home)/.local/bin",
             "\(home)/.cargo/bin",
             "\(home)/.bun/bin",
             "\(home)/bin",
         ]
-        // Version managers: each nvm version's `bin`, Volta's, fnm's default
-        // version's, and mise's and asdf's shims.
-        let nvm: [String] = ["\(home)/.nvm"] + config.map { "\($0)/nvm" }
-        var versionManagers: [String] = nvm.flatMap(nvmFolders)
-        versionManagers.append("\(home)/.volta/bin")
-        versionManagers += data.map { "\($0)/fnm/aliases/default/bin" }
-        versionManagers += data.map { "\($0)/mise/shims" }
-        versionManagers.append("\(home)/.asdf/shims")
+        let versionManagers = versionManagerFolders(home: home, environment: environment)
         let elsewhere = [
             // System-wide
             "/usr/local/bin",
@@ -88,6 +90,20 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
             "\(home)/.npm-global/bin",
         ]
         return userLocal + versionManagers + elsewhere
+    }
+
+    /// The version managers' folders: each nvm version's `bin`, Volta's, fnm's
+    /// default version's, and mise's and asdf's shims.
+    private static func versionManagerFolders(home: String, environment: [String: String]) -> [String] {
+        let data = xdgFolders(environment["XDG_DATA_HOME"], default: "\(home)/.local/share")
+        let config = xdgFolders(environment["XDG_CONFIG_HOME"], default: "\(home)/.config")
+        let nvm: [String] = ["\(home)/.nvm"] + config.map { "\($0)/nvm" }
+        var folders: [String] = nvm.flatMap(nvmFolders)
+        folders.append("\(home)/.volta/bin")
+        folders += data.map { "\($0)/fnm/aliases/default/bin" }
+        folders += data.map { "\($0)/mise/shims" }
+        folders.append("\(home)/.asdf/shims")
+        return folders
     }
 
     /// An XDG base folder: the variable's when it is an absolute path, then
