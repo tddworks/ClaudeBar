@@ -97,7 +97,10 @@ struct LinuxProcesses: InstalledPrograms, ScriptStart, LoginShell, ChildLaunch {
     private static func versionManagerFolders(home: String, environment: [String: String]) -> [String] {
         let data = xdgFolders(environment["XDG_DATA_HOME"], default: "\(home)/.local/share")
         let config = xdgFolders(environment["XDG_CONFIG_HOME"], default: "\(home)/.config")
-        let nvm: [String] = ["\(home)/.nvm"] + config.map { "\($0)/nvm" }
+        // nvm's installer uses `$XDG_CONFIG_HOME/nvm` when that is set, else
+        // `~/.nvm`; `config` ends with the default, `~/.config`.
+        let nvm: [String] = config.dropLast().map { "\($0)/nvm" } + ["\(home)/.nvm"]
+            + config.suffix(1).map { "\($0)/nvm" }
         var folders: [String] = nvm.flatMap(nvmFolders)
         folders.append("\(home)/.volta/bin")
         folders += data.map { "\($0)/fnm/aliases/default/bin" }

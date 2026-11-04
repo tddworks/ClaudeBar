@@ -48,17 +48,21 @@ struct LinuxVersionManagersTests {
     }
 
     @Test(arguments: [
-        "data/fnm/aliases/default/bin/gemini",
-        "data/mise/shims/opencode",
-        "config/nvm/versions/node/v22.0.0/bin/codex",
+        ("data/fnm/aliases/default/bin/gemini", ".local/share/fnm/aliases/default/bin/gemini"),
+        ("data/mise/shims/opencode", ".local/share/mise/shims/opencode"),
+        // nvm's installer uses `$XDG_CONFIG_HOME/nvm` when that is set.
+        ("config/nvm/versions/node/v22.0.0/bin/codex", ".nvm/versions/node/v22.0.0/bin/codex"),
     ])
-    func `should find a CLI under the XDG data and config folders the person moved`(_ installed: String) throws {
+    func `should find a CLI under the XDG folders the person moved, before the default ones`(
+        moved: String, usual: String
+    ) throws {
         defer { try? FileManager.default.removeItem(at: root) }
-        let tool = try executable(installed)
+        let tool = try executable(moved)
+        try executable(usual)
 
         let locator = locator(environment: ["XDG_DATA_HOME": root.appendingPathComponent("data").path,
                                             "XDG_CONFIG_HOME": root.appendingPathComponent("config").path])
-        #expect(locator.locate(URL(fileURLWithPath: installed).lastPathComponent) == tool)
+        #expect(locator.locate(URL(fileURLWithPath: moved).lastPathComponent) == tool)
     }
 
     /// nvm's installed versions, in no order, each with its own Codex.
