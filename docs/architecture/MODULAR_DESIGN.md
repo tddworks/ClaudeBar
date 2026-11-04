@@ -643,8 +643,9 @@ Modules/DataSources/Sources/
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
         ├── Time/LinuxTimeZone.swift     TimeZone.current; a zone with no tzdata
         │                                 file is the OS's offset, fixed
-        ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH, then tool folders),
-        │                                 /bin/sh, $SHELL -l -i, SIGTERM then kill
+        ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH, then tool folders,
+        │                                 version managers' included, #682), /bin/sh, $SHELL -l -i,
+        │                                 SIGTERM then kill
         └── Logs/                    FileStamp+Linux · ByteSearch+Linux
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
