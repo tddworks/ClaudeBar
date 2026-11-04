@@ -150,14 +150,14 @@ struct JSONRPCFetcher: Fetching {
         // its pipe ignores cancellation, so at the deadline, or when the
         // refresh is cancelled, the transport is closed: that stops the CLI
         // and ends the read.
-        let deadline = Deadline()
+        let allowance = FetchContext.startAllowance
+        let deadline = Deadline(timeout: call.timeout, startAllowance: allowance)
         do {
             return try await withTaskCancellationHandler {
                 try await withThrowingTaskGroup(of: Response?.self) { group in
-                    group.addTask { try await exchange(over: transport) }
+                    group.addTask { try await exchange(over: transport, deadline: deadline) }
                     group.addTask {
-                        try await Task.sleep(for: .seconds(call.timeout))
-                        deadline.pass()
+                        try await deadline.wait()
                         transport.close()
                         return nil
                     }
@@ -173,21 +173,24 @@ struct JSONRPCFetcher: Fetching {
                 transport.close()
             }
         } catch where deadline.hasPassed {
-            AppLog.probes.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s")
+            let start = allowance > 0 ? ", \(Int(allowance))s more to start" : ""
+            AppLog.probes.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s\(start)")
             throw UsageError.timeout
         }
     }
 
-    private func exchange(over transport: any RPCTransport) async throws -> Response {
+    private func exchange(over transport: any RPCTransport, deadline: Deadline) async throws -> Response {
         let session = RPCSession(transport: transport, errors: call.errors)
         for step in call.handshake {
             if let method = step.request {
                 _ = try await session.request(method, params: step.params)
+                deadline.answered()
             } else if let method = step.notify {
                 try session.notify(method, params: step.params)
             }
         }
         var message = try await session.request(call.call, params: call.params)
+        deadline.answered()
         for followUp in call.then {
             message[followUp.as] = try await session.request(followUp.request, params: followUp.params)
         }
@@ -196,12 +199,38 @@ struct JSONRPCFetcher: Fetching {
     }
 }
 
-/// Whether a JSON-RPC exchange ran out of time — set by its timer, read by
-/// the fetch.
+/// When a JSON-RPC exchange runs out of time, and whether it has: `timeout`
+/// after the CLI first answers a request, or, while it hasn't, `timeout`
+/// plus the time it may take to start (`FetchContext.startAllowance`, #685).
+/// The exchange says when the CLI answered; its timer waits for the end.
 private final class Deadline: Sendable {
+    private let timeout: Duration
+    private let latest: ContinuousClock.Instant
+    private let firstAnswer = Mutex<ContinuousClock.Instant?>(nil)
     private let passed = Mutex(false)
 
-    func pass() { passed.withLock { $0 = true } }
+    init(timeout: TimeInterval, startAllowance: TimeInterval) {
+        self.timeout = .seconds(timeout)
+        latest = .now + .seconds(timeout + max(0, startAllowance))
+    }
+
+    /// The CLI answered a request; the timeout counts from the first time it did.
+    func answered() {
+        firstAnswer.withLock { $0 = $0 ?? .now }
+    }
+
+    /// Returns when the deadline passes.
+    func wait() async throws {
+        while true {
+            let end = firstAnswer.withLock { $0 }.map { min(latest, $0 + timeout) } ?? latest
+            let now = ContinuousClock.now
+            guard now < end else { break }
+            // A first answer brings the end closer, so look again at least every 100 ms.
+            try await Task.sleep(until: min(end, now + .milliseconds(100)), clock: .continuous)
+        }
+        passed.withLock { $0 = true }
+    }
+
     var hasPassed: Bool { passed.withLock { $0 } }
 }
 

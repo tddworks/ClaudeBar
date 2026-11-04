@@ -14,14 +14,15 @@ struct Program: Sendable {
     let processes: Processes
 
     /// Runs it to the end over pipes and answers with what it printed, stdout
-    /// and stderr as one text.
+    /// and stderr as one text. It answers only when it ends, so the time it
+    /// may take to start (`FetchContext.startAllowance`) is added to `timeout`.
     func run(_ arguments: [String] = [], input: String? = nil, environment: ProcessEnvironment = ProcessEnvironment(),
              timeout: TimeInterval, in directory: URL?) async throws -> String {
         let result: CLIResult
         do {
             result = try await processes.pipes(environment).execute(
-                binary: command[0], args: Array(command.dropFirst()) + arguments, input: input, timeout: timeout,
-                workingDirectory: directory, autoResponses: [:]
+                binary: command[0], args: Array(command.dropFirst()) + arguments, input: input,
+                timeout: timeout + max(0, FetchContext.startAllowance), workingDirectory: directory, autoResponses: [:]
             )
         } catch UsageError.cliNotFound {
             // Gone between finding it and running it.

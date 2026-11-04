@@ -210,6 +210,59 @@ struct InteractiveRunnerTests {
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
         #expect(result.exitCode == -1)
     }
+
+    // MARK: - A slow start (#685)
+
+    @Test
+    func `should give a CLI no extra time to start unless the host allows it`() {
+        #expect(InteractiveRunner.Options().startAllowance == 0)
+    }
+
+    @Test
+    func `should give a CLI the extra time to start that the host allows`() {
+        let options = FetchContext.$startAllowance.withValue(30) { InteractiveRunner.Options() }
+        #expect(options.startAllowance == 30)
+    }
+
+    @Test
+    func `should read a CLI that shows nothing until past its timeout when the host allows it time to start (#685)`() throws {
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
+        // A CLI read from a cold disk in WSL: a blank screen for longer than its timeout, then its answer.
+        let program = ShellProgram(
+            sh: "sleep 3; printf 'Current session 1%% used'",
+            powershell: "Start-Sleep 3; [Console]::Write('Current session 1% used')"
+        )
+
+        let result = try runner.run(
+            binary: program.binary,
+            input: "",
+            options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage, startAllowance: 8)
+        )
+
+        #expect(PlatformTerminal.screen(result.output).contains("Current session"))
+    }
+
+    @Test
+    func `should stop at the timeout once the CLI has shown something, however long it may take to start`() throws {
+        let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
+        // A screen still filling in when the timeout passes. The time to start
+        // was spent the moment the CLI showed something, so the capture stops
+        // at its timeout: `exitCode` is -1 while the CLI still runs, so this
+        // proves it didn't wait the 15 s out.
+        let program = ShellProgram(
+            sh: "printf 'Loading usage data...'; sleep 15",
+            powershell: "[Console]::Write('Loading usage data...'); Start-Sleep 15"
+        )
+
+        let result = try runner.run(
+            binary: program.binary,
+            input: "",
+            options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage, startAllowance: 60)
+        )
+
+        #expect(PlatformTerminal.screen(result.output).contains("Loading usage data"))
+        #expect(result.exitCode == -1)
+    }
 }
 
 // MARK: - hasMeaningfulContent Tests

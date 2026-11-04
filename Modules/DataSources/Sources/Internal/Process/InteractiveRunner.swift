@@ -78,6 +78,11 @@ public struct InteractiveRunner: Sendable {
         /// the monitor's `.utility` scope captures `.utility` — `run()` itself may
         /// then execute on a plain thread without losing the task local (issue #204).
         public var qualityOfService: QualityOfService
+        /// More time for the CLI to start, spent only while its screen is
+        /// still blank (`FetchContext.startAllowance`, read where `Options`
+        /// is built, as `qualityOfService` is). Once the CLI shows something,
+        /// `timeout` counts from then, never past `timeout` plus this.
+        public var startAllowance: TimeInterval
 
         public init(
             timeout: TimeInterval = 20.0,
@@ -88,7 +93,8 @@ public struct InteractiveRunner: Sendable {
             environmentAdditions: [String: String] = [:],
             completionRule: CLICompletionRule? = nil,
             inputDelay: TimeInterval = 0.4,
-            qualityOfService: QualityOfService = FetchContext.qualityOfService
+            qualityOfService: QualityOfService = FetchContext.qualityOfService,
+            startAllowance: TimeInterval = FetchContext.startAllowance
         ) {
             self.timeout = timeout
             self.workingDirectory = workingDirectory
@@ -99,6 +105,7 @@ public struct InteractiveRunner: Sendable {
             self.completionRule = completionRule
             self.inputDelay = inputDelay
             self.qualityOfService = qualityOfService
+            self.startAllowance = startAllowance
         }
     }
 
@@ -234,7 +241,11 @@ public struct InteractiveRunner: Sendable {
 
     /// Captures output from the command, automatically responding to known prompts.
     private func captureOutput(from session: any TerminalSession, options: Options) -> Data {
-        let deadline = Date().addingTimeInterval(options.timeout)
+        // The timeout counts from the moment the screen shows something; while
+        // it is still blank the CLI may take `startAllowance` more to start (#685).
+        let latest = Date().addingTimeInterval(options.timeout + max(0, options.startAllowance))
+        var deadline = latest
+        var shown = false
         var buffer = Data()
         var lastMeaningfulDataTime = Date()
         let idleTimeout: TimeInterval = 3.0  // Exit if no new meaningful data for 3 seconds
@@ -253,6 +264,10 @@ public struct InteractiveRunner: Sendable {
                 let newData = buffer.suffix(from: previousSize)
                 if isMeaningfulData(newData) {
                     lastMeaningfulDataTime = Date()
+                }
+                if !shown, hasMeaningfulContent(buffer) {
+                    shown = true
+                    deadline = min(latest, Date().addingTimeInterval(options.timeout))
                 }
             }
 
