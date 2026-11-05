@@ -230,6 +230,8 @@ struct InteractiveRunnerTests {
     func `should read a CLI that shows nothing until past its timeout when the host allows it time to start (#685)`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // A CLI read from a cold disk in WSL: a blank screen for longer than its timeout, then its answer.
+        // The time to start is `PlatformTerminal.deadline`, a ceiling, never a wait: the blank screen
+        // includes the shell's own start, and PowerShell's on a busy runner outlasted 8 s (#686).
         let program = ShellProgram(
             sh: "sleep 3; printf 'Current session 1%% used'",
             powershell: "Start-Sleep 3; [Console]::Write('Current session 1% used')"
@@ -238,7 +240,8 @@ struct InteractiveRunnerTests {
         let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
-            options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage, startAllowance: 8)
+            options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage,
+                           startAllowance: PlatformTerminal.deadline)
         ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
