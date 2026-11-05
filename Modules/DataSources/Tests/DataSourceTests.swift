@@ -246,7 +246,10 @@ struct DataSourceTests {
     @Test
     func `should read a JSON-RPC CLI that first answers after its timeout when the host allows it time to start (#685)`() async throws {
         // A CLI read from a cold disk in WSL: its app-server answers the
-        // handshake only after the definition's timeout.
+        // handshake only after the definition's timeout. The time to start is
+        // a ceiling, never a wait, as a terminal test's `PlatformTerminal.deadline`
+        // is: the suite runs its tests at once, and on the Windows runner one
+        // that only computes took 21 s from its start to its end (#686).
         let definition = try decode("""
         {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":0.2,
            "handshake":[{"request":"initialize"},{"notify":"initialized"}]}},
@@ -263,7 +266,7 @@ struct DataSourceTests {
             now: { Date() }
         )
 
-        let usage = try await FetchContext.$startAllowance.withValue(10) { try await source.fetchUsage() }
+        let usage = try await FetchContext.$startAllowance.withValue(60) { try await source.fetchUsage() }
 
         #expect(usage.quota(for: .weekly)?.percentRemaining == 60)
     }
@@ -271,7 +274,8 @@ struct DataSourceTests {
     @Test
     func `should give up on a JSON-RPC CLI that stops answering once it started, at its timeout, however long it may take to start`() async throws {
         // It answered the handshake, then stalled (#517): the time to start
-        // was spent then, so the refresh ends at the timeout, not 60 s later.
+        // was spent then, so the refresh ends at the timeout, not 120 s later.
+        // Under a minute is that on a loaded runner too (#686).
         let definition = try decode("""
         {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":0.3,
            "handshake":[{"request":"initialize"},{"notify":"initialized"}]}},
@@ -291,9 +295,9 @@ struct DataSourceTests {
         let started = clock.now
 
         await #expect(throws: DataSourceError(.fetch, .timeout)) {
-            try await FetchContext.$startAllowance.withValue(60) { try await source.fetchUsage() }
+            try await FetchContext.$startAllowance.withValue(120) { try await source.fetchUsage() }
         }
-        #expect(clock.now - started < .seconds(10))
+        #expect(clock.now - started < .seconds(60))
     }
 
     @Test(arguments: [
