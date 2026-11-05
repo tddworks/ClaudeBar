@@ -23,11 +23,10 @@ public enum FetchContext {
     /// A timeout stops a CLI that stalled; one that is still loading from a
     /// cold disk hasn't. In a WSL distro, WSL hands the page cache back to
     /// Windows once the distro idles, so a read every ten minutes starts
-    /// Claude's 316 MiB CLI and Codex's 216 MiB one from the disk: 18–24 s
-    /// before Claude shows anything and 11–19 s before Codex's app-server
-    /// answers, past their 20 s and 15 s (#685). A host that starts its
-    /// CLIs that way binds this around its refresh, as the background loop
-    /// binds `qualityOfService`.
+    /// CLIs of a few hundred MiB from the disk, and they can take longer to
+    /// show or answer anything than their timeouts allow (#685 has the
+    /// figures). A host that starts its CLIs that way binds this around its
+    /// refresh, as the background loop binds `qualityOfService`.
     ///
     /// It is spent only while the CLI hasn't shown that it started: a
     /// terminal's screen still blank, a JSON-RPC CLI's first request not yet
