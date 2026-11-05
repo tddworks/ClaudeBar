@@ -3,18 +3,20 @@ import Foundation
 import Quotas
 @testable import DataSources
 
+/// A run in a real terminal blocks its thread until the program ends or its
+/// screen rule is met, so each runs on a thread of its own (`onItsOwnThread`).
 @Suite(.needsTerminal)
 struct InteractiveRunnerTests {
 
     @Test
-    func `should show what a CLI printed and its success`() throws {
+    func `should show what a CLI printed and its success`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         let echo = ShellProgram(sh: "echo hello", powershell: "'hello'")
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: echo.binary,
             input: "",
             options: .init(timeout: PlatformTerminal.deadline, arguments: echo.arguments)
-        )
+        ) }
 
         #expect(result.exitCode == 0)
         #expect(PlatformTerminal.screen(result.output).contains("hello"))
@@ -43,7 +45,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `should start the CLI without the environment values it is told to drop`() throws {
+    func `should start the CLI without the environment values it is told to drop`() async throws {
         // The app has a value the call drops.
         let testKey = "CLAUDEBAR_TEST_EXCLUSION_VAR"
         let runner = InteractiveRunner(
@@ -54,17 +56,17 @@ struct InteractiveRunnerTests {
 
         // Print the variable with the exclusion — its value should NOT appear
         let env = ShellProgram(sh: "env", powershell: "'\(testKey)=' + $env:\(testKey)")
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: env.binary,
             input: "",
             options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments, environmentExclusions: [testKey])
-        )
+        ) }
 
         #expect(!PlatformTerminal.screen(result.output).contains("CLAUDEBAR_TEST_EXCLUSION_VAR=should_be_stripped"))
     }
 
     @Test
-    func `should start the CLI with this app's environment values when none are dropped`() throws {
+    func `should start the CLI with this app's environment values when none are dropped`() async throws {
         let testKey = "CLAUDEBAR_TEST_PRESERVE_VAR"
         let runner = InteractiveRunner(
             terminal: PlatformTerminal.terminal,
@@ -74,11 +76,11 @@ struct InteractiveRunnerTests {
 
         // Print the variable without exclusion — its value SHOULD appear
         let env = ShellProgram(sh: "env", powershell: "'\(testKey)=' + $env:\(testKey)")
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: env.binary,
             input: "",
             options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments)
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("CLAUDEBAR_TEST_PRESERVE_VAR=should_be_present"))
     }
@@ -91,15 +93,15 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `should start the CLI with the extra environment values it is given (#222)`() throws {
+    func `should start the CLI with the extra environment values it is given (#222)`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
 
         let env = ShellProgram(sh: "env", powershell: "'CLAUDEBAR_PROBE=' + $env:CLAUDEBAR_PROBE")
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: env.binary,
             input: "",
             options: .init(timeout: PlatformTerminal.deadline, arguments: env.arguments, environmentAdditions: ["CLAUDEBAR_PROBE": "1"])
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("CLAUDEBAR_PROBE=1"))
     }
@@ -118,7 +120,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `should keep waiting past a quiet spell while Claude's usage screen shows only its placeholder (#271)`() throws {
+    func `should keep waiting past a quiet spell while Claude's usage screen shows only its placeholder (#271)`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // Paints a placeholder, then goes quiet for longer than the 3s idle
         // cutoff before the real content arrives — exactly how `claude /usage`
@@ -128,7 +130,7 @@ struct InteractiveRunnerTests {
             powershell: "[Console]::Write('Loading usage data...'); Start-Sleep 5; [Console]::Write('Current session 1% used')"
         )
 
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
             options: .init(
@@ -136,7 +138,7 @@ struct InteractiveRunnerTests {
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
     }
@@ -144,7 +146,7 @@ struct InteractiveRunnerTests {
     // MARK: - Completion Rule (issue #317)
 
     @Test
-    func `should keep waiting past a quiet spell while the CLI is still booting (#317)`() throws {
+    func `should keep waiting past a quiet spell while the CLI is still booting (#317)`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // The probe launches `claude /usage`, but the CLI only submits the command
         // once it has finished booting. For a few seconds the screen is the boot
@@ -172,7 +174,7 @@ struct InteractiveRunnerTests {
             """
         )
 
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
             options: .init(
@@ -180,13 +182,13 @@ struct InteractiveRunnerTests {
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
     }
 
     @Test
-    func `should stop at once on a finished usage screen rather than wait out the timeout`() throws {
+    func `should stop at once on a finished usage screen rather than wait out the timeout`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // Over-waiting is its own failure: a finished screen must still stop the
         // capture at the idle cutoff instead of blocking for the whole timeout.
@@ -197,7 +199,7 @@ struct InteractiveRunnerTests {
             powershell: "[Console]::Write('Current session 1% used'); Start-Sleep 15"
         )
 
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
             options: .init(
@@ -205,7 +207,7 @@ struct InteractiveRunnerTests {
                 arguments: program.arguments,
                 completionRule: .claudeUsage
             )
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
         #expect(result.exitCode == -1)
@@ -225,7 +227,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `should read a CLI that shows nothing until past its timeout when the host allows it time to start (#685)`() throws {
+    func `should read a CLI that shows nothing until past its timeout when the host allows it time to start (#685)`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // A CLI read from a cold disk in WSL: a blank screen for longer than its timeout, then its answer.
         let program = ShellProgram(
@@ -233,17 +235,17 @@ struct InteractiveRunnerTests {
             powershell: "Start-Sleep 3; [Console]::Write('Current session 1% used')"
         )
 
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
             options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage, startAllowance: 8)
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Current session"))
     }
 
     @Test
-    func `should stop at the timeout once the CLI has shown something, however long it may take to start`() throws {
+    func `should stop at the timeout once the CLI has shown something, however long it may take to start`() async throws {
         let runner = InteractiveRunner(terminal: PlatformTerminal.terminal, programs: PlatformTerminal.programs)
         // A screen still filling in when the timeout passes. The time to start
         // was spent the moment the CLI showed something, so the capture stops
@@ -254,11 +256,11 @@ struct InteractiveRunnerTests {
             powershell: "[Console]::Write('Loading usage data...'); Start-Sleep 15"
         )
 
-        let result = try runner.run(
+        let result = try await onItsOwnThread { try runner.run(
             binary: program.binary,
             input: "",
             options: .init(timeout: 2, arguments: program.arguments, completionRule: .claudeUsage, startAllowance: 60)
-        )
+        ) }
 
         #expect(PlatformTerminal.screen(result.output).contains("Loading usage data"))
         #expect(result.exitCode == -1)
