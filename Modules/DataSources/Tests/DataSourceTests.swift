@@ -275,7 +275,8 @@ struct DataSourceTests {
     func `should give up on a JSON-RPC CLI that stops answering once it started, at its timeout, however long it may take to start`() async throws {
         // It answered the handshake, then stalled (#517): the time to start
         // was spent then, so the refresh ends at the timeout, not 120 s later.
-        // Under a minute is that on a loaded runner too (#686).
+        // Under a minute is that on a loaded runner too (#686); the instant
+        // it ends, the first answer plus the timeout, is `JSONRPCDeadlineTests`'.
         let definition = try decode("""
         {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","args":["app-server"],"call":"read","timeout":0.3,
            "handshake":[{"request":"initialize"},{"notify":"initialized"}]}},
