@@ -90,6 +90,26 @@ struct CommandTests {
     }
 
     @Test
+    func `should show the quota a command prints after its timeout when the host allows it time to start (#685)`() async throws {
+        // A CLI read from a cold disk in WSL: it needs 15 s, its definition gives it 10.
+        let executor = MockCLIExecutor()
+        given(executor).locate(.any).willReturn("/usr/local/bin/acme")
+        given(executor).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, timeout, _, _ in
+                guard timeout >= 15 else { throw UsageError.timeout }
+                return CLIResult(output: #"{"used":30}"#, exitCode: 0)
+            }
+        let source = make(try decode("""
+        {"kind":"cli","fetch":{"command":{"cli":"acme","timeout":10}},
+         "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"used"}]}}}
+        """), executor: executor)
+
+        let usage = try await FetchContext.$startAllowance.withValue(10) { try await source.fetchUsage() }
+
+        #expect(usage.quota(for: .weekly)?.percentRemaining == 70)
+    }
+
+    @Test
     func `should hand the key to the command only through its environment`() throws {
         let environment = try ProcessEnvironment(set: ["ACME_TOKEN": "{{token}}"]).filled(with: Credential(["token": "k-1"]))
         #expect(environment.set == ["ACME_TOKEN": "k-1"])

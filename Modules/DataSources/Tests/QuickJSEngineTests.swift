@@ -4,7 +4,11 @@ import Testing
 
 /// The one script engine, QuickJS, on every platform (#570): what
 /// `ScriptEngine` promises a mapping, run for real.
-@Suite
+///
+/// One test at a time: a run left to its deadline keeps a core busy for
+/// seconds (one of slow steps, until its next check, some 20 s), and several
+/// at once left the suites running beside them no core on a CI runner (#686).
+@Suite(.serialized)
 struct QuickJSEngineTests {
     private let engine = QuickJSEngine()
 
@@ -64,41 +68,48 @@ struct QuickJSEngineTests {
 
     /// What a run that never ends throws, and how long it took to throw it:
     /// well within the deadline's few seconds past it, so a hang can't pass.
-    private func timed(_ body: () throws -> Void) -> (error: (any Error)?, seconds: Double) {
+    /// Its caller waits out the deadline, so it waits on a thread of its own
+    /// (`onItsOwnThread`).
+    private func timed(_ body: @escaping @Sendable () throws -> Void) async -> (error: (any Error)?, seconds: Double) {
         let start = Date()
-        do { try body(); return (nil, -start.timeIntervalSinceNow) } catch { return (error, -start.timeIntervalSinceNow) }
+        do {
+            try await onItsOwnThread(body)
+            return (nil, -start.timeIntervalSinceNow)
+        } catch {
+            return (error, -start.timeIntervalSinceNow)
+        }
     }
 
-    @Test func `should stop an expression that never ends at its deadline`() {
-        let (error, seconds) = timed { _ = try run("for (;;) {}") }
+    @Test func `should stop an expression that never ends at its deadline`() async {
+        let (error, seconds) = await timed { _ = try run("for (;;) {}") }
         #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
         #expect(seconds >= QuickJSEngine.deadline && seconds < QuickJSEngine.deadline + 10)
     }
 
     /// The interruption can't be caught: a script's own `catch` doesn't keep it going.
-    @Test func `should stop a function that never ends, even one that catches what it throws`() {
-        let (error, _) = timed {
+    @Test func `should stop a function that never ends, even one that catches what it throws`() async {
+        let (error, _) = await timed {
             _ = try run("spin()", after: ["function spin() { for (;;) { try { for (;;) {} } catch (e) {} } }"])
         }
         #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
     }
 
-    @Test func `should stop a script that never finishes loading`() {
-        let (error, _) = timed { _ = try run("1", after: ["while (true) {}"]) }
+    @Test func `should stop a script that never finishes loading`() async {
+        let (error, _) = await timed { _ = try run("1", after: ["while (true) {}"]) }
         #expect(error as? ScriptEngineError == .load("InternalError: interrupted"))
     }
 
     /// QuickJS asks for the deadline once every 10,000 steps, so a loop whose
     /// every step is slow (about 2 ms here) would stop some 20 seconds after
     /// it started; the caller has its answer at the deadline anyway.
-    @Test func `should answer at the deadline even when each step of an endless loop is slow`() {
-        let (error, seconds) = timed { _ = try run("for (;;) { ((1n << 20000n) - 1n) * ((1n << 20000n) - 3n); }") }
+    @Test func `should answer at the deadline even when each step of an endless loop is slow`() async {
+        let (error, seconds) = await timed { _ = try run("for (;;) { ((1n << 20000n) - 1n) * ((1n << 20000n) - 3n); }") }
         #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
         #expect(seconds < QuickJSEngine.deadline + 3)
     }
 
-    @Test func `should say a script was still loading when the caller stopped waiting`() {
-        let (error, _) = timed {
+    @Test func `should say a script was still loading when the caller stopped waiting`() async {
+        let (error, _) = await timed {
             _ = try run("1", after: ["for (;;) { ((1n << 20000n) - 1n) * ((1n << 20000n) - 3n); }"])
         }
         #expect(error as? ScriptEngineError == .load("InternalError: interrupted"))
@@ -106,15 +117,15 @@ struct QuickJSEngineTests {
 
     /// An argument whose text never ends is interrupted while it is read; the
     /// host function isn't called, and the interruption isn't lost.
-    @Test func `should stop a run whose host-function argument never turns into text`() {
-        let (error, _) = timed {
+    @Test func `should stop a run whose host-function argument never turns into text`() async {
+        let (error, _) = await timed {
             _ = try run("String(nothing({ toString() { for (;;) {} } }))", functions: ["nothing": { _ in nil }])
         }
         #expect(error as? ScriptEngineError == .run("InternalError: interrupted"))
     }
 
-    @Test func `should fail a script that grows without end instead of the process`() {
-        let (error, seconds) = timed {
+    @Test func `should fail a script that grows without end instead of the process`() async {
+        let (error, seconds) = await timed {
             _ = try run("grow()", after: ["function grow() { const all = []; for (;;) all.push(new Array(1 << 20).fill(1)); }"])
         }
         #expect(error as? ScriptEngineError == .run("InternalError: out of memory"))

@@ -17,4 +17,22 @@ import Foundation
 /// refreshes the monitor fans out.
 public enum FetchContext {
     @TaskLocal public static var qualityOfService: QualityOfService = .default
+
+    /// Seconds a CLI a fetch starts may take to start, on top of its timeout.
+    ///
+    /// A timeout stops a CLI that stalled; one that is still loading from a
+    /// cold disk hasn't. In a WSL distro, WSL hands the page cache back to
+    /// Windows once the distro idles, so a read every ten minutes starts
+    /// CLIs of a few hundred MiB from the disk, and they can take longer to
+    /// show or answer anything than their timeouts allow (#685 has the
+    /// figures). A host that starts its CLIs that way binds this around its
+    /// refresh, as the background loop binds `qualityOfService`.
+    ///
+    /// It is spent only while the CLI hasn't shown that it started: a
+    /// terminal's screen still blank, a JSON-RPC CLI's first request not yet
+    /// answered. Once it has, the timeout counts from then, so a CLI that
+    /// starts at once is given exactly its timeout. A command, which answers
+    /// when it ends, gets it on top of its timeout. Nothing binds it on the
+    /// Mac, where it stays 0.
+    @TaskLocal public static var startAllowance: TimeInterval = 0
 }
