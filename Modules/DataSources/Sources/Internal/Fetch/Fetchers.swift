@@ -151,7 +151,7 @@ struct JSONRPCFetcher: Fetching {
         // refresh is cancelled, the transport is closed: that stops the CLI
         // and ends the read.
         let allowance = FetchContext.startAllowance
-        let deadline = Deadline(timeout: call.timeout, startAllowance: allowance)
+        let deadline = RPCDeadline(timeout: call.timeout, startAllowance: allowance)
         do {
             return try await withTaskCancellationHandler {
                 try await withThrowingTaskGroup(of: Response?.self) { group in
@@ -179,7 +179,7 @@ struct JSONRPCFetcher: Fetching {
         }
     }
 
-    private func exchange(over transport: any RPCTransport, deadline: Deadline) async throws -> Response {
+    private func exchange(over transport: any RPCTransport, deadline: RPCDeadline) async throws -> Response {
         let session = RPCSession(transport: transport, errors: call.errors)
         for step in call.handshake {
             if let method = step.request {
@@ -203,26 +203,31 @@ struct JSONRPCFetcher: Fetching {
 /// after the CLI first answers a request, or, while it hasn't, `timeout`
 /// plus the time it may take to start (`FetchContext.startAllowance`, #685).
 /// The exchange says when the CLI answered; its timer waits for the end.
-private final class Deadline: Sendable {
+final class RPCDeadline: Sendable {
     private let timeout: Duration
     private let latest: ContinuousClock.Instant
     private let firstAnswer = Mutex<ContinuousClock.Instant?>(nil)
     private let passed = Mutex(false)
 
-    init(timeout: TimeInterval, startAllowance: TimeInterval) {
+    init(timeout: TimeInterval, startAllowance: TimeInterval, startedAt start: ContinuousClock.Instant = .now) {
         self.timeout = .seconds(timeout)
-        latest = .now + .seconds(timeout + max(0, startAllowance))
+        latest = start + .seconds(timeout + max(0, startAllowance))
     }
 
     /// The CLI answered a request; the timeout counts from the first time it did.
-    func answered() {
-        firstAnswer.withLock { $0 = $0 ?? .now }
+    func answered(at instant: ContinuousClock.Instant = .now) {
+        firstAnswer.withLock { $0 = $0 ?? instant }
+    }
+
+    /// When the exchange runs out of time, as things stand.
+    var end: ContinuousClock.Instant {
+        firstAnswer.withLock { $0 }.map { min(latest, $0 + timeout) } ?? latest
     }
 
     /// Returns when the deadline passes.
     func wait() async throws {
         while true {
-            let end = firstAnswer.withLock { $0 }.map { min(latest, $0 + timeout) } ?? latest
+            let end = self.end
             let now = ContinuousClock.now
             guard now < end else { break }
             // A first answer brings the end closer, so look again at least every 100 ms.
