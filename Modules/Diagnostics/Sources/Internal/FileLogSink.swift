@@ -6,7 +6,8 @@ import Foundation
 ///
 /// Lines are appended on a serial queue, so a log call never waits on the
 /// disk; it is `@unchecked Sendable` because that queue is the only place its
-/// file is touched.
+/// file is touched in this process. Another process may write the same file;
+/// `LogFile` lets the OS put each line at its end.
 final class FileLogSink: LogSink, @unchecked Sendable {
     let fileURL: URL
     private let maxFileSize: Int
@@ -28,15 +29,12 @@ final class FileLogSink: LogSink, @unchecked Sendable {
         guard let label = Self.label(level) else { return }
         queue.async { [self] in
             rotateIfNeeded()
-            let line = Data("[\(Self.timestamp())] [\(label)] [\(category)] \(message)\n".utf8)
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                if let handle = try? FileHandle(forWritingTo: fileURL) {
-                    defer { try? handle.close() }
-                    _ = try? handle.seekToEnd()
-                    try? handle.write(contentsOf: line)
-                }
-            } else {
-                try? line.write(to: fileURL, options: .atomic)
+            let line = "[\(Self.timestamp())] [\(label)] [\(category)] \(message)\n"
+            do {
+                try LogFile.append(Data(line.utf8), to: fileURL)
+            } catch {
+                // Not through AppLog: this sink is how AppLog writes.
+                NSLog("[FileLogSink] Failed to write to %@ (%@): %@", fileURL.path, error.localizedDescription, line)
             }
         }
     }
