@@ -243,7 +243,7 @@ struct CredentialReadersTests {
     /// person out of the CLI and of ClaudeBar. The app starts programs all the
     /// time; none of them may keep the save from its file, or leave a copy of
     /// the login beside it.
-    @Test
+    @Test(.startsPrograms)
     func `should save every renewed login into its file while the app starts programs`() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("readers-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

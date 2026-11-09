@@ -1,9 +1,11 @@
 import Foundation
+import Testing
 
-/// Programs started over and over while a test saves, as the app starts them
-/// while it saves: a CLI read, and the Windows client's `wsl.exe` and
-/// `schtasks.exe`. Each is started with `Foundation.Process`, which on Windows
-/// hands the program every handle the app may pass on.
+/// Programs started over and over while a test saves, as the app the modules
+/// run in starts them while they save: the Windows client's `schtasks.exe`, a
+/// program started with `Foundation.Process`. Each is started with
+/// `Foundation.Process`, which on Windows hands the program every handle the
+/// process may pass on.
 enum StartingPrograms {
     /// Runs `work` on a thread of its own while four threads start a short
     /// program over and over, and answers what it returned once the last
@@ -59,5 +61,20 @@ enum StartingPrograms {
             on = false
             lock.unlock()
         }
+    }
+}
+
+extension Trait where Self == ConditionTrait {
+    /// Starts programs while it saves. On Windows each program inherits every
+    /// file the test process has open, another test's half-written one too,
+    /// and would make that test's save fail; so there these tests run alone,
+    /// in the Windows job's own step, which sets `CLAUDEBAR_TESTS_ALONE`.
+    static var startsPrograms: Self {
+        #if os(Windows)
+        .enabled(if: ProcessInfo.processInfo.environment["CLAUDEBAR_TESTS_ALONE"] == "1",
+                 "starts programs, which on Windows inherit the other tests' open files: runs alone, with CLAUDEBAR_TESTS_ALONE=1")
+        #else
+        .enabled(if: true)
+        #endif
     }
 }

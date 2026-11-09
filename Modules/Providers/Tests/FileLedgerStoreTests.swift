@@ -38,7 +38,7 @@ struct FileLedgerStoreTests {
     /// so a kept day that doesn't reach its file can drop out of the history.
     /// The app starts programs all the time; none of them may keep a save from
     /// the file, or leave a file beside it.
-    @Test func `should keep every saved day while the app starts programs`() async throws {
+    @Test(.startsPrograms) func `should keep every saved day while the app starts programs`() async throws {
         let store = store
         defer { try? FileManager.default.removeItem(at: store.directory) }
 

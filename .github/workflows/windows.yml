@@ -43,6 +43,14 @@ jobs:
       - name: Build and test
         run: swift test
 
+      # Saves made while programs start (#ISSUE). A program started on Windows
+      # inherits every file the test process has open, another test's
+      # half-written one too, so these tests run alone, after the others.
+      - name: Saves while programs start, alone
+        env:
+          CLAUDEBAR_TESTS_ALONE: "1"
+        run: swift test --skip-build --filter "while the app starts programs"
+
       # The person's time zone (#565). The runner is in UTC, which is also
       # what Foundation's own lookup answers on Windows, so the port's
       # contract runs again in a zone with daylight saving and in one without.
