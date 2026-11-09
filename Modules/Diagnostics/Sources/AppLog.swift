@@ -58,17 +58,23 @@ public enum AppLog {
     /// The file log, which a person opens and attaches to an issue. A test
     /// run writes a file of its own, so a test that fails on purpose never
     /// reads there as the app's error.
-    public static let logFileURL: URL = logFileURL(
-        testRun: isTestRun(arguments: ProcessInfo.processInfo.arguments, environment: ProcessInfo.processInfo.environment))
+    public static let logFileURL: URL = {
+        let testRun = isTestRun(arguments: ProcessInfo.processInfo.arguments, environment: ProcessInfo.processInfo.environment)
+        let url = logFileURL(testRun: testRun)
+        if testRun {
+            makePrivateFolder(url.deletingLastPathComponent())
+        }
+        return url
+    }()
 
-    /// The person's file log or, for a test run, a new one in the temporary
-    /// folder: `ClaudeBar-test-logs/<run>/ClaudeBar.log`.
+    /// The person's file log or, for a test run, a new one in a folder of its
+    /// own in the temporary folder: `ClaudeBar-test-log-<run>/ClaudeBar.log`.
     static func logFileURL(testRun: Bool) -> URL {
         let files = FileManager.default
         let folder: URL
         if testRun {
             folder = files.temporaryDirectory
-                .appending(path: "ClaudeBar-test-logs/\(UUID().uuidString)", directoryHint: .isDirectory)
+                .appending(path: "ClaudeBar-test-log-\(UUID().uuidString)", directoryHint: .isDirectory)
         } else {
             #if os(macOS)
             folder = files.urls(for: .libraryDirectory, in: .userDomainMask)[0]
@@ -80,6 +86,23 @@ public enum AppLog {
             #endif
         }
         return folder.appending(path: "ClaudeBar.log")
+    }
+
+    /// Makes a test run's log folder before its first line, so only the
+    /// person running the tests reads it where people share one temporary
+    /// folder (Linux's `/tmp`). Windows' `%TEMP%` is the person's own.
+    /// Not through AppLog: this is how its file gets a place.
+    private static func makePrivateFolder(_ folder: URL) {
+        #if os(Windows)
+        let attributes: [FileAttributeKey: Any]? = nil
+        #else
+        let attributes: [FileAttributeKey: Any]? = [.posixPermissions: 0o700]
+        #endif
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: attributes)
+        } catch {
+            NSLog("[AppLog] Failed to create the test run's log folder at %@: %@", folder.path, error.localizedDescription)
+        }
     }
 
     /// Whether a test runner started this process. Xcode names its test

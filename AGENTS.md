@@ -67,7 +67,7 @@ UI changes come with a mockup in `design-concept/<feature>/` first, and, once bu
 
 ## Logging
 
-- Use `AppLog.<category>` (`monitor`, `providers`, `probes`, `network`, `credentials`, `ui`, `notifications`, `updates`). `debug` goes to OSLog only; `info` and above also go to `~/Library/Logs/ClaudeBar/ClaudeBar.log`. A test run (`swift test`, `xcodebuild test`) writes its own file, `ClaudeBar-test-logs/<run>/ClaudeBar.log` in the temporary folder, never the person's.
+- Use `AppLog.<category>` (`monitor`, `providers`, `probes`, `network`, `credentials`, `ui`, `notifications`, `updates`). `debug` goes to OSLog only; `info` and above also go to `~/Library/Logs/ClaudeBar/ClaudeBar.log`. A test run (`swift test`, `xcodebuild test`) writes its own file, `ClaudeBar-test-log-<run>/ClaudeBar.log` in the temporary folder, never the person's.
 - **Never log a token, key, cookie or credential**: the file log has no privacy redaction. Log that something happened, not its value.
 - Where users find logs and what errors mean: [docs/troubleshooting.md](docs/troubleshooting.md).
 
