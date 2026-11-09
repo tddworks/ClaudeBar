@@ -84,4 +84,17 @@ struct KeychainItemTests {
         #expect(item.account == "octocat")
         #expect(try JSONDecoder().decode(KeychainCredential.self, from: JSONEncoder().encode(item)) == item)
     }
+
+    /// A lookup's order tries the next place when this one has nothing, as it
+    /// does for a missing file; a store that couldn't be read says so itself
+    /// (#693). On Windows, where Claude Code keeps its login in a file, the
+    /// miss was an error at every refresh.
+    @Test func `should not write an item that isn't there into the person's log`() throws {
+        let log = LogLines()
+        let reader = KeychainReader(item: try item(#"{"service":"Claude Code-credentials","token":"$.claudeAiOauth.accessToken"}"#),
+                                    keychain: InMemoryKeychain(), log: log.logger)
+
+        #expect(try reader.find() == nil)
+        #expect(log.inTheFile.isEmpty)
+    }
 }

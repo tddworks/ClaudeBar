@@ -118,10 +118,15 @@ struct JSONFileReader: CredentialFinding {
 struct KeychainReader: CredentialFinding {
     let item: KeychainCredential
     let keychain: any KeychainItems
+    var log = AppLog.credentials
 
+    /// The item's token and companions; `nil` when the item isn't there, is
+    /// empty, or holds no token. No item is no failure, as no file isn't: the
+    /// lookup's next place is tried, and a store that couldn't read one says
+    /// so itself (#693).
     func find() throws -> FoundCredential? {
         guard let stored = keychain.password(service: item.service, account: item.account) else {
-            AppLog.credentials.error("Keychain item '\(item.service)' wasn't found or couldn't be read")
+            log.debug("Keychain item '\(item.service)' not found")
             return nil
         }
         let password = item.decoded(Credential.trimmed(stored))
@@ -134,7 +139,7 @@ struct KeychainReader: CredentialFinding {
             values = ["token": password]
         } else {
             // Shape only — never the payload, which is the token itself.
-            AppLog.credentials.error("Keychain item '\(item.service)' did not hold the expected JSON")
+            log.error("Keychain item '\(item.service)' did not hold the expected JSON")
             return nil
         }
         guard values["token"] != nil else { return nil }
@@ -151,9 +156,9 @@ struct KeychainReader: CredentialFinding {
         guard let compact = try? JSONSerialization.data(withJSONObject: updated),
               let payload = String(data: compact, encoding: .utf8) else { return }
         if keychain.save(payload, service: item.service, account: item.account) {
-            AppLog.credentials.info("Saved refreshed credentials to Keychain item '\(item.service)'")
+            log.info("Saved refreshed credentials to Keychain item '\(item.service)'")
         } else {
-            AppLog.credentials.error("Failed to save credentials to Keychain item '\(item.service)'")
+            log.error("Failed to save credentials to Keychain item '\(item.service)'")
         }
     }
 
