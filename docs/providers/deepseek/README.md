@@ -26,7 +26,7 @@ Use the Accounts card to rename, pause, reorder, pin or remove a login. Removing
 - **"Failed: No API key found"** means neither the environment variable nor a saved key was found.
 - **The environment variable must be in ClaudeBar's own environment.** It's read from the app process, so a variable exported only in `~/.zshrc` isn't seen when ClaudeBar starts from Finder or at login. Pasting the key is the reliable option.
 - **"DeepSeek reports that this balance is unavailable for API calls."** means the API reported `is_available: false`. ClaudeBar surfaces the failure and keeps any previous successful snapshot. A balance has no percentage or refill window.
-- **Only one currency is shown.** If your account has balances in several currencies, ClaudeBar shows the first one DeepSeek lists, which is your billing currency (¥ for CNY accounts).
+- **Only one currency is shown.** If your account has balances in several currencies, ClaudeBar shows the one that has money, and when several do, the first by currency code (CNY before USD). An empty currency such as `$0.00` is never shown while another one has funds, and the order DeepSeek lists them in doesn't matter.
 - **Keys are saved in ClaudeBar's Keychain-backed vault.** Existing default-account keys are migrated from UserDefaults only after a verified secure write. If migration fails, the old login remains usable and its key is preserved. **Remove API Key** deletes the default key only if secure deletion succeeds; removing an added account deletes its own key.
 
 ## See also

@@ -1,4 +1,5 @@
 #if os(macOS)
+import Diagnostics
 import Foundation
 
 /// The Mac's secret store: its Keychain, asked through the `security` tool.
@@ -9,12 +10,23 @@ struct SecurityKeychain: KeychainItems {
     typealias Run = @Sendable (_ arguments: [String]) -> (status: Int32, output: String)
 
     var run: Run = SecurityKeychain.system
+    var log = AppLog.credentials
 
+    /// The item's password as `security -w` prints it; `nil` when there is
+    /// none. Exit 44 is an item that isn't there; any other failure is the
+    /// Keychain refusing one that may be, logged with its status, which the
+    /// person needs to see (#271, #693).
     func password(service: String, account: String?) -> String? {
         let named = account.map { ["-a", $0] } ?? []
         let (status, output) = run(["find-generic-password", "-s", service] + named + ["-w"])
+        if status != 0, status != Self.itemNotFound {
+            log.error("Keychain item '\(service)' couldn't be read: security exited with \(status)")
+        }
         return status == 0 ? output : nil
     }
+
+    /// `security`'s exit status for an item that isn't there.
+    static let itemNotFound: Int32 = 44
 
     func save(_ password: String, service: String, account: String?) -> Bool {
         run(["add-generic-password", "-U", "-s", service, "-a", account ?? NSUserName(), "-w", password]).status == 0

@@ -14,8 +14,7 @@ function read(response) {
     if (!Array.isArray(body.balance_infos)) {
         return { error: { parseFailed: "Invalid balance_infos" } };
     }
-    // DeepSeek lists the billing currency first. Never prefer a later USD entry.
-    var balance = body.balance_infos[0];
+    var balance = pick(body.balance_infos);
     if (!balance || typeof balance.currency !== "string" || !balance.currency.trim() ||
         !amount(balance.total_balance)) {
         return { error: { parseFailed: "Invalid primary balance" } };
@@ -40,4 +39,15 @@ function read(response) {
 
 function amount(value) {
     return typeof value === "string" && isFinite(Number(value)) && /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(value);
+}
+
+// DeepSeek does not keep the order of balance_infos stable, and an empty currency can come first.
+// Choose by content: the first currency with money, in currency-code order; all empty reads as depleted.
+function pick(entries) {
+    var funded = entries.filter(function (entry) {
+        return entry && typeof entry.currency === "string" && amount(entry.total_balance) && Number(entry.total_balance) > 0;
+    }).sort(function (a, b) {
+        return a.currency < b.currency ? -1 : a.currency > b.currency ? 1 : 0;
+    });
+    return funded.length ? funded[0] : entries[0];
 }

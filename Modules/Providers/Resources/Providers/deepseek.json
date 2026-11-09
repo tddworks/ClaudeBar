@@ -20,7 +20,7 @@
     {
       "kind": "api",
       "label": "API",
-      "summary": "Reads the primary billing-currency balance, including paid and granted credit.",
+      "summary": "Reads the balance of the currency that has money, including paid and granted credit.",
       "credential": {
         "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ]
       },

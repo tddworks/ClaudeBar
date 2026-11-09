@@ -71,7 +71,7 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 | `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookSettingsRepository` | `HookHTTPServer`, `HookInstaller`, `PortFile` (shared with the local API), `SessionEventParser` |
 | `Leaderboard` | Leaderboard | `LeaderboardMembership`, `DailyTokens`, `Username`, `RequestSigner`, `LeaderboardUploader`, the devices' values (`Device`, `DeviceCode`, `DeviceLabel`), the ports `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` · `TokenLogs` ([its design §7](../features/leaderboard/design.md#7--architecture)); the factory `Leaderboard.makeAPI(client:)` · `makeKeyStore()` · `makeMachineIdentity()` | `LeaderboardHTTPClient`; `FallbackSigningKeyStore` over `KeychainSigningKeyStore` (macOS) and `DefaultsSigningKeyStore`; `IOKitMachineIdentity` with `MacModel` (macOS); `CredentialManagerSigningKeyStore` and `WindowsMachineIdentity` (Windows) |
 | `Storage` | Vault & Settings · generic | `Storage.makeSettings()`, `Storage.makeVault()`, `AppSettingsRepository` | `JSONSettingsRepository`, `JSONSettingsStore`, `KeychainCredentialRepository`, `UserDefaults…`, `SecureCredentialMigration` |
-| `Diagnostics` | — cross-cutting | `AppLog` and its categories | the `LogSink`s: `FileLogSink`, `OSLogSink` (macOS) |
+| `Diagnostics` | — cross-cutting | `AppLog` and its categories, and the file log's place: the person's, or a test run's own | the `LogSink`s: `FileLogSink`, `OSLogSink` (macOS) |
 | `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label, page state, the Add Provider sheet | — |
 
 ## 3 · The dependency rules
