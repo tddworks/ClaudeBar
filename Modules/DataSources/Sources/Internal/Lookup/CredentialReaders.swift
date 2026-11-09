@@ -122,7 +122,9 @@ struct KeychainReader: CredentialFinding {
 
     func find() throws -> FoundCredential? {
         guard let stored = keychain.password(service: item.service, account: item.account) else {
-            log.error("Keychain item '\(item.service)' wasn't found or couldn't be read")
+            // No item is no failure, as no file isn't: the lookup's next place
+            // is tried. A store that couldn't read one says so itself (#693).
+            log.debug("Keychain item '\(item.service)' not found")
             return nil
         }
         let password = item.decoded(Credential.trimmed(stored))

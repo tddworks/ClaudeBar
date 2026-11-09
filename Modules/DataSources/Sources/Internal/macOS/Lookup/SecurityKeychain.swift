@@ -15,8 +15,16 @@ struct SecurityKeychain: KeychainItems {
     func password(service: String, account: String?) -> String? {
         let named = account.map { ["-a", $0] } ?? []
         let (status, output) = run(["find-generic-password", "-s", service] + named + ["-w"])
+        // 44 is an item that isn't there; anything else the Keychain refusing
+        // one that may be, which the person needs to see (#271, #693).
+        if status != 0, status != Self.itemNotFound {
+            log.error("Keychain item '\(service)' couldn't be read: security exited with \(status)")
+        }
         return status == 0 ? output : nil
     }
+
+    /// `security`'s exit status for an item that isn't there.
+    static let itemNotFound: Int32 = 44
 
     func save(_ password: String, service: String, account: String?) -> Bool {
         run(["add-generic-password", "-U", "-s", service, "-a", account ?? NSUserName(), "-w", password]).status == 0

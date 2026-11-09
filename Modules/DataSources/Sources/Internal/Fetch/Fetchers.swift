@@ -128,6 +128,18 @@ struct HTTPFetcher: Fetching {
     }
 }
 
+/// Whether a fact is news: it holds now and didn't when last asked.
+final class ChangeNote: Sendable {
+    private let held = Mutex(false)
+
+    func isNews(_ holds: Bool) -> Bool {
+        held.withLock { held in
+            defer { held = holds }
+            return holds && !held
+        }
+    }
+}
+
 /// `jsonRpc` — starts the CLI, sends the handshake, then the call, and
 /// answers with the call's whole message as the response body.
 struct JSONRPCFetcher: Fetching {
@@ -135,11 +147,15 @@ struct JSONRPCFetcher: Fetching {
     let processes: Processes
     let directory: @Sendable () -> URL?
     var log = AppLog.probes
+    /// Asked at every refresh, and a CLI that isn't installed is no failure:
+    /// the login is skipped or another data source answers. Said once, and
+    /// again only after the CLI was found and went missing (#693).
+    let missing = ChangeNote()
 
     func isReady() -> Bool {
-        if processes.program(named: call.cli) != nil { return true }
-        log.error("'\(call.cli)' not found in PATH")
-        return false
+        let found = processes.program(named: call.cli) != nil
+        if missing.isNews(!found) { log.info("'\(call.cli)' not found in PATH") }
+        return found
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
