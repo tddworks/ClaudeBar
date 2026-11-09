@@ -235,6 +235,8 @@ final class RPCDeadline: Sendable {
     private let firstAnswer = Mutex<ContinuousClock.Instant?>(nil)
     private let passed = Mutex(false)
 
+    /// A deadline `timeout` seconds long, with `startAllowance` more while the
+    /// CLI hasn't answered; a negative allowance is none.
     init(timeout: TimeInterval, startAllowance: TimeInterval) {
         self.timeout = .seconds(timeout)
         allowance = .seconds(max(0, startAllowance))
@@ -272,6 +274,7 @@ final class RPCDeadline: Sendable {
         passed.withLock { $0 = true }
     }
 
+    /// Whether `wait()` found the deadline passed.
     var hasPassed: Bool { passed.withLock { $0 } }
 }
 

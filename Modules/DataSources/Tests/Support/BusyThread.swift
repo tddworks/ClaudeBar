@@ -8,6 +8,7 @@ import Foundation
 final class BusyThread: TaskExecutor, @unchecked Sendable {
     private let queue = DispatchQueue(label: "BusyThread")
 
+    /// Runs `job` on the thread, after the tasks started before it.
     func enqueue(_ job: consuming ExecutorJob) {
         let job = UnownedJob(job)
         queue.async { job.runSynchronously(on: self.asUnownedTaskExecutor()) }
