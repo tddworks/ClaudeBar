@@ -32,4 +32,25 @@ struct FileLedgerStoreTests {
         #expect(store.load("claude")?.fingerprint == "a")
         #expect(store.load("claude.work")?.fingerprint == "b")
     }
+
+    /// A closed day is read from the logs once and then kept; by the time it
+    /// is read again its logs may be gone (Claude Code deletes old sessions),
+    /// so a kept day that doesn't reach its file can drop out of the history.
+    /// The app starts programs all the time; none of them may keep a save from
+    /// the file, or leave a file beside it.
+    @Test func `should keep every saved day while the app starts programs`() async throws {
+        let store = store
+        defer { try? FileManager.default.removeItem(at: store.directory) }
+
+        let lost = try await StartingPrograms.meanwhile { () -> [Int] in
+            (0..<300).filter { round in
+                let page = LedgerPage(fingerprint: "f\(round)", days: [:])
+                store.save(page, for: "claude")
+                return store.load("claude") != page
+            }
+        }
+
+        #expect(lost == [], "saves that didn't reach the file")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: store.directory.path) == ["claude.json"])
+    }
 }

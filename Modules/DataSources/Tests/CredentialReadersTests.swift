@@ -1,5 +1,8 @@
 import Foundation
 import Testing
+#if os(Windows)
+import WinSDK
+#endif
 @testable import DataSources
 
 @Suite
@@ -232,4 +235,68 @@ struct CredentialReadersTests {
         #expect((oauth["expiresAt"] as? NSNumber)?.intValue == 2000)
         #expect(oauth["scopes"] as? [String] == ["x"])
     }
+
+    // MARK: - A renewed login, saved while other programs run
+
+    /// A server that renews a login answers a new refresh token and forgets
+    /// the old one, so a renewed login that doesn't reach its file signs the
+    /// person out of the CLI and of ClaudeBar. The app starts programs all the
+    /// time; none of them may keep the save from its file, or leave a copy of
+    /// the login beside it.
+    @Test
+    func `should save every renewed login into its file while the app starts programs`() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("readers-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try JSONSerialization.data(withJSONObject: ["oauth": ["accessToken": "t", "refreshToken": "r"]])
+            .write(to: directory.appendingPathComponent("auth.json"))
+        let fields = fields
+
+        let lost = try await StartingPrograms.meanwhile { () throws -> [Int] in
+            let reader = JSONFileReader(file: JSONFileCredential(path: "~/auth.json", fields: fields),
+                                        homeDirectory: directory, environment: { _ in nil })
+            var lost: [Int] = []
+            for round in 0..<300 {
+                let found = try #require(try reader.find())
+                var renewed = found.credential
+                renewed["token"] = "t\(round)"
+                renewed["refreshToken"] = "r\(round)"
+                found.save?(renewed)
+                if try reader.find()?.credential["refreshToken"] != "r\(round)" { lost.append(round) }
+            }
+            return lost
+        }
+
+        #expect(lost == [], "renewed logins that didn't reach the file")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["auth.json"])
+    }
+
+    #if os(Windows)
+    /// Another program reading the login file for a moment, without letting
+    /// anyone replace it meanwhile: the renewed login waits for it rather
+    /// than being lost.
+    @Test
+    func `should save a renewed login over its file while another program reads the file for a moment`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("readers-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("auth.json")
+        try JSONSerialization.data(withJSONObject: ["oauth": ["accessToken": "t", "refreshToken": "r"]]).write(to: file)
+        let reader = JSONFileReader(file: JSONFileCredential(path: "~/auth.json", fields: fields),
+                                    homeDirectory: directory, environment: { _ in nil })
+        let found = try #require(try reader.find())
+        let opened = file.path.withCString(encodedAs: UTF16.self) {
+            CreateFileW($0, DWORD(GENERIC_READ), DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE), nil, DWORD(OPEN_EXISTING), 0, nil)
+        }
+        let held = try #require(opened.flatMap { $0 == INVALID_HANDLE_VALUE ? nil : UInt(bitPattern: $0) })
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) { CloseHandle(HANDLE(bitPattern: held)) }
+        var renewed = found.credential
+        renewed["refreshToken"] = "r-renewed"
+
+        found.save?(renewed)
+
+        #expect(try reader.find()?.credential["refreshToken"] == "r-renewed")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["auth.json"])
+    }
+    #endif
 }
