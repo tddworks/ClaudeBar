@@ -1,8 +1,6 @@
-#if os(macOS) || os(Linux)
+#if os(Linux)
 import Foundation
-#if canImport(Glibc)
 import Glibc
-#endif
 
 extension LogFile {
     /// Adds `line` to the end of the file at `url`, making the file if it
