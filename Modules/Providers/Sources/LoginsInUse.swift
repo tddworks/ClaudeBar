@@ -1,3 +1,4 @@
+import DataSources
 import Foundation
 import Mockable
 
@@ -34,7 +35,7 @@ public struct DiskLoginsInUse: LoginsInUse {
     public func use(_ folder: URL?, for command: String) throws {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         // Written whole and renamed into place, so a shell never reads half a path.
-        try Data((folder?.standardizedFileURL.path ?? "").utf8).write(to: file(for: command), options: .atomic)
+        try AtomicFile.write(Data((folder?.standardizedFileURL.path ?? "").utf8), to: file(for: command))
     }
 
     public func file(for command: String) -> URL {

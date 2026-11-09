@@ -43,7 +43,7 @@ jobs:
       - name: Build and test
         run: swift test
 
-      # Saves made while programs start (#ISSUE). A program started on Windows
+      # Saves made while programs start (#692). A program started on Windows
       # inherits every file the test process has open, another test's
       # half-written one too, so these tests run alone, after the others.
       - name: Saves while programs start, alone

@@ -1,3 +1,4 @@
+import DataSources
 import Foundation
 import Mockable
 import Quotas
@@ -82,7 +83,7 @@ struct FileLedgerStore: LedgerStore {
     func save(_ page: LedgerPage, for key: String) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(page) else { return }
-        try? data.write(to: file(key), options: .atomic)
+        try? AtomicFile.write(data, to: file(key))
     }
 
     private func file(_ key: String) -> URL {

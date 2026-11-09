@@ -1,3 +1,4 @@
+import DataSources
 import Diagnostics
 import Foundation
 
@@ -64,7 +65,7 @@ public struct ProviderCatalog: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        try encoder.encode(definition).write(to: file(for: definition.id), options: .atomic)
+        try AtomicFile.write(encoder.encode(definition), to: file(for: definition.id))
         AppLog.providers.info("Saved custom provider \(definition.id)")
     }
 

@@ -365,7 +365,7 @@ struct JSONFilePatch: Recovering {
         guard let patched = Self.set(value.foundationObject, at: keys[...], in: document) else { return false }
         do {
             let output = try JSONSerialization.data(withJSONObject: patched, options: [.prettyPrinted, .sortedKeys])
-            try output.write(to: url, options: .atomic)
+            try AtomicFile.write(output, to: url)
             AppLog.probes.info("Patched \(path) so the CLI can run in the probe directory")
             return true
         } catch {
