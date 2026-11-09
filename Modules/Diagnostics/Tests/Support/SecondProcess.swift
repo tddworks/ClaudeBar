@@ -47,7 +47,7 @@ enum SecondProcess {
     /// contain `test`, doing `job`; what it prints goes to `output`.
     static func start(running test: String, job: Job, output: URL) throws -> Process {
         guard let program else { throw CocoaError(.executableNotLoadable) }
-        FileManager.default.createFile(atPath: output.path, contents: nil)
+        try make(output)
         let printed = try FileHandle(forWritingTo: output)
         let process = Process()
         process.executableURL = program
@@ -64,14 +64,25 @@ enum SecondProcess {
 
     /// Starts each round once every job is ready for it, and waits for the
     /// processes to end. Answers whether every round started.
-    static func run(_ jobs: [Job], _ processes: [Process]) -> Bool {
-        var started = true
-        for round in 0..<(jobs.first?.rounds ?? 0) where started {
-            started = wait(for: jobs.map { $0.ready(round) }, seconds: 120)
-            FileManager.default.createFile(atPath: jobs[0].go(round).path, contents: nil)
+    static func run(_ jobs: [Job], _ processes: [Process]) throws -> Bool {
+        defer { processes.forEach { $0.waitUntilExit() } }
+        for round in 0..<(jobs.first?.rounds ?? 0) {
+            let ready = wait(for: jobs.map { $0.ready(round) }, seconds: 120)
+            try make(jobs[0].go(round))
+            guard ready else { return false }
         }
-        processes.forEach { $0.waitUntilExit() }
-        return started
+        return true
+    }
+
+    /// Makes the empty file `url`, such as a round's `ready-<tag>` or `go`,
+    /// or throws why it couldn't. Not `FileManager.createFile`, which writes
+    /// a temporary file and renames it: on Windows a program another test
+    /// starts meanwhile inherits the temporary file, the rename fails, and
+    /// the file is never made (`createFile` only answers false), so the
+    /// other process waits for it in vain. A plain write makes the file
+    /// itself, and on Windows its handle isn't inherited.
+    static func make(_ url: URL) throws {
+        try Data().write(to: url)
     }
 
     /// Waits up to `seconds` for every file in `files` to exist.

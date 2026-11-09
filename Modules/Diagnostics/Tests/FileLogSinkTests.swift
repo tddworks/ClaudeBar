@@ -106,7 +106,7 @@ struct FileLogSinkTests {
         let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 2000) }
 
         let processes = try start(jobs)
-        let started = SecondProcess.run(jobs, processes)
+        let started = try SecondProcess.run(jobs, processes)
 
         #expect(started)
         #expect(processes.map(\.terminationStatus) == [0, 0])
@@ -131,7 +131,7 @@ struct FileLogSinkTests {
         let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 6, rounds: 300, maxFileSize: 300) }
 
         let processes = try start(jobs)
-        let started = SecondProcess.run(jobs, processes)
+        let started = try SecondProcess.run(jobs, processes)
 
         #expect(started)
         #expect(processes.map(\.terminationStatus) == [0, 0])
@@ -159,7 +159,7 @@ struct FileLogSinkTests {
         let job = try #require(SecondProcess.job)
         for round in 0..<job.rounds {
             let sink = FileLogSink(fileURL: job.log(round), maxFileSize: job.maxFileSize)
-            FileManager.default.createFile(atPath: job.ready(round).path, contents: nil)
+            try SecondProcess.make(job.ready(round))
             try #require(SecondProcess.wait(for: [job.go(round)], seconds: 120))
 
             for index in 0..<job.lines {
