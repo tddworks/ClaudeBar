@@ -556,8 +556,16 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
   failed with error 32 and was lost; there, a handle no program inherits
   writes the new file and renames it over the old one, waiting up to a second
   for a program holding that one open ([#692](https://github.com/tddworks/ClaudeBar/issues/692)).
-  Diagnostics' file log imports nothing, so it still starts a new log file
-  with Foundation's atomic write; at worst that file's first line is lost.
+- **The file log adds each line through `LogFile.append`**, Diagnostics' own,
+  since it imports nothing: the file is opened to append, made if it isn't
+  there, and no program the process starts inherits it (`O_APPEND |
+  O_CREAT | O_CLOEXEC` on the Mac and Linux; on Windows a `FILE_APPEND_DATA`
+  handle with no security attributes). It is never written whole: two of the
+  app's processes write one log (on Windows the app and its hourly upload),
+  each in its own order, so the OS puts each line at the end, and none takes
+  another's place. A new log's first line went through Foundation's atomic
+  write and was lost on Windows the way #692's saves were ([#696](https://github.com/tddworks/ClaudeBar/issues/696)).
+  A line that can't be written goes to `NSLog`, never nowhere.
 - **`MOCKING`** is in `Package.swift`'s `swiftSettings`, for debug builds and
   tests.
 - **The App stays a Tuist target** and depends on the package's products. Its
