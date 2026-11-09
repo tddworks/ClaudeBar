@@ -103,22 +103,15 @@ struct FileLogSinkTests {
     @Test(.startsPrograms, .startsSecondProcess)
     func `should keep every line whole when two of the app's processes write the log at once`() throws {
         defer { try? FileManager.default.removeItem(at: folder) }
-        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let jobs = ["A", "B"].map { SecondProcess.Job(log: file, tag: $0, lines: 2000) }
-        let processes = try jobs.map {
-            try SecondProcess.start(running: "as a second process of the app", job: $0,
-                                    output: folder.appending(path: "second-process-\($0.tag).txt"))
-        }
-        let started = SecondProcess.wait(for: jobs.map(\.ready), seconds: 120)
-        FileManager.default.createFile(atPath: jobs[0].go.path, contents: nil)
-        processes.forEach { $0.waitUntilExit() }
+        let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 2000) }
+
+        let processes = try start(jobs)
+        let started = SecondProcess.run(jobs, processes)
 
         #expect(started)
         #expect(processes.map(\.terminationStatus) == [0, 0])
         let expected = Set(jobs.flatMap { job in (0..<job.lines).map { "\(job.tag) \($0)" } })
-        let written = try lines(of: file).map { line in
-            line.range(of: "] [INFO] [processes] ").map { String(line[$0.upperBound...]) } ?? line
-        }
+        let written = try lines(of: jobs[0].log(0)).map(Self.message)
         let lost = expected.subtracting(written).count
         let broken = written.filter { !expected.contains($0) }.count
         let twice = written.count - Set(written).count
@@ -127,18 +120,76 @@ struct FileLogSinkTests {
         #expect(twice == 0)
     }
 
-    /// The other half of the test above: a second process writes its lines,
-    /// once the first says go.
+    /// The log keeps one earlier file, so a line older than one new file is
+    /// gone by design. When both processes start a new file at once, neither
+    /// throws away the file the other just kept: what is left of each
+    /// process's lines is its last ones, none missing among them, and the
+    /// earlier file is one that passed the size.
+    @Test(.startsPrograms, .startsSecondProcess)
+    func `should lose no line to the other process when both start new files as they write the log at once`() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 30, rounds: 100, maxFileSize: 400) }
+
+        let processes = try start(jobs)
+        let started = SecondProcess.run(jobs, processes)
+
+        #expect(started)
+        #expect(processes.map(\.terminationStatus) == [0, 0])
+        var gaps = 0, broken = 0, twice = 0, smallEarlierFiles = 0
+        for round in 0..<jobs[0].rounds {
+            let current = jobs[0].log(round)
+            let earlier = current.deletingPathExtension().appendingPathExtension("old.log")
+            let written = ((try? lines(of: earlier)) ?? []).map(Self.message) + ((try? lines(of: current)) ?? []).map(Self.message)
+            twice += written.count - Set(written).count
+            for job in jobs {
+                let indexes = written.compactMap { message -> Int? in
+                    guard message.hasPrefix("\(job.tag) ") else { return nil }
+                    return Int(message.dropFirst(job.tag.count + 1))
+                }
+                let kept = Set(indexes)
+                // Its last lines, from the oldest kept to its last.
+                if kept.isEmpty || kept != Set((kept.min() ?? 0)...(job.lines - 1)) { gaps += 1 }
+            }
+            broken += written.filter { message in !jobs.contains { message.hasPrefix("\($0.tag) ") } }.count
+            if let size = try? FileManager.default.attributesOfItem(atPath: earlier.path)[.size] as? Int,
+               size <= jobs[0].maxFileSize {
+                smallEarlierFiles += 1
+            }
+        }
+        #expect(gaps == 0)
+        #expect(smallEarlierFiles == 0)
+        #expect(broken == 0)
+        #expect(twice == 0)
+    }
+
+    /// The other half of the tests above: a second process writes its lines
+    /// in each round, once the first says go.
     @Test(.asSecondProcess)
     func `should write its lines to the log, as a second process of the app`() throws {
         let job = try #require(SecondProcess.job)
-        let sink = FileLogSink(fileURL: job.log)
-        FileManager.default.createFile(atPath: job.ready.path, contents: nil)
-        try #require(SecondProcess.wait(for: [job.go], seconds: 120))
+        for round in 0..<job.rounds {
+            let sink = FileLogSink(fileURL: job.log(round), maxFileSize: job.maxFileSize)
+            FileManager.default.createFile(atPath: job.ready(round).path, contents: nil)
+            try #require(SecondProcess.wait(for: [job.go(round)], seconds: 120))
 
-        for index in 0..<job.lines {
-            sink.write(.info, category: "processes", message: "\(job.tag) \(index)")
+            for index in 0..<job.lines {
+                sink.write(.info, category: "processes", message: "\(job.tag) \(index)")
+            }
+            sink.flush()
         }
-        sink.flush()
+    }
+
+    private func start(_ jobs: [SecondProcess.Job]) throws -> [Process] {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return try jobs.map {
+            try SecondProcess.start(running: "as a second process of the app", job: $0,
+                                    output: folder.appending(path: "second-process-\($0.tag).txt"))
+        }
+    }
+
+    /// A line's message, after its time, level and category; the whole line
+    /// if it has none.
+    private static func message(_ line: String) -> String {
+        line.range(of: "] [INFO] [processes] ").map { String(line[$0.upperBound...]) } ?? line
     }
 }

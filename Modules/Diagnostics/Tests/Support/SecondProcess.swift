@@ -4,23 +4,26 @@ import Testing
 /// The test program started again, as a second process of the app writing the
 /// same log: on Windows the app and its hourly `claudebar-upload.exe` both
 /// write `ClaudeBar.log`. The second process runs one test, named for it, which
-/// reads from its environment which log to write, with which tag, how many
-/// lines, and the folder where it says it's ready and waits to be told to go.
+/// reads its job from its environment.
 enum SecondProcess {
+    /// Write `lines` tagged lines in each of `rounds` rounds, each round to
+    /// `<folder>/<round>/ClaudeBar.log`, starting a new file past
+    /// `maxFileSize`. In each round's folder the process says it is ready
+    /// (`ready-<tag>`) and waits for the first process to say go (`go`), so
+    /// both write at once.
     struct Job {
-        let log: URL
+        let folder: URL
         let tag: String
         let lines: Int
+        var rounds = 1
+        var maxFileSize = 5 * 1024 * 1024
 
-        /// Where this process says it has started.
-        var ready: URL { log.deletingLastPathComponent().appending(path: "ready-\(tag)") }
-        /// Where the first process says to start writing.
-        var go: URL { log.deletingLastPathComponent().appending(path: "go") }
+        func log(_ round: Int) -> URL { folder.appending(path: "\(round)/ClaudeBar.log") }
+        func ready(_ round: Int) -> URL { folder.appending(path: "\(round)/ready-\(tag)") }
+        func go(_ round: Int) -> URL { folder.appending(path: "\(round)/go") }
     }
 
-    private static let logKey = "CLAUDEBAR_SECOND_PROCESS_LOG"
-    private static let tagKey = "CLAUDEBAR_SECOND_PROCESS_TAG"
-    private static let linesKey = "CLAUDEBAR_SECOND_PROCESS_LINES"
+    private static let key = "CLAUDEBAR_SECOND_PROCESS"
 
     /// The test program, where it is a program of its own, as `swift test`
     /// builds it on Linux and Windows. On the Mac the tests run inside a host
@@ -32,10 +35,12 @@ enum SecondProcess {
 
     /// What this process was started to do, when it is a second process.
     static var job: Job? {
-        let environment = ProcessInfo.processInfo.environment
-        guard let log = environment[logKey], let tag = environment[tagKey],
-              let lines = environment[linesKey].flatMap(Int.init) else { return nil }
-        return Job(log: URL(fileURLWithPath: log), tag: tag, lines: lines)
+        guard let value = ProcessInfo.processInfo.environment[key] else { return nil }
+        let parts = value.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count == 5, let lines = Int(parts[2]), let rounds = Int(parts[3]),
+              let maxFileSize = Int(parts[4]) else { return nil }
+        return Job(folder: URL(fileURLWithPath: parts[0], isDirectory: true), tag: parts[1], lines: lines,
+                   rounds: rounds, maxFileSize: maxFileSize)
     }
 
     /// Starts the test program again to run only the tests whose names
@@ -47,8 +52,9 @@ enum SecondProcess {
         let process = Process()
         process.executableURL = program
         process.arguments = ["--testing-library", "swift-testing", "--filter", test]
-        process.environment = ProcessInfo.processInfo.environment.merging(
-            [logKey: job.log.path, tagKey: job.tag, linesKey: String(job.lines)]) { $1 }
+        let value = [job.folder.path, job.tag, String(job.lines), String(job.rounds), String(job.maxFileSize)]
+            .joined(separator: "|")
+        process.environment = ProcessInfo.processInfo.environment.merging([key: value]) { $1 }
         process.standardOutput = printed
         process.standardError = printed
         try process.run()
@@ -56,12 +62,24 @@ enum SecondProcess {
         return process
     }
 
+    /// Starts each round once every job is ready for it, and waits for the
+    /// processes to end. Answers whether every round started.
+    static func run(_ jobs: [Job], _ processes: [Process]) -> Bool {
+        var started = true
+        for round in 0..<(jobs.first?.rounds ?? 0) where started {
+            started = wait(for: jobs.map { $0.ready(round) }, seconds: 120)
+            FileManager.default.createFile(atPath: jobs[0].go(round).path, contents: nil)
+        }
+        processes.forEach { $0.waitUntilExit() }
+        return started
+    }
+
     /// Waits up to `seconds` for every file in `files` to exist.
     static func wait(for files: [URL], seconds: TimeInterval) -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while !files.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) {
             guard Date() < deadline else { return false }
-            Thread.sleep(forTimeInterval: 0.01)
+            Thread.sleep(forTimeInterval: 0.001)
         }
         return true
     }
