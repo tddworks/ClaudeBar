@@ -134,10 +134,11 @@ struct JSONRPCFetcher: Fetching {
     let call: JSONRPCCall
     let processes: Processes
     let directory: @Sendable () -> URL?
+    var log = AppLog.probes
 
     func isReady() -> Bool {
         if processes.program(named: call.cli) != nil { return true }
-        AppLog.probes.error("'\(call.cli)' not found in PATH")
+        log.error("'\(call.cli)' not found in PATH")
         return false
     }
 
@@ -174,7 +175,7 @@ struct JSONRPCFetcher: Fetching {
             }
         } catch where deadline.hasPassed {
             let start = allowance > 0 ? ", \(Int(allowance))s more to start" : ""
-            AppLog.probes.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s\(start)")
+            log.error("\(call.cli) \(call.call) did not answer within \(Int(call.timeout))s\(start)")
             throw UsageError.timeout
         }
     }
@@ -194,7 +195,7 @@ struct JSONRPCFetcher: Fetching {
         for followUp in call.then {
             message[followUp.as] = try await session.request(followUp.request, params: followUp.params)
         }
-        AppLog.probes.debug("\(call.cli) \(call.call) answered")
+        log.debug("\(call.cli) \(call.call) answered")
         return Response(body: try JSONSerialization.data(withJSONObject: message))
     }
 }

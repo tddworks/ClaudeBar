@@ -15,11 +15,11 @@ struct SecurityKeychainTests {
         var all: [[String]] { lock.withLock { calls } }
     }
 
-    private func keychain(answering status: Int32 = 0, _ output: String = "", calls: Calls) -> SecurityKeychain {
+    private func keychain(answering status: Int32 = 0, _ output: String = "", calls: Calls, log: LogLines = LogLines()) -> SecurityKeychain {
         SecurityKeychain(run: { arguments in
             calls.append(arguments)
             return (status, output)
-        })
+        }, log: log.logger)
     }
 
     @Test func `should read an item's password by its service, and its account when it has one`() {
@@ -37,8 +37,19 @@ struct SecurityKeychainTests {
         #expect(named == "secret\n")
     }
 
-    @Test func `should find no password when security can't find the item`() {
-        #expect(keychain(answering: 44, calls: Calls()).password(service: "Missing", account: nil) == nil)
+    @Test func `should find no password, and log nothing, when security can't find the item`() {
+        let log = LogLines()
+        #expect(keychain(answering: 44, calls: Calls(), log: log).password(service: "Missing", account: nil) == nil)
+        #expect(log.inTheFile.isEmpty)
+    }
+
+    /// `security` exits 44 for an item that isn't there; any other failure is
+    /// the Keychain refusing one that may be (a denied prompt, a locked
+    /// keychain), which the person needs to see (#693).
+    @Test func `should say an item couldn't be read when the Keychain refuses it`() {
+        let log = LogLines()
+        #expect(keychain(answering: 51, calls: Calls(), log: log).password(service: "Claude Code-credentials", account: nil) == nil)
+        #expect(log.errors == ["Keychain item 'Claude Code-credentials' couldn't be read: security exited with 51"])
     }
 
     @Test func `should save over the item with the person's name as its account when it names none`() {

@@ -1,4 +1,5 @@
 #if os(macOS)
+import Diagnostics
 import Foundation
 
 /// The Mac's secret store: its Keychain, asked through the `security` tool.
@@ -9,6 +10,7 @@ struct SecurityKeychain: KeychainItems {
     typealias Run = @Sendable (_ arguments: [String]) -> (status: Int32, output: String)
 
     var run: Run = SecurityKeychain.system
+    var log = AppLog.credentials
 
     func password(service: String, account: String?) -> String? {
         let named = account.map { ["-a", $0] } ?? []
