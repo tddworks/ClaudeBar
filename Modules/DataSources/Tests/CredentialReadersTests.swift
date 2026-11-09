@@ -289,7 +289,11 @@ struct CredentialReadersTests {
             CreateFileW($0, DWORD(GENERIC_READ), DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE), nil, DWORD(OPEN_EXISTING), 0, nil)
         }
         let held = try #require(opened.flatMap { $0 == INVALID_HANDLE_VALUE ? nil : UInt(bitPattern: $0) })
-        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) { CloseHandle(HANDLE(bitPattern: held)) }
+        // Its own thread, not a queue the rest of the suite may keep busy past the save's second.
+        Thread.detachNewThread {
+            Thread.sleep(forTimeInterval: 0.3)
+            CloseHandle(HANDLE(bitPattern: held))
+        }
         var renewed = found.credential
         renewed["refreshToken"] = "r-renewed"
 
