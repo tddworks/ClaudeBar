@@ -565,7 +565,13 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
   each in its own order, so the OS puts each line at the end, and none takes
   another's place. A new log's first line went through Foundation's atomic
   write and was lost on Windows the way #692's saves were ([#696](https://github.com/tddworks/ClaudeBar/issues/696)).
-  A line that can't be written goes to `NSLog`, never nowhere.
+  Starting a new file past 5 MB (the current one becomes `.old.log`) is done
+  by one process at a time, under a lock on `<log>.lock` beside it (`flock`;
+  `LockFileEx` on Windows), and only if the file is still past its size once
+  the lock is held, so neither process throws away the `.old.log` the other
+  just made. A line older than one new file is still gone, by design: the
+  promise is that no line is lost to the two processes racing. A line that
+  can't be written goes to `NSLog`, never nowhere.
 - **`MOCKING`** is in `Package.swift`'s `swiftSettings`, for debug builds and
   tests.
 - **The App stays a Tuist target** and depends on the package's products. Its

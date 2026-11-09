@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **The log keeps every line**: on Windows the first line of a new log could be lost while the app started a program, and when two of ClaudeBar's processes wrote the log at once, as the Windows app and its hourly upload do, one's line could overwrite the other's. Each line is now added to the end by the system, and one that can't be written is said in the system log. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+- **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
 
 ---
 
