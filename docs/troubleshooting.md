@@ -19,6 +19,7 @@ ClaudeBar writes everything at info level and above to:
 - **Line format**: `[2026-09-24T09:15:02.123Z] [INFO] [probes] claude: every data source failed; reporting Authentication required. Please log in.`, with the timestamp in UTC.
 - **Levels**: `INFO`, `WARNING` and `ERROR`. Debug messages go only to the unified log (below).
 - **No secrets**: tokens and API keys are never logged. Check before posting a log anyway, since it contains paths and project names.
+- **Test runs**: `swift test` and `xcodebuild test` write to a file of their own, `ClaudeBar-test-log-<run>/ClaudeBar.log` in the temporary folder (`$TMPDIR`, or `%TEMP%` on Windows; only you can read it), so this file holds only what the app and its helpers did.
 
 ```bash
 tail -f ~/Library/Logs/ClaudeBar/ClaudeBar.log         # follow live

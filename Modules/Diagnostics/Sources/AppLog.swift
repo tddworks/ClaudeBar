@@ -6,7 +6,8 @@ import Foundation
 /// - **The file log**, on every platform, for people:
 ///   `~/Library/Logs/ClaudeBar/ClaudeBar.log` on the Mac,
 ///   `%LOCALAPPDATA%\ClaudeBar\Logs\ClaudeBar.log` on Windows. Every level
-///   but `debug`; it rotates at 5 MB.
+///   but `debug`; it rotates at 5 MB. A test run writes a file of its own
+///   instead, in the temporary folder.
 /// - **OSLog**, on the Mac, for developers: Console.app and `log show`, every level.
 ///
 /// ```swift
@@ -54,19 +55,66 @@ public enum AppLog {
     /// Logger for hook operations (Claude Code session tracking)
     public static let hooks = CategoryLogger(category: "hooks")
 
-    /// The file log, which a person opens and attaches to an issue.
+    /// The file log, which a person opens and attaches to an issue. A test
+    /// run writes a file of its own, so a test that fails on purpose never
+    /// reads there as the app's error.
     public static let logFileURL: URL = {
-        let files = FileManager.default
-        #if os(macOS)
-        let folder = files.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appending(path: "Logs/ClaudeBar", directoryHint: .isDirectory)
-        #else
-        // %LOCALAPPDATA% on Windows, where Foundation has no Library folder.
-        let folder = (files.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? files.temporaryDirectory)
-            .appending(path: "ClaudeBar/Logs", directoryHint: .isDirectory)
-        #endif
-        return folder.appending(path: "ClaudeBar.log")
+        let testRun = isTestRun(arguments: ProcessInfo.processInfo.arguments, environment: ProcessInfo.processInfo.environment)
+        let url = logFileURL(testRun: testRun)
+        if testRun {
+            makePrivateFolder(url.deletingLastPathComponent())
+        }
+        return url
     }()
+
+    /// The person's file log or, for a test run, a new one in a folder of its
+    /// own in the temporary folder: `ClaudeBar-test-log-<run>/ClaudeBar.log`.
+    static func logFileURL(testRun: Bool) -> URL {
+        let files = FileManager.default
+        let folder: URL
+        if testRun {
+            folder = files.temporaryDirectory
+                .appending(path: "ClaudeBar-test-log-\(UUID().uuidString)", directoryHint: .isDirectory)
+        } else {
+            #if os(macOS)
+            folder = files.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+                .appending(path: "Logs/ClaudeBar", directoryHint: .isDirectory)
+            #else
+            // %LOCALAPPDATA% on Windows, where Foundation has no Library folder.
+            folder = (files.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? files.temporaryDirectory)
+                .appending(path: "ClaudeBar/Logs", directoryHint: .isDirectory)
+            #endif
+        }
+        return folder.appending(path: "ClaudeBar.log")
+    }
+
+    /// Makes a test run's log folder before its first line, so only the
+    /// person running the tests reads it where people share one temporary
+    /// folder (Linux's `/tmp`). Windows' `%TEMP%` is the person's own.
+    /// Not through AppLog: this is how its file gets a place.
+    private static func makePrivateFolder(_ folder: URL) {
+        #if os(Windows)
+        let attributes: [FileAttributeKey: Any]? = nil
+        #else
+        let attributes: [FileAttributeKey: Any]? = [.posixPermissions: 0o700]
+        #endif
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: attributes)
+        } catch {
+            NSLog("[AppLog] Failed to create the test run's log folder at %@: %@", folder.path, error.localizedDescription)
+        }
+    }
+
+    /// Whether a test runner started this process. Xcode names its test
+    /// configuration in `XCTestConfigurationFilePath`; `swift test` names the
+    /// `.xctest` bundle on the command line, for XCTest and Swift Testing, on
+    /// every platform. The app, and ClaudeBar for Windows' app and uploader,
+    /// name neither.
+    static func isTestRun(arguments: [String], environment: [String: String]) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil || arguments.contains { argument in
+            argument.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains { $0.hasSuffix(".xctest") }
+        }
+    }
 
     /// Where every line goes on this platform.
     static let sinks: [any LogSink] = {
