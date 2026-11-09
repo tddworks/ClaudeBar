@@ -60,13 +60,28 @@ final class FileLogSink: LogSink, @unchecked Sendable {
     }
 
     private func rotateIfNeeded() {
-        // A fresh URL each time: a URL keeps the resource values it has read.
-        guard let size = try? URL(filePath: fileURL.path).resourceValues(forKeys: [.fileSizeKey]).fileSize,
-              size > maxFileSize else {
-            return
+        guard isPastItsSize() else { return }
+        // Another process writing this log may be starting a new file at the
+        // same moment: one at a time, and only if the file is still past its
+        // size on this one's turn, so neither throws away the file the other
+        // just kept as `.old.log`.
+        do {
+            try LogFile.rotating(fileURL) {
+                guard isPastItsSize() else { return }
+                let old = fileURL.deletingPathExtension().appendingPathExtension("old.log")
+                try? FileManager.default.removeItem(at: old)
+                try? FileManager.default.moveItem(at: fileURL, to: old)
+            }
+        } catch {
+            // Not through AppLog: this sink is how AppLog writes. The file
+            // stays as it is; the next line tries again.
+            NSLog("[FileLogSink] Couldn't start a new log file at %@: %@", fileURL.path, error.localizedDescription)
         }
-        let old = fileURL.deletingPathExtension().appendingPathExtension("old.log")
-        try? FileManager.default.removeItem(at: old)
-        try? FileManager.default.moveItem(at: fileURL, to: old)
+    }
+
+    private func isPastItsSize() -> Bool {
+        // A fresh URL each time: a URL keeps the resource values it has read.
+        guard let size = try? URL(filePath: fileURL.path).resourceValues(forKeys: [.fileSizeKey]).fileSize else { return false }
+        return size > maxFileSize
     }
 }

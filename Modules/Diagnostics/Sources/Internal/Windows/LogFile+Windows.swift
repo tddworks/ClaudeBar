@@ -31,6 +31,24 @@ extension LogFile {
         }
     }
 
+    /// Runs `body` while this process holds the lock on `<log>.lock`
+    /// (`LockFileEx`, exclusive, on its first byte), waiting for another
+    /// process that holds it. No program this process starts inherits it.
+    static func rotating(_ log: URL, _ body: () -> Void) throws {
+        let opened = lockFile(for: log).path.withCString(encodedAs: UTF16.self) {
+            CreateFileW($0, DWORD(GENERIC_READ) | DWORD(GENERIC_WRITE), DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                        nil, DWORD(OPEN_ALWAYS), DWORD(FILE_ATTRIBUTE_NORMAL), nil)
+        }
+        guard let handle = opened, handle != INVALID_HANDLE_VALUE else { throw Failure("opening its lock file") }
+        defer { CloseHandle(handle) }
+        var overlapped = OVERLAPPED()
+        guard LockFileEx(handle, DWORD(LOCKFILE_EXCLUSIVE_LOCK), 0, 1, 0, &overlapped) else {
+            throw Failure("locking its lock file")
+        }
+        defer { UnlockFileEx(handle, 0, 1, 0, &overlapped) }
+        body()
+    }
+
     /// A line that didn't reach the file: the step and its Win32 error.
     private struct Failure: LocalizedError {
         let step: String

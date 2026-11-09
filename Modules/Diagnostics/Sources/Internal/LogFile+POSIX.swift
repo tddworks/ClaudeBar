@@ -28,6 +28,22 @@ extension LogFile {
         }
     }
 
+    /// Runs `body` while this process holds the lock on `<log>.lock`
+    /// (`flock`, exclusive), waiting for another process that holds it.
+    static func rotating(_ log: URL, _ body: () -> Void) throws {
+        let descriptor = lockFile(for: log).withUnsafeFileSystemRepresentation { path -> Int32 in
+            guard let path else { return -1 }
+            return open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0o666)
+        }
+        guard descriptor >= 0 else { throw failure("opening its lock file") }
+        defer { close(descriptor) }
+        while flock(descriptor, LOCK_EX) != 0 {
+            guard errno == EINTR else { throw failure("locking its lock file") }
+        }
+        defer { flock(descriptor, LOCK_UN) }
+        body()
+    }
+
     private static func failure(_ step: String) -> Error {
         let code = errno
         return NSError(domain: NSPOSIXErrorDomain, code: Int(code),
