@@ -12,11 +12,13 @@ struct SecurityKeychain: KeychainItems {
     var run: Run = SecurityKeychain.system
     var log = AppLog.credentials
 
+    /// The item's password as `security -w` prints it; `nil` when there is
+    /// none. Exit 44 is an item that isn't there; any other failure is the
+    /// Keychain refusing one that may be, logged with its status, which the
+    /// person needs to see (#271, #693).
     func password(service: String, account: String?) -> String? {
         let named = account.map { ["-a", $0] } ?? []
         let (status, output) = run(["find-generic-password", "-s", service] + named + ["-w"])
-        // 44 is an item that isn't there; anything else the Keychain refusing
-        // one that may be, which the person needs to see (#271, #693).
         if status != 0, status != Self.itemNotFound {
             log.error("Keychain item '\(service)' couldn't be read: security exited with \(status)")
         }

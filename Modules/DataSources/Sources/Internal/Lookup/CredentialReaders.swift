@@ -120,10 +120,12 @@ struct KeychainReader: CredentialFinding {
     let keychain: any KeychainItems
     var log = AppLog.credentials
 
+    /// The item's token and companions; `nil` when the item isn't there, is
+    /// empty, or holds no token. No item is no failure, as no file isn't: the
+    /// lookup's next place is tried, and a store that couldn't read one says
+    /// so itself (#693).
     func find() throws -> FoundCredential? {
         guard let stored = keychain.password(service: item.service, account: item.account) else {
-            // No item is no failure, as no file isn't: the lookup's next place
-            // is tried. A store that couldn't read one says so itself (#693).
             log.debug("Keychain item '\(item.service)' not found")
             return nil
         }
