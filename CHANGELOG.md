@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **In WSL, Claude and Codex are read instead of timing out**: WSL takes back an idle distro's memory, so their CLIs started from the disk, 18–24 s for Claude and 11–19 s for Codex, past their 20 s and 15 s. They now get time to start there; one that answers at once is read as before. ([#685](https://github.com/tddworks/ClaudeBar/issues/685))
 
 ### Added
-- **Runcrate credit balance**: a new Runcrate provider shows your remaining credits in dollars, from an API key pasted in Settings → Providers → Runcrate or from `RUNCRATE_API_KEY`. Off by default. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/runcrate/README.md)
+- **Runcrate credit balance**: a new Runcrate provider shows your remaining credits in dollars, from an API key pasted in Settings → Providers → Runcrate or from `RUNCRATE_API_KEY`. Off by default. ([#688](https://github.com/tddworks/ClaudeBar/pull/688)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/runcrate/README.md)
 
 ---
 
