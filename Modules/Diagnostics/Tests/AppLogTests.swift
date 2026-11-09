@@ -19,9 +19,30 @@ struct AppLogTests {
         let other = AppLog.logFileURL(testRun: true)
 
         #expect(one != other)
-        #expect(one.standardizedFileURL.path.hasPrefix(temporary))
         #expect(one.lastPathComponent == "ClaudeBar.log")
     }
+
+    /// Where people share one temporary folder (Linux's `/tmp`), a folder
+    /// every run shares would belong to the first user's run, and another
+    /// user's run couldn't write in it.
+    @Test
+    func `should put a test run's log in a folder of its own, right in the temporary folder`() {
+        let folder = AppLog.logFileURL(testRun: true).deletingLastPathComponent()
+
+        #expect(folder.deletingLastPathComponent().standardizedFileURL.path == temporary)
+    }
+
+    #if !os(Windows)
+    /// Its lines can name paths, so only the person running the tests reads them.
+    @Test
+    func `should keep a test run's log folder to the person running the tests`() throws {
+        let folder = AppLog.logFileURL.deletingLastPathComponent()
+
+        let permissions = try FileManager.default.attributesOfItem(atPath: folder.path)[.posixPermissions] as? Int
+
+        #expect(permissions == 0o700)
+    }
+    #endif
 
     @Test
     func `should keep the person's log where it always was outside a test run`() {
