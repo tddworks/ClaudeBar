@@ -511,8 +511,9 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
     public let then: [FollowUp]
     /// Variables to remove from, and add to, the CLI's environment.
     public let environment: ProcessEnvironment
-    /// Seconds the whole exchange may take before the CLI is stopped and the
-    /// fetch fails with a timeout — a CLI that stalls never answers (#517).
+    /// Seconds the whole exchange may take, from when the CLI is first asked,
+    /// before the CLI is stopped and the fetch fails with a timeout — a CLI
+    /// that stalls never answers (#517).
     public let timeout: TimeInterval
     /// What an error answer's message means — e.g. "authentication required"
     /// is a signed-out CLI (#525). Any other error answer is an execution failure.
