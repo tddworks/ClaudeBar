@@ -33,7 +33,7 @@ struct DetectionTests {
         #expect(ids == ["claude", "codex", "gemini", "antigravity", "zai", "copilot", "bedrock", "ampcode", "kimi", "kiro",
                         "cursor", "minimax", "deepseek", "openrouter", "vercel-gateway", "alibaba", "mistral", "opencode-go",
                         "omp", "grok", "commandcode", "cline", "warp", "devin", "windsurf", "jetbrains", "openai",
-                        "cloudflare-ai"])
+                        "cloudflare-ai", "runcrate"])
         #expect(detect().allSatisfy { $0.profile.origin == .builtIn })
     }
 

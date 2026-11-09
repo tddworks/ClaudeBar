@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **In WSL, Claude and Codex are read instead of timing out**: WSL takes back an idle distro's memory, so their CLIs started from the disk, 18–24 s for Claude and 11–19 s for Codex, past their 20 s and 15 s. They now get time to start there; one that answers at once is read as before. ([#685](https://github.com/tddworks/ClaudeBar/issues/685))
 - **The log keeps its errors for what went wrong**: a CLI that isn't installed and a Keychain item that isn't there were errors at every refresh, all 864 a day on one Windows PC. A missing CLI is now noted once, and on the Mac a Keychain that refuses a read says so again. ([#693](https://github.com/tddworks/ClaudeBar/issues/693))
 
+### Added
+- **Runcrate credit balance**: a new Runcrate provider shows your remaining credits in dollars, from an API key pasted in Settings → Providers → Runcrate or from `RUNCRATE_API_KEY`. Off by default. ([#688](https://github.com/tddworks/ClaudeBar/pull/688)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/runcrate/README.md)
+
 ---
 
 ## [0.5.25] - 2026-11-03
