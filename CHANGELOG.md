@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.26] - 2026-11-09
+
 ### Fixed
 - **DeepSeek no longer flips to "$0.00" and "quota depleted" when your account holds several currencies**: DeepSeek lists them in a changing order and ClaudeBar read the first, so an empty USD entry could replace your CNY balance. It now shows the currency that has money. ([#684](https://github.com/tddworks/ClaudeBar/issues/684)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/deepseek/README.md)
 - **Linux finds a CLI installed with nvm, Volta, fnm, mise or asdf without a shell**: a service or `wsl.exe -e` didn't read the shell setup that puts their folders on `PATH`. nvm's default version comes first, and the CLI runs on its manager's Node, not an older one in `/usr/bin`. ([#682](https://github.com/tddworks/ClaudeBar/issues/682))
@@ -414,7 +418,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...HEAD
+[0.5.26]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...v0.5.26
 [0.5.25]: https://github.com/tddworks/ClaudeBar/compare/v0.5.24...v0.5.25
 [0.5.24]: https://github.com/tddworks/ClaudeBar/compare/v0.5.23...v0.5.24
 [0.5.23]: https://github.com/tddworks/ClaudeBar/compare/v0.5.22...v0.5.23
