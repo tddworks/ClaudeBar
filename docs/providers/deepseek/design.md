@@ -29,14 +29,16 @@ deepseek.json ──► Provider owns default + added Accounts
 | Provider | Existing lifecycle, account IDs, saved configurations, names and pins | Account → scoped DataSources |
 | HTTP worker | Generic Bearer request, timeout, authentication and rate-limit handling | Credential → Response |
 | Script mapper | Generic money or percentage output, one measure per quota | Script output → UsageSnapshot |
-| Balance script | Primary currency, decimal strings, paid/granted subtitle, validation | API response → money quota or error |
+| Balance script | Currency with money, decimal strings, paid/granted subtitle, validation | API response → money quota or error |
 | ProviderVault | Account-scoped keys and verified default-login migration | Named key → credential |
 
 ## Response mapping
 
 The [balance API](https://api-docs.deepseek.com/api/get-user-balance/) returns
-decimal strings in `balance_infos`. As before, the first entry supplies the
-billing currency; a later USD entry never replaces a first CNY entry. The
+decimal strings in `balance_infos`. DeepSeek does not keep that list's order
+stable, and an empty currency can come first, so the script picks by content:
+the first currency with money, in currency-code order. When every currency is
+empty the first entry is read and shows as depleted. The
 required total remains a string through JavaScript and is decoded to Swift
 `Decimal`. The optional paid/granted amounts are formatted only for the
 subtitle. No cap, percentage, reset or window is fabricated.
@@ -83,7 +85,7 @@ a later pause remains saved across relaunches.
 ## Validation
 
 `DeepSeekDefinitionTests` exercise the bundled definition through real generic
-workers with stubbed network and vault ports: first currency, exact money,
+workers with stubbed network and vault ports: currency choice whatever the order, exact money,
 breakdowns, unavailable funds, zero/negative balances, request/authentication,
 empty/malformed responses, environment precedence, separate keys, relaunch and
 missing-key isolation. Storage tests use independent test stores, including a

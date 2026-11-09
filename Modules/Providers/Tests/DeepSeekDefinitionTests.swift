@@ -50,7 +50,7 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `should show the first balance exactly in its own currency, with the paid and granted parts, and no percentage`() async throws {
+    func `should show the balance exactly in its own currency, with the paid and granted parts, and no percentage`() async throws {
         let body = #"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"110.123456789","granted_balance":"10","topped_up_balance":"100"},{"currency":"USD","total_balance":"40"}]}"#
         let usage = try await make(body: body).refreshPlain()
         let quota = try #require(usage.quotas.first)
@@ -60,6 +60,34 @@ struct DeepSeekDefinitionTests {
         #expect(quota.resetText == "Paid: ¥100.00 · Granted: ¥10.00")
         #expect(quota.percentLeft == nil)
         #expect(quota.window == nil)
+    }
+
+    @Test(arguments: [
+        #"[{"currency":"USD","total_balance":"0.00"},{"currency":"CNY","total_balance":"72.72"}]"#,
+        #"[{"currency":"CNY","total_balance":"72.72"},{"currency":"USD","total_balance":"0.00"}]"#,
+    ])
+    func `should show the currency that has money whatever order DeepSeek lists it in`(_ entries: String) async throws {
+        let usage = try await make(body: #"{"is_available":true,"balance_infos":\#(entries)}"#).refreshPlain()
+        let quota = try #require(usage.quotas.first)
+        #expect(quota.left == .money(Money(Decimal(string: "72.72")!, currency: "CNY"), of: nil))
+        #expect(quota.status == .healthy)
+    }
+
+    @Test
+    func `should show the same currency when several have money, whatever order they are listed in`() async throws {
+        let cny = #"{"currency":"CNY","total_balance":"7"}"#
+        let usd = #"{"currency":"USD","total_balance":"40"}"#
+        let first = try await make(body: #"{"balance_infos":[\#(usd),\#(cny)]}"#).refreshPlain()
+        let second = try await make(body: #"{"balance_infos":[\#(cny),\#(usd)]}"#).refreshPlain()
+        #expect(first.quotas.first?.left == .money(Money(7, currency: "CNY"), of: nil))
+        #expect(second.quotas.first?.left == first.quotas.first?.left)
+    }
+
+    @Test
+    func `should show depleted when every currency is empty`() async throws {
+        let body = #"{"balance_infos":[{"currency":"USD","total_balance":"0.00"},{"currency":"CNY","total_balance":"0.00"}]}"#
+        let usage = try await make(body: body).refreshPlain()
+        #expect(usage.quotas.first?.status == .depleted)
     }
 
     @Test
