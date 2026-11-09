@@ -98,7 +98,7 @@ struct JSONFileReader: CredentialFinding {
     private func save(_ updated: [String: Any]) {
         do {
             let data = try JSONSerialization.data(withJSONObject: updated, options: [.prettyPrinted, .sortedKeys])
-            try data.write(to: url, options: .atomic)
+            try AtomicFile.write(data, to: url)
             AppLog.credentials.info("Saved refreshed credentials to \(file.path)")
         } catch {
             AppLog.credentials.error("Failed to save refreshed credentials to \(file.path): \(error.localizedDescription)")

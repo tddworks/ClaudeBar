@@ -133,7 +133,7 @@ actor JSONLinesReader {
         guard let data = try? JSONEncoder().encode(saved) else { return }
         let folder = kept.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try? data.write(to: kept, options: .atomic)
+        try? AtomicFile.write(data, to: kept)
         if !prunedKept {
             prunedKept = true
             Self.prune(folder, sparing: kept)

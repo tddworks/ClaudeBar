@@ -548,6 +548,16 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
   Windows implementation fails as a `DataSourceError` naming the case and the
   platform; a capability with none is `nil`, as when a definition doesn't
   declare it.
+- **A file the modules save goes through `AtomicFile.write`**, never
+  Foundation's `.atomic` directly. Each platform defines it once, beside
+  `FileStamp`: on the Mac and Linux it is Foundation's atomic write. On
+  Windows, Foundation's opens its new file with a handle a program started
+  meanwhile inherits and that doesn't let the file be renamed, so the save
+  failed with error 32 and was lost; there, a handle no program inherits
+  writes the new file and renames it over the old one, waiting up to a second
+  for a program holding that one open ([#692](https://github.com/tddworks/ClaudeBar/issues/692)).
+  Diagnostics' file log imports nothing, so it still starts a new log file
+  with Foundation's atomic write; at worst that file's first line is lost.
 - **`MOCKING`** is in `Package.swift`'s `swiftSettings`, for debug builds and
   tests.
 - **The App stays a Tuist target** and depends on the package's products. Its
@@ -628,6 +638,7 @@ Modules/DataSources/Sources/
     │   │                               $SHELL -l -i, SIGTERM then kill (#579)
     │   ├── Network/MacLocalServers.swift   RunningProcesses, pgrep, lsof,
     │   │                               URLSession trusting 127.0.0.1 (#588)
+    │   ├── Files/AtomicFile+macOS.swift   Foundation's atomic write
     │   └── Process/ · Lookup/ · Network/ · Logs/   today's workers, regrouped
     │                                 under their ports in slices 3–5
     ├── Windows/               #if os(Windows), whole file: the same ports
@@ -638,6 +649,8 @@ Modules/DataSources/Sources/
     │   │                                   TerminateProcess (#579)
     │   ├── Network/WindowsLocalServers.swift   EnumProcesses, NtQueryInformationProcess,
     │   │                                   GetExtendedTcpTable, WinHTTP (#588)
+    │   ├── Files/AtomicFile+Windows.swift   a file saved whole by one handle no
+    │   │                                   child inherits, renamed over the old (#692)
     │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows
     └── Linux/                 #if os(Linux), whole file: the same ports, as far as
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
@@ -646,6 +659,7 @@ Modules/DataSources/Sources/
         ├── Process/LinuxProcesses.swift  the four facts: LinuxBinaryLocator (PATH, then tool folders,
         │                                 version managers' included, #682), /bin/sh, $SHELL -l -i,
         │                                 SIGTERM then kill
+        ├── Files/AtomicFile+Linux.swift  Foundation's atomic write
         └── Logs/                    FileStamp+Linux · ByteSearch+Linux
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
