@@ -115,12 +115,16 @@ struct FileLogSinkTests {
 
         #expect(started)
         #expect(processes.map(\.terminationStatus) == [0, 0])
-        let lines = try lines(of: file)
-        let written = lines.compactMap { line in line.range(of: "] [INFO] [processes] ").map { String(line[$0.upperBound...]) } }
-        let expected = jobs.flatMap { job in (0..<job.lines).map { "\(job.tag) \($0)" } }
-        #expect(lines.count == expected.count)
-        #expect(written.count == lines.count)
-        #expect(Set(written) == Set(expected))
+        let expected = Set(jobs.flatMap { job in (0..<job.lines).map { "\(job.tag) \($0)" } })
+        let written = try lines(of: file).map { line in
+            line.range(of: "] [INFO] [processes] ").map { String(line[$0.upperBound...]) } ?? line
+        }
+        let lost = expected.subtracting(written).count
+        let broken = written.filter { !expected.contains($0) }.count
+        let twice = written.count - Set(written).count
+        #expect(lost == 0)
+        #expect(broken == 0)
+        #expect(twice == 0)
     }
 
     /// The other half of the test above: a second process writes its lines,
