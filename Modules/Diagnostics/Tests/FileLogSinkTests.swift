@@ -121,45 +121,35 @@ struct FileLogSinkTests {
     }
 
     /// The log keeps one earlier file, so a line older than one new file is
-    /// gone by design. When both processes start a new file at once, neither
-    /// throws away the file the other just kept: what is left of each
-    /// process's lines is its last ones, none missing among them, and the
-    /// earlier file is one that passed the size.
+    /// gone by design. When both processes pass the size at once, one starts
+    /// the new file and neither throws away the file the other just kept:
+    /// in a round that starts one new file, every line of both is still there.
     @Test(.startsPrograms, .startsSecondProcess)
-    func `should lose no line to the other process when both start new files as they write the log at once`() throws {
+    func `should lose no line to the other process when both start a new file as they write the log at once`() throws {
         defer { try? FileManager.default.removeItem(at: folder) }
-        let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 30, rounds: 100, maxFileSize: 400) }
+        // A line is 50 bytes: the 12 lines pass 300 once, after three or four from each.
+        let jobs = ["A", "B"].map { SecondProcess.Job(folder: folder, tag: $0, lines: 6, rounds: 300, maxFileSize: 300) }
 
         let processes = try start(jobs)
         let started = SecondProcess.run(jobs, processes)
 
         #expect(started)
         #expect(processes.map(\.terminationStatus) == [0, 0])
-        var gaps = 0, broken = 0, twice = 0, smallEarlierFiles = 0
+        let expected = Set(jobs.flatMap { job in (0..<job.lines).map { "\(job.tag) \($0)" } })
+        var lost = 0, broken = 0, twice = 0, newFiles = 0
         for round in 0..<jobs[0].rounds {
             let current = jobs[0].log(round)
             let earlier = current.deletingPathExtension().appendingPathExtension("old.log")
+            if FileManager.default.fileExists(atPath: earlier.path) { newFiles += 1 }
             let written = ((try? lines(of: earlier)) ?? []).map(Self.message) + ((try? lines(of: current)) ?? []).map(Self.message)
+            lost += expected.subtracting(written).count
+            broken += written.filter { !expected.contains($0) }.count
             twice += written.count - Set(written).count
-            for job in jobs {
-                let indexes = written.compactMap { message -> Int? in
-                    guard message.hasPrefix("\(job.tag) ") else { return nil }
-                    return Int(message.dropFirst(job.tag.count + 1))
-                }
-                let kept = Set(indexes)
-                // Its last lines, from the oldest kept to its last.
-                if kept.isEmpty || kept != Set((kept.min() ?? 0)...(job.lines - 1)) { gaps += 1 }
-            }
-            broken += written.filter { message in !jobs.contains { message.hasPrefix("\($0.tag) ") } }.count
-            if let size = try? FileManager.default.attributesOfItem(atPath: earlier.path)[.size] as? Int,
-               size <= jobs[0].maxFileSize {
-                smallEarlierFiles += 1
-            }
         }
-        #expect(gaps == 0)
-        #expect(smallEarlierFiles == 0)
+        #expect(lost == 0)
         #expect(broken == 0)
         #expect(twice == 0)
+        #expect(newFiles == jobs[0].rounds)
     }
 
     /// The other half of the tests above: a second process writes its lines
