@@ -94,6 +94,7 @@ Leaderboard (app)                          ClaudeBar's side of the leaderboard (
  │       ├─ isOn : Bool                    OFF = PAUSED: NO TAB, NOTHING UPLOADED; NAME, KEY, DAYS KEPT
  │       ├─ lastUpload : Date?             the last good upload: v1 resumes there, devices time the hour by it
  │       ├─ refused : Set<provider · day>  DAYS THE SERVER REFUSED, LAST 30 DAYS: SENT AGAIN WITH EACH UPLOAD
+ │       ├─ sent : [provider · day: Int]?  WHAT THE SERVER TOOK FROM THIS DEVICE, LAST 30 DAYS: AN EARLIER DAY GOES AGAIN ONCE IT GREW; NIL = A RECORD FROM BEFORE IT
  │       ├─ machine : hash?                THIS MAC'S HARDWARE UUID, HASHED WITH THE KEY'S PUBLIC HALF
  │       └─ shownDevices : Set<DeviceKey>  devices added that this one has already shown, once
  ├─ request : DeviceRequest?               THIS MAC ASKING TO BE ADDED TO A MEMBER. NEVER WHILE A MEMBER; IN MEMORY ONLY
@@ -170,7 +171,7 @@ The person thinks of the board as something their app has: what they saw a minut
 | **Owns: a turned-off Leaderboard uploads nothing** | `uploadCredentials` is `nil` while off, so the uploader has nothing to sign with and `lastUpload` stays where uploads stopped |
 | **Owns: a copied key it detects never uploads unasked** | at launch, a key whose `machine` hash isn't this Mac's uploads nothing until the member answers: this Mac gets its own key, or keeps this one and records its hash ([§2a](#2a--devices-one-member-several-machines)); every key made here is recorded with this Mac's hash, and forgetting a key forgets its hash |
 | **Tell it** | `join(as:sharing:)` · `share(_:)` · `stopSharing(_:)` · `setVisible(_:)` · `rename(to:)` · `leave()` · `turnOff()` · `turnOn()` · `requestToJoin(label:)` (answers a `DeviceRequest`) · `join(through:sharing:)` · `pendingDevice(code:)` · `approve(code:)` · `markShown(_:)` · `remove(_:_:)` (one of its `removals(of:)`) · `deleteDays(of:provider:day:)` · `becomeOwnDevice()` · `keepKeyHere()` |
-| **It answers** | `isJoined` · `isOn` · `sharing` · `country` · `devices` · `addedDevices` · `removals(of:)` (the dialog's choices for a device) · `removedBy` · `summary(period:provider:)` (the signed `/me` read, which it follows; `Board.read()` uses it, and the tab never calls it) · `export()` (everything the server holds, `/me/export`, as the server sent it; Settings' *Export…* saves it, and nothing here follows it) · `refused` (days the server refused, tried again) · `holdsCopiedKey` (this Mac's key came from another Mac) · `ownDeviceRequest` (while a copied key in its first week can't approve the new one: the code for another device of the member to approve) |
+| **It answers** | `isJoined` · `isOn` · `sharing` · `country` · `devices` · `addedDevices` · `removals(of:)` (the dialog's choices for a device) · `removedBy` · `summary(period:provider:)` (the signed `/me` read, which it follows; `Board.read()` uses it, and the tab never calls it) · `export()` (everything the server holds, `/me/export`, as the server sent it; Settings' *Export…* saves it, and nothing here follows it) · `refused` (days the server refused, tried again) · `sent` (each provider-day's total the server took from this device, last 30 days) · `holdsCopiedKey` (this Mac's key came from another Mac) · `ownDeviceRequest` (while a copied key in its first week can't approve the new one: the code for another device of the member to approve) |
 | **Never** | holds a ranking · sends a provider it was not told to share · forgets its key before the server confirmed the leave or the removal · keeps a member setting the server has changed since |
 
 ### `MemberDevices`: the member's devices, as `/me` last listed them
@@ -329,11 +330,44 @@ It remedies days counted twice by an old entry, after a reinstall (*Losing a key
 
 ### What an upload sends
 
-As in v1: every day from `lastUpload`'s day to today, at most 30 days, and the last 30 on join or once added, except a copy made its own device, which keeps the copied `lastUpload` (*A key copied to another machine*). Two things change:
+As in v1: every day from `lastUpload`'s day to today, at most 30 days, and the last 30 on join or once added, except a copy made its own device, which keeps the copied `lastUpload` (*A key copied to another machine*). Three things change:
 - **A bad day is refused alone.** Every per-day refusal is listed under `refused` in a `2xx`, and the rest of the upload is kept: a day too old, in the future, or over the cap. An upload fails whole only for what is wrong with all of it, its signature or its clock.
 - **A refused day is tried again.** The device keeps it (`refused`) and sends it with each upload until the server takes it or it is 30 days old. A day the cap pushed out comes back once the cap has room, after a phished device's days are deleted, say.
+- **An earlier day that appears or grows goes too.** A day before `lastUpload`'s day is sent again, with its whole total, once that total is larger than the one the server took from this device (*An earlier day that appears or grows*, below).
 
 This answer is for every client, with or without `X-Key`, replacing v1's `400` for a future day. A client from before devices ignores the body and moves `lastUpload`, so it sends a refused day again only while that day is still in its range: today, or yesterday until its first upload after midnight. A refused day that has left its range is what it loses. Answered `400`, it would lose more: once other devices' rows put one of its days over the member's cap, its whole upload would fail every hour, `lastUpload` would never move (`LeaderboardUploader.uploadNow()`), and none of its 30 days would get through.
+
+### An earlier day that appears or grows
+
+**Status:** designed ([#680](https://github.com/tddworks/ClaudeBar/issues/680)), not built (slice 18).
+
+An upload resumes from the day of `lastUpload`; before that day it sends only the refused days, taking the rest as already on the server. But a day before it can still change on this device after the upload moved past it:
+- **A provider shared later.** Its logs hold the last weeks, and none of those days was ever sent.
+- **A login added later**, whose folder holds last week's logs.
+- **A session across midnight**, in a log that dates a session by its start (Mistral's, `at.fromPath`): its tokens after the first upload past midnight are still yesterday's.
+
+Without this rule each such day stays off the board, or short on it, for good. Sending a day again replaces this device's row and never adds (§4), so sending it with its whole total is safe; what the device needs is to tell a day that changed from one that didn't.
+
+**What the device keeps: `sent`.** For each provider and day of the last 30, the total (the five counts summed) of the day as the server last took it from this device. A good upload records each day it sent, less the ones the server refused, and drops the days that left the 30. A failed upload records nothing, as it leaves `lastUpload` where it was. `sent` is kept with the membership, beside `refused`, and never sent.
+
+**What an upload reads, and what it sends.** It reads all 30 days, every time, and sends:
+- every day from `lastUpload`'s day to today, as read, as before;
+- every refused day, as before;
+- every earlier day whose total is larger than the one in `sent`, or that `sent` doesn't hold: the whole day, never the difference.
+
+An earlier day whose total equals the one in `sent` isn't sent again. So an hour with nothing new sends what the last one did, and an hourly upload identical to the last one is still skipped (§4).
+
+**A day only replaces, and an earlier day is never sent smaller.** An earlier day can read smaller than the server holds: a log deleted, a login removed from ClaudeBar, a ledger read again from logs that lost lines (*A ledger is a cache* in [daily-usage §3](../usage-history/daily-usage/design.md#3--thirty-days-without-re-reading-thirty-days-the-ledger)). Such a day isn't sent: the server keeps what it took, as it does today for every day before the cut, and `sent` keeps the larger total, so the day goes again only once it grows past that. The tokens were used, and a missing log doesn't take them back; no rule lowers a number on a guess (*Two devices reading the same logs*). A change to how days are summed that raises an earlier day reaches the board; one that lowers it reaches only the days from `lastUpload`'s day on, which go as read.
+
+**What it costs.** An hourly upload reads 30 days where it read one or two, all but the open ones from each login's `DayLedger`, a few hundred bytes a day: the same 30 days the daily-usage chart reads. The open days, today and yesterday until it closes an hour past midnight, come from the logs, and the kept scans ([daily-usage §3](../usage-history/daily-usage/design.md#3--thirty-days-without-re-reading-thirty-days-the-ledger)) read those only from where the last read stopped, in this process or the last one. A day the ledger doesn't hold yet (a login just added) is read from its logs once, and kept. What leaves the device stays as it is: an earlier day changes rarely, so an hourly upload carries today, and once in a while one day more. The server, which counts a member's standings again from their last 31 days on every upload (§5), does no more for it.
+
+**What it doesn't reach.** A closed day is read as its ledger kept it: what a tool writes to a day after the day closed stays out, of the chart and of the board alike. A Mistral session from 23:30 to 01:30 therefore reaches the board as yesterday's ledger kept it at the first read after 01:00, not to its last token.
+
+**The cap and refused days, unchanged.** A grown day that would put the member over the cap is refused alone, kept in `refused` and tried again with each upload until taken or 30 days old. It enters `sent` once the server takes it.
+
+**From a record without `sent`.** A membership from before this rule has none, and that is told apart from an empty one. Its first good upload sends what it would have sent before this rule, and takes every other day it read as sent, at its total, without sending it. So an update re-sends nothing, and only a day that grows after it goes; a day missed before the update, a provider shared before it say, stays missed. *Make this Mac its own device* starts the same way: it forgets the copied `sent`, which is what the server took from the copied key, so no day before the copied `lastUpload`'s day goes twice.
+
+**Leaving, joining again, turning off.** Leaving, or being forgotten by the server, forgets `sent` with the rest of the membership. A join, or being added, starts with an empty `sent` and sends its 30 days, each recorded. Turning off keeps `sent`, so turning back on catches up from `lastUpload` and sends the earlier days that grew while off. A provider no longer shared isn't read or sent; its days stay on the server, and its entries in `sent` stay too, so sharing it again sends only the days that grew meanwhile.
 
 ### Counting, and its bound
 
@@ -372,7 +406,7 @@ So such days count twice, bounded by the cap. Pointing them out to the member is
 **What the copy does.** It uploads nothing under the copied key and asks, until answered: *This Mac has a copy of «label»'s key.*
 - **Make this Mac its own device**, when both Macs stay in use:
   1. It makes a new key, and the copied key, which still signs, approves it, as *Add a device* does. If the copied key is in its first week, another device of the member past its first week approves it, or the switch waits for the week to pass.
-  2. It forgets the copied key, its hash and the copied `refused` days, which are the other Mac's to retry, and records this Mac's hash with the new key. It keeps the copied `lastUpload`, so its first upload under the new key starts at that day rather than 30 days back: the days before were the other Mac's, sent under the copied key already.
+  2. It forgets the copied key, its hash and the copied `refused` days, which are the other Mac's to retry, and records this Mac's hash with the new key. It keeps the copied `lastUpload`, so its first upload under the new key starts at that day rather than 30 days back: the days before were the other Mac's, sent under the copied key already. It forgets the copied `sent` too, so that first upload records this Mac's days before that day as sent without sending them, as an update does (*An earlier day that appears or grows*).
   3. The new key is an added device, held to its first week. The other Mac goes on as before.
 - **Keep the key here**, when the other Mac is gone (a wiped or sold Mac) or this is the same Mac after a repair: it records this Mac's hash and goes on with the key, its first week and its days as they were. Chosen while the other Mac is still in use, it leaves two Macs on one key, which replace each other's days as in v1, and the other Mac doesn't notice.
 
@@ -390,7 +424,7 @@ So such days count twice, bounded by the cap. Pointing them out to the member is
 ### What a device keeps, and what it takes from the server
 
 - **The member's, kept as a copy:** name, visibility, globe, country, link and devices. The copy follows every `/me` answer, which therefore carries `username`. A rename on the MacBook reaches the Mac mini on its next upload, and never as a stale `X-Member` that forgets it.
-- **The device's own, never sent:** sharing, on/off, `lastUpload`, `refused`, the hash of its Mac's UUID, and which devices it has already shown as added (`shownDevices`). Each device ticks its own providers, pauses on its own, and uploads on its own clock.
+- **The device's own, never sent:** sharing, on/off, `lastUpload`, `refused`, `sent`, the hash of its Mac's UUID, and which devices it has already shown as added (`shownDevices`). Each device ticks its own providers, pauses on its own, and uploads on its own clock.
 
 ## 3 · The tells
 
@@ -460,6 +494,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A device joins only with a key it kept, saved and read back: before the server hears of a new member, and before a new device counts itself joined, its request still approved if the key isn't kept. A join the server refuses keeps no key. A member doesn't join again, and while one join waits for the server no other starts, so none replaces or deletes the key another kept | `LeaderboardMembership.join(as:sharing:)` and `join(through:sharing:)`, which say `LeaderboardError.keyNotKept`, or `alreadyJoined` |
 | Uploading a day again replaces that device's row; it never adds, and never touches another device's | Server |
 | A missed hour, or a device asleep for days, heals on the next upload | `LeaderboardUploader`: uploads from the day of `lastUpload` to today, at most 30 days, and on join, or once added, the last 30; a copy made its own device keeps the copied `lastUpload` |
+| A day before the last upload's that appears or grows on this device still reaches the board, with its whole total: a provider shared later, a login added later, a session across midnight. Such a day goes once its total is larger than the one the server took from this device; read smaller, it isn't sent. A record from before this rule takes the days it reads as sent, so an update re-sends nothing | `LeaderboardUploader`, reading all 30 days, against `LeaderboardMembership.sent` |
 | Uploads stay hourly by the clock, even after the Mac sleeps | `LeaderboardUploader.uploadDue()`: uploads only when there is no `lastUpload` or it is at least an hour old by the wall clock. The App driver only asks often (every 5 minutes and on wake) and never decides |
 | An hourly upload that would send exactly what the last good one sent, from the same key on the same day, with no refused day waiting to be tried again, goes nowhere and still counts as up to date: the server already holds it. The first upload after launch, and an upload the person asked for, always go | `LeaderboardUploader.uploadDue()`, against the last upload it sent since launch |
 | An upload you asked for always goes, hour or not | `LeaderboardUploader.uploadNow()`: Refresh in the popover, whatever tab is open, joining, and switching a shared provider |
@@ -483,7 +518,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | *Export my data* saves everything the server holds about the member: every row each device ever uploaded, with the device that sent it, as the server sent it | `LeaderboardMembership.export()` reads `/me/export`; `LeaderboardHTTPClient` hands its bytes on unchanged, and refuses an answer that isn't JSON; the server refuses an added device in its first week |
 | A turned-off Leaderboard uploads nothing, joined or not, and keeps the membership as it was | `LeaderboardMembership.uploadCredentials` (nil while off) |
 | Turned off stays off across launches, and outlives leaving and joining again | `LeaderboardMembership.isOn`, kept as `leaderboard.on` apart from the membership record |
-| Turning it back on catches up the days missed, up to 30 | `LeaderboardUploader`'s range from `lastUpload`, unchanged; `Leaderboard.turnOn()` asks for it at once |
+| Turning it back on catches up the days missed, up to 30 | `LeaderboardUploader`: from `lastUpload`, with the earlier days that grew while off; `Leaderboard.turnOn()` asks for it at once |
 | While off there is no Leaderboard tab, and the popover falls back to its provider | The popover reads `membership.isOn` |
 | A member has at most 5 devices that aren't removed | Server |
 | A device is added only when another device of the member, past its first week, approves the code it shows, within 10 minutes, once; the new device names the member and asks before it uploads | Server, and the new device: `DeviceRequest` (waits, names the member, keeps nothing), then `LeaderboardMembership.join(through:sharing:)` |
@@ -493,7 +528,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Every device in use past its first week shows, once, each device added since it last read `/me`, with **Remove**; a device in its first week sees only itself | `LeaderboardMembership.addedDevices`: `MemberDevices.added(since:)` this device, less the ones kept as `shownDevices` |
 | A device whose key the server no longer knows forgets its membership; one another device removed also says which | `LeaderboardUploader`, as for a member the server forgot; `LeaderboardMembership.removedBy`, the `DeviceRef` the server named |
 | The member's name, visibility, globe, country and link come from the server; a device's copy follows every `/me` | `LeaderboardMembership` |
-| A day the server refused is sent again with each upload until it is taken or 30 days old | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
+| A day the server refused is sent again with each upload until it is taken or 30 days old; it counts as sent only once taken | `LeaderboardMembership.refused`, read by `LeaderboardUploader` |
 | A key whose `machine` hash isn't this Mac's uploads nothing, and asks until answered: *Make this Mac its own device* or *Keep the key here* | `LeaderboardMembership.holdsCopiedKey` |
 | A code shown for another device to approve adds this Mac only to the member it was shown for: an approval by a stranger's device is refused, and the new key removes itself from there | `LeaderboardMembership.becomeOwnDevice()`: the member approved is the one the copied key's `/me` names, or the request is declined |
 | An added device knows it is held to a first week: `/me` can't say, since an added device in its first week sees only itself, as a member with one device does | `LeaderboardMembership.firstWeekEnds(for:)`, from `LeaderboardRecord.addedAsDevice`, set by `join(through:sharing:)` and `becomeOwnDevice()` |
@@ -630,15 +665,15 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 |---|---|---|
 | Codex `usageHistory` (JSON) | Codex daily tokens from its session logs | Each `token_count` line's `last_token_usage`, deduplicated by the session's running total (Codex writes some lines twice). No cost: the lines name no model |
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
-| `LeaderboardMembership` | The laws of §4 on this device | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed; the member's settings follow `/me`; a key whose `machine` hash isn't this Mac's never uploads; refused days are tried again |
+| `LeaderboardMembership` | The laws of §4 on this device | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed; the member's settings follow `/me`; a key whose `machine` hash isn't this Mac's never uploads; refused days are tried again; what the server took from this device is kept (`sent`) |
 | `RequestSigner` | The canonical string, signed with Ed25519 from `Crypto` (swift-crypto, which is CryptoKit on Apple platforms) | Pinned by `Modules/Leaderboard/Tests/vectors.json`; the server checks an identical copy |
-| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days, and now when you ask; an hourly upload identical to the last one sent is skipped while no refused day waits | `lastUpload` moves only on success, or on a skipped upload the server already holds. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
+| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days and the earlier days that grew past `sent`, and now when you ask; an hourly upload identical to the last one sent is skipped while no refused day waits | `lastUpload` and `sent` move only on success, or on a skipped upload the server already holds. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 
 | Piece | Home |
 |---|---|
 | `LeaderboardMembership`, `Board` and `Board.Member`, `DailyTokens`, `Username`, `RankCard`, `LeaderboardUploader` | `Modules/Leaderboard/Sources/` |
-| `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's model and its hardware UUID, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, the devices already shown and the `machine` hash) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
+| `@Mockable` ports `LeaderboardAPI`, `SigningKeyStore` and `MachineIdentity` (this Mac's model and its hardware UUID, faked in tests to stand for another Mac); plain `LeaderboardSettingsRepository` (like Notify!'s, now also keeping `refused`, `sent`, kept even when empty so that a record without it is one from before it, the devices already shown and the `machine` hash) and `@MainActor` `TokenLogs`, faked in tests | `Modules/Leaderboard/Sources/` |
 | `DeviceRequest`; `Device`, `DeviceKey` (the key a device signs with: text only on the wire and in `settings.json`), `MemberDevices`, `DeviceCode`, `DeviceLabel` | `Modules/Leaderboard/Sources/` |
 | The factory, `Leaderboard.makeAPI(client:)`, `makeKeyStore()` and `makeMachineIdentity()`: the server, and the key store and machine of the platform the module is built for | `Modules/Leaderboard/Sources/` |
 | `LeaderboardHTTPClient`; `FallbackSigningKeyStore`, the key in the Keychain first and in UserDefaults when the Keychain refuses it (`DefaultsSigningKeyStore`) | `Modules/Leaderboard/Sources/Internal/` |
@@ -654,7 +689,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR), 15's surfaces from [the mockup](../../../design-concept/leaderboard/devices.html).
+Test-first slices, each green on its own. Slices 1–17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR), 15's surfaces from [the mockup](../../../design-concept/leaderboard/devices.html). Slice 18 is designed, not built.
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.
@@ -674,6 +709,7 @@ Test-first slices, each green on its own. Slices 1–17 are built: 11 and 16 on 
 
 16. **Worker: standings counted when days change** (in `tddworks/claudebar-server`). Pins: the board, *Your rank* and the globe answer exactly what counting every row on each read answered, for members with several devices in different time zones, hidden, suspended and tied; an upload, and deleting a removed device's days, show at once; a device that stopped uploading ages out on the next UTC day without anyone uploading; a board read, *Your rank* and an upload each read a bounded number of rows however many days are stored.
 17. **A board as last read** (`Board`, with `Board.Member` in place of `Standing` and no `BoardView`: a board is named by its period and provider). Pins: `members` is `nil` before the first read; a read keeps `members` and `you` together; `you` is `nil` when not ranked while `members` is not; a board asks the server for its own period and provider; a second read replaces both; a failed read keeps both and sets `failure`, and the next good one clears it. The tab draws `leaderboard.board` and keeps nothing, so reopening the popover or picking a board back shows its last answer at once.
+18. **An earlier day that appears or grows** ([§2a](#an-earlier-day-that-appears-or-grows), [#680](https://github.com/tddworks/ClaudeBar/issues/680)), in `LeaderboardUploaderTests` with a faked `TokenLogs` and clock, each day reaching the upload with its whole total. Pins: a provider shared after the first upload sends its earlier days once; a login added after it, with last week's days, sends them once, summed with the provider's other login; a day older than the last upload, first seen after it, goes; yesterday growing after the upload moved to today (a session across midnight) goes again with its new total; a device asleep for days sends from `lastUpload`'s day as before, and no earlier day that didn't grow; an unchanged earlier day isn't sent again, and an hour with nothing new is still skipped; an earlier day that shrank isn't sent, and goes again only once it grows past the total the server took; a day leaves `sent` when it leaves the 30; a refused day isn't recorded as sent and keeps its retry, and is recorded once taken; a failed upload records nothing; a record without `sent` sends nothing extra on its first upload, and a day that grows after it goes; leaving and joining again sends 30 days; *Make this Mac its own device* sends no day before the copied `lastUpload`'s day. `JSONSettingsRepository` keeps `sent` across launches, an empty one apart from none.
 
 Each user-visible slice adds its CHANGELOG line; the feature's `README.md` lands with slice 8.
 
