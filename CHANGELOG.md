@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+- **A program that ends right after logging keeps its last lines**: the log writes each line on a queue of its own, which `exit` ended with the lines still on it, so ClaudeBar for Windows' hourly upload never logged its outcome. `AppLog.flush()` waits for them. ([#701](https://github.com/tddworks/ClaudeBar/issues/701))
 
 ---
 
