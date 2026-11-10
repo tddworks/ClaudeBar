@@ -644,6 +644,8 @@ public final class LeaderboardMembership {
         }
     }
 
+    /// The membership as the last launch kept it. A record from before
+    /// `sent` holds the days before its last upload's (design §2a).
     private func restore() {
         isOn = settings.isLeaderboardOn()
         guard let record = settings.leaderboardRecord(), let name = Username(record.username),

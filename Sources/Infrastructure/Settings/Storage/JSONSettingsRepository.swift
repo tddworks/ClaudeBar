@@ -909,6 +909,7 @@ extension JSONSettingsRepository: MultiAccountSettingsRepository {
 // A destination's own namespace, `leaderboard.*`, beside `notify.*`. The
 // private key is not here: the `Leaderboard` module's `SigningKeyStore` keeps it.
 extension JSONSettingsRepository: LeaderboardSettingsRepository {
+    /// The membership kept as `leaderboard.*`; `nil` when not joined.
     public func leaderboardRecord() -> LeaderboardRecord? {
         guard let username: String = store.read(key: "leaderboard.username") else { return nil }
         let lastUpload: Double? = store.read(key: "leaderboard.lastUpload")
@@ -945,6 +946,7 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: on, key: "leaderboard.on")
     }
 
+    /// Writes the membership as `leaderboard.*`; `nil` removes every key of it.
     public func saveLeaderboardRecord(_ record: LeaderboardRecord?) {
         store.write(value: record?.username, key: "leaderboard.username")
         store.write(value: record?.sharing, key: "leaderboard.sharing")

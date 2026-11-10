@@ -66,6 +66,10 @@ public final class LeaderboardUploader {
         await upload(skippingRepeat: false)
     }
 
+    /// One upload: reads the last thirty days, sends the ones due (`Due`),
+    /// and records the answer for the membership whose key signed it, and
+    /// for no other. An hourly one (`skippingRepeat`) stays home when the
+    /// server already holds all it would send.
     private func upload(skippingRepeat: Bool) async {
         guard let credentials = membership.uploadCredentials, !isUploading else {
             // A copied key uploads nothing by design (§2a); the badge says why.
@@ -128,6 +132,7 @@ public final class LeaderboardUploader {
         let heldBefore: String?
         let refused: Set<ProviderDay>
 
+        /// The days of `tokens` that go, oldest first as read.
         func callAsFunction(_ tokens: [DailyTokens]) -> [DailyTokens] {
             tokens.filter { day in
                 guard day.day >= firstDay else { return false }
