@@ -332,6 +332,41 @@ struct DataSourceTests {
     }
 
     @Test
+    func `should ask to sign in when a JSON-RPC CLI answers that it is signed out, even when the app's threads were busy past its timeout as it started the CLI (#698)`() async throws {
+        // Every thread taken right after the CLI starts, for longer than its
+        // timeout: the CLI is asked only then, and answers at once. On the
+        // Windows runner, the suite's tests waited that long for a thread.
+        let thread = BusyThread()
+        let transport = MockRPCTransport()
+        given(transport).send(.any).willReturn(())
+        given(transport).close().willReturn(())
+        given(transport).receive()
+            .willReturn(Data(#"{"id":1,"error":{"code":-32600,"message":"codex account authentication required to read rate limits"}}"#.utf8))
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"codex","call":"read","timeout":0.2,
+           "errors":[{"contains":["authentication required"],"error":"authenticationRequired"}]}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(
+            definition,
+            providerId: "test",
+            cliExecutor: installed(),
+            network: MockNetworkClient(),
+            makeTransport: { _, _, _, _ in
+                thread.hold(for: 0.5)
+                return transport
+            },
+            environment: { _ in nil },
+            homeDirectory: FileManager.default.temporaryDirectory,
+            now: { Date() }
+        )
+
+        await withTaskExecutorPreference(thread) {
+            await #expect(throws: DataSourceError(.fetch, .authenticationRequired)) { try await source.fetchUsage() }
+        }
+    }
+
+    @Test
     func `should wait fifteen seconds for a JSON-RPC CLI unless the definition says otherwise`() throws {
         let call = try JSONDecoder().decode(JSONRPCCall.self, from: Data(#"{"cli":"codex","call":"read"}"#.utf8))
 

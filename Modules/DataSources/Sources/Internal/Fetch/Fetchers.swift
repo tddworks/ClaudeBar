@@ -170,7 +170,9 @@ struct JSONRPCFetcher: Fetching {
         // A CLI can stall without answering or exiting (#517). A read from
         // its pipe ignores cancellation, so at the deadline, or when the
         // refresh is cancelled, the transport is closed: that stops the CLI
-        // and ends the read.
+        // and ends the read. The deadline counts from when the CLI is first
+        // asked: until the exchange runs, the app's threads may be busy with
+        // other work, and the time they take isn't the CLI's (#698).
         let allowance = FetchContext.startAllowance
         let deadline = RPCDeadline(timeout: call.timeout, startAllowance: allowance)
         do {
@@ -202,6 +204,7 @@ struct JSONRPCFetcher: Fetching {
 
     private func exchange(over transport: any RPCTransport, deadline: RPCDeadline) async throws -> Response {
         let session = RPCSession(transport: transport, errors: call.errors)
+        deadline.asked()
         for step in call.handshake {
             if let method = step.request {
                 _ = try await session.request(method, params: step.params)
@@ -222,17 +225,26 @@ struct JSONRPCFetcher: Fetching {
 
 /// When a JSON-RPC exchange runs out of time, and whether it has: `timeout`
 /// after the CLI first answers a request, or, while it hasn't, `timeout`
-/// plus the time it may take to start (`FetchContext.startAllowance`, #685).
-/// The exchange says when the CLI answered; its timer waits for the end.
+/// plus the time it may take to start (`FetchContext.startAllowance`, #685),
+/// from when it was first asked (#698). The exchange says when it asked and
+/// when the CLI answered; its timer waits for the end.
 final class RPCDeadline: Sendable {
     private let timeout: Duration
-    private let latest: ContinuousClock.Instant
+    private let allowance: Duration
+    private let firstAsked = Mutex<ContinuousClock.Instant?>(nil)
     private let firstAnswer = Mutex<ContinuousClock.Instant?>(nil)
     private let passed = Mutex(false)
 
-    init(timeout: TimeInterval, startAllowance: TimeInterval, startedAt start: ContinuousClock.Instant = .now) {
+    /// A deadline `timeout` seconds long, with `startAllowance` more while the
+    /// CLI hasn't answered; a negative allowance is none.
+    init(timeout: TimeInterval, startAllowance: TimeInterval) {
         self.timeout = .seconds(timeout)
-        latest = start + .seconds(timeout + max(0, startAllowance))
+        allowance = .seconds(max(0, startAllowance))
+    }
+
+    /// The CLI is asked a request; the time counts from the first time it was.
+    func asked(at instant: ContinuousClock.Instant = .now) {
+        firstAsked.withLock { $0 = $0 ?? instant }
     }
 
     /// The CLI answered a request; the timeout counts from the first time it did.
@@ -240,23 +252,29 @@ final class RPCDeadline: Sendable {
         firstAnswer.withLock { $0 = $0 ?? instant }
     }
 
-    /// When the exchange runs out of time, as things stand.
-    var end: ContinuousClock.Instant {
-        firstAnswer.withLock { $0 }.map { min(latest, $0 + timeout) } ?? latest
+    /// When the exchange runs out of time, as things stand; none before the
+    /// CLI is asked anything.
+    var end: ContinuousClock.Instant? {
+        guard let asked = firstAsked.withLock({ $0 }) else { return nil }
+        let latest = asked + timeout + allowance
+        return firstAnswer.withLock { $0 }.map { min(latest, $0 + timeout) } ?? latest
     }
 
     /// Returns when the deadline passes.
     func wait() async throws {
         while true {
-            let end = self.end
             let now = ContinuousClock.now
-            guard now < end else { break }
-            // A first answer brings the end closer, so look again at least every 100 ms.
-            try await Task.sleep(until: min(end, now + .milliseconds(100)), clock: .continuous)
+            let end = self.end
+            if let end, now >= end { break }
+            // Being asked sets the end and a first answer brings it closer,
+            // so look again at least every 100 ms.
+            let look = now + .milliseconds(100)
+            try await Task.sleep(until: end.map { min($0, look) } ?? look, clock: .continuous)
         }
         passed.withLock { $0 = true }
     }
 
+    /// Whether `wait()` found the deadline passed.
     var hasPassed: Bool { passed.withLock { $0 } }
 }
 
