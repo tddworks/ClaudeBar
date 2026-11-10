@@ -86,4 +86,40 @@ struct AppLogTests {
     func `should not take the app or its helpers for a test run`(arguments: [String]) {
         #expect(!AppLog.isTestRun(arguments: arguments, environment: [:]))
     }
+
+    /// A process that logs its outcome and ends at once, as ClaudeBar for
+    /// Windows' hourly `claudebar-upload.exe` calls `exit` right after its
+    /// last line: the lines are in the log once it has ended.
+    @Test(.startsSecondProcess)
+    func `should have a process's last lines in the log once it ends right after logging them`() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appending(path: "AppLogTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let job = SecondProcess.Job(folder: folder, tag: "ending", lines: 50)
+
+        let process = try SecondProcess.start(running: "as a process that ends right after logging", job: job,
+                                              output: folder.appending(path: "second-process.txt"))
+        process.waitUntilExit()
+
+        #expect(process.terminationStatus == 0)
+        let log = URL(fileURLWithPath: try String(contentsOf: folder.appending(path: "log-path"), encoding: .utf8))
+        defer { try? FileManager.default.removeItem(at: log.deletingLastPathComponent()) }
+        let written = ((try? String(contentsOf: log, encoding: .utf8)) ?? "").split(separator: "\n")
+            .filter { $0.contains("] [INFO] [monitor] \(job.tag) ") }
+        #expect(written.count == job.lines)
+    }
+
+    /// The other half of the test above: a second process names its log,
+    /// logs its lines and ends at once.
+    @Test(.asSecondProcess)
+    func `should log its lines and end, as a process that ends right after logging`() throws {
+        let job = try #require(SecondProcess.job)
+        try Data(AppLog.logFileURL.path.utf8).write(to: job.folder.appending(path: "log-path"))
+
+        for index in 0..<job.lines {
+            AppLog.monitor.info("\(job.tag) \(index)")
+        }
+        exit(0)
+    }
 }
