@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+
 ---
 
 ## [0.5.26] - 2026-11-09

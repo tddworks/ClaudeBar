@@ -15,7 +15,7 @@ ClaudeBar writes everything at info level and above to:
 ```
 
 - **Open it**: Settings → **Logs** → **Open Log File** opens it in TextEdit. Attach it to bug reports.
-- **Rotation**: when the file passes 5 MB it's renamed to `ClaudeBar.old.log`, replacing any older one, and a new file starts. So you have at most about 10 MB of history.
+- **Rotation**: when the file passes 5 MB it's renamed to `ClaudeBar.old.log`, replacing any older one, and a new file starts. So you have at most about 10 MB of history. The empty `ClaudeBar.log.lock` beside it lets ClaudeBar's processes take turns starting the new file.
 - **Line format**: `[2026-09-24T09:15:02.123Z] [INFO] [probes] claude: every data source failed; reporting Authentication required. Please log in.`, with the timestamp in UTC.
 - **Levels**: `INFO`, `WARNING` and `ERROR`. Debug messages go only to the unified log (below).
 - **No secrets**: tokens and API keys are never logged. Check before posting a log anyway, since it contains paths and project names.
