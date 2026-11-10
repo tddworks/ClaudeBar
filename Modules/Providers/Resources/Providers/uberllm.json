@@ -1,0 +1,42 @@
+{
+  "profile": {
+    "id": "uberllm",
+    "name": "UberLLM",
+    "links": { "dashboard": "https://uberllm.dev/dashboard" },
+    "look": {
+      "symbol": "arrow.triangle.branch",
+      "icon": "UberLLMIcon",
+      "color": { "light": [0.36, 0.31, 0.9], "dark": [0.48, 0.43, 0.98] },
+      "gradientEnd": { "light": [0.22, 0.17, 0.62], "dark": [0.34, 0.29, 0.84] }
+    }
+  },
+  "enabledByDefault": false,
+  "order": 300,
+  "settings": [
+    { "id": "apiKey", "label": "API key", "kind": "secret", "scope": "account" },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "UBERLLM_API_KEY" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads the UberLLM prepaid balance.",
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
+      "fetch": {
+        "http": {
+          "url": "https://api.uberllm.dev/v1/balance",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
+          "timeout": 30
+        }
+      },
+      "mapping": {
+        "json": {
+          "quotas": [ { "kind": "model", "name": "Credits", "left": { "money": "$.available_usd", "currency": "USD" } } ],
+          "whenEmpty": { "otherwise": "Invalid or missing balance" },
+          "notAnObject": "Invalid balance response"
+        }
+      }
+    }
+  ]
+}
