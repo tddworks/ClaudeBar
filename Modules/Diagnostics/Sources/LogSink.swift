@@ -3,6 +3,8 @@
 /// platform's sinks.
 protocol LogSink: Sendable {
     func write(_ level: LogLevel, category: String, message: String)
+    /// Returns once every line written so far has reached where it goes.
+    func flush()
 }
 
 /// A line's level, as OSLog names it.

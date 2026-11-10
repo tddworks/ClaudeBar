@@ -111,7 +111,7 @@ struct AppLogTests {
     }
 
     /// The other half of the test above: a second process names its log,
-    /// logs its lines and ends at once.
+    /// logs its lines, waits for them to reach the file and ends at once.
     @Test(.asSecondProcess)
     func `should log its lines and end, as a process that ends right after logging`() throws {
         let job = try #require(SecondProcess.job)
@@ -120,6 +120,7 @@ struct AppLogTests {
         for index in 0..<job.lines {
             AppLog.monitor.info("\(job.tag) \(index)")
         }
+        AppLog.flush()
         exit(0)
     }
 }

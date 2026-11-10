@@ -14,6 +14,9 @@ final class OSLogSink: LogSink {
         self.subsystem = subsystem
     }
 
+    /// OSLog takes each line as it is written, so there is nothing to wait for.
+    func flush() {}
+
     func write(_ level: LogLevel, category: String, message: String) {
         let logger = loggers.withLock { loggers in
             if let logger = loggers[category] { return logger }
