@@ -556,6 +556,16 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
   failed with error 32 and was lost; there, a handle no program inherits
   writes the new file and renames it over the old one, waiting up to a second
   for a program holding that one open ([#692](https://github.com/tddworks/ClaudeBar/issues/692)).
+- **A log folder is listed by `LogFileFinder.listing(under:)`**, each
+  platform's own, and a listed file's time is `contentModified(_:)`. On the
+  Mac and Linux both are Foundation's enumerator and resource values. On
+  Windows those open every file in the folder for reading, twice, and a log
+  the glob names three times, and the antivirus scans a file opened that way
+  unless it did lately: omp's 15,000 session files, unread for 20 minutes,
+  took one to three minutes to list. There the folders' own entries
+  (`FindFirstFileExW`) name the files, so no file is opened, and a log's time
+  comes from its own record (`GetFileAttributesExW`), not the folder's entry,
+  which NTFS leaves at its old time while a writer holds the file open ([#704](https://github.com/tddworks/ClaudeBar/issues/704)).
 - **The file log adds each line through `LogFile.append`**, Diagnostics' own,
   since it imports nothing: the file is opened to append, made if it isn't
   there, and no program the process starts inherits it (`O_APPEND |
@@ -665,7 +675,8 @@ Modules/DataSources/Sources/
     │   │                                   GetExtendedTcpTable, WinHTTP (#588)
     │   ├── Files/AtomicFile+Windows.swift   a file saved whole by one handle no
     │   │                                   child inherits, renamed over the old (#692)
-    │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows
+    │   └── Logs/                     FileStamp+Windows · ByteSearch+Windows ·
+    │                                 LogFileFinder+Windows: the folders' own entries
     └── Linux/                 #if os(Linux), whole file: the same ports, as far as
         ├── Platform+Linux.swift     static let current = Platform(name: "Linux", …)
         ├── Time/LinuxTimeZone.swift     TimeZone.current; a zone with no tzdata
@@ -674,7 +685,7 @@ Modules/DataSources/Sources/
         │                                 version managers' included, #682), /bin/sh, $SHELL -l -i,
         │                                 SIGTERM then kill
         ├── Files/AtomicFile+Linux.swift  Foundation's atomic write
-        └── Logs/                    FileStamp+Linux · ByteSearch+Linux
+        └── Logs/                    FileStamp+Linux · ByteSearch+Linux · LogFileFinder+Linux
 Modules/DataSources/Tests/
 ├── Contracts/                 one suite per port, run against Platform.current's
 │                                adapter: TimeZoneContract (#567),

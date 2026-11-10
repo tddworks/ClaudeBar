@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+- **On Windows, usage history no longer takes minutes to read a big log folder**: listing it opened every file to read it, and the antivirus scanned each one, so omp's 15,000 session files took 1–3 minutes once unread for 20 minutes. No file is opened now. ([#704](https://github.com/tddworks/ClaudeBar/issues/704))
 
 ---
 

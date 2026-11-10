@@ -4,12 +4,13 @@ import WinSDK
 
 extension LogFileFinder {
     /// Every visible file under `root`, at any depth, read from the folders'
-    /// own entries (`FindFirstFileExW`). Foundation's enumerator opens every
-    /// file it lists to read it, twice with `LogFileFinder`'s path check, and
-    /// each such open waits for the antivirus when Windows hasn't seen the
-    /// file for a while: a folder of 15,000 session files took minutes. Here
-    /// no file is opened. As Foundation's does, the listing doesn't enter a
-    /// linked folder, and a link to a file is left out.
+    /// own entries (`FindFirstFileExW`); no file is opened. Foundation's
+    /// enumerator opens each file it lists for reading, and resolving its
+    /// path opens it again. The antivirus scans a file opened for reading
+    /// unless it scanned it lately, so a folder of 15,000 session files no
+    /// one had read for 20 minutes took one to three minutes to list. As
+    /// Foundation's does, the listing doesn't enter a linked folder, and a
+    /// link to a file is left out.
     static func listing(under root: URL) -> [Listed] {
         var files: [Listed] = []
         var folders: [(url: URL, relativePath: String)] = [(root, "")]
