@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+- **A day that appears or grows after an upload now reaches the Leaderboard**: a provider shared later, a login added later or a session past midnight left those days off the board, or short on it. Such a day now goes again with its whole total; one that reads smaller isn't sent. ([#680](https://github.com/tddworks/ClaudeBar/issues/680))
 
 ---
 

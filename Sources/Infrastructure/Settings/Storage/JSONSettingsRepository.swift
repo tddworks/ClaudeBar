@@ -928,7 +928,12 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
             },
             shownDevices: store.read(key: "leaderboard.shownDevices") ?? [],
             machine: store.read(key: "leaderboard.machine"),
-            addedAsDevice: store.read(key: "leaderboard.addedAsDevice") ?? false
+            addedAsDevice: store.read(key: "leaderboard.addedAsDevice") ?? false,
+            // `{provider: {day: total}}`; absent for a record from before it was kept.
+            sent: (store.read(key: "leaderboard.sent") as [String: [String: Int]]?).map { providers in
+                providers.flatMap { provider, days in days.map { SentDay(provider: provider, day: $0.key, total: $0.value) } }
+            },
+            heldBefore: store.read(key: "leaderboard.heldBefore")
         )
     }
 
@@ -954,6 +959,12 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: record?.shownDevices.isEmpty == false ? record?.shownDevices : nil, key: "leaderboard.shownDevices")
         store.write(value: record?.machine, key: "leaderboard.machine")
         store.write(value: record?.addedAsDevice == true ? true : nil, key: "leaderboard.addedAsDevice")
+        // Written even when empty: a record without it is one from before it was kept.
+        let sent = record?.sent.map { days in
+            Dictionary(grouping: days, by: \.provider).mapValues { Dictionary($0.map { ($0.day, $0.total) }, uniquingKeysWith: max) }
+        }
+        store.write(value: sent, key: "leaderboard.sent")
+        store.write(value: record?.heldBefore, key: "leaderboard.heldBefore")
     }
 }
 

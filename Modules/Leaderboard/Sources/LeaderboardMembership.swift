@@ -30,6 +30,14 @@ public final class LeaderboardMembership {
     /// Days the server refused, each alone, with why: sent again with each
     /// upload until the server takes them or they are 30 days old.
     public private(set) var refused: [RefusedDay] = []
+    /// What the server took from this device: each provider's day, of the
+    /// last thirty and two days past them, with its total as taken (design
+    /// §2a). An earlier day goes again once it reads larger. Never sent.
+    private(set) var sent: [ProviderDay: Int] = [:]
+    /// The days before this one, `yyyy-MM-dd`, go again only when refused:
+    /// what the server holds of them is unknown here, after an update from
+    /// before `sent`, or under a copied key made its own device.
+    private(set) var heldBefore: String?
     /// The member's devices as `/me` last listed them: a copy, like the name.
     public private(set) var devices = MemberDevices()
     /// The device that removed this one, once its key was refused for that:
@@ -131,6 +139,8 @@ public final class LeaderboardMembership {
         isVisible = true
         lastUpload = nil
         refused = []
+        sent = [:]
+        heldBefore = nil
         self.sharesCountry = false
         globeHintDismissed = false
         self.link = nil
@@ -171,6 +181,8 @@ public final class LeaderboardMembership {
         isVisible = true
         lastUpload = nil
         refused = []
+        sent = [:]
+        heldBefore = nil
         sharesCountry = false
         globeHintDismissed = false
         link = nil
@@ -285,6 +297,11 @@ public final class LeaderboardMembership {
         holdsCopiedKey = false
         ownDeviceRequest = nil
         refused = []
+        // The server holds the days before the copied lastUpload's from the
+        // copied key, and a row is a device's whole day: sent again under the
+        // new key they would count twice.
+        sent = [:]
+        heldBefore = lastUpload.map { DailyTokens.day(of: $0, calendar: calendar) }
         startFresh()
         follow(approval.summary)
     }
@@ -339,16 +356,31 @@ public final class LeaderboardMembership {
 
     /// The server no longer knows this member (swept a day after joining
     /// with nothing uploaded, or removed): forget it here too, so the join
-    /// form shows again instead of a key that will never be accepted.
-    func forgetUnknownMember() {
+    /// form shows again instead of a key that will never be accepted. Only
+    /// when `key` is still this membership's: an answer to a key left behind
+    /// by leaving and joining again says nothing of the new one.
+    @discardableResult
+    func forgetUnknownMember(signedBy key: SigningKey) -> Bool {
+        guard signs(with: key) else { return false }
         forget()
+        return true
     }
 
     /// Another device of the member removed this one: its key is revoked, so
-    /// the membership is forgotten here, and `removedBy` says which device did it.
-    func forgetRemoved(by device: DeviceRef) {
+    /// the membership is forgotten here, and `removedBy` says which device
+    /// did it. Only when `key` is still this membership's.
+    @discardableResult
+    func forgetRemoved(by device: DeviceRef, signedBy key: SigningKey) -> Bool {
+        guard signs(with: key) else { return false }
         forget()
         removedBy = device
+        return true
+    }
+
+    /// Whether this membership signs with `key`: an upload's answer applies
+    /// only to the membership whose key signed it (design §2a).
+    private func signs(with key: SigningKey) -> Bool {
+        self.key?.publicKey == key.publicKey
     }
 
     private func forget() {
@@ -359,6 +391,8 @@ public final class LeaderboardMembership {
         isVisible = true
         lastUpload = nil
         refused = []
+        sent = [:]
+        heldBefore = nil
         sharesCountry = false
         globeHintDismissed = false
         link = nil
@@ -404,10 +438,27 @@ public final class LeaderboardMembership {
         return DailyTokens.summed(logins, providers: sharing, calendar: calendar)
     }
 
-    func recordUpload(at date: Date, refused: [RefusedDay] = []) {
+    /// A good upload signed by `key`: `lastUpload` moves, the days refused
+    /// are kept to try again, and the others, as sent, are recorded as taken.
+    /// A day leaves `sent` two days after it leaves the thirty: a move to a
+    /// zone behind can turn the date back as far, bringing it back, and then
+    /// it must be found, not taken for new. An answer to a key this
+    /// membership no longer signs with records nothing; says whether it did.
+    @discardableResult
+    func recordUpload(at date: Date, sent days: [DailyTokens], refused: [RefusedDay], signedBy key: SigningKey) -> Bool {
+        guard signs(with: key) else { return false }
         lastUpload = date
         self.refused = refused
+        let notTaken = Set(refused.map(ProviderDay.init))
+        for day in days where !notTaken.contains(ProviderDay(day)) {
+            sent[ProviderDay(day)] = day.total
+        }
+        let kept = DailyTokens.day(of: DateRange.last(LeaderboardUploader.window + 2, endingOn: date, calendar: calendar).first,
+                                   calendar: calendar)
+        sent = sent.filter { $0.key.day >= kept }
+        if let held = heldBefore, held <= kept { heldBefore = nil }
         save()
+        return true
     }
 
     // MARK: - Name and visibility
@@ -606,6 +657,16 @@ public final class LeaderboardMembership {
         globeHintDismissed = record.globeHintDismissed
         link = record.link
         refused = record.refused
+        if let taken = record.sent {
+            sent = Dictionary(taken.map { (ProviderDay($0), $0.total) }, uniquingKeysWith: max)
+            heldBefore = record.heldBefore
+        } else {
+            // A record from before `sent`: what the server holds of the days
+            // before the last upload's is unknown, and a day read now may be
+            // smaller, so they go again only when refused, as before.
+            sent = [:]
+            heldBefore = record.lastUpload.map { DailyTokens.day(of: $0, calendar: calendar) }
+        }
         shownDevices = Set(record.shownDevices.map(DeviceKey.init))
         machineHash = record.machine
         addedAsDevice = record.addedAsDevice
@@ -636,6 +697,29 @@ public final class LeaderboardMembership {
                                                          visible: isVisible, lastUpload: lastUpload,
                                                          sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed,
                                                          link: link, refused: refused, shownDevices: shownDevices.map(\.value),
-                                                         machine: machineHash, addedAsDevice: addedAsDevice))
+                                                         machine: machineHash, addedAsDevice: addedAsDevice,
+                                                         sent: sent.map { SentDay(provider: $0.key.provider, day: $0.key.day, total: $0.value) },
+                                                         heldBefore: heldBefore))
+    }
+}
+
+/// One provider's day, `yyyy-MM-dd`: what `sent` and the refused days are kept by.
+struct ProviderDay: Hashable {
+    let provider: String
+    let day: String
+
+    init(_ tokens: DailyTokens) {
+        provider = tokens.provider
+        day = tokens.day
+    }
+
+    init(_ refused: RefusedDay) {
+        provider = refused.provider
+        day = refused.day
+    }
+
+    init(_ sent: SentDay) {
+        provider = sent.provider
+        day = sent.day
     }
 }
