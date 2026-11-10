@@ -7,6 +7,12 @@ protocol LogSink: Sendable {
     func flush()
 }
 
+extension LogSink {
+    /// A sink that has a line where it goes by the time `write` returns, as
+    /// OSLog does, has nothing to wait for.
+    func flush() {}
+}
+
 /// A line's level, as OSLog names it.
 enum LogLevel: Sendable {
     case debug, info, notice, warning, error
