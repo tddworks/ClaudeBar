@@ -87,6 +87,18 @@ struct AppLogTests {
         #expect(!AppLog.isTestRun(arguments: arguments, environment: [:]))
     }
 
+    /// On every platform, the Mac too, where the test below can't start a
+    /// second process: once `flush()` returns, a line just logged is in the file.
+    @Test
+    func `should have every line logged so far in the file once flush returns`() throws {
+        let line = "flushed \(UUID().uuidString)"
+
+        AppLog.monitor.info(line)
+        AppLog.flush()
+
+        #expect(try String(contentsOf: AppLog.logFileURL, encoding: .utf8).contains("] [INFO] [monitor] \(line)\n"))
+    }
+
     /// A process that logs its outcome and ends at once, as ClaudeBar for
     /// Windows' hourly `claudebar-upload.exe` calls `exit` right after its
     /// last line: the lines are in the log once it has ended.
