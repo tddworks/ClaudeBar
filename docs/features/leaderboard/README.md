@@ -70,7 +70,7 @@ The image is drawn on your Mac in the theme you use, Platformer, Pop, Dark or an
 | **Show me on the web board** | Off keeps you ranked only in your own ClaudeBar |
 | **Profile link** | One handle on X, Instagram or GitHub, shown as an icon after your name on the board. Not verified. **Remove** takes it off |
 | **Show my country on the globe** | Puts your country on the web board's globe. Its tokens show once three members there opt in. Off forgets it at once |
-| **Shared providers** | Stops or starts uploads per provider. Days already uploaded stay until you leave |
+| **Shared providers** | Stops or starts uploads per provider. Starting one sends its last 30 days. A day that grows after it was uploaded, from a login added or a session past midnight, goes again with its new total. Days already uploaded stay until you leave |
 | **Devices** | Each Mac or PC on your name: **Add a device**, **Remove…**, **Delete its days…** for a removed one. See [Several Macs](#several-macs) |
 | **Export my data** | Saves everything the server holds about you as JSON |
 | **Leave and delete my data** | Deletes your username, every device and every uploaded day from the server, then this Mac's key |

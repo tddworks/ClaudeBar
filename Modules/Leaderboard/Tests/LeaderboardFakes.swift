@@ -57,6 +57,23 @@ enum LeaderboardFixtures {
     }
 }
 
+extension LeaderboardMembership {
+    /// A good upload at `date`, recorded as the uploader records one signed
+    /// by this membership's key: `sent` the days the server took.
+    func recordUpload(at date: Date, sent: [DailyTokens] = [], refused: [RefusedDay] = []) {
+        guard let key = credentials?.key else { return }
+        recordUpload(at: date, sent: sent, refused: refused, signedBy: key)
+    }
+}
+
+extension DailyTokens {
+    /// One Claude day of `total` input tokens, as the server would take it.
+    static func claude(_ day: Int, month: Int = 10, _ total: Int) -> DailyTokens {
+        DailyTokens(provider: "claude", day: String(format: "2026-%02d-%02d", month, day),
+                    input: total, output: 0, cacheWrite: 0, cacheRead: 0, unsplit: 0)
+    }
+}
+
 extension MockLeaderboardAPI {
     /// A server that accepts every call.
     static func accepting() -> MockLeaderboardAPI {

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
+- **A program that ends right after logging keeps its last lines**: the log writes each line on a queue of its own, which `exit` ended with the lines still on it, so ClaudeBar for Windows' hourly upload never logged its outcome. `AppLog.flush()` waits for them. ([#701](https://github.com/tddworks/ClaudeBar/issues/701))
+- **On Windows, usage history no longer takes minutes to read a big log folder**: listing it opened every file to read it, and the antivirus scanned each one, so omp's 15,000 session files took 1–3 minutes once unread for 20 minutes. No file is opened now. ([#704](https://github.com/tddworks/ClaudeBar/issues/704))
+- **A day that appears or grows after an upload now reaches the Leaderboard**: a provider shared later, a login added later or a session past midnight left those days off the board, or short on it. Such a day now goes again with its whole total; one that reads smaller isn't sent. ([#680](https://github.com/tddworks/ClaudeBar/issues/680))
 
 ### Added
 - **UberLLM prepaid balance**: a new UberLLM provider shows the credit your new requests can still use, in dollars, from an API key pasted in Settings → Providers → UberLLM or from `UBERLLM_API_KEY`. Off by default. ([#PR_NUMBER](https://github.com/tddworks/ClaudeBar/pull/PR_NUMBER)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/uberllm/README.md)
