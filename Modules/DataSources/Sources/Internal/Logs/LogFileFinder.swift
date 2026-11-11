@@ -3,6 +3,10 @@ import Foundation
 /// The files a `files` glob names, changed since a date: `**` matches any
 /// depth, `*` and `?` stay within one name. Hidden files are skipped, and the
 /// result is in path order so the same logs always read the same way.
+///
+/// Each platform lists the folder its own way (`LogFileFinder+macOS`,
+/// `+Linux`, `+Windows`): `listing(under:)` names every file under it and
+/// `contentModified(_:)` says when one the glob names last changed.
 enum LogFileFinder {
     static func files(matching pattern: String, changedSince since: Date) -> [URL] {
         let (root, rest) = split(pattern)
@@ -12,23 +16,19 @@ enum LogFileFinder {
         }
         guard let matcher = try? NSRegularExpression(pattern: "^" + regex(rest) + "$") else { return [] }
         let rootURL = URL(fileURLWithPath: root, isDirectory: true).resolvingSymlinksInPath()
-        guard let enumerator = FileManager.default.enumerator(
-            at: rootURL,
-            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else { return [] }
-
-        let prefix = rootURL.path.hasSuffix("/") ? rootURL.path : rootURL.path + "/"
-        var files: [URL] = []
-        for case let url as URL in enumerator {
-            let path = url.resolvingSymlinksInPath().path
-            guard path.hasPrefix(prefix) else { continue }
-            let relative = String(path.dropFirst(prefix.count))
-            guard matcher.firstMatch(in: relative, range: NSRange(relative.startIndex..., in: relative)) != nil,
-                  isRecent(url, since: since) else { continue }
-            files.append(url)
+        let files = listing(under: rootURL).filter { file in
+            let relative = file.relativePath
+            return matcher.firstMatch(in: relative, range: NSRange(relative.startIndex..., in: relative)) != nil
+                && isRecent(file.url, since: since)
         }
-        return files.sorted { $0.path < $1.path }
+        return files.map(\.url).sorted { $0.path < $1.path }
+    }
+
+    /// A file a folder's listing names: where it is, and its path from the
+    /// folder with `/` between the names, which the glob is matched against.
+    struct Listed {
+        let url: URL
+        let relativePath: String
     }
 
     /// The folder before the first wildcard, and the pattern after it.
@@ -69,8 +69,7 @@ enum LogFileFinder {
     }
 
     private static func isRecent(_ url: URL, since: Date) -> Bool {
-        guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
-              values.isRegularFile == true, let modified = values.contentModificationDate else { return false }
+        guard let modified = contentModified(url) else { return false }
         return modified >= since
     }
 }
