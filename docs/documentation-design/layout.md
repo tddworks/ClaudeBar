@@ -172,7 +172,7 @@ Sorted alphabetically within the two groups. The only grouping is the folder the
 **Who:** a user, or an agent helping one, turning a provider on or fixing it.
 **Their question:** *What do I need, which mode do I pick, and what will go wrong?*
 
-`<id>` is the provider's `id` in code: `alibaba`, `ampcode`, `antigravity`, `bedrock`, `claude`, `codex`, `commandcode`, `copilot`, `cursor`, `deepseek`, `gemini`, `grok`, `kimi`, `kiro`, `minimax`, `mistral`, `omp`, `opencode-go`, `runcrate`, `vercel-gateway`, `zai`.
+`<id>` is the provider's `id` in code: `alibaba`, `ampcode`, `antigravity`, `bedrock`, `claude`, `codex`, `commandcode`, `copilot`, `cursor`, `deepseek`, `gemini`, `grok`, `kimi`, `kiro`, `minimax`, `mistral`, `omp`, `opencode-go`, `runcrate`, `uberllm`, `vercel-gateway`, `zai`.
 
 Here's today's README `<details>` block for Kimi after the move:
 

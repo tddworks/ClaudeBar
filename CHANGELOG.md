@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **On Windows, usage history no longer takes minutes to read a big log folder**: listing it opened every file to read it, and the antivirus scanned each one, so omp's 15,000 session files took 1–3 minutes once unread for 20 minutes. No file is opened now. ([#704](https://github.com/tddworks/ClaudeBar/issues/704))
 - **A day that appears or grows after an upload now reaches the Leaderboard**: a provider shared later, a login added later or a session past midnight left those days off the board, or short on it. Such a day now goes again with its whole total; one that reads smaller isn't sent. ([#680](https://github.com/tddworks/ClaudeBar/issues/680))
 
+### Added
+- **UberLLM prepaid balance**: a new UberLLM provider shows the credit your new requests can still use, in dollars, from an API key pasted in Settings → Providers → UberLLM or from `UBERLLM_API_KEY`. Off by default. ([#706](https://github.com/tddworks/ClaudeBar/pull/706)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/uberllm/README.md)
+
 ---
 
 ## [0.5.26] - 2026-11-09
