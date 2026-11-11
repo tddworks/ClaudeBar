@@ -581,7 +581,12 @@ Vendor/<Library>/          pinned C and data, never hand-edited: QuickJS,
   the lock is held, so neither process throws away the `.old.log` the other
   just made. A line older than one new file is still gone, by design: the
   promise is that no line is lost to the two processes racing. A line that
-  can't be written goes to `NSLog`, never nowhere.
+  can't be written goes to `NSLog`, never nowhere. Each line is written on
+  the sink's own queue, so a log call never waits on the disk; a process that
+  ends at once with `exit`, as ClaudeBar for Windows' hourly upload does after
+  its outcome, calls `AppLog.flush()` first, which returns once every line
+  logged so far is in the file. Without it the queue ends with the process,
+  its last lines unwritten.
 - **`MOCKING`** is in `Package.swift`'s `swiftSettings`, for debug builds and
   tests.
 - **The App stays a Tuist target** and depends on the package's products. Its

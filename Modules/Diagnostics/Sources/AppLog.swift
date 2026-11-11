@@ -116,6 +116,17 @@ public enum AppLog {
         }
     }
 
+    /// Waits until every line logged so far has reached the file. A process
+    /// that ends at once with `exit`, as ClaudeBar for Windows' hourly
+    /// `claudebar-upload.exe` does after its outcome, calls it first: the file
+    /// log writes each line on a queue of its own, which ends with the
+    /// process, its last lines unwritten.
+    public static func flush() {
+        for sink in sinks {
+            sink.flush()
+        }
+    }
+
     /// Where every line goes on this platform.
     static let sinks: [any LogSink] = {
         #if os(macOS)
