@@ -5,11 +5,13 @@ import Diagnostics
 import Quotas
 
 /// Sends the shared days to the server. The first upload sends the last
-/// thirty days; each later one resumes from the day of the last good upload,
-/// so a missed hour or a Mac asleep for days heals itself. Re-sending a day
-/// replaces it on the server, never adds, so an hour that would send exactly
-/// what the last upload sent stays home. A day the server refused alone is
-/// sent again with each upload until it is taken or thirty days old.
+/// thirty days; each later one reads all thirty and sends from the day of the
+/// last good upload, so a missed hour or a Mac asleep for days heals itself,
+/// with each earlier day that grew past what the server took from this
+/// device (design §2a). Re-sending a day replaces it on the server, never
+/// adds, so an hour that would send only what the last upload sent stays
+/// home. A day the server refused alone is sent again with each upload until
+/// it is taken or thirty days old.
 @MainActor
 @Observable
 public final class LeaderboardUploader {
@@ -29,6 +31,12 @@ public final class LeaderboardUploader {
         let key: String
         let today: String
         let tokens: [DailyTokens]
+
+        /// Whether the server already holds all `upload` would send, as this
+        /// upload left it: the same key, on the same day, each day as sent.
+        func covers(_ upload: Sent) -> Bool {
+            key == upload.key && today == upload.today && upload.tokens.allSatisfy(tokens.contains)
+        }
     }
 
     static let window = 30
@@ -58,6 +66,10 @@ public final class LeaderboardUploader {
         await upload(skippingRepeat: false)
     }
 
+    /// One upload: reads the last thirty days, sends the ones due (`Due`),
+    /// and records the answer for the membership whose key signed it, and
+    /// for no other. An hourly one (`skippingRepeat`) stays home when the
+    /// server already holds all it would send.
     private func upload(skippingRepeat: Bool) async {
         guard let credentials = membership.uploadCredentials, !isUploading else {
             // A copied key uploads nothing by design (§2a); the badge says why.
@@ -70,27 +82,35 @@ public final class LeaderboardUploader {
         let window = DateRange.last(Self.window, endingOn: now, calendar: calendar)
         let firstDay = DailyTokens.day(of: window.first, calendar: calendar)
         let retrying = membership.refused.filter { $0.day >= firstDay }
-        let days = await logs.days(in: range(endingOn: now, within: window, retrying: retrying))
-        let tokens = due(membership.dailyTokens(from: days), retrying: retrying)
+        // What the server holds, as the membership stood when the upload began.
+        let due = Due(firstDay: firstDay, since: membership.lastUpload.map { DailyTokens.day(of: $0, calendar: calendar) },
+                      taken: membership.sent, heldBefore: membership.heldBefore,
+                      refused: Set(retrying.map(ProviderDay.init)))
+        let days = await logs.days(in: window)
+        let tokens = due(membership.dailyTokens(from: days))
         let sent = Sent(key: credentials.key.publicKey, today: DailyTokens.day(of: now, calendar: calendar), tokens: tokens)
         do {
             var refused: [RefusedDay] = []
             // A refused day waiting to be tried again always goes: the server may take it now.
-            if !tokens.isEmpty, !(skippingRepeat && retrying.isEmpty && sent == lastSent) {
+            let held = skippingRepeat && retrying.isEmpty && lastSent?.covers(sent) == true
+            if !tokens.isEmpty, !held {
                 refused = try await api.upload(tokens, as: credentials)
             }
-            lastSent = sent
-            membership.recordUpload(at: now, refused: refused)
+            guard membership.recordUpload(at: now, sent: tokens, refused: refused, signedBy: credentials.key) else {
+                AppLog.network.info("Leaderboard upload answered for a membership this Mac has since left; recorded nothing")
+                return
+            }
+            if !held { lastSent = sent }
             lastError = nil
             for day in refused {
                 AppLog.network.info("Leaderboard refused \(day.provider) on \(day.day): \(day.why); sending it again later")
             }
         } catch LeaderboardError.unauthorized {
-            membership.forgetUnknownMember()
+            guard membership.forgetUnknownMember(signedBy: credentials.key) else { return }
             lastError = nil
             AppLog.network.info("Leaderboard no longer knows this member; forgot the membership here")
         } catch LeaderboardError.removed(let device) {
-            membership.forgetRemoved(by: device)
+            guard membership.forgetRemoved(by: device, signedBy: credentials.key) else { return }
             lastError = nil
             AppLog.network.info("Another device of this member removed this one; forgot the membership here")
         } catch {
@@ -99,27 +119,28 @@ public final class LeaderboardUploader {
         }
     }
 
-    /// From the day of the last upload, or the earliest refused day if that is
-    /// sooner; the last thirty days at most.
-    private func range(endingOn now: Date, within window: DateRange, retrying: [RefusedDay]) -> DateRange {
-        guard let lastUpload = membership.lastUpload, lastUpload > window.first else { return window }
-        let earliestRefused = retrying.compactMap { date(of: $0.day) }.min()
-        return DateRange(first: min(lastUpload, earliestRefused ?? lastUpload), last: now, calendar: calendar)
-    }
+    /// Which of the days read go (design §2a), of the last thirty: every day
+    /// from the last upload's on, as read; an earlier one whose total is
+    /// larger than the one the server took from this device, or of which it
+    /// took none, the whole day, never the difference, and never one read
+    /// smaller; a held earlier day only when refused.
+    private struct Due {
+        let firstDay: String
+        /// The day of the last good upload; `nil` before the first.
+        let since: String?
+        let taken: [ProviderDay: Int]
+        let heldBefore: String?
+        let refused: Set<ProviderDay>
 
-    /// The days from the last upload on, and the refused ones before it; not
-    /// the days in between, which the server already took.
-    private func due(_ tokens: [DailyTokens], retrying: [RefusedDay]) -> [DailyTokens] {
-        guard let lastUpload = membership.lastUpload else { return tokens }
-        let since = DailyTokens.day(of: lastUpload, calendar: calendar)
-        let refused = Set(retrying.map { "\($0.provider) \($0.day)" })
-        return tokens.filter { $0.day >= since || refused.contains("\($0.provider) \($0.day)") }
-    }
-
-    /// The start of a `yyyy-MM-dd` day, in the member's own calendar.
-    private func date(of day: String) -> Date? {
-        let parts = day.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        /// The days of `tokens` that go, oldest first as read.
+        func callAsFunction(_ tokens: [DailyTokens]) -> [DailyTokens] {
+            tokens.filter { day in
+                guard day.day >= firstDay else { return false }
+                guard let since, day.day < since else { return true }
+                let key = ProviderDay(day)
+                if let heldBefore, day.day < heldBefore { return refused.contains(key) }
+                return taken[key].map { day.total > $0 } ?? true
+            }
+        }
     }
 }

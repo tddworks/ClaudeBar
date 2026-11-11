@@ -909,6 +909,7 @@ extension JSONSettingsRepository: MultiAccountSettingsRepository {
 // A destination's own namespace, `leaderboard.*`, beside `notify.*`. The
 // private key is not here: the `Leaderboard` module's `SigningKeyStore` keeps it.
 extension JSONSettingsRepository: LeaderboardSettingsRepository {
+    /// The membership kept as `leaderboard.*`; `nil` when not joined.
     public func leaderboardRecord() -> LeaderboardRecord? {
         guard let username: String = store.read(key: "leaderboard.username") else { return nil }
         let lastUpload: Double? = store.read(key: "leaderboard.lastUpload")
@@ -928,7 +929,12 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
             },
             shownDevices: store.read(key: "leaderboard.shownDevices") ?? [],
             machine: store.read(key: "leaderboard.machine"),
-            addedAsDevice: store.read(key: "leaderboard.addedAsDevice") ?? false
+            addedAsDevice: store.read(key: "leaderboard.addedAsDevice") ?? false,
+            // `{provider: {day: total}}`; absent for a record from before it was kept.
+            sent: (store.read(key: "leaderboard.sent") as [String: [String: Int]]?).map { providers in
+                providers.flatMap { provider, days in days.map { SentDay(provider: provider, day: $0.key, total: $0.value) } }
+            },
+            heldBefore: store.read(key: "leaderboard.heldBefore")
         )
     }
 
@@ -940,6 +946,7 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: on, key: "leaderboard.on")
     }
 
+    /// Writes the membership as `leaderboard.*`; `nil` removes every key of it.
     public func saveLeaderboardRecord(_ record: LeaderboardRecord?) {
         store.write(value: record?.username, key: "leaderboard.username")
         store.write(value: record?.sharing, key: "leaderboard.sharing")
@@ -954,6 +961,12 @@ extension JSONSettingsRepository: LeaderboardSettingsRepository {
         store.write(value: record?.shownDevices.isEmpty == false ? record?.shownDevices : nil, key: "leaderboard.shownDevices")
         store.write(value: record?.machine, key: "leaderboard.machine")
         store.write(value: record?.addedAsDevice == true ? true : nil, key: "leaderboard.addedAsDevice")
+        // Written even when empty: a record without it is one from before it was kept.
+        let sent = record?.sent.map { days in
+            Dictionary(grouping: days, by: \.provider).mapValues { Dictionary($0.map { ($0.day, $0.total) }, uniquingKeysWith: max) }
+        }
+        store.write(value: sent, key: "leaderboard.sent")
+        store.write(value: record?.heldBefore, key: "leaderboard.heldBefore")
     }
 }
 

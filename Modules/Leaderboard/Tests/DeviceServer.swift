@@ -35,6 +35,11 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     /// as a slow server does, so a test can act while a call is in flight.
     var holdsRequests = false
     var holdsApprovals = false
+    /// When set, `upload` waits until `release()`, so a test can change the
+    /// membership while an upload signed by its key is in flight.
+    var holdsUploads = false
+    /// What each upload is answered: the days refused, or a failure.
+    var uploadAnswer: Result<[RefusedDay], LeaderboardError> = .success([])
 
     private(set) var joinedLabel: String?
     private(set) var joinedKey: String?
@@ -132,7 +137,8 @@ final class DeviceServer: LeaderboardAPI, @unchecked Sendable {
     func export(as credentials: MemberCredentials) async throws -> Data { Data() }
     func upload(_ days: [DailyTokens], as credentials: MemberCredentials) async throws -> [RefusedDay] {
         uploads.append(Upload(key: credentials.key.publicKey, days: days))
-        return []
+        await hold(while: holdsUploads)
+        return try uploadAnswer.get()
     }
     func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {}
     func leave(as credentials: MemberCredentials) async throws {}

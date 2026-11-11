@@ -194,9 +194,26 @@ struct LeaderboardCopiedKeyTests {
         await uploader(copy).uploadNow()
 
         let newKey = try storedKey
-        #expect(logs.askedFor == DateRange(first: LeaderboardFixtures.date(15), last: today, calendar: calendar))
+        #expect(logs.askedFor == DateRange.last(30, endingOn: today, calendar: calendar))
         #expect(server.uploads.map(\.key) == [newKey])
         #expect(server.uploads.first?.days.map(\.day) == ["2026-10-16"])
+    }
+
+    @Test func `should hold the days before the copied lastUpload's day under the new key, so a day grown here is never counted twice`() async throws {
+        let member = try await joined()
+        member.recordUpload(at: LeaderboardFixtures.date(15), sent: [.claude(14, 100), .claude(15, 30)])
+        let copy = launch(on: Self.otherMac)
+        server.approvals = [.success(.approved(server.summary))]
+        try await copy.becomeOwnDevice()
+        #expect(settings.record?.sent == [], "the copied key's record is the other Mac's")
+        #expect(settings.record?.heldBefore == "2026-10-15")
+        logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 14, input: 110),
+                                                                LeaderboardFixtures.stat(day: 16, input: 10)])]
+
+        await uploader(copy).uploadNow()
+
+        #expect(server.uploads.first?.days.map(\.day) == ["2026-10-16"],
+                "the old key's 100 stays, and this Mac's 110 never goes beside it as 210")
     }
 
     @Test func `should keep the code for another device to approve when the copied key is in its first week`() async throws {
@@ -510,6 +527,7 @@ private extension LeaderboardRecord {
     func with(machine: String?) -> LeaderboardRecord {
         LeaderboardRecord(username: username, sharing: sharing, visible: visible, lastUpload: lastUpload,
                           sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed, link: link,
-                          refused: refused, shownDevices: shownDevices, machine: machine, addedAsDevice: addedAsDevice)
+                          refused: refused, shownDevices: shownDevices, machine: machine, addedAsDevice: addedAsDevice,
+                          sent: sent, heldBefore: heldBefore)
     }
 }

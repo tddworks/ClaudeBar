@@ -340,7 +340,7 @@ This answer is for every client, with or without `X-Key`, replacing v1's `400` f
 
 ### An earlier day that appears or grows
 
-**Status:** designed ([#680](https://github.com/tddworks/ClaudeBar/issues/680)), not built (slice 18).
+**Status:** built ([#680](https://github.com/tddworks/ClaudeBar/issues/680), slice 18).
 
 An upload resumes from the day of `lastUpload`; before that day it sends only the refused days, taking the rest as already on the server. But a day before it can still change on this device after the upload moved past it:
 - **A provider shared later.** Its logs hold the last weeks, and none of those days was ever sent.
@@ -356,7 +356,7 @@ Without this rule each such day stays off the board, or short on it, for good. S
 - every earlier day whose total is larger than the one in `sent`, or that `sent` doesn't hold, refused or not: the whole day, never the difference;
 - a held earlier day only when refused, as before this rule.
 
-An earlier day whose total equals the one in `sent` isn't sent again. So an hour with nothing new sends what the last one did, and an hourly upload identical to the last one is still skipped (§4).
+An earlier day whose total equals the one in `sent` isn't sent again. So an hour with nothing new sends only days the last upload sent, each as it sent it, and is still skipped (§4), the hour after an earlier day went included.
 
 **A day only replaces, and an earlier day is never sent smaller.** An earlier day can read smaller than the server holds: a log deleted, a login removed from ClaudeBar, a ledger read again from logs that lost lines (*A ledger is a cache* in [daily-usage §3](../usage-history/daily-usage/design.md#3--thirty-days-without-re-reading-thirty-days-the-ledger)). Such a day isn't sent: the server keeps what it took, as it does today for every day before the cut, and `sent` keeps the larger total, so the day goes again only once it grows past that. The tokens were used, and a missing log doesn't take them back; no rule lowers a number on a guess (*Two devices reading the same logs*). A change to how days are summed that raises an earlier day reaches the board; one that lowers it reaches only the days from `lastUpload`'s day on, which go as read.
 
@@ -372,7 +372,7 @@ Either way a day is lowered to what this device's logs really hold, never below,
 
 **The cap, unchanged; a refused day, tried again as an earlier day.** A grown day that would put the member over the cap is refused alone, kept in `refused`, and tried again with each upload until taken or 30 days old; it enters `sent` once the server takes it. Tried again, it is still an earlier day: it goes while its total is larger than the one in `sent`. Once it reads no larger, the server already holds more of it than the logs now show, so it isn't sent smaller, and it leaves `refused`. The server took 100, refused 150, and the logs now say 50: nothing is sent, and the server keeps 100.
 
-**Held days: after an update, and for a copied key.** A membership from before this rule has no `sent`, told apart from an empty one. What the server holds of its earlier days is unknown here, and a day read now may be smaller than that (a log deleted before the update), so no total read now is taken for the server's. Its first good upload sends what it would have sent before this rule, records what the server took, and holds the days before `lastUpload`'s day (`heldBefore`): they go again only when refused, as before this rule, and leave as the 30 days pass. So an update re-sends nothing and never lowers a day; a held day that grows, or a day missed before the update (a provider shared before it, say), stays as it was, for 30 days at most.
+**Held days: after an update, and for a copied key.** A membership from before this rule has no `sent`, told apart from an empty one. What the server holds of its earlier days is unknown here, and a day read now may be smaller than that (a log deleted before the update), so no total read now is taken for the server's. From its first launch after the update it holds the days before `lastUpload`'s day (`heldBefore`): they go again only when refused, as before this rule, and leave as the 30 days pass. Its first good upload sends what it would have sent before this rule and records what the server took. So an update re-sends nothing and never lowers a day; a held day that grows, or a day missed before the update (a provider shared before it, say), stays as it was, for 30 days at most.
 
 *Make this Mac its own device* forgets the copied `sent` and holds the days before the copied `lastUpload`'s day the same way. The server holds those from the copied key, and a row is a device's whole day, so sending one again under the new key would count it twice. A held day that grows on this Mac (a login added) keeps its growth off the board, for 30 days at most; the old key's 100 and the new key's 110 never add up to 210.
 
@@ -505,7 +505,7 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | A missed hour, or a device asleep for days, heals on the next upload | `LeaderboardUploader`: uploads from the day of `lastUpload` to today, at most 30 days, and on join, or once added, the last 30; a copy made its own device keeps the copied `lastUpload` |
 | A day before the last upload's that appears or grows on this device still reaches the board, with its whole total: a provider shared later, a login added later, a session across midnight. Such a day goes once its total is larger than the one the server took from this device, refused before or not; read smaller, it isn't sent. After an update, and under a copied key made its own device, the days before the cut are held as before this rule, so an update re-sends nothing and no day counts twice | `LeaderboardUploader`, reading all 30 days, against `LeaderboardMembership.sent` and `heldBefore` |
 | Uploads stay hourly by the clock, even after the Mac sleeps | `LeaderboardUploader.uploadDue()`: uploads only when there is no `lastUpload` or it is at least an hour old by the wall clock. The App driver only asks often (every 5 minutes and on wake) and never decides |
-| An hourly upload that would send exactly what the last good one sent, from the same key on the same day, with no refused day waiting to be tried again, goes nowhere and still counts as up to date: the server already holds it. The first upload after launch, and an upload the person asked for, always go | `LeaderboardUploader.uploadDue()`, against the last upload it sent since launch |
+| An hourly upload that would send only days the last good one sent, each as it sent it, from the same key on the same day, with no refused day waiting to be tried again, goes nowhere and still counts as up to date: the server already holds it. The first upload after launch, and an upload the person asked for, always go | `LeaderboardUploader.uploadDue()`, against the last upload it sent since launch |
 | An upload you asked for always goes, hour or not | `LeaderboardUploader.uploadNow()`: Refresh in the popover, whatever tab is open, joining, and switching a shared provider |
 | Every write and every private read is signed by one of the member's device keys | Server |
 | Who you are comes from the device whose key verified the signature, found by `X-Key`; never from a parameter or a name | Server |
@@ -676,7 +676,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
 | `LeaderboardMembership` | The laws of §4 on this device | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed; the member's settings follow `/me`; a key whose `machine` hash isn't this Mac's never uploads; refused days are tried again; what the server took from this device is kept (`sent`) |
 | `RequestSigner` | The canonical string, signed with Ed25519 from `Crypto` (swift-crypto, which is CryptoKit on Apple platforms) | Pinned by `Modules/Leaderboard/Tests/vectors.json`; the server checks an identical copy |
-| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days and the earlier days that grew past `sent`, and now when you ask; an hourly upload identical to the last one sent is skipped while no refused day waits | `lastUpload` and `sent` move only on success, or on a skipped upload the server already holds. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
+| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` with the refused days and the earlier days that grew past `sent`, and now when you ask; an hourly upload that would send only days the last one sent, as it sent them, is skipped while no refused day waits | `lastUpload` and `sent` move only on success, or on a skipped upload the server already holds. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 
 | Piece | Home |
@@ -698,7 +698,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 
 ## 8 · Build sequence
 
-Test-first slices, each green on its own. Slices 1–17 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR), 15's surfaces from [the mockup](../../../design-concept/leaderboard/devices.html). Slice 18 is designed, not built.
+Test-first slices, each green on its own. Slices 1–18 are built: 11 and 16 on the server (`tddworks/claudebar-server` #1, and 16's PR), 15's surfaces from [the mockup](../../../design-concept/leaderboard/devices.html).
 
 1. **`Username` and `DailyTokens`.** Pins the name rule against the shared vectors, and that a `DailyUsageStat` becomes four counts and nothing else.
 2. **`LeaderboardMembership` sharing.** Pins: an unticked provider never appears in `dailyTokens`; a provider without usage history can't be shared; two logins of one provider sum into one day.

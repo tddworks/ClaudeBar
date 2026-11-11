@@ -25,10 +25,20 @@ public struct LeaderboardRecord: Sendable, Equatable {
     /// held to a first week. `/me` can't say: an added device in its first
     /// week sees only itself, as a member with one device does.
     public let addedAsDevice: Bool
+    /// What the server took from this device, per provider and day of the
+    /// last thirty and two days past them: the day's total as it took it
+    /// (design §2a). An earlier day goes again once it reads larger. `nil`
+    /// for a record from before this was kept, told apart from an empty one.
+    public let sent: [SentDay]?
+    /// The days before this one, `yyyy-MM-dd`, go again only when refused:
+    /// what the server holds of them is unknown here, after an update from
+    /// before `sent`, or under a copied key made its own device.
+    public let heldBefore: String?
 
     public init(username: String, sharing: [String], visible: Bool, lastUpload: Date?,
                 sharesCountry: Bool = false, globeHintDismissed: Bool = false, link: ProfileLink? = nil,
-                refused: [RefusedDay] = [], shownDevices: [String] = [], machine: String? = nil, addedAsDevice: Bool = false) {
+                refused: [RefusedDay] = [], shownDevices: [String] = [], machine: String? = nil, addedAsDevice: Bool = false,
+                sent: [SentDay]? = nil, heldBefore: String? = nil) {
         self.link = link
         self.username = username
         self.sharing = sharing.sorted()
@@ -40,6 +50,23 @@ public struct LeaderboardRecord: Sendable, Equatable {
         self.shownDevices = shownDevices.sorted()
         self.machine = machine
         self.addedAsDevice = addedAsDevice
+        self.sent = sent?.sorted { ($0.day, $0.provider) < ($1.day, $1.provider) }
+        self.heldBefore = heldBefore
+    }
+}
+
+/// One provider's day as the server took it from this device: its total,
+/// the five counts summed. Kept on this device, never sent.
+public struct SentDay: Sendable, Equatable, Codable, Hashable {
+    public let provider: String
+    /// The device's date, `yyyy-MM-dd`, as `DailyTokens.day`.
+    public let day: String
+    public let total: Int
+
+    public init(provider: String, day: String, total: Int) {
+        self.provider = provider
+        self.day = day
+        self.total = total
     }
 }
 

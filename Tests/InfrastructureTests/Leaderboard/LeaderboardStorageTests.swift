@@ -77,6 +77,27 @@ struct LeaderboardStorageTests {
         #expect(!text.contains("3f1a9c") && !text.contains("addedAsDevice"))
     }
 
+    @Test func `should remember what the server took and the days held after a relaunch, an empty record apart from none`() throws {
+        let (settings, url) = repository()
+        let relaunched = { JSONSettingsRepository(store: JSONSettingsStore(fileURL: url), credentials: UserDefaults(suiteName: UUID().uuidString)!,
+                                                  secureCredentials: KeepingCredentials()) }
+        let record = LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil,
+                                       sent: [SentDay(provider: "claude", day: "2026-10-04", total: 1_234),
+                                              SentDay(provider: "codex", day: "2026-10-01", total: 56)],
+                                       heldBefore: "2026-10-03")
+        settings.saveLeaderboardRecord(record)
+        #expect(relaunched().leaderboardRecord() == record)
+
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil, sent: []))
+        #expect(relaunched().leaderboardRecord()?.sent == [], "kept even when empty")
+        #expect(relaunched().leaderboardRecord()?.heldBefore == nil)
+        settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))
+        #expect(relaunched().leaderboardRecord()?.sent == nil, "a record from before it was kept has none")
+
+        relaunched().saveLeaderboardRecord(nil)
+        #expect(try !String(contentsOf: url, encoding: .utf8).contains("sent"))
+    }
+
     @Test func `should leave nothing of the membership in settings when it is forgotten`() throws {
         let (settings, url) = repository()
         settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))
