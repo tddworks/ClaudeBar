@@ -814,7 +814,7 @@ struct MenuContentView: View {
             if !tab.paused.isEmpty {
                 pausedGroup(tab)
             }
-            if let cause = tab.provider.accounts.cause {
+            if let cause = monitor.cause(of: tab.provider) {
                 causeCallout(cause)
             }
         }
@@ -1015,7 +1015,7 @@ struct MenuContentView: View {
 
     /// "Work is at 18% Session — causing Warning": the aggregate names its cause.
     private func causeCallout(_ cause: Account) -> some View {
-        let status = monitor.status(of: cause) ?? cause.status
+        let status = monitor.status(of: cause) ?? .healthy
         let lowest = monitor.usage(of: cause)?.lowestQuota
         let detail = lowest.map { " is at \(Int($0.percentRemaining))% \($0.quotaType.displayName)" } ?? ""
         return HStack(spacing: 8) {
@@ -1186,8 +1186,8 @@ struct MenuContentView: View {
                                 .foregroundStyle(theme.textTertiary)
                         }
 
-                        Text(theme.statusWord(for: group.worstStatus))
-                            .badge(theme.statusColor(for: group.worstStatus))
+                        Text(theme.statusWord(for: group.worstStatus(under: settings.statusPolicy)))
+                            .badge(theme.statusColor(for: group.worstStatus(under: settings.statusPolicy)))
                     }
                 }
                 .contentShape(Rectangle())

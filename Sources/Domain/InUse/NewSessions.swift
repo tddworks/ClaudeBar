@@ -2,6 +2,7 @@ import Foundation
 import Mockable
 import Observation
 import Providers
+import Quotas
 
 /// The shell the lines are written for.
 public enum LoginShell: String, CaseIterable, Sendable {
@@ -38,6 +39,8 @@ public final class NewSessions {
     public let products: [Provider]
     private let shellLines: any ShellLines
     private let announcer: (any InUseAnnouncer)?
+    /// The person's status policy: a login is worth moving off only when it reads low under it.
+    private let readStatusPolicy: @MainActor () -> StatusPolicy
 
     /// The shell the lines are for — the login shell until the person picks another.
     public var shell: LoginShell {
@@ -51,7 +54,8 @@ public final class NewSessions {
     public private(set) var problem: String?
 
     public init(products: [Provider], shellLines: any ShellLines, announcer: (any InUseAnnouncer)? = nil,
-                shell: LoginShell = .login()) {
+                shell: LoginShell = .login(), statusPolicy: @escaping @MainActor () -> StatusPolicy = { .absolute }) {
+        self.readStatusPolicy = statusPolicy
         self.products = products.filter { $0.inUse != nil }
         self.shellLines = shellLines
         self.announcer = announcer
@@ -64,7 +68,7 @@ public final class NewSessions {
     public func state(of product: Provider) -> State? {
         guard let inUse = product.inUse, inUse.offersChoice else { return nil }
         if isWaiting(in: product) { return .waitingForSetup }
-        if let better = inUse.worthSwitchingTo { return .worthSwitching(from: inUse.login, to: better) }
+        if let better = inUse.worthSwitching(under: readStatusPolicy()) { return .worthSwitching(from: inUse.login, to: better) }
         return .using(inUse.login)
     }
 
@@ -143,7 +147,7 @@ public final class NewSessions {
     /// login worth moving to is announced — once per low.
     public func review(_ refreshed: Account) async {
         guard let product = product(refreshed.providerId), let inUse = product.inUse,
-              let notice = try? inUse.review() else { return }
+              let notice = try? inUse.review(under: readStatusPolicy()) else { return }
         await announcer?.announce(InUseAlert(notice, of: product))
     }
 

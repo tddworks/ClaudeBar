@@ -28,7 +28,7 @@ struct ProviderAccountsCard: View {
                 }
                 Spacer()
                 if provider.accounts.hasSeveral {
-                    StatusBadge(status: provider.status)
+                    StatusBadge(status: monitor.status(of: provider) ?? .healthy)
                 }
             }
 

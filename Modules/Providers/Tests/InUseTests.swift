@@ -188,6 +188,24 @@ struct InUseTests {
         #expect(codex.inUse?.worthSwitchingTo == nil)
     }
 
+    @Test
+    func `should suggest no switch under pace-aware while the low login in use lasts until its reset`() async throws {
+        let (stub, codex, work) = try InUseFixture.twoLogins()
+        defer { stub.cleanUp() }
+        try await InUseFixture.usage(stub, codex, me: 81, work: 15)
+        // 19% left with 8 minutes of 5 hours to go: it lasts.
+        let length: TimeInterval = 5 * 3600
+        codex.defaultAccount.snapshot = UsageSnapshot(providerId: "codex", quotas: [
+            UsageQuota(percentRemaining: 19, quotaType: .session, providerId: "codex",
+                       resetsAt: Date().addingTimeInterval(length * 0.027), windowDuration: length),
+        ], capturedAt: Date())
+        let inUse = try #require(codex.inUse)
+
+        #expect(inUse.worthSwitching(under: .paceAware) == nil)
+        #expect(try inUse.review(under: .paceAware) == nil)
+        #expect(inUse.worthSwitching(under: .absolute) === work)
+    }
+
     // MARK: - After each refresh: what is worth telling
 
     @Test

@@ -85,9 +85,14 @@ public final class InUse {
 
     /// The login worth moving to: the one in use is critical or out, and
     /// another enabled login has more left — the most.
-    public var worthSwitchingTo: Account? {
+    public var worthSwitchingTo: Account? { worthSwitching(under: .absolute) }
+
+    /// The login worth moving to under the person's policy: the one in use
+    /// reads critical or out under it, and another enabled login has more left.
+    public func worthSwitching(under policy: StatusPolicy, at now: Date = Date()) -> Account? {
         let current = login
-        guard current.status >= .critical, let left = current.percentLeft else { return nil }
+        let status = current.snapshot?.overallStatus(under: policy, at: now) ?? .healthy
+        guard status >= .critical, let left = current.percentLeft else { return nil }
         return logins
             .filter { $0 !== current && !$0.isPaused && ($0.percentLeft ?? -1) > left }
             .max { ($0.percentLeft ?? -1) < ($1.percentLeft ?? -1) }
@@ -95,14 +100,14 @@ public final class InUse {
 
     /// What to tell the person after a refresh: that *Switch when low* moved
     /// new sessions, or — once per low — which login is worth moving to.
-    public func review() throws -> InUseNotice? {
+    public func review(under policy: StatusPolicy = .absolute) throws -> InUseNotice? {
         let current = login
         if let next = switchWhenLow.next(from: current, among: logins) {
             try use(next)
             told = nil
             return .switched(from: current, to: next)
         }
-        guard let better = worthSwitchingTo else {
+        guard let better = worthSwitching(under: policy) else {
             told = nil
             return nil
         }

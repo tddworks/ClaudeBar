@@ -66,3 +66,10 @@ extension UsageSnapshot {
         quotas.map { $0.status(under: policy, at: now) }.max() ?? .healthy
     }
 }
+
+extension QuotaGroup {
+    /// The group's worst quota under the person's policy, shown while collapsed.
+    public func worstStatus(under policy: StatusPolicy, at now: Date = Date()) -> QuotaStatus {
+        quotas.map { $0.status(under: policy, at: now) }.max() ?? .healthy
+    }
+}

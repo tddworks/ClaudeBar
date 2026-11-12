@@ -42,7 +42,7 @@ No token is copied: each login keeps its own Keychain item and refresh token. No
 | **new terminal sessions** | the next `claude` / `codex` run from a shell with the lines | running sessions, Claude Desktop, IDE extensions |
 | **the record** | `~/.claudebar/in-use/<command>` — one per CLI (`claude`, `codex`): the folder, or empty for the plain login | settings.json (keeps no copy); a product's id |
 | **the shell lines** | the block between `# >>> claudebar in-use >>>` markers, or fish's own file | the user's own aliases and exports |
-| **worth switching** | the login in use is critical or out, and another has more left | *Switch when low* (acts, opt-in) |
+| **worth switching** | the login in use is critical or out under the person's status policy, and another has more left | *Switch when low* (acts, opt-in) |
 
 ## 2 · The aggregate
 
@@ -54,7 +54,7 @@ Provider
     ├── command: TerminalCommand ◇    cli + accounts.cli.environment.set
     ├── use(_) · forget(_)            forget is told by Provider.remove
     ├── worthSwitchingTo: Account?
-    ├── review() → InUseNotice?       switched, or worth switching — told once per low
+    ├── review(under:) → InUseNotice?  switched, or worth switching — told once per low
     └── switchWhenLow: SwitchWhenLow ◆   isOn · below · mayPick · next(from:among:)
 Account: isInUse · canBeInUse (only when there is a choice) · useForNewSessions() · percentLeft
 

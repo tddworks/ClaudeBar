@@ -143,4 +143,14 @@ struct StatusPolicyTests {
         #expect(calm.overallStatus(under: .paceAware, at: now) == .healthy)
         #expect(calm.overallStatus(under: .absolute, at: now) == .warning)
     }
+
+    // MARK: - Roll-ups read the policy
+
+    @Test
+    func `should read a collapsed group by its worst quota under the person's policy`() {
+        let group = QuotaGroup(title: "Claude", quotas: [quota(left: 19, elapsed: 97.3), quota(left: 90, elapsed: 10)])
+
+        #expect(group.worstStatus(under: .paceAware, at: now) == .healthy)
+        #expect(group.worstStatus(under: .absolute, at: now) == .critical)
+    }
 }

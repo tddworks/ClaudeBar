@@ -152,7 +152,8 @@ struct ClaudeBarApp: App {
         let products = providers
         let newSessions = NewSessions(products: products,
                                       shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
-                                      announcer: InUseNotifications())
+                                      announcer: InUseNotifications(),
+                                      statusPolicy: { AppSettings.shared.statusPolicy })
         self.newSessions = newSessions
 
         // Initialize the domain service

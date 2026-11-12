@@ -408,6 +408,12 @@ public final class QuotaMonitor {
         product.accounts.unpaused.compactMap { status(of: $0) }.min()
     }
 
+    /// The login the popover names for the product's status, under the
+    /// person's policy: its best login, while even that one isn't healthy.
+    public func cause(of product: Provider) -> Account? {
+        product.accounts.best.flatMap { (status(of: $0) ?? .healthy) > .healthy ? $0 : nil }
+    }
+
     /// The selected tab's status: its healthiest unpaused login's, for a
     /// product's logins are interchangeable (CANONICAL §5); `nil` while no
     /// unpaused login has usage.
