@@ -13,7 +13,7 @@ Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activit
 1. **Settings → General → Notch Live Activity**. It's off by default.
 2. For session states, also turn on **Settings → Hooks → Claude Code Hooks** ([session hooks](../session-hooks/README.md)). That installs ClaudeBar's hooks into Claude Code, which report when a session starts, finishes a turn or waits for you. Without hooks, the notch shows quota only.
 
-3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota drops under 20%.
+3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota runs low (see row 3).
 
 The notch follows the provider that's selected in the popover. Pick a different provider there to watch a different quota.
 
@@ -48,7 +48,7 @@ Move the pointer away to close the panel.
 
 ## Gotchas
 
-- **With Hide and no hooks, the notch is mostly away.** Without [session hooks](../session-hooks/README.md) (for example with Codex or Gemini) nothing tells ClaudeBar an agent is busy, so under **Hide** the notch shows only a quota under 20%. Keep **Show the Quota** if that's your setup.
+- **With Hide and no hooks, the notch is mostly away.** Without [session hooks](../session-hooks/README.md) (for example with Codex or Gemini) nothing tells ClaudeBar an agent is busy, so under **Hide** the notch shows only a quota that runs low. Keep **Show the Quota** if that's your setup.
 - **Only session states need hooks.** If the notch shows quota but never "Working", check **Settings → Hooks**. The hooks are installed in Claude Code's own settings file.
 - **One session at a time.** ClaudeBar follows the most recently started Claude Code session. Starting a second one moves the notch to it and puts the first in the finished list.
 - **Which display.** The notch goes on the first display with a physical notch. Without one, it goes on the main display as a virtual notch the height of the menu bar.

@@ -276,7 +276,7 @@ struct OverviewCardView: View {
     /// The tightest quota as a ring; `--` with no numbers.
     private var ring: some View {
         let quota = card.tightest
-        let color = quota.map { theme.statusColor(for: $0.status) } ?? theme.textTertiary
+        let color = quota.map { theme.statusColor(for: $0.status(under: settings.statusPolicy)) } ?? theme.textTertiary
         let progress = quota.map { $0.displayProgressPercent(mode: settings.usageDisplayMode) / 100 } ?? 0
         return ZStack {
             Circle()

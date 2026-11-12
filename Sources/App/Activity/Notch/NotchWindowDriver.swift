@@ -160,7 +160,8 @@ final class NotchWindowDriver {
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
             today: (selected?.usageHistory?.report ?? snapshot?.dailyUsageReport)?.today,
             headline: headline,
-            isRefreshing: selected?.isSyncing ?? false
+            isRefreshing: selected?.isSyncing ?? false,
+            policy: monitor.statusPolicy
         )
     }
 

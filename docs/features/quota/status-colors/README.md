@@ -45,7 +45,7 @@ Examples, in a 5-hour session:
 | 15% | 95% | Room to spare | Critical | **Healthy** |
 | 10% | 80% | Running hot | Critical | Critical |
 
-A card never shows a low status beside *On track* or *Room to spare*.
+While any is left, a card never shows a low status beside *On track* or *Room to spare*.
 
 **What follows it:** the status, and so its colour, in the menu bar, the provider pills, the cards and bars in the popover, the Touch Bar, the notch and the status export. The **"running low"** notifications and webhooks follow it too: they fire when a login's status gets worse under this same setting. Your own [quota alerts](../../alerting/quota-alerts/README.md) are separate: they fire at the percentages you set.
 

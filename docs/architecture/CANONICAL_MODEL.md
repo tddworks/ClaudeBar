@@ -490,7 +490,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset unless it runs out first, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
 | no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
-| depleted at 0, critical under 20 — ABSOLUTE, whatever the policy | `StatusPolicy` |
+| depleted at 0, whatever the policy; under the absolute policy, critical under 20 and warning under 50 | `StatusPolicy` |
 | a quota's status under the pace-aware policy is depleted at 0, critical when its forecast runs out within 10% of its window, warning when it runs out before its reset, and healthy when it lasts, however little is left; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `Forecast` and `SpendRate` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export, the local API and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |

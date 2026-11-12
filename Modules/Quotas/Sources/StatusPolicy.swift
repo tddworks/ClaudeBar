@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Depleted at 0 is absolute whatever the policy. Pace-aware reads the
 /// quota's `Forecast`, which reads the one rule `SpendRate.runsOutBeforeReset`
-/// that Pace reads too, so a quota never reads low beside *On track* or
+/// that Pace reads too, so a quota with any left never reads low beside *On track* or
 /// *Room to spare*: it is critical when it runs out within
 /// `criticalShareOfWindow` of its window, warning when it runs out later, and
 /// healthy when it lasts until the reset, however little is left.
