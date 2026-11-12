@@ -1186,8 +1186,9 @@ struct MenuContentView: View {
                                 .foregroundStyle(theme.textTertiary)
                         }
 
-                        Text(theme.statusWord(for: group.worstStatus(under: settings.statusPolicy)))
-                            .badge(theme.statusColor(for: group.worstStatus(under: settings.statusPolicy)))
+                        let worst = group.worstStatus(under: settings.statusPolicy)
+                        Text(theme.statusWord(for: worst))
+                            .badge(theme.statusColor(for: worst))
                     }
                 }
                 .contentShape(Rectangle())

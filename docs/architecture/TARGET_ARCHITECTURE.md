@@ -452,7 +452,7 @@ added logins are folders and whose sign-in names that variable has In use.
 
 | Piece | One job | Changes when |
 |---|---|---|
-| `InUse` (`Providers`) | which login new sessions start with: `login`, `logins`, `use`, `worthSwitchingTo`, `review()` | the rule for choosing changes |
+| `InUse` (`Providers`) | which login new sessions start with: `login`, `logins`, `use`, `worthSwitching(under:)`, `review(under:)` | the rule for choosing changes |
 | `SwitchWhenLow` (`Providers`) | the opt-in policy: is it on, below what, which logins it may pick | the policy changes |
 | `LoginsInUse` (port, `Providers`) · `DiskLoginsInUse` | the record: one file per **CLI** (`in-use/claude`), the folder or empty — the shell starts a CLI, not a product | where the shell reads it changes |
 | `NewSessions` (`Domain`) | a choice waits for the shell lines; set up, by hand, cancel, turn off; the strip's state; `claudebar://use`; reviews each refresh | how a choice reaches the shell changes |
@@ -464,7 +464,7 @@ added logins are folders and whose sign-in names that variable has In use.
 the shell (or for the plain login) → `inUse.use(login)` → the record; else the
 choice waits and the strip shows the setup. *Set up* — `ShellSetup.install`,
 then the waiting choice. *After a refresh* — `onRefreshed` →
-`newSessions.review(login)` → `inUse.review()` (*Switch when low*, else worth
+`newSessions.review(login)` → `inUse.review(under:)` with the person's policy (*Switch when low*, else worth
 switching, once per low) → `InUseAnnouncer`. *A link* —
 `newSessions.use(providerId:account:)` answers `.used`, `.waitingForSetup` or
 `.unknown`; the App only opens the popover for the second.

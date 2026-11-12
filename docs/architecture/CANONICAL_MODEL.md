@@ -406,15 +406,18 @@ monitor.overallStatus                → Status       the menu bar's colour: the
 monitor.lowestQuota                  → Quota?       each enabled product's best account's lowest quota; the lowest of those
 monitor.lineup                       → [Account]    the pills and the menu-bar entries
 account.usage                        → Usage?       that login's latest — what its pill shows
-account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
+account.status                       → Status       QUOTA HEALTH: the worst quota in that usage,
+                                                    absolute; surfaces read monitor.status(of:)
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
-provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
+provider.status                      → Status       → accounts.status: the healthiest unpaused login
+                                                    (min), absolute; surfaces read monitor.status(of:)
 monitor.status(of: provider)         → Status?      the healthiest counted login (min), under the
                                                     policy; nil with no usage. overallStatus,
                                                     selectedTabStatus and rest all read it:
                                                     depleted only when every counted login is
 provider.accounts.best               → Account?     the most left — "switch to work"
-provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
+monitor.cause(of: provider)          → Account?     the login its status comes from, under the
+                                                    policy, while it isn't healthy — the callout
 provider.accounts.pool               → Pool?        the logins' shares summed — "340% left across 3 logins"
 provider.inUse?.login                → Account      the login new terminal sessions start with
 account.isInUse · account.canBeInUse → Bool         the chip's mark; whether it can be chosen

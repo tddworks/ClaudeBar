@@ -28,7 +28,7 @@ In use is a **capability** ([CANONICAL §2.1](../../architecture/CANONICAL_MODEL
         ▼
  provider.inUse: InUse (Providers) ── use(login) ──▶ LoginsInUse (port) → ~/.claudebar/in-use/<command>
         ▲                                                                          │ read on every run
- QuotaMonitor.onRefreshed ─▶ newSessions.review ─▶ inUse.review()                 ▼
+ QuotaMonitor.onRefreshed ─▶ newSessions.review ─▶ inUse.review(under:)           ▼
         (knows no In use)        └─▶ InUseAnnouncer (port) ← InUseNotifications   $ claude → CLAUDE_CONFIG_DIR=<folder>
 ```
 
@@ -53,7 +53,7 @@ Provider
     ├── logins: [Account]             the plain login + folder logins; offersChoice when > 1
     ├── command: TerminalCommand ◇    cli + accounts.cli.environment.set
     ├── use(_) · forget(_)            forget is told by Provider.remove
-    ├── worthSwitchingTo: Account?
+    ├── worthSwitching(under:): Account?   critical or out under the person's policy
     ├── review(under:) → InUseNotice?  switched, or worth switching — told once per low
     └── switchWhenLow: SwitchWhenLow ◆   isOn · below · mayPick · next(from:among:)
 Account: isInUse · canBeInUse (only when there is a choice) · useForNewSessions() · percentLeft

@@ -13,7 +13,7 @@ Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activit
 1. **Settings → General → Notch Live Activity**. It's off by default.
 2. For session states, also turn on **Settings → Hooks → Claude Code Hooks** ([session hooks](../session-hooks/README.md)). That installs ClaudeBar's hooks into Claude Code, which report when a session starts, finishes a turn or waits for you. Without hooks, the notch shows quota only.
 
-3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota is critical or out under your status setting.
+3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota is critical or out (with **Warn when a quota will run out before it resets** on, critical means it runs out within a tenth of its window).
 
 The notch follows the provider that's selected in the popover. Pick a different provider there to watch a different quota.
 
