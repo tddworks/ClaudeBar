@@ -52,18 +52,21 @@ public final class SessionFocus {
     }
 
     /// Brings `session`'s terminal forward; nothing when it never said where it runs.
-    public func bringForward(_ session: ClaudeSession) {
+    /// Answers the work under way, for whoever wants to wait for it.
+    @discardableResult
+    public func bringForward(_ session: ClaudeSession) -> Task<Void, Never>? {
         go(to: place(of: session))
     }
 
     /// Brings forward the Done row's session that finished last.
-    public func bringForward(_ repo: DoneRepo) {
+    @discardableResult
+    public func bringForward(_ repo: DoneRepo) -> Task<Void, Never>? {
         go(to: place(of: repo))
     }
 
-    private func go(to place: TerminalPlace?) {
-        guard let place else { return }
+    private func go(to place: TerminalPlace?) -> Task<Void, Never>? {
+        guard let place else { return nil }
         let terminals = terminals
-        Task { await terminals.bringForward(place) }
+        return Task { await terminals.bringForward(place) }
     }
 }
