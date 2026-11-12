@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **With "Warn when a quota will run out before it resets" on, a low quota that lasts is no longer red**: 19% left minutes before the reset read critical beside *Room to spare*. Critical now means it runs out within a tenth of the window; the notch follows too. ([#707](https://github.com/tddworks/ClaudeBar/issues/707)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota/status-colors/README.md)
+
 ### Fixed
 - **The log loses no line to a race**: on Windows a new log's first line could vanish while a program started, and when two ClaudeBar processes wrote the log at once (the Windows app and its upload), one could overwrite or throw away the other's lines. ([#696](https://github.com/tddworks/ClaudeBar/issues/696))
 - **A program that ends right after logging keeps its last lines**: the log writes each line on a queue of its own, which `exit` ended with the lines still on it, so ClaudeBar for Windows' hourly upload never logged its outcome. `AppLog.flush()` waits for them. ([#701](https://github.com/tddworks/ClaudeBar/issues/701))

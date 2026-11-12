@@ -145,6 +145,7 @@ final class NotchWindowDriver {
             quotas: quotas,
             headlineQuota: headline,
             whenIdle: settings.notchWhenIdle,
+            policy: monitor.statusPolicy,
             now: now
         )
         if isSnoozed(at: now), !demandsAttentionThroughSnooze(activity) {

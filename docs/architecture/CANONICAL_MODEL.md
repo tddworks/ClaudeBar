@@ -491,7 +491,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
 | depleted at 0, critical under 20 — ABSOLUTE, whatever the policy | `StatusPolicy` |
-| a quota's status under the pace-aware policy warns exactly when it runs out before its reset, from 20% left up; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `SpendRate` |
+| a quota's status under the pace-aware policy is depleted at 0, critical when its forecast runs out within 10% of its window, warning when it runs out before its reset, and healthy when it lasts, however little is left; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `Forecast` and `SpendRate` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export, the local API and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
 | usage is stale 5 minutes after it was updated | `Usage` |
@@ -663,7 +663,7 @@ test first. Findings that need a decision first are in §9.
 | SDK clients | Bedrock's prices and model names in `AWSClients`' Swift | a price file in the definition |
 | Activity | the hooks installed are a list beside `SessionEvent.EventName`, without `Notification`, so *Needs you* never comes | the installer registers every `EventName` |
 | Activity | "ClaudeBar's own CLI run" decided in four places; `CLAUDEBAR_PROBE` written by hand in `claude.json` and the guest-pass runner | Data Sources marks every child it starts and answers "is this one of my runs" |
-| Activity | the notch judges quotas without the policy, ranks by `percentRemaining`, and prints its own phase words and colours | the quota's status under the policy; `Phase.label` and its colour |
+| Activity | the notch ranks quotas by `percentRemaining`, and prints its own phase words and colours | `Left.share`; `Phase.label` and its colour |
 | Activity | following Claude Code (hooks file, setting, event loop, sweep, notification text) in `HooksPane` and `ClaudeBarApp` | an Activity root told `turnOn()` / `turnOff()`; the App constructs it |
 | Leaderboard | "upload now" after each command, the copied-key retry and the off-notice choice in `AppLeaderboard`; the privacy preview rebuilds the wire format; a member's mix counted in two views | the membership's commands; the encoder's preview; `Board.Member.mix` |
 | Leaderboard | its model holds `DailyUsageStat`; the providers with token logs are a sentence in two views | `TokenLogs` answers Leaderboard's own token counts; the names from the catalog |

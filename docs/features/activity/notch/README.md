@@ -25,7 +25,7 @@ When several states apply at once, the one that needs you most wins:
 |---|---|---|---|
 | 1 | **Needs you**: Claude Code is waiting for a permission or an answer | ⚠︎ "Needs you" and the prompt text | Claude Code carries on and finishes the turn, you send a new prompt, or the session ends. Never times out |
 | 2 | **Done**: a turn or session just finished | ✓, the repo, the task count and duration | After 4 seconds |
-| 3 | **Quota low**: a quota of the selected provider is under 20% left | That quota's name, % left, bar and reset time | The quota recovers |
+| 3 | **Quota low**: a quota of the selected provider is critical or depleted (under 20% left, or, with **Warn when a quota will run out before it resets** on, running out within a tenth of its window) | That quota's name, % left, bar and reset time | The quota recovers |
 | 4 | **Agents working**: subagents are running | The repo, "N agents", elapsed time | The subagents finish |
 | 5 | **Working**: Claude Code is on a turn | A green dot, the repo, elapsed time | The turn ends |
 | 6 | **Quota glance**: nothing else is happening | The selected provider's lowest quota: % left, bar, reset time. Hidden instead when **When Nothing's Happening** is **Hide** | — |

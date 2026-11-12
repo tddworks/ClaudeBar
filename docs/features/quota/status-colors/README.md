@@ -27,9 +27,10 @@ Turn it on in Settings → **General** → **Warn when a quota will run out befo
 
 With it on, a quota's status follows the same answer as its **Pace** badge and its forecast line:
 
-- **Warning** when, at its pace, the quota runs out before it refills: the badge says *Running hot* and the forecast says *Runs out in…*. This holds at any level from 20% left up, so 60% left can be a warning.
-- **Healthy** when it lasts until it resets: the badge says *On track* or *Room to spare*. This holds even below 50% left.
-- **Critical and depleted stay absolute.** Under 20% is critical and 0% is depleted, whatever the pace.
+- **Warning** when, at its pace, the quota runs out before it refills: the badge says *Running hot* and the forecast says *Runs out in…*. 60% left can be a warning.
+- **Critical** when it runs out before it refills, and soon: within a tenth of the window, so 30 minutes of a 5-hour session or about 17 hours of a week.
+- **Healthy** when it lasts until it resets: the badge says *On track* or *Room to spare*. This holds however little is left, so 19% left with 8 minutes to go is healthy.
+- **Depleted stays absolute**: 0% is depleted.
 - **The fixed thresholds apply until there's a pace**: in a window's first minutes (under 3% of it gone), for a quota with no reset time or window length, and for a balance with no ceiling.
 
 "Runs out before it refills" means more than 5 points more of the quota used than of the window gone. Within 5 points either way you're on the line, and it reads *On track* and healthy.
@@ -41,11 +42,12 @@ Examples, in a 5-hour session:
 | 58% | 41% | On track | Healthy | Healthy |
 | 60% | 15% | Running hot | Healthy | **Warning** |
 | 40% | 90% | Room to spare | Warning | **Healthy** |
-| 15% | 95% | Room to spare | Critical | Critical |
+| 15% | 95% | Room to spare | Critical | **Healthy** |
+| 10% | 80% | Running hot | Critical | Critical |
 
-A card never shows a low status beside *On track*.
+A card never shows a low status beside *On track* or *Room to spare*.
 
-**What follows it:** the status, and so its colour, in the menu bar, the provider pills, the cards and bars in the popover, the Touch Bar and the status export. The **"running low"** notifications and webhooks follow it too: they fire when a login's status gets worse under this same setting. Your own [quota alerts](../../alerting/quota-alerts/README.md) are separate: they fire at the percentages you set. The notch still colours by the fixed thresholds.
+**What follows it:** the status, and so its colour, in the menu bar, the provider pills, the cards and bars in the popover, the Touch Bar, the notch and the status export. The **"running low"** notifications and webhooks follow it too: they fire when a login's status gets worse under this same setting. Your own [quota alerts](../../alerting/quota-alerts/README.md) are separate: they fire at the percentages you set.
 
 ## Custom colors and High Contrast
 

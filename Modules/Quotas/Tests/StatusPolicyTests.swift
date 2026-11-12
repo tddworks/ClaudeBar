@@ -57,9 +57,32 @@ struct StatusPolicyTests {
     }
 
     @Test
-    func `should read critical under 20 percent and depleted at 0 whatever the pace`() {
-        #expect(quota(left: 10, elapsed: 99).status(under: .paceAware, at: now) == .critical)
-        #expect(quota(left: 19, elapsed: 50).status(under: .paceAware, at: now) == .critical)
+    func `should read healthy with little left when it lasts until the reset`() {
+        // 81% used, 8 minutes of a 5-hour window to go: Room to spare.
+        let session = quota(left: 19, elapsed: 97.3)
+
+        #expect(session.pace(at: now) == .behind)
+        #expect(session.status(under: .paceAware, at: now) == .healthy)
+        #expect(quota(left: 15, elapsed: 95).status(under: .paceAware, at: now) == .healthy)
+    }
+
+    @Test
+    func `should read warning with little left when it runs out before the reset but not soon`() {
+        // 81% used at half way: empty in 35 minutes, more than a tenth of the window.
+        #expect(quota(left: 19, elapsed: 50).status(under: .paceAware, at: now) == .warning)
+    }
+
+    @Test
+    func `should read critical when it runs out within a tenth of the window`() {
+        // 90% used, an hour to go: empty in 27 minutes.
+        #expect(quota(left: 10, elapsed: 80).status(under: .paceAware, at: now) == .critical)
+        // 40% used in the first 3.5% of the window: empty in 16 minutes, with most of it left.
+        #expect(quota(left: 60, elapsed: 3.5).status(under: .paceAware, at: now) == .critical)
+        #expect(quota(left: 5, elapsed: 50).status(under: .paceAware, at: now) == .critical)
+    }
+
+    @Test
+    func `should read depleted at 0 whatever the pace`() {
         #expect(quota(left: 0, elapsed: 99).status(under: .paceAware, at: now) == .depleted)
         #expect(quota(left: 0, elapsed: 10).status(under: .paceAware, at: now) == .depleted)
     }
@@ -86,16 +109,16 @@ struct StatusPolicyTests {
     }
 
     @Test
-    func `should never read warning beside an On track pace`() {
+    func `should never read low beside an On track or Room to spare pace`() {
         // Half-point elapsed values keep every case clear of the 5-point margin.
-        for used in stride(from: 0.0, through: 80.0, by: 2.0) {
+        for used in stride(from: 0.0, through: 98.0, by: 2.0) {
             for elapsed in stride(from: 3.5, through: 99.5, by: 4.0) {
                 let session = quota(left: 100 - used, elapsed: elapsed)
                 let status = session.status(under: .paceAware, at: now)
                 let pace = session.pace(at: now)
 
                 #expect(pace != .unknown)
-                #expect((status == .warning) == (pace == .ahead),
+                #expect((status >= .warning) == (pace == .ahead),
                         "used \(used)%, \(elapsed)% gone: \(status) beside \(pace)")
             }
         }

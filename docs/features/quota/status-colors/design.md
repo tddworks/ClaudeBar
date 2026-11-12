@@ -1,5 +1,5 @@
 ---
-description: Contributor design for a quota's status and its colour: the absolute bands, the pace-aware policy that reads SpendRate's one rule, the surfaces that take the policy, and how a status picks its colour.
+description: Contributor design for a quota's status and its colour: the absolute bands, the pace-aware policy that reads SpendRate's one rule and the forecast, the surfaces that take the policy, and how a status picks its colour.
 ---
 
 # Status colors — design
@@ -24,7 +24,10 @@ under 20% is urgent, 0 is gone. The person can also ask for a smarter answer:
 *warn me when, at this pace, it runs out before it refills*. That is the
 question the Pace badge (*Running hot*) and the forecast (*Runs out in…*)
 already answer, from one rule. The status asks the same rule, so one card never
-says *On track* beside a low status.
+says *On track* or *Room to spare* beside a low status. Under that answer the
+share left alone never makes a quota urgent: 19% left with 8 minutes of a
+5-hour session to go lasts, so it is healthy. Urgent is *it runs out, and soon*:
+within a tenth of the window.
 
 ## 2 · The words
 
@@ -32,7 +35,8 @@ says *On track* beside a low status.
 |---|---|
 | **status** | healthy · warning · critical · depleted: the answer to "do I need to act?" |
 | **absolute** | the policy that reads only the share left: depleted at 0, critical under 20, warning under 50 |
-| **pace-aware** | the policy that, from 20% left up, warns exactly when the quota runs out before it resets |
+| **pace-aware** | the policy that warns exactly when the quota runs out before it resets, and is critical when it runs out within a tenth of the window |
+| **soon** | within 10% of the window (`StatusPolicy.criticalShareOfWindow`): 30 minutes of a 5-hour session, about 17 hours of a week |
 | **rate** | `SpendRate`: the share used over the share of the window gone |
 | **runs out before reset** | used more than 5 points (`SpendRate.margin`) ahead of the share of the window gone |
 | **noise floor** | 3% of the window gone: before it there is no rate, and pace-aware falls back to absolute |
@@ -44,14 +48,18 @@ StatusPolicy  ◇  .absolute | .paceAware          the person's one judgement, f
   └ UsageQuota.status(under: policy)  → QuotaStatus
       ├ .absolute   → quota.status                    QuotaStatus.from(percentRemaining:)
       └ .paceAware  → no rate yet       → quota.status (absolute)
-                      left < 20 or 0    → critical / depleted (absolute)
-                      else quota.rate: SpendRate
-                             └ runsOutBeforeReset ? warning : healthy
+                      left 0            → depleted
+                      else quota.forecast(at:)
+                             ├ .lastsUntilReset               → healthy, however little is left
+                             ├ .runsOut(in: ≤ 10% of window)  → critical
+                             └ .runsOut(in: later)            → warning
 UsageSnapshot.overallStatus(under: policy)  → the worst quota's status
 ```
 
 The pace-aware branch reads `percentLeft`, the same share left the rate reads,
-so a capped money quota is judged by its money on both sides.
+so a capped money quota is judged by its money on both sides. It reads the
+`Forecast`, which reads `SpendRate.runsOutBeforeReset`, so the status, the Pace
+badge and *Runs out in…* are one answer.
 
 ## 4 · The laws, each with one owner
 
@@ -59,7 +67,7 @@ so a capped money quota is judged by its money on both sides.
 |---|---|
 | depleted at 0, critical under 20, warning under 50, otherwise healthy; a balance with no ceiling is healthy until it is spent | `QuotaStatus.from(percentRemaining:)` · `StatusPolicy.absolute` |
 | a quota is spent too fast ⇔ it runs out before its reset: used more than 5 points ahead of the share of the window gone | `SpendRate.runsOutBeforeReset` |
-| under pace-aware, depleted and critical stay absolute; from 20% up a quota warns exactly when it runs out before its reset; with no rate it falls back to absolute | `StatusPolicy` (`UsageQuota.status(under:)`) |
+| under pace-aware, depleted stays absolute; a quota is critical when its forecast runs out within 10% of its window, warning when it runs out later, and healthy when it lasts until the reset, however little is left; with no rate it falls back to absolute | `StatusPolicy` (`UsageQuota.status(under:)`) |
 | a snapshot's status is its worst quota's | `UsageSnapshot.overallStatus(under:)` |
 | every surface reads the status under the monitor's one policy, never a copy of the rule | `QuotaMonitor.statusPolicy` |
 | tell once when a login's status gets worse; nothing on recovery | `StatusAlerts` |
@@ -74,7 +82,7 @@ so a capped money quota is judged by its money on both sides.
                          (used − gone > 5, the only "too fast")
                 ┌──────────────────┼──────────────────────┐
            UsagePace          Forecast              StatusPolicy.paceAware
-         "Running hot"     "Runs out in…"         warning (from 20% left up)
+         "Running hot"     "Runs out in…"         warning; critical when it runs out within 10% of the window
                                                          │
                          QuotaMonitor.statusPolicy  ◄────┘   { AppSettings.shared.statusPolicy }
                                    │
@@ -89,8 +97,8 @@ menu-bar label   cards, bars,   StatusAlerts →    Touch Bar          status ex
 `MenuBarPercentageDisplay(quota:mode:policy:)` and
 `MenuBarDurationDisplay(quota:policy:)` take the policy; the monitor's
 `menuBarLabel`, `additionalMenuBarLabels` and the two display helpers pass its
-own `statusPolicy`, so the drivers pass nothing. The notch still reads the
-absolute bands ([CANONICAL §8](../../../architecture/CANONICAL_MODEL.md#8--where-the-code-is-still-behind)).
+own `statusPolicy`, so the drivers pass nothing. `NotchActivityResolver.resolve`
+takes `policy:` too, and the notch's driver passes the monitor's.
 
 ## 6 · The pieces
 
@@ -114,7 +122,9 @@ absolute bands ([CANONICAL §8](../../../architecture/CANONICAL_MODEL.md#8--wher
 | 60% · 15% (45% used) | Running hot | healthy | **warning** |
 | 40% · 90% | Room to spare | warning | **healthy** |
 | 25% · 60% | Running hot | warning | warning |
-| 15% · any | any | critical | critical |
+| 19% · 97.3% (8 min left) | Room to spare | critical | **healthy** |
+| 19% · 50% (empty in 35 min) | Running hot | critical | **warning** |
+| 10% · 80% (empty in 27 min) | Running hot | critical | critical |
 | 0% · any | — | depleted | depleted |
 | 40% · 2% (under the floor) | unknown | warning | warning |
 | 35% · no window | unknown | warning | warning |
@@ -136,6 +146,7 @@ are the App's.
 | a new policy (say, warn on *On track* too) | a new `StatusPolicy` case and its branch in `status(under:)` |
 | a new surface coloured by status | it takes `policy: StatusPolicy`, or reads `monitor.statusPolicy`, and calls `status(under:)` |
 | a different "too fast" (another margin, a weighted rate) | `SpendRate`: Pace, the forecast and the status follow together |
+| a different "soon" | `StatusPolicy.criticalShareOfWindow` |
 | different colours | the theme, or `StatusColorPolicy` |
 
 ## 10 · Gotchas
