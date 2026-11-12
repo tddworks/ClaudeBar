@@ -441,4 +441,22 @@ struct ClaudeSessionTests {
 
         #expect(session.canBringForward)
     }
+
+    @Test
+    func `should not be brought forward when only its tmux pane is known`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/claudebar")
+
+        session.runs(in: SessionTerminal(app: nil, tmux: SessionTerminal.TmuxPane(pane: "%3", socket: nil)))
+
+        #expect(!session.canBringForward)
+    }
+
+    @Test
+    func `should be brought forward in tmux when the terminal around it is known`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/claudebar")
+
+        session.runs(in: SessionTerminal(app: .iTerm2, tmux: SessionTerminal.TmuxPane(pane: "%3", socket: nil)))
+
+        #expect(session.canBringForward)
+    }
 }

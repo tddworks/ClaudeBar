@@ -99,7 +99,8 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 | The session runs in | Clicking it |
 |---|---|
 | iTerm2 | Selects the tab and window that hold the session, then brings iTerm2 to the front |
-| tmux, inside any terminal | Selects the pane and its window in tmux (zoomed out first if another pane is zoomed), then does the same as the terminal's own row: iTerm2's tab, else the app |
+| tmux, inside iTerm2 | Selects the pane and its window in tmux (zoomed out first if another pane is zoomed), then does the same as iTerm2's own row |
+| tmux, inside another terminal | Nothing: the row is not clickable and has no number. tmux sets `TERM_PROGRAM` to `tmux`, so the terminal around it is unknown, and selecting the pane alone would leave that terminal where it is. Only iTerm2 says itself through tmux, in `LC_TERMINAL` |
 | Ghostty | Focuses the Ghostty terminal whose folder is the session's, then brings Ghostty to the front |
 | Terminal, Warp, WezTerm, or another that names itself in `TERM_PROGRAM` | Brings that app to the front (another by the name it gave); none has a way to name a tab from outside |
 | Unknown (hooks from before this change, kitty and Alacritty, which set no `TERM_PROGRAM`, nothing said) | Nothing: the row is not clickable and has no number |
@@ -138,7 +139,7 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 
 `SessionMonitorTests`: should know where a session runs from its event · should keep where a session runs when an event doesn't say · should bring forward a repo's done session that finished last.
 
-`ClaudeSessionTests`: should be brought forward only once it is known where it runs.
+`ClaudeSessionTests`: should be brought forward only once it is known where it runs · should not be brought forward when only its tmux pane is known · should be brought forward in tmux when the terminal around it is known.
 
 `SessionFocusTests`, on what `SessionFocus.place(of:)` answers (the terminal and folder it would hand the port), never on calls: should bring forward the terminal of the session clicked · should bring forward the latest of a folded repo · should have nowhere to go for a session that never said where it runs.
 

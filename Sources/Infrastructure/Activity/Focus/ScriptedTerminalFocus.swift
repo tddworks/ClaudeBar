@@ -73,6 +73,9 @@ public struct ScriptedTerminalFocus: TerminalFocus {
 
     // MARK: - tmux
 
+    /// How long one `tmux` command may take before it is stopped.
+    private static let tmuxDeadline: TimeInterval = 5
+
     private static let tmuxPath: String? = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/opt/local/bin/tmux", "/usr/bin/tmux"]
         .first { FileManager.default.isExecutableFile(atPath: $0) }
 
@@ -101,8 +104,13 @@ public struct ScriptedTerminalFocus: TerminalFocus {
         } catch {
             return nil
         }
+        // A tmux client stuck on a server that doesn't answer would hold the
+        // queue, and every later click with it; stop it after a while.
+        let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + tmuxDeadline, execute: deadline)
         let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        deadline.cancel()
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

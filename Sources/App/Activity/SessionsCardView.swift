@@ -126,18 +126,8 @@ struct SessionsCardView: View {
 
     private func oneSession(_ session: ClaudeSession) -> some View {
         let targets = session.canBringForward ? [Target.session(session)] : []
-        return Group {
-            if let target = targets.first {
-                Button { bringForward(target) } label: {
-                    SessionIndicatorView(session: session).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Bring its terminal forward")
-            } else {
-                SessionIndicatorView(session: session)
-            }
-        }
-        .background(digitShortcuts(targets))
+        return pickable(SessionIndicatorView(session: session), target: targets.first, in: targets)
+            .background(digitShortcuts(targets))
     }
 
     // MARK: - Several sessions

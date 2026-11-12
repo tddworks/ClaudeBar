@@ -36,8 +36,10 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// Where the session runs, once an event has said.
     public private(set) var terminal: SessionTerminal?
 
-    /// Whether the session can be brought forward: it said where it runs.
-    public var canBringForward: Bool { terminal != nil }
+    /// Whether the session can be brought forward: it said which terminal app
+    /// it runs in. A tmux pane alone isn't enough: selecting it would leave
+    /// the terminal around tmux where it is.
+    public var canBringForward: Bool { terminal?.app != nil }
 
     /// - Parameter phase: `.active` for a session seen mid-turn; `.stopped` for
     ///   one that has just opened at its prompt — idle, with nothing finished
