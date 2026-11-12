@@ -51,6 +51,9 @@ public final class SessionMonitor {
         if let processId = event.processId, sessions[index].processId == nil {
             sessions[index].runs(inProcess: processId)
         }
+        if let terminal = event.terminal {
+            sessions[index].runs(in: terminal)
+        }
 
         switch event.eventName {
         case .sessionStart:
@@ -133,11 +136,14 @@ public final class SessionMonitor {
     public var doneByRepo: [DoneRepo] {
         let done = sessions.filter { $0.phase == .stopped }
         return Dictionary(grouping: done, by: \.repoName)
-            .map { repoName, sessions in
-                DoneRepo(
+            .compactMap { repoName, sessions in
+                let finished = { (session: ClaudeSession) in session.finishedAt ?? session.startedAt }
+                guard let latest = sessions.max(by: { finished($0) < finished($1) }) else { return nil }
+                return DoneRepo(
                     repoName: repoName,
                     count: sessions.count,
-                    lastFinishedAt: sessions.map { $0.finishedAt ?? $0.startedAt }.max() ?? .distantPast,
+                    lastFinishedAt: finished(latest),
+                    latestSessionId: latest.id,
                     title: sessions.count == 1 ? sessions[0].title : nil
                 )
             }

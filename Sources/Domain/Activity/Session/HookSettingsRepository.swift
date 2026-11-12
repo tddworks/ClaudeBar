@@ -18,6 +18,13 @@ public enum HookConstants {
     /// process ID (Claude Code exports it to hooks as `CLAUDE_PID`). ClaudeBar
     /// uses it to notice a session whose process died without a `SessionEnd`.
     public static let processIdHeader = "X-ClaudeBar-Pid"
+
+    /// HTTP header the installed hook command sends with one of the
+    /// variables that say where a session runs (`TERM_PROGRAM`,
+    /// `ITERM_SESSION_ID`, …), so a click can bring its terminal forward.
+    public static func environmentHeader(_ variable: SessionTerminal.Variable) -> String {
+        "X-ClaudeBar-Env-\(variable.rawValue)"
+    }
 }
 
 /// Settings repository for hook configuration.

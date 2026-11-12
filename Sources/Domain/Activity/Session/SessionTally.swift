@@ -21,15 +21,18 @@ public struct DoneRepo: Sendable, Equatable, Identifiable {
     public let count: Int
     /// The latest finish among them; a session idle since it opened counts from its start.
     public let lastFinishedAt: Date
+    /// The session that finished last: the one the row brings forward.
+    public let latestSessionId: String
     /// The session's title when the row stands for one session; a folded row has none.
     public let title: String?
 
     public var id: String { repoName }
 
-    public init(repoName: String, count: Int, lastFinishedAt: Date, title: String? = nil) {
+    public init(repoName: String, count: Int, lastFinishedAt: Date, latestSessionId: String, title: String? = nil) {
         self.repoName = repoName
         self.count = count
         self.lastFinishedAt = lastFinishedAt
+        self.latestSessionId = latestSessionId
         self.title = title
     }
 }

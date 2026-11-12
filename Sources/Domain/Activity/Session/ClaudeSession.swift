@@ -33,6 +33,12 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// The title Claude Code wrote for the session, once its transcript has one.
     public private(set) var generated: String?
 
+    /// Where the session runs, once an event has said.
+    public private(set) var terminal: SessionTerminal?
+
+    /// Whether the session can be brought forward: it said where it runs.
+    public var canBringForward: Bool { terminal != nil }
+
     /// - Parameter phase: `.active` for a session seen mid-turn; `.stopped` for
     ///   one that has just opened at its prompt — idle, with nothing finished
     ///   yet, so `finishedAt` stays nil and the notch has nothing to flash.
@@ -79,6 +85,11 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// Records which process runs this session, when a later event says.
     public mutating func runs(inProcess processId: Int) {
         self.processId = processId
+    }
+
+    /// Records where the session runs, from its latest event that said.
+    public mutating func runs(in terminal: SessionTerminal) {
+        self.terminal = terminal
     }
 
     /// Takes the titles read from the session's transcript. A title not found

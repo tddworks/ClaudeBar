@@ -13,6 +13,7 @@ import Infrastructure
 final class NotchWindowDriver {
     private let monitor: QuotaMonitor
     private let sessionMonitor: SessionMonitor
+    private let sessionFocus: SessionFocus
     private let settings: AppSettings
     private let controller = NotchWindowController()
     private let resolver = NotchActivityResolver()
@@ -36,9 +37,10 @@ final class NotchWindowDriver {
     /// How long a finished session stays worth listing in the panel.
     private static let recentSessionWindow: TimeInterval = 10 * 60
 
-    init(monitor: QuotaMonitor, sessionMonitor: SessionMonitor, settings: AppSettings) {
+    init(monitor: QuotaMonitor, sessionMonitor: SessionMonitor, sessionFocus: SessionFocus, settings: AppSettings) {
         self.monitor = monitor
         self.sessionMonitor = sessionMonitor
+        self.sessionFocus = sessionFocus
         self.settings = settings
     }
 
@@ -82,7 +84,8 @@ final class NotchWindowDriver {
                     controller.start()
                     controller.setActions(
                         refresh: { [weak self] in self?.refreshQuotas() },
-                        snooze: { [weak self] in self?.snooze() }
+                        snooze: { [weak self] in self?.snooze() },
+                        bringForward: { [weak self] session in self?.sessionFocus.bringForward(session) }
                     )
                     startContentSync()
                 } else {

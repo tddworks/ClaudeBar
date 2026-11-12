@@ -194,4 +194,27 @@ struct SessionEventParserTests {
 
         #expect(event?.transcriptPath == "/tmp/abc-123.jsonl")
     }
+
+    @Test
+    func `should read where a session runs from the hook`() {
+        let json = """
+        {"session_id": "abc-123", "hook_event_name": "Stop", "cwd": "/tmp/project"}
+        """
+
+        let event = SessionEventParser.parse(
+            json.data(using: .utf8)!,
+            environment: ["TERM_PROGRAM": "iTerm.app", "ITERM_SESSION_ID": "w0t0p0:ABC-123", "TMUX_PANE": ""]
+        )
+
+        #expect(event?.terminal == SessionTerminal(app: .iTerm2, iTermSessionId: "ABC-123"))
+    }
+
+    @Test
+    func `should know nothing of where a session runs when the hook didn't say`() {
+        let json = """
+        {"session_id": "abc-123", "hook_event_name": "Stop", "cwd": "/tmp/project"}
+        """
+
+        #expect(SessionEventParser.parse(json.data(using: .utf8)!)?.terminal == nil)
+    }
 }

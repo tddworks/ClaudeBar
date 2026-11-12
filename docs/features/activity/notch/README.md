@@ -38,7 +38,7 @@ If the selected provider has no data yet and no session is running, the notch hi
 
 Move the pointer onto the notch to open the panel:
 
-- up to three sessions: the running one, plus any that finished in the last 10 minutes, each with its title under the repo once it has one ([session titles](../session-hooks/README.md))
+- up to three sessions: the running one, plus any that finished in the last 10 minutes, each with its title under the repo once it has one ([session titles](../session-hooks/README.md)). Click one to bring its terminal tab forward ([jump to a session](../session-hooks/README.md))
 - the selected provider's three most-used quotas, with reset times
 - today's usage, if the provider reports daily usage
 - **Refresh quotas**, which refreshes only the selected provider

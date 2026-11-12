@@ -7,6 +7,8 @@ struct NotchPanelView: View {
     let content: NotchContent
     var refresh: (() -> Void)?
     var snooze: (() -> Void)?
+    /// Brings a session's terminal forward when its row is clicked.
+    var bringForward: ((ClaudeSession) -> Void)?
 
     @Environment(\.appTheme) private var theme
 
@@ -91,44 +93,56 @@ struct NotchPanelView: View {
     private var sessionList: some View {
         VStack(spacing: 1) {
             ForEach(content.sessions, id: \.id) { session in
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(session.phase.color)
-                        .frame(width: 7, height: 7)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.repoName)
-                            .font(.system(size: 11.5, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                            .truncationMode(.head)
-
-                        if let title = session.title {
-                            Text(title)
-                                .font(theme.font(size: 10.5))
-                                .foregroundStyle(.white.opacity(0.5))
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
+                if let bringForward, session.canBringForward {
+                    Button { bringForward(session) } label: {
+                        sessionRow(session).contentShape(Rectangle())
                     }
-
-                    Spacer(minLength: 12)
-
-                    Text(statusText(for: session))
-                        .font(theme.font(size: 10.5))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .lineLimit(1)
-
-                    Text(session.durationDescription)
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.38))
+                    .buttonStyle(.plain)
+                    .help("Bring its terminal forward")
+                } else {
+                    sessionRow(session)
                 }
-                .padding(.horizontal, 11)
-                .padding(.vertical, 7)
-                .background(Color.white.opacity(0.04))
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 9))
+    }
+
+    private func sessionRow(_ session: ClaudeSession) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(session.phase.color)
+                .frame(width: 7, height: 7)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.repoName)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
+                    .truncationMode(.head)
+
+                if let title = session.title {
+                    Text(title)
+                        .font(theme.font(size: 10.5))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+
+            Spacer(minLength: 12)
+
+            Text(statusText(for: session))
+                .font(theme.font(size: 10.5))
+                .foregroundStyle(.white.opacity(0.5))
+                .lineLimit(1)
+
+            Text(session.durationDescription)
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.38))
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(Color.white.opacity(0.04))
     }
 
     private func statusText(for session: ClaudeSession) -> String {

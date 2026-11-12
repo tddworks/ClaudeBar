@@ -48,6 +48,8 @@ struct ClaudeBarApp: App {
 
     /// Monitors Claude Code sessions via hook events
     @State private var sessionMonitor: SessionMonitor
+    /// Brings a session's terminal forward from the Claude Code card or the notch.
+    private let sessionFocus: SessionFocus
 
     /// Drives the menu-bar pixels and the background-refresh lifecycle
     /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
@@ -207,6 +209,8 @@ struct ClaudeBarApp: App {
 
         let sessionMonitor = SessionMonitor()
         self.sessionMonitor = sessionMonitor
+        let sessionFocus = SessionFocus(sessions: sessionMonitor, terminals: ScriptedTerminalFocus())
+        self.sessionFocus = sessionFocus
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle
         // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
@@ -223,6 +227,7 @@ struct ClaudeBarApp: App {
         notchDriver = NotchWindowDriver(
             monitor: monitor,
             sessionMonitor: sessionMonitor,
+            sessionFocus: sessionFocus,
             settings: AppSettings.shared
         )
         notchDriver.startWhenLaunched()
@@ -439,14 +444,14 @@ struct ClaudeBarApp: App {
         MenuBarExtra {
             Group {
                 #if ENABLE_SPARKLE
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, notifications: notifications, leaderboard: leaderboard, recaps: recaps, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, sessionFocus: sessionFocus, notifications: notifications, leaderboard: leaderboard, recaps: recaps, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)
                     .environment(\.popoverTextSize, settings.popoverTextSize)
                     .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, notifications: notifications, leaderboard: leaderboard, recaps: recaps, onClose: { isMenuPresented = false }) { enabled in
+                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, sessionFocus: sessionFocus, notifications: notifications, leaderboard: leaderboard, recaps: recaps, onClose: { isMenuPresented = false }) { enabled in
                         if enabled { startHookServer() } else { stopHookServer() }
                     }
                     .appThemeProvider(themeModeId: settings.themeMode)

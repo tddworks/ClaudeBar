@@ -11,6 +11,7 @@ import Sparkle
 struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
+    let sessionFocus: SessionFocus
     let notifications: Notifications
     let leaderboard: AppLeaderboard
     /// *WEEKLY RECAP*'s two weeks, read with the All page.
@@ -109,7 +110,7 @@ struct MenuContentView: View {
                 // The Claude Code card (shown while any session is running).
                 // Measured, so the scroll region below gives up its height.
                 if sessionMonitor.hasActiveSession {
-                    SessionsCardView(sessionMonitor: sessionMonitor)
+                    SessionsCardView(sessionMonitor: sessionMonitor, focus: sessionFocus, onBroughtForward: onClose)
                         .padding(.horizontal, 16)
                         .padding(.bottom, 8)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in

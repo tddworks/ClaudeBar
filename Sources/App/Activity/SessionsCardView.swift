@@ -9,8 +9,14 @@ import Domain
 /// then a row for each session still in play. Done sessions need nothing from
 /// the person, so they wait behind ▾, folded by repo
 /// (docs/features/activity/session-hooks/design.md).
+///
+/// A row whose session said where it runs is a button: clicking it, or
+/// pressing its number (1–9, 0 for the tenth), brings its terminal forward.
 struct SessionsCardView: View {
     let sessionMonitor: SessionMonitor
+    let focus: SessionFocus
+    /// Closes the popover once a session's terminal is on its way forward.
+    var onBroughtForward: (() -> Void)?
 
     /// How many rows of sessions in play the closed card shows before "+N more".
     static let maxRows = 5
@@ -20,8 +26,10 @@ struct SessionsCardView: View {
     @Environment(\.appTheme) private var theme
     private var card = SessionsCardState.shared
 
-    init(sessionMonitor: SessionMonitor) {
+    init(sessionMonitor: SessionMonitor, focus: SessionFocus, onBroughtForward: (() -> Void)? = nil) {
         self.sessionMonitor = sessionMonitor
+        self.focus = focus
+        self.onBroughtForward = onBroughtForward
     }
 
     var body: some View {
@@ -29,11 +37,107 @@ struct SessionsCardView: View {
         // ticking once a second keeps them moving while the popover is open.
         WindowFrameTicker(interval: 1) { date in
             if sessionMonitor.sessions.count == 1, let session = sessionMonitor.activeSession {
-                SessionIndicatorView(session: session)
+                oneSession(session)
             } else {
                 manySessions(now: date)
             }
         }
+    }
+
+    // MARK: - Bringing a session forward
+
+    /// A row the person can bring forward, in the order the card draws them.
+    private enum Target: Identifiable {
+        case session(ClaudeSession)
+        case repo(DoneRepo)
+
+        var id: String {
+            switch self {
+            case .session(let session): "session:\(session.id)"
+            case .repo(let repo): "repo:\(repo.id)"
+            }
+        }
+    }
+
+    /// The rows drawn that can be brought forward, top to bottom: their place
+    /// is their number.
+    private func targets(shown: [ClaudeSession]) -> [Target] {
+        let sessions = shown.filter(\.canBringForward).map(Target.session)
+        let repos = card.showsDone ? sessionMonitor.doneByRepo.filter(focus.canBringForward).map(Target.repo) : []
+        return sessions + repos
+    }
+
+    private func bringForward(_ target: Target) {
+        switch target {
+        case .session(let session): focus.bringForward(session)
+        case .repo(let repo): focus.bringForward(repo)
+        }
+        onBroughtForward?()
+    }
+
+    /// The key that picks the target at `index`: 1–9, then 0 for the tenth.
+    private static func key(at index: Int) -> String? {
+        index < 10 ? String((index + 1) % 10) : nil
+    }
+
+    /// Plain digits pick a row; ⌘ digits stay the provider pills (MenuContentView).
+    private func digitShortcuts(_ targets: [Target]) -> some View {
+        ZStack {
+            ForEach(Array(targets.prefix(10).enumerated()), id: \.element.id) { index, target in
+                if let key = Self.key(at: index) {
+                    Button("Bring session \(key) forward") { bringForward(target) }
+                        .keyboardShortcut(KeyEquivalent(Character(key)), modifiers: [])
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    /// `row`, as a button that brings `target` forward with its number before
+    /// it; as it is when it can't be brought forward. `numbered` keeps the
+    /// rows lined up when any of them has a number.
+    @ViewBuilder
+    private func pickable(_ row: some View, target: Target?, in targets: [Target]) -> some View {
+        let index = target.flatMap { target in targets.firstIndex { $0.id == target.id } }
+        let numbered = HStack(alignment: .firstTextBaseline, spacing: 5) {
+            if !targets.isEmpty {
+                Text(index.flatMap(Self.key(at:)) ?? " ")
+                    .popoverFont(8, weight: .bold, design: theme.fontDesign)
+                    .foregroundStyle(theme.textTertiary)
+                    .frame(width: 7, alignment: .trailing)
+            }
+            row
+        }
+        if let target, index != nil {
+            Button { bringForward(target) } label: {
+                numbered.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Bring its terminal forward")
+        } else {
+            numbered
+        }
+    }
+
+    // MARK: - One session
+
+    private func oneSession(_ session: ClaudeSession) -> some View {
+        let targets = session.canBringForward ? [Target.session(session)] : []
+        return Group {
+            if let target = targets.first {
+                Button { bringForward(target) } label: {
+                    SessionIndicatorView(session: session).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Bring its terminal forward")
+            } else {
+                SessionIndicatorView(session: session)
+            }
+        }
+        .background(digitShortcuts(targets))
     }
 
     // MARK: - Several sessions
@@ -43,6 +147,7 @@ struct SessionsCardView: View {
         let tally = sessionMonitor.tally
         let shown = card.showsDone ? inPlay : Array(inPlay.prefix(Self.maxRows))
         let hidden = inPlay.count - shown.count
+        let targets = targets(shown: shown)
 
         return VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
@@ -60,12 +165,12 @@ struct SessionsCardView: View {
             if !shown.isEmpty || card.showsDone {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(shown) { session in
-                        sessionRow(session)
+                        pickable(sessionRow(session), target: .session(session), in: targets)
                     }
                     if hidden > 0 {
-                        moreButton("+\(hidden) more")
+                        moreButton("+\(hidden) more", numbered: !targets.isEmpty)
                     } else if !shown.isEmpty, !card.showsDone, tally.done > 0 {
-                        moreButton("\(tally.done) done ›")
+                        moreButton("\(tally.done) done ›", numbered: !targets.isEmpty)
                     }
                     if card.showsDone {
                         if !shown.isEmpty, tally.done > 0 {
@@ -76,7 +181,7 @@ struct SessionsCardView: View {
                                 .padding(.top, 2)
                         }
                         ForEach(sessionMonitor.doneByRepo) { repo in
-                            doneRow(repo, now: now)
+                            pickable(doneRow(repo, now: now), target: .repo(repo), in: targets)
                         }
                     }
                 }
@@ -93,6 +198,7 @@ struct SessionsCardView: View {
             }
         )
         .themeRivets()
+        .background(digitShortcuts(targets))
     }
 
     /// A square per session in its phase colour, most pressing first.
@@ -235,7 +341,8 @@ struct SessionsCardView: View {
             .padding(.leading, 15)
     }
 
-    private func moreButton(_ title: String) -> some View {
+    /// `numbered`: the rows carry their numbers, so it lines up past them too.
+    private func moreButton(_ title: String, numbered: Bool) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) { card.showsDone = true }
         } label: {
@@ -245,7 +352,7 @@ struct SessionsCardView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.leading, 15)
+        .padding(.leading, numbered ? 27 : 15)
     }
 
     /// *just now*, *21m ago*, *2h 32m ago*.

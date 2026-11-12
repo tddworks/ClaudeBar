@@ -431,4 +431,14 @@ struct ClaudeSessionTests {
 
         #expect(session.repoAndTitle == "claudebar · Session names")
     }
+
+    @Test
+    func `should be brought forward only once it is known where it runs`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/claudebar")
+        #expect(!session.canBringForward)
+
+        session.runs(in: SessionTerminal(app: .ghostty))
+
+        #expect(session.canBringForward)
+    }
 }

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A day that appears or grows after an upload now reaches the Leaderboard**: a provider shared later, a login added later or a session past midnight left those days off the board, or short on it. Such a day now goes again with its whole total; one that reads smaller isn't sent. ([#680](https://github.com/tddworks/ClaudeBar/issues/680))
 
 ### Added
+- **Jump to a Claude Code session's terminal**: click a session in the popover's Claude Code card or the notch, or press its number (1–9), and its iTerm2 tab, tmux pane or Ghostty terminal comes to the front; Terminal, Warp and WezTerm come forward as they are. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
 - **UberLLM prepaid balance**: a new UberLLM provider shows the credit your new requests can still use, in dollars, from an API key pasted in Settings → Providers → UberLLM or from `UBERLLM_API_KEY`. Off by default. ([#706](https://github.com/tddworks/ClaudeBar/pull/706)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/uberllm/README.md)
 
 ---

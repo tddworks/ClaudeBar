@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session focus</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Click a Claude Code session (or press its number) to bring its terminal forward. Platformer theme, mock data. */
+:root{
+  --sky:#5C94FC;--ink:#141414;--paper:#FFF8E7;--text:#141414;--text-2:#4A3A2A;--text-3:#7C6A55;
+  --needs:#E40058;--agents:#2F6FED;--working:#22A845;--done:#A39A8A;--hover:#F3E7C9;
+  --page:#E9E4D8;--page-text:#2A2620;--page-muted:#6E675C;--rule:#CFC7B6;--panel:#FFFDF7;
+  --term:#1E1F24;--term-tab:#2C2E35;--term-text:#D7D9DE;--term-active:#3B3E48;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}}
+:root[data-theme="dark"]{--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--page-text);font:16px/1.45 "Pixelify Sans",system-ui,sans-serif;padding:36px 16px 80px;overflow-x:hidden}
+.wrap{max-width:1000px;margin:0 auto}
+.eyebrow{font:10px "Press Start 2P",monospace;color:var(--page-muted)}
+h1{font:clamp(18px,3.4vw,26px)/1.4 "Press Start 2P",monospace;margin:12px 0}
+.lede{max-width:720px;color:var(--page-muted);font-size:17px}
+.lede kbd,.state kbd{font:700 12px "Pixelify Sans",system-ui,sans-serif;border:2px solid currentColor;border-radius:4px;padding:0 5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:28px 32px;margin-top:32px;align-items:start}
+.state h2{font:10px/1.5 "Press Start 2P",monospace;margin-bottom:6px}
+.state p{font-size:14px;color:var(--page-muted);margin-bottom:10px;max-width:420px}
+.sky{background:var(--sky);border:3px solid var(--ink);border-radius:6px;padding:12px;max-width:420px;box-shadow:5px 5px 0 var(--ink)}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--ink);padding:9px 12px;color:var(--text);font-size:12px}
+.row{display:flex;align-items:center;gap:8px;min-width:0}
+.sp{flex:1}
+.dots{display:flex;gap:3px;flex:none}
+.dots i{width:9px;height:9px;border:2px solid var(--ink);border-radius:2px;background:var(--done)}
+.dots i.needs{background:var(--needs)}.dots i.agents{background:var(--agents)}.dots i.working{background:var(--working)}
+.t{font:700 12px "Pixelify Sans",system-ui,sans-serif;white-space:nowrap}
+.s{font-size:11px;color:var(--text-3);white-space:nowrap}
+.s b{color:var(--needs)}
+.tog{flex:none;border:2px solid var(--ink);border-radius:999px;padding:0 8px;font:700 11px "Pixelify Sans",system-ui,sans-serif;cursor:pointer;background:var(--paper)}
+.body{margin-top:8px;padding-top:8px;border-top:2px dashed #E3D6B8;display:flex;flex-direction:column;gap:3px;font-size:11px}
+.sess{display:flex;flex-direction:column;gap:1px;min-width:0;border-radius:4px;padding:2px 4px;margin:0 -4px}
+.sess.click{cursor:pointer}
+.sess.click:hover,.sess.hit{background:var(--hover)}
+.sess.hit{outline:2px solid var(--ink)}
+.r2{display:flex;align-items:center;gap:7px}
+.num{width:9px;font:700 10px "Pixelify Sans",system-ui,sans-serif;color:var(--text-3);text-align:right;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
+.ph{font:700 10px "Pixelify Sans",system-ui,sans-serif;color:#fff;background:var(--c);border-radius:3px;padding:0 5px}
+.meta{color:var(--text-2);font-size:10px}
+.d{color:var(--text-3);min-width:58px;text-align:right;white-space:nowrap}
+.grp{font:700 9px "Pixelify Sans",system-ui,sans-serif;letter-spacing:.12em;color:var(--text-3);margin-top:3px}
+.x{font:700 10px "Pixelify Sans",system-ui,sans-serif;background:var(--ink);color:var(--paper);border-radius:3px;padding:0 4px}
+.more{font-size:10px;color:var(--text-3);padding-left:16px}
+.ti{font-size:10px;color:var(--text-3);padding-left:31px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dim{opacity:.6}
+/* the terminal that comes forward */
+.term{margin-top:12px;background:var(--term);border:3px solid var(--ink);border-radius:6px;overflow:hidden;max-width:420px;box-shadow:5px 5px 0 var(--ink)}
+.tabs{display:flex;background:var(--term-tab);font:11px ui-monospace,Menlo,monospace;color:#8D919B}
+.tabs span{padding:4px 10px;border-right:1px solid #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.tabs span.on{background:var(--term-active);color:var(--term-text)}
+.screen{padding:8px 10px;font:11px/1.5 ui-monospace,Menlo,monospace;color:var(--term-text);min-height:54px}
+.cap{font-size:12px;color:var(--page-muted);margin-top:6px}
+.notes{margin-top:36px;max-width:720px;font-size:15px;color:var(--page-muted)}
+.notes li{margin:4px 0 4px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">DESIGN CONCEPT · BRING A SESSION FORWARD · MOCK DATA</div>
+  <h1>Claude Code: take me to that terminal</h1>
+  <p class="lede">Click a session in the Claude Code card, or press its number (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> for the tenth), and its terminal comes to the front on the tab that runs it. <kbd>⌘1</kbd>–<kbd>⌘9</kbd> still pick providers. Try it: click a row or press a number while this page has focus. Design: <code>docs/features/activity/session-hooks/design.md</code> → <i>Bring a session forward</i>.</p>
+  <div class="grid" id="grid"></div>
+  <ul class="notes">
+    <li>The small number before each row is its key. Rows behind <i>+N more</i>, and sessions that haven't yet said where they run, get no number and don't react to a click (dimmed here).</li>
+    <li>A folded Done row (<i>claudebar ×3</i>) brings forward the one that finished last.</li>
+    <li>tmux: the pane is selected first, then iTerm2's tab. Ghostty: the terminal open in the session's folder. Terminal, Warp and others: the app comes forward.</li>
+    <li>The notch's open panel does the same on click, with no number keys.</li>
+  </ul>
+</div>
+<script>
+const C={needs:"var(--needs)",agents:"var(--agents)",working:"var(--working)",done:"var(--done)"};
+const LABEL={needs:"Needs you",agents:"Agents working",working:"Working"};
+// [repo, phase, tasks, agents, time, title, terminal tab label | null when unknown]
+const LIVE=[
+  ["tinyshop","needs",0,0,"1m 03s","Checkout fails on an empty cart","iTerm2 · tinyshop"],
+  ["claudebar","agents",3,2,"4m 12s","Show session names in the card","iTerm2 · claudebar (tmux 2)"],
+  ["claudebar","working",0,0,"40s",null,"Ghostty · claudebar"],
+  ["catalog","working",0,0,"12s",null,null],
+];
+// [repo, count, ago, title, tab]
+const DONE=[["claudebar",3,"just now",null,"iTerm2 · claudebar (latest)"],["Subtitled",1,"21m ago","Burn subtitles into the export","Terminal (app only)"]];
+const STATES=[
+  {title:"Some in play",note:"Each clickable row has its number. catalog started before ClaudeBar's new hook, so it is dimmed until its next event.",open:false},
+  {title:"Done group opened",note:"Numbers carry on into the Done rows as drawn.",open:true},
+];
+function build(st){
+  const targets=[];
+  const n=()=>targets.length<10?String((targets.length+1)%10):"";
+  const live=LIVE.map(([r,p,t,a,time,ti,tab])=>{
+    const k=tab?n():""; if(tab) targets.push({tab,title:ti||r});
+    return `<div class="sess ${tab?"click":"dim"}" ${tab?`data-k="${targets.length-1}"`:""}><div class="r2" style="--c:${C[p]}"><span class="num">${k}</span><span class="dot"></span><b>${r}</b><span class="ph">${LABEL[p]}</span><span class="sp"></span>${t?`<span class="meta">✓ ${t}</span>`:""}${a?`<span class="meta">👥 ${a}</span>`:""}<span class="d">${time}</span></div>${ti?`<div class="ti">${ti}</div>`:""}</div>`;}).join("");
+  let done="";
+  if(st.open) done='<div class="grp">DONE</div>'+DONE.map(([r,c,ago,ti,tab])=>{const k=n();targets.push({tab,title:ti||r});
+    return `<div class="sess click" data-k="${targets.length-1}"><div class="r2" style="--c:var(--done)"><span class="num">${k}</span><span class="dot"></span><b>${r}</b>${c>1?`<span class="x">×${c}</span>`:""}<span class="sp"></span><span class="d">${ago}</span></div>${c===1&&ti?`<div class="ti">${ti}</div>`:""}</div>`;}).join("");
+  else done=`<span class="more">4 done ›</span>`;
+  const html=`<div class="card"><div class="row"><div class="dots"><i class="needs"></i><i class="agents"></i><i class="working"></i><i class="working"></i><i></i><i></i><i></i><i></i></div><div class="t">Claude Code</div><div class="sp"></div><span class="tog">${st.open?"▴":"▾"}</span></div><div class="s" style="margin-top:3px"><b>1 needs you</b> · 3 working · 4 done</div><div class="body">${live}${done}</div></div>`;
+  return {html,targets};
+}
+const grid=document.getElementById("grid");
+const sections=[];
+STATES.forEach(st=>{
+  const el=document.createElement("section");el.className="state";
+  const {html,targets}=build(st);
+  el.innerHTML=`<h2>${st.title}</h2><p>${st.note}</p><div class="sky">${html}</div><div class="term" aria-live="polite"><div class="tabs"><span class="on">nothing brought forward yet</span></div><div class="screen">$</div></div><div class="cap">The terminal after the click</div>`;
+  const show=i=>{const t=targets[i];if(!t)return;
+    el.querySelectorAll(".sess").forEach(s=>s.classList.toggle("hit",s.dataset.k===String(i)));
+    const tabs=["iTerm2 · notes",t.tab,"iTerm2 · scratch"];
+    el.querySelector(".tabs").innerHTML=tabs.map((x,j)=>`<span class="${j===1?"on":""}">${x}</span>`).join("");
+    el.querySelector(".screen").innerHTML=`✻ ${t.title}<br>&gt; <span style="opacity:.6">waiting for you</span>`;};
+  el.querySelectorAll(".sess.click").forEach(s=>s.onclick=()=>show(+s.dataset.k));
+  sections.push({show,count:targets.length}); grid.append(el);
+});
+document.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey||!/^[0-9]$/.test(e.key))return;
+  const i=e.key==="0"?9:+e.key-1; sections.forEach(s=>s.show(i));
+});
+</script>
+</body>
+</html>
