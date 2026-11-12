@@ -119,6 +119,7 @@ struct QuotaMonitorProductStatusTests {
     func `should name no login when a low quota lasts until the reset under pace-aware`() async {
         let (monitor, product) = await monitor("claude", left: 19, elapsed: 97.3, policy: .paceAware)
 
+        #expect(monitor.status(of: product) == .healthy)
         #expect(monitor.cause(of: product) == nil)
     }
 
