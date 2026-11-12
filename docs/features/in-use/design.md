@@ -28,7 +28,7 @@ In use is a **capability** ([CANONICAL §2.1](../../architecture/CANONICAL_MODEL
         ▼
  provider.inUse: InUse (Providers) ── use(login) ──▶ LoginsInUse (port) → ~/.claudebar/in-use/<command>
         ▲                                                                          │ read on every run
- QuotaMonitor.onRefreshed ─▶ newSessions.review ─▶ inUse.review(under:)           ▼
+ QuotaMonitor.onRefreshed ─▶ newSessions.review ─▶ inUse.review(reading:)         ▼
         (knows no In use)        └─▶ InUseAnnouncer (port) ← InUseNotifications   $ claude → CLAUDE_CONFIG_DIR=<folder>
 ```
 
@@ -42,7 +42,7 @@ No token is copied: each login keeps its own Keychain item and refresh token. No
 | **new terminal sessions** | the next `claude` / `codex` run from a shell with the lines | running sessions, Claude Desktop, IDE extensions |
 | **the record** | `~/.claudebar/in-use/<command>` — one per CLI (`claude`, `codex`): the folder, or empty for the plain login | settings.json (keeps no copy); a product's id |
 | **the shell lines** | the block between `# >>> claudebar in-use >>>` markers, or fish's own file | the user's own aliases and exports |
-| **worth switching** | the login in use is critical or out under the person's status policy, and another has more left | *Switch when low* (acts, opt-in) |
+| **worth switching** | the login in use is critical or out by the status every surface reads (the person's policy, hidden quotas left out), and another has more left | *Switch when low* (acts, opt-in) |
 
 ## 2 · The aggregate
 
@@ -53,8 +53,8 @@ Provider
     ├── logins: [Account]             the plain login + folder logins; offersChoice when > 1
     ├── command: TerminalCommand ◇    cli + accounts.cli.environment.set
     ├── use(_) · forget(_)            forget is told by Provider.remove
-    ├── worthSwitching(under:): Account?   critical or out under the person's policy
-    ├── review(under:) → InUseNotice?  switched, or worth switching — told once per low
+    ├── worthSwitching(reading:): Account?   critical or out by monitor.status(of:)
+    ├── review(reading:) → InUseNotice?  switched, or worth switching — told once per low
     └── switchWhenLow: SwitchWhenLow ◆   isOn · below · mayPick · next(from:among:)
 Account: isInUse · canBeInUse (only when there is a choice) · useForNewSessions() · percentLeft
 

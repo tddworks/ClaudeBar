@@ -147,14 +147,6 @@ struct ClaudeBarApp: App {
         let providers = ProviderFactory.make(definitions, engine: engine)
         AppLog.providers.info("Created \(providers.count) providers")
 
-        // *In use*: every product whose definition declares it — chosen by the
-        // definition, never by a provider's name (CANONICAL §2.1).
-        let products = providers
-        let newSessions = NewSessions(products: products,
-                                      shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
-                                      announcer: InUseNotifications(),
-                                      statusPolicy: { AppSettings.shared.statusPolicy })
-        self.newSessions = newSessions
 
         // Initialize the domain service
         // QuotaMonitor automatically validates selected provider on init
@@ -170,6 +162,14 @@ struct ClaudeBarApp: App {
             statusPolicy: { AppSettings.shared.statusPolicy }
         )
         self.monitor = monitor
+        // *In use*: every product whose definition declares it — chosen by the
+        // definition, never by a provider's name (CANONICAL §2.1).
+        let products = providers
+        let newSessions = NewSessions(products: products,
+                                      shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
+                                      announcer: InUseNotifications(),
+                                      status: { monitor.status(of: $0) })
+        self.newSessions = newSessions
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
         // *Webhooks*: kept in settings.json, each URL a destination's secret.

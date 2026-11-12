@@ -67,7 +67,7 @@ badge and *Runs out in…* are one answer.
 |---|---|
 | depleted at 0, critical under 20, warning under 50, otherwise healthy; a balance with no ceiling is healthy until it is spent | `QuotaStatus.from(percentRemaining:)` · `StatusPolicy.absolute` |
 | a quota is spent too fast ⇔ it runs out before its reset: used more than 5 points ahead of the share of the window gone | `SpendRate.runsOutBeforeReset` |
-| under pace-aware, depleted stays absolute; a quota is critical when its forecast runs out within 10% of its window, warning when it runs out later, and healthy when it lasts until the reset, however little is left; with no rate it falls back to absolute | `StatusPolicy` (`UsageQuota.status(under:)`) |
+| the pace-aware status law: [CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them) | `StatusPolicy` (`UsageQuota.status(under:)`) |
 | a snapshot's status is its worst quota's | `UsageSnapshot.overallStatus(under:)` |
 | every surface reads the status under the monitor's one policy, never a copy of the rule | `QuotaMonitor.statusPolicy` |
 | tell once when a login's status gets worse; nothing on recovery | `StatusAlerts` |

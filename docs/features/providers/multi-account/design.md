@@ -308,10 +308,13 @@ Monitor ◆                                  the menu bar's root
          │   │                             INTERCHANGEABLE — and it owns the rule that says so:
          │   ├── unpaused                  DERIVED — the logins not paused
          │   ├── paused                    DERIVED — the PAUSED group
-         │   ├── status                    DERIVED — unpaused-with-usage .map(status).min()
-         │   │                             ← THE RULE, one owner: room while one login has it
+         │   ├── status                    DERIVED — unpaused-with-usage .map(status).min(), absolute;
+         │   │                             surfaces read monitor.status(of:): the same rule
+         │   │                             under the person's policy, hidden quotas left out
          │   ├── best                      DERIVED — the most left: "switch to work"
-         │   ├── cause                     DERIVED — best, while it isn't healthy: the callout
+         │   ├── cause                     DERIVED — best, while it isn't healthy (absolute); the
+         │   │                             callout reads monitor.cause(of:): the login the status
+         │   │                             comes from, under the person's policy
          │   └── Account ◆                 A LOGIN — no behaviour of its own
          │       ├── id                    `<provider>` · `<provider>.<acct>` — pins and settings keyed by it
          │       ├── label?                the person's name for it
@@ -320,7 +323,7 @@ Monitor ◆                                  the menu bar's root
          │       ├── usage? · sync         what we saw · fetch health — kept apart
          │       ├── status                DERIVED — QUOTA HEALTH: its worst quota — its row, its pill
          │       └── displayName           DERIVED — label ?? email ?? provider.name
-         ├── status                    DERIVED → accounts.status (tell, don't ask)
+         ├── status                    DERIVED → accounts.status (tell, don't ask); absolute
          ├── bound: [Account.ID: [DataSource]]   internal — made ONCE per login from the patched,
          │                                       filled definition, with that login's vault
          └── refresh(account) · add(…) · rename(account, to:) · remove(account)

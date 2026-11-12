@@ -201,9 +201,10 @@ struct InUseTests {
         ], capturedAt: Date())
         let inUse = try #require(codex.inUse)
 
-        #expect(inUse.worthSwitching(under: .paceAware) == nil)
-        #expect(try inUse.review(under: .paceAware) == nil)
-        #expect(inUse.worthSwitching(under: .absolute) === work)
+        let paceAware = { (login: Account) in login.snapshot?.overallStatus(under: .paceAware) ?? .healthy }
+        #expect(inUse.worthSwitching(reading: paceAware) == nil)
+        #expect(try inUse.review(reading: paceAware) == nil)
+        #expect(inUse.worthSwitchingTo === work)
     }
 
     // MARK: - After each refresh: what is worth telling

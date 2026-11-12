@@ -153,4 +153,14 @@ struct StatusPolicyTests {
         #expect(group.worstStatus(under: .paceAware, at: now) == .healthy)
         #expect(group.worstStatus(under: .absolute, at: now) == .critical)
     }
+
+    @Test
+    func `should name the quota that sets the status under the person's policy, not the one with the least left`() {
+        let lasting = quota(left: 19, elapsed: 97.3)    // healthy under pace-aware
+        let runningOut = quota(left: 60, elapsed: 3.5)  // empty in about 16 minutes: critical
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [lasting, runningOut], capturedAt: now)
+
+        #expect(snapshot.worstQuota(under: .paceAware, at: now) == runningOut)
+        #expect(snapshot.worstQuota(under: .absolute, at: now) == lasting)
+    }
 }
