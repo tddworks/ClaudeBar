@@ -19,8 +19,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     public let receivedAt: Date
 
     /// Free-text payload carried by the event, when the hook provides one.
-    /// `Notification` uses it for what Claude Code is blocked on
-    /// (e.g. "Claude needs your permission to use Bash").
+    /// `StopFailure` uses it for the error, a question (`PreToolUse`) for
+    /// its first question's text.
     public let message: String?
 
     /// The Claude Code process the event came from, when the hook said.
@@ -121,8 +121,10 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         /// Used to revive a session out of `.stopped` so the indicator tracks
         /// real activity instead of sticking on the end-of-turn `Stop`.
         case userPromptSubmit = "UserPromptSubmit"
-        /// Fires when Claude Code needs the user — most importantly a
-        /// permission prompt. The session is blocked until it is answered.
+        /// Fires when Claude Code needs the user, most importantly a
+        /// permission prompt. ClaudeBar no longer installs it and leaves a
+        /// session as it is when one arrives: nothing says when the prompt
+        /// is answered.
         case notification = "Notification"
         /// Claude calls a tool. ClaudeBar hears it for a question
         /// (`AskUserQuestion`) only: Claude waits on the person until it is answered.

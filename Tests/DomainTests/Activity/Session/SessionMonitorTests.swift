@@ -174,7 +174,7 @@ struct SessionMonitorTests {
     func `should show the session that needs the person ahead of ones that are working`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .sessionStart))
-        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .notification))
+        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .preToolUse))
 
         monitor.processEvent(makeEvent(sessionId: "busy", eventName: .sessionStart))
         monitor.processEvent(makeEvent(sessionId: "busy", eventName: .subagentStart))
@@ -241,7 +241,7 @@ struct SessionMonitorTests {
         monitor.processEvent(makeEvent(sessionId: "agents", eventName: .sessionStart, receivedAt: start.addingTimeInterval(3)))
         monitor.processEvent(makeEvent(sessionId: "agents", eventName: .subagentStart, receivedAt: start.addingTimeInterval(4)))
         monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .sessionStart, receivedAt: start.addingTimeInterval(5)))
-        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .notification, receivedAt: start.addingTimeInterval(6)))
+        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .preToolUse, receivedAt: start.addingTimeInterval(6)))
         monitor.processEvent(makeEvent(sessionId: "active-new", eventName: .sessionStart, receivedAt: start.addingTimeInterval(7)))
 
         #expect(monitor.sessionsByProminence.map(\.id) == ["blocked", "agents", "active-new", "active-old", "idle"])
@@ -256,7 +256,7 @@ struct SessionMonitorTests {
         let start = Date()
         monitor.processEvent(makeEvent(sessionId: "idle", eventName: .sessionStart, receivedAt: start))
         monitor.processEvent(makeEvent(sessionId: "busy", eventName: .userPromptSubmit, receivedAt: start.addingTimeInterval(1)))
-        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .notification, receivedAt: start.addingTimeInterval(2)))
+        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .preToolUse, receivedAt: start.addingTimeInterval(2)))
         monitor.processEvent(makeEvent(sessionId: "finished", eventName: .stop, receivedAt: start.addingTimeInterval(3)))
 
         #expect(monitor.sessionsInPlay.map(\.id) == ["blocked", "busy"])
@@ -265,7 +265,7 @@ struct SessionMonitorTests {
     @Test
     func `should count each kind of session: needing you, working, done`() {
         let monitor = SessionMonitor()
-        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .notification))
+        monitor.processEvent(makeEvent(sessionId: "blocked", eventName: .preToolUse))
         monitor.processEvent(makeEvent(sessionId: "busy", eventName: .userPromptSubmit))
         monitor.processEvent(makeEvent(sessionId: "idle-1", eventName: .sessionStart))
         monitor.processEvent(makeEvent(sessionId: "idle-2", eventName: .stop))
@@ -604,33 +604,33 @@ struct SessionMonitorTests {
     // MARK: - Permission Prompts
 
     @Test
-    func `should show the session needs the person, with the prompt, when Claude Code asks for permission`() {
+    func `should keep working when Claude Code asks for permission, as nothing says when it is answered`() {
         let monitor = SessionMonitor()
-        monitor.processEvent(makeEvent(eventName: .sessionStart))
+        monitor.processEvent(makeEvent(eventName: .userPromptSubmit))
 
         monitor.processEvent(makeEvent(eventName: .notification, message: "Claude needs your permission to use Bash"))
 
-        #expect(monitor.activeSession?.phase == .awaitingInput)
-        #expect(monitor.activeSession?.pendingPrompt == "Claude needs your permission to use Bash")
+        #expect(monitor.activeSession?.phase == .active)
+        #expect(monitor.activeSession?.pendingPrompt == nil)
     }
 
     @Test
-    func `should keep the session active when another session asks for permission`() {
+    func `should keep the session active when another session asks a question`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(eventName: .sessionStart))
         monitor.processEvent(makeEvent(eventName: .userPromptSubmit))
 
-        monitor.processEvent(makeEvent(sessionId: "other", eventName: .notification, message: "blocked"))
+        monitor.processEvent(makeEvent(sessionId: "other", eventName: .preToolUse, message: "Which design?"))
 
         #expect(session("test-session", in: monitor)?.phase == .active)
         #expect(session("test-session", in: monitor)?.pendingPrompt == nil)
     }
 
     @Test
-    func `should drop the prompt and go back to active when the person answers the session`() {
+    func `should drop the question and go back to active when the person prompts the session`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(eventName: .sessionStart))
-        monitor.processEvent(makeEvent(eventName: .notification, message: "blocked"))
+        monitor.processEvent(makeEvent(eventName: .preToolUse, message: "Which design?"))
 
         monitor.processEvent(makeEvent(eventName: .userPromptSubmit))
 
