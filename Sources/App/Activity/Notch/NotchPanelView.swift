@@ -174,7 +174,7 @@ struct NotchPanelView: View {
     }
 
     private func quotaCard(_ quota: UsageQuota) -> some View {
-        let status = QuotaStatus.from(percentRemaining: quota.percentRemaining)
+        let status = content.status(of: quota)
         let color = theme.statusColor(for: status)
 
         return VStack(alignment: .leading, spacing: 6) {

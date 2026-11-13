@@ -139,8 +139,6 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── status                      DERIVED — unpaused-with-usage .map(status).min(): the product
 │       │   │                               has room while one login does. ← THE RULE, one owner
 │       │   ├── best → Account?             DERIVED — the unpaused login with the most left: "switch to work"
-│       │   ├── cause → Account?            DERIVED — best, while it isn't healthy: the callout's subject
-│       │   │                               ("Home is at 18% Weekly — causing Warning")
 │       │   ├── pool → Pool?  ◇             DERIVED — the logins' shares, summed: "340% left across 3
 │       │   │                               logins" — a SUM OF SHARES, never a forecast, never a
 │       │   │                               percentage of a bigger whole; nil below two shares
@@ -217,7 +215,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── login: Account              the one in use — the plain login until another is chosen
 │       │   ├── logins: [Account]           the plain login and every folder login; a choice when > 1
 │       │   ├── command: TerminalCommand ◇  `claude` + `CLAUDE_CONFIG_DIR` — from `accounts.signIn`
-│       │   ├── worthSwitchingTo: Account?  DERIVED — the login in use is low, another has more left
+│       │   ├── worthSwitching(reading:) → Account?  DERIVED — the login in use reads low (by the
+│       │   │                               status it is handed: monitor.status(of:)), another has more left
 │       │   └── switchWhenLow: SwitchWhenLow  ◆   opt-in: isOn · below · mayPick(login)
 │       └── status                          DERIVED → accounts.status (tell, don't ask)
 │
@@ -337,7 +336,7 @@ question it answers for the person.
 | its logins — add (form · folder · sign-in), remove, rename, reorder | never empty; the default login's id is the provider's; no two logins share a folder |
 | its settings | a kind owns its rule; an account's own value beats the provider's; a change rebinds the logins |
 | how it finds out — data source choice, fallback, refresh per login, *Test Connection* | the last usage survives a failure; the failed step is named; a 429 is a rate limit; a fallback is never silent |
-| derived reads — status, best account, cause | its logins are a pool: the healthiest login's status; the best is the one with the most left |
+| derived reads — status, best account | its logins are a pool: the healthiest login's status; the best is the one with the most left. The login the callout names (the cause) is the Monitor's, `monitor.cause(of:)`, since it reads the person's policy |
 
 **Offered** — CAPABILITIES. Each answers *another* question, on its own
 cadence and often with its own store, so the provider only **declares** it in
@@ -406,15 +405,18 @@ monitor.overallStatus                → Status       the menu bar's colour: the
 monitor.lowestQuota                  → Quota?       each enabled product's best account's lowest quota; the lowest of those
 monitor.lineup                       → [Account]    the pills and the menu-bar entries
 account.usage                        → Usage?       that login's latest — what its pill shows
-account.status                       → Status       QUOTA HEALTH: the worst quota in that usage
+account.status                       → Status       QUOTA HEALTH: the worst quota in that usage,
+                                                    absolute; surfaces read monitor.status(of:)
 account.sync.lastError               → DataSourceError?  FETCH HEALTH: which step failed — never a Status
-provider.status                      → Status       → accounts.status: the healthiest unpaused login (min)
+provider.status                      → Status       → accounts.status: the healthiest unpaused login
+                                                    (min), absolute; surfaces read monitor.status(of:)
 monitor.status(of: provider)         → Status?      the healthiest counted login (min), under the
                                                     policy; nil with no usage. overallStatus,
                                                     selectedTabStatus and rest all read it:
                                                     depleted only when every counted login is
 provider.accounts.best               → Account?     the most left — "switch to work"
-provider.accounts.cause              → Account?     best, while it isn't healthy — the callout
+monitor.cause(of: provider)          → Account?     the login its status comes from, under the
+                                                    policy, while it isn't healthy — the callout
 provider.accounts.pool               → Pool?        the logins' shares summed — "340% left across 3 logins"
 provider.inUse?.login                → Account      the login new terminal sessions start with
 account.isInUse · account.canBeInUse → Bool         the chip's mark; whether it can be chosen
@@ -490,8 +492,8 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | a forecast is a READ of the rate over the CURRENT window — never stored on `Usage`; it lasts until the reset unless it runs out first, and *Running hot* ⇔ it runs out first, so a card never says both *On track* and *Runs out* | `Forecast` · `UsagePace` |
 | no forecast without a rate, or once the quota is used up — it has already run out; never a number invented from nothing | `Forecast` |
 | a forecast is said *at this pace*: the window's average, not the next burst | `QuotaCardText` |
-| depleted at 0, critical under 20 — ABSOLUTE, whatever the policy | `StatusPolicy` |
-| a quota's status under the pace-aware policy warns exactly when it runs out before its reset, from 20% left up; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `SpendRate` |
+| depleted at 0, whatever the policy; under the absolute policy, critical under 20 and warning under 50 | `StatusPolicy` |
+| a quota's status under the pace-aware policy is depleted at 0, critical when its forecast runs out within 10% of its window, warning when it runs out before its reset, and healthy when it lasts, however little is left; without a rate it is the absolute answer ([design](../features/quota/status-colors/design.md)) | `StatusPolicy` reading `Forecast` and `SpendRate` |
 | ONE status per quota: the menu bar, the cards, the Touch Bar, the notch, the status export, the local API and the notifications all read `quota.status(under: monitor.statusPolicy)` — never their own copy of the rule | `StatusPolicy` · `Monitor` |
 | a quota is the vendor's ceiling; a budget is the user's. A Cost is judged by a Budget, never shown as a Quota. A budget judges ONE account's cost — two logins' spend is never summed against it | `Cost` · `Account.budget` |
 | usage is stale 5 minutes after it was updated | `Usage` |
@@ -648,7 +650,7 @@ test first. Findings that need a decision first are in §9.
 | Providers | `Provider` and `Account` write storage keys (`plainLoginKey`, `isEnabled(forProvider: loginId)`, `verifiedAtLeastOnce`) and migrate old ones | a pause/switch port; compatibility in `JSONSettingsRepository`'s tables |
 | Providers | `providerId` is the product in `Account`, the login in a `Usage` and its quotas, either in settings | a login's id under its own name; `ProviderAccount` the one parser of lineup ids |
 | Providers | `ProviderFactory.customDefinitions`, a global registry read by views and alerts | `Providers.provider(of:)`; the factory only makes |
-| Providers · In use | *the login with the most left* in `Accounts.best`, `InUse.worthSwitchingTo` and `SwitchWhenLow.next`, each slightly different | `Accounts.best`, given what may be picked |
+| Providers · In use | *the login with the most left* in `Accounts.best`, `InUse.worthSwitching(reading:)` and `SwitchWhenLow.next`, each slightly different | `Accounts.best`, given what may be picked |
 | Providers | *signed out* decided in `Provider.isSignedOut`, `Account.fail` (by tag string) and `Account.needsSetup` | the error answers `isSignedOut` itself |
 | Providers · In use | refusals (*already listed*, *another login's folder*) thrown as `UsageError.executionFailed(String)` | a `Refusal` per aggregate, as `QuotaAlerts` has |
 | Providers | guest passes run `settings.cliPath ?? cli`, skipping `Configuration`'s CLI places | the login's `configuration.running.cli` |
@@ -663,7 +665,7 @@ test first. Findings that need a decision first are in §9.
 | SDK clients | Bedrock's prices and model names in `AWSClients`' Swift | a price file in the definition |
 | Activity | the hooks installed are a list beside `SessionEvent.EventName`, without `Notification`, so *Needs you* never comes | the installer registers every `EventName` |
 | Activity | "ClaudeBar's own CLI run" decided in four places; `CLAUDEBAR_PROBE` written by hand in `claude.json` and the guest-pass runner | Data Sources marks every child it starts and answers "is this one of my runs" |
-| Activity | the notch judges quotas without the policy, ranks by `percentRemaining`, and prints its own phase words and colours | the quota's status under the policy; `Phase.label` and its colour |
+| Activity | the notch ranks quotas by `percentRemaining`, and prints its own phase words and colours | `Left.share`; `Phase.label` and its colour |
 | Activity | following Claude Code (hooks file, setting, event loop, sweep, notification text) in `HooksPane` and `ClaudeBarApp` | an Activity root told `turnOn()` / `turnOff()`; the App constructs it |
 | Leaderboard | "upload now" after each command, the copied-key retry and the off-notice choice in `AppLeaderboard`; the privacy preview rebuilds the wire format; a member's mix counted in two views | the membership's commands; the encoder's preview; `Board.Member.mix` |
 | Leaderboard | its model holds `DailyUsageStat`; the providers with token logs are a sentence in two views | `TokenLogs` answers Leaderboard's own token counts; the names from the catalog |

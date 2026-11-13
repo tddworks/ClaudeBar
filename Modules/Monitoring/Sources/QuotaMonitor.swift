@@ -408,6 +408,19 @@ public final class QuotaMonitor {
         product.accounts.unpaused.compactMap { status(of: $0) }.min()
     }
 
+    /// The login the popover names for the product's status, under the
+    /// person's policy: the login the product's status comes from — its
+    /// healthiest under the policy, the one with the most left on a tie —
+    /// while even that one isn't healthy.
+    public func cause(of product: Provider) -> Account? {
+        let read = product.accounts.unpaused.compactMap { login in status(of: login).map { (login, $0) } }
+        let healthiest = read.min { a, b in
+            a.1 != b.1 ? a.1 < b.1 : (a.0.percentLeft ?? -.infinity) > (b.0.percentLeft ?? -.infinity)
+        }
+        guard let (login, status) = healthiest, status > .healthy else { return nil }
+        return login
+    }
+
     /// The selected tab's status: its healthiest unpaused login's, for a
     /// product's logins are interchangeable (CANONICAL §5); `nil` while no
     /// unpaused login has usage.

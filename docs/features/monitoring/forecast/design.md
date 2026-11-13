@@ -50,7 +50,7 @@ SpendRate         percentUsed ÷ percentTimeElapsed      the ONLY owner of how f
   │                                         with no ceiling, under the floor
   ├ UsagePace(rate:)       Running hot ⇔ runsOutBeforeReset · Room to spare ⇔ hasRoomToSpare · else On track
   ├ PaceLevel(rate:)       the tick's six grades
-  ├ StatusPolicy.paceAware warning ⇔ runsOutBeforeReset, from 20% left up (status-colors design)
+  ├ StatusPolicy.paceAware reads the Forecast: critical ⇔ runs out within 10% of the window, warning ⇔ runs out later (status-colors design)
   └ Forecast(rate:window:at:)
                            nil once used up, or without a window length/reset
                            .lastsUntilReset ⇔ !runsOutBeforeReset

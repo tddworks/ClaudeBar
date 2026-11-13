@@ -1,5 +1,6 @@
 import Foundation
 import Providers
+import Quotas
 
 /// The popover's *All* page: a card per product in the lineup, in pill order,
 /// each led by the quota that runs out first
@@ -29,7 +30,8 @@ public struct Overview: Sendable {
                     state: .init(isSyncing: account.isSyncing, failed: account.lastError != nil,
                                  needsSetup: account.needsSetup, readsUsage: account.readsUsage),
                     source: account.answeredByLabel,
-                    usageHistory: account.usageHistory
+                    usageHistory: account.usageHistory,
+                    policy: monitor.statusPolicy
                 )
             },
             best: tab.provider.accounts.best?.id,
@@ -83,9 +85,13 @@ public struct OverviewCard: Identifiable, Sendable {
         /// Its day-by-day usage, read on the ask — `nil` when its provider
         /// declares none.
         public let usageHistory: UsageHistory?
+        /// The person's policy, which `status` was read under: the ring leads
+        /// with the quota that sets it.
+        public let policy: StatusPolicy
 
         public init(id: String, name: String, snapshot: UsageSnapshot?, status: QuotaStatus?,
-                    state: ProviderBadgeState.Login, source: String? = nil, usageHistory: UsageHistory? = nil) {
+                    state: ProviderBadgeState.Login, source: String? = nil, usageHistory: UsageHistory? = nil,
+                    policy: StatusPolicy = .absolute) {
             self.id = id
             self.name = name
             self.snapshot = snapshot
@@ -93,7 +99,11 @@ public struct OverviewCard: Identifiable, Sendable {
             self.state = state
             self.source = source
             self.usageHistory = usageHistory
+            self.policy = policy
         }
+
+        /// Its quotas, the one that sets its status first.
+        var quotasWorstFirst: [UsageQuota] { snapshot?.quotasWorstFirst(under: policy) ?? [] }
     }
 
     /// The product's id — `codex`, never `codex.<acct>`.
@@ -116,10 +126,10 @@ public struct OverviewCard: Identifiable, Sendable {
 
     /// The login the card reads: its healthiest, then the one with the most
     /// left — a product's logins are interchangeable (CANONICAL §5) — with
-    /// that login's quota that runs out first.
+    /// the quota that sets that login's status under the person's policy.
     private var tightestOf: (login: Login, quota: UsageQuota)? {
         logins
-            .compactMap { login in login.snapshot?.lowestQuota.map { (login, $0) } }
+            .compactMap { login in login.quotasWorstFirst.first.map { (login, $0) } }
             .min { a, b in
                 let (sa, sb) = (a.login.status ?? .healthy, b.login.status ?? .healthy)
                 return sa != sb ? sa < sb : a.quota.percentRemaining > b.quota.percentRemaining
@@ -129,15 +139,13 @@ public struct OverviewCard: Identifiable, Sendable {
     /// The login the card reads — its healthiest, then the one with the most left.
     public var login: Login? { tightestOf?.login }
 
-    /// The ring: the healthiest login's quota with the least left.
+    /// The ring: the quota that sets the healthiest login's status.
     public var tightest: UsageQuota? { tightestOf?.quota }
 
-    /// The row under it: that login's next-lowest quota.
+    /// The row under it: that login's next quota, in the same order.
     public var next: UsageQuota? {
-        guard let (login, tightest) = tightestOf, let quotas = login.snapshot?.quotas else { return nil }
-        return quotas
-            .filter { $0 != tightest }
-            .min { $0.percentRemaining < $1.percentRemaining }
+        guard let (login, tightest) = tightestOf else { return nil }
+        return login.quotasWorstFirst.first { $0 != tightest }
     }
 
     /// The name of the login the ring reads — only when there are several to tell apart.

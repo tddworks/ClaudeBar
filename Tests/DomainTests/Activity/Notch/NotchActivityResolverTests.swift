@@ -15,6 +15,36 @@ struct NotchActivityResolverTests {
         UsageQuota(percentRemaining: percentRemaining, quotaType: .session, providerId: provider)
     }
 
+    /// A 5-hour session with `left` percent left and `elapsed` percent of its window gone.
+    private func session(left: Double, elapsed: Double) -> UsageQuota {
+        let length: TimeInterval = 5 * 3600
+        return UsageQuota(
+            percentRemaining: left, quotaType: .session, providerId: "claude",
+            resetsAt: now.addingTimeInterval(length * (100 - elapsed) / 100),
+            windowDuration: length
+        )
+    }
+
+    // MARK: - The person's policy
+
+    @Test
+    func `should leave the notch to the glance when a low quota lasts until the reset under pace-aware`() {
+        // 19% left, 8 minutes of 5 hours to go: Room to spare, so healthy.
+        let lasting = session(left: 19, elapsed: 97.3)
+
+        #expect(resolver.resolve(sessions: [], quotas: [lasting], headlineQuota: nil, policy: .paceAware, now: now) == nil)
+        #expect(resolver.resolve(sessions: [], quotas: [lasting], headlineQuota: nil, now: now) == .quotaThreshold(lasting))
+    }
+
+    @Test
+    func `should take over the notch when a quota runs out soon under pace-aware`() {
+        // 10% left, an hour to go, empty in 27 minutes.
+        let runningOut = session(left: 10, elapsed: 80)
+
+        #expect(resolver.resolve(sessions: [], quotas: [runningOut], headlineQuota: nil, policy: .paceAware, now: now)
+                == .quotaThreshold(runningOut))
+    }
+
     // MARK: - Nothing to say
 
     @Test

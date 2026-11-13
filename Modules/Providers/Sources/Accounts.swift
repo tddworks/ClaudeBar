@@ -107,12 +107,6 @@ public final class Accounts {
         unpaused.filter { $0.snapshot != nil }.map(\.status).min() ?? .healthy
     }
 
-    /// The login the popover names for the product's status — the best one,
-    /// while even it isn't healthy. `nil` while all is well.
-    public var cause: Account? {
-        best.flatMap { $0.status > .healthy ? $0 : nil }
-    }
-
     /// What *Add Account*'s form asks for: the account settings the active
     /// data source uses.
     public var form: [Setting] {
