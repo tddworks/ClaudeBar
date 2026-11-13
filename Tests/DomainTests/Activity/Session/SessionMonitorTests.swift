@@ -694,4 +694,76 @@ struct SessionMonitorTests {
 
         #expect(monitor.doneByRepo.first?.canBringForward == false)
     }
+
+    // MARK: - Work left running in the background
+
+    private func stop(_ id: String, leaving tasks: [BackgroundTask]?, at date: Date = Date()) -> SessionEvent {
+        SessionEvent(sessionId: id, eventName: .stop, cwd: "/code/\(id)", receivedAt: date, backgroundTasks: tasks)
+    }
+
+    @Test
+    func `should count a session with work in the background as working`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(sessionId: "replays", eventName: .userPromptSubmit))
+        monitor.processEvent(stop("replays", leaving: [BackgroundTask(id: "b1", kind: .shell)]))
+
+        #expect(monitor.tally == SessionTally(needsYou: 0, working: 1, done: 0))
+        #expect(monitor.sessionsInPlay.map(\.id) == ["replays"])
+        #expect(monitor.doneByRepo.isEmpty)
+    }
+
+    @Test
+    func `should rank work in the background below working and above done`() {
+        let monitor = SessionMonitor()
+        let start = Date(timeIntervalSince1970: 1_000)
+        monitor.processEvent(makeEvent(sessionId: "busy", eventName: .userPromptSubmit, receivedAt: start))
+        monitor.processEvent(stop("done", leaving: [], at: start.addingTimeInterval(1)))
+        monitor.processEvent(stop("replays", leaving: [BackgroundTask(id: "b1", kind: .shell)], at: start.addingTimeInterval(2)))
+
+        #expect(monitor.sessionsByProminence.map(\.id) == ["busy", "replays", "done"])
+    }
+
+    @Test
+    func `should be done when the turn that work woke ends with none running`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(stop("replays", leaving: [BackgroundTask(id: "b1", kind: .shell)]))
+
+        monitor.processEvent(stop("replays", leaving: []))
+
+        #expect(monitor.sessions[0].phase == .stopped)
+    }
+
+    @Test
+    func `should be done when a turn ends in an error`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(stop("replays", leaving: [BackgroundTask(id: "b1", kind: .shell)]))
+
+        monitor.processEvent(SessionEvent(sessionId: "replays", eventName: .stopFailure, cwd: "/code/replays"))
+
+        #expect(monitor.sessions[0].phase == .stopped)
+    }
+
+    // MARK: - A question Claude asks
+
+    @Test
+    func `should need you while Claude waits on its question`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(sessionId: "s", eventName: .userPromptSubmit))
+
+        monitor.processEvent(makeEvent(sessionId: "s", eventName: .preToolUse, message: "Which design should we build?"))
+
+        #expect(monitor.sessions[0].phase == .awaitingInput)
+        #expect(monitor.sessions[0].pendingPrompt == "Which design should we build?")
+    }
+
+    @Test
+    func `should work again once the question is answered`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(sessionId: "s", eventName: .preToolUse, message: "Which design should we build?"))
+
+        monitor.processEvent(makeEvent(sessionId: "s", eventName: .postToolUse))
+
+        #expect(monitor.sessions[0].phase == .active)
+        #expect(monitor.sessions[0].pendingPrompt == nil)
+    }
 }

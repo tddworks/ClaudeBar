@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session background work</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* A session whose turn ended with work still running in the background. Platformer theme, mock data. */
+:root{
+  --sky:#5C94FC;--ink:#141414;--paper:#FFF8E7;--text:#141414;--text-2:#4A3A2A;--text-3:#7C6A55;
+  --needs:#E40058;--agents:#2F6FED;--working:#22A845;--done:#A39A8A;--hover:#F3E7C9;
+  --page:#E9E4D8;--page-text:#2A2620;--page-muted:#6E675C;--rule:#CFC7B6;--panel:#FFFDF7;
+  --term:#1E1F24;--term-tab:#2C2E35;--term-text:#D7D9DE;--term-active:#3B3E48;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}}
+:root[data-theme="dark"]{--page:#14161C;--page-text:#ECE8E0;--page-muted:#9A958C;--rule:#2E323C;--panel:#1C1F27}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--page-text);font:16px/1.45 "Pixelify Sans",system-ui,sans-serif;padding:36px 16px 80px;overflow-x:hidden}
+.wrap{max-width:1000px;margin:0 auto}
+.eyebrow{font:10px "Press Start 2P",monospace;color:var(--page-muted)}
+h1{font:clamp(18px,3.4vw,26px)/1.4 "Press Start 2P",monospace;margin:12px 0}
+.lede{max-width:720px;color:var(--page-muted);font-size:17px}
+.lede kbd,.state kbd{font:700 12px "Pixelify Sans",system-ui,sans-serif;border:2px solid currentColor;border-radius:4px;padding:0 5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:28px 32px;margin-top:32px;align-items:start}
+.state h2{font:10px/1.5 "Press Start 2P",monospace;margin-bottom:6px}
+.state p{font-size:14px;color:var(--page-muted);margin-bottom:10px;max-width:420px}
+.sky{background:var(--sky);border:3px solid var(--ink);border-radius:6px;padding:12px;max-width:420px;box-shadow:5px 5px 0 var(--ink)}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--ink);padding:9px 12px;color:var(--text);font-size:12px}
+.row{display:flex;align-items:center;gap:8px;min-width:0}
+.sp{flex:1}
+.dots{display:flex;gap:3px;flex:none}
+.dots i{width:9px;height:9px;border:2px solid var(--ink);border-radius:2px;background:var(--done)}
+.dots i.needs{background:var(--needs)}.dots i.agents{background:var(--agents)}.dots i.working{background:var(--working)}
+.t{font:700 12px "Pixelify Sans",system-ui,sans-serif;white-space:nowrap}
+.s{font-size:11px;color:var(--text-3);white-space:nowrap}
+.s b{color:var(--needs)}
+.tog{flex:none;border:2px solid var(--ink);border-radius:999px;padding:0 8px;font:700 11px "Pixelify Sans",system-ui,sans-serif;cursor:pointer;background:var(--paper)}
+.body{margin-top:8px;padding-top:8px;border-top:2px dashed #E3D6B8;display:flex;flex-direction:column;gap:3px;font-size:11px}
+.sess{display:flex;flex-direction:column;gap:1px;min-width:0;border-radius:4px;padding:2px 4px;margin:0 -4px}
+.sess.click{cursor:pointer}
+.sess.click:hover,.sess.hit{background:var(--hover)}
+.sess.hit{outline:2px solid var(--ink)}
+.r2{display:flex;align-items:center;gap:7px}
+.num{width:9px;font:700 10px "Pixelify Sans",system-ui,sans-serif;color:var(--text-3);text-align:right;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
+.ph{font:700 10px "Pixelify Sans",system-ui,sans-serif;color:#fff;background:var(--c);border-radius:3px;padding:0 5px}
+.meta{color:var(--text-2);font-size:10px}
+.d{color:var(--text-3);min-width:58px;text-align:right;white-space:nowrap}
+.grp{font:700 9px "Pixelify Sans",system-ui,sans-serif;letter-spacing:.12em;color:var(--text-3);margin-top:3px}
+.x{font:700 10px "Pixelify Sans",system-ui,sans-serif;background:var(--ink);color:var(--paper);border-radius:3px;padding:0 4px}
+.more{font-size:10px;color:var(--text-3);padding-left:16px}
+.ti{font-size:10px;color:var(--text-3);padding-left:31px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dim{opacity:.6}
+/* the terminal that comes forward */
+.term{margin-top:12px;background:var(--term);border:3px solid var(--ink);border-radius:6px;overflow:hidden;max-width:420px;box-shadow:5px 5px 0 var(--ink)}
+.tabs{display:flex;background:var(--term-tab);font:11px ui-monospace,Menlo,monospace;color:#8D919B}
+.tabs span{padding:4px 10px;border-right:1px solid #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.tabs span.on{background:var(--term-active);color:var(--term-text)}
+.screen{padding:8px 10px;font:11px/1.5 ui-monospace,Menlo,monospace;color:var(--term-text);min-height:54px}
+.cap{font-size:12px;color:var(--page-muted);margin-top:6px}
+.notes{margin-top:36px;max-width:720px;font-size:15px;color:var(--page-muted)}
+.notes li{margin:4px 0 4px 20px}
+.notch{background:#000;color:#EDEDED;border-radius:0 0 14px 14px;padding:10px 12px;max-width:420px;font:12px system-ui,sans-serif;margin-top:12px}
+.notch .nr{display:flex;align-items:center;gap:8px;background:#111;border-radius:6px;padding:6px 8px;margin-top:4px}
+.notch .nd{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.notch .ns{margin-left:auto;color:#9A9A9A}
+.tag{display:inline-block;font:9px "Press Start 2P",monospace;padding:2px 5px;border-radius:3px;margin-left:6px;vertical-align:2px}
+.tag.now{background:#E40058;color:#fff}.tag.new{background:#22A845;color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">DESIGN CONCEPT · WORK LEFT RUNNING IN THE BACKGROUND · MOCK DATA</div>
+  <h1>Claude Code: not done while its shell runs</h1>
+  <p class="lede">Claude starts the replays as a background shell and ends its turn. The session isn't done: Claude wakes up by itself when the shell ends. The card keeps it in play as <i>In background</i>, with what is running beside it. Design: <code>docs/features/activity/session-hooks/design.md</code> → <i>Work left running in the background</i>.</p>
+  <div class="grid">
+    <section class="state"><h2>Today<span class="tag now">WRONG</span></h2><p>The turn ended, so <i>replays</i> is counted Done and hidden in the Done group, while its shell still runs.</p><div class="sky"><div class="card"><div class="row"><div class="dots"><i class="needs"></i><i class="working"></i><i></i><i></i><i></i><i></i></div><div class="t">Claude Code</div><div class="sp"></div><span class="tog">▾</span></div><div class="s" style="margin-top:3px"><b>1 needs you</b> · 1 working · 4 done</div><div class="body"><div class="sess click"><div class="r2" style="--c:var(--needs)"><span class="num">1</span><span class="dot"></span><b>tinyshop</b><span class="ph">Needs you</span><span class="sp"></span><span class="d">1m 03s</span></div><div class="ti">Checkout fails on an empty cart</div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num">2</span><span class="dot"></span><b>claudebar</b><span class="ph">Working</span><span class="sp"></span><span class="d">40s</span></div></div><span class="more">4 done ›</span></div></div></div></section>
+    <section class="state"><h2>Proposed<span class="tag new">NEW</span></h2><p>The turn ended with 1 shell running: the session stays in play, counted under <i>working</i>, ranked below Working.</p><div class="sky"><div class="card"><div class="row"><div class="dots"><i class="needs"></i><i class="working"></i><i class="working"></i><i></i><i></i><i></i></div><div class="t">Claude Code</div><div class="sp"></div><span class="tog">▾</span></div><div class="s" style="margin-top:3px"><b>1 needs you</b> · 2 working · 3 done</div><div class="body"><div class="sess click"><div class="r2" style="--c:var(--needs)"><span class="num">1</span><span class="dot"></span><b>tinyshop</b><span class="ph">Needs you</span><span class="sp"></span><span class="d">1m 03s</span></div><div class="ti">Checkout fails on an empty cart</div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num">2</span><span class="dot"></span><b>claudebar</b><span class="ph">Working</span><span class="sp"></span><span class="d">40s</span></div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num">3</span><span class="dot"></span><b>replays</b><span class="ph">In background</span><span class="sp"></span><span class="meta">1 shell</span><span class="d">3m 24s</span></div><div class="ti">Rerun the tracker replays</div></div><span class="more">3 done ›</span></div></div></div></section>
+    <section class="state"><h2>When the shell ends</h2><p>Claude wakes, compares the replays and ends that turn with nothing running: now it is Done, and the notch flashes it finished.</p><div class="sky"><div class="card"><div class="row"><div class="dots"><i class="needs"></i><i class="working"></i><i></i><i></i><i></i><i></i></div><div class="t">Claude Code</div><div class="sp"></div><span class="tog">▾</span></div><div class="s" style="margin-top:3px"><b>1 needs you</b> · 1 working · 4 done</div><div class="body"><div class="sess click"><div class="r2" style="--c:var(--needs)"><span class="num">1</span><span class="dot"></span><b>tinyshop</b><span class="ph">Needs you</span><span class="sp"></span><span class="d">1m 03s</span></div><div class="ti">Checkout fails on an empty cart</div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num">2</span><span class="dot"></span><b>claudebar</b><span class="ph">Working</span><span class="sp"></span><span class="d">2m 10s</span></div></div><span class="more">4 done ›</span></div></div></div></section>
+    <section class="state"><h2>What runs, in words</h2><p>One kind: <i>1 shell</i>, <i>2 agents</i>. Several kinds: <i>3 tasks</i>. The notch's panel says <i>1 shell running</i>.</p><div class="sky"><div class="card"><div class="body" style="margin:0;padding:0;border:0"><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num"></span><span class="dot"></span><b>replays</b><span class="ph">In background</span><span class="sp"></span><span class="meta">1 shell</span><span class="d">3m 24s</span></div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num"></span><span class="dot"></span><b>catalog</b><span class="ph">In background</span><span class="sp"></span><span class="meta">2 agents</span><span class="d">55s</span></div></div><div class="sess click"><div class="r2" style="--c:var(--working)"><span class="num"></span><span class="dot"></span><b>notes</b><span class="ph">In background</span><span class="sp"></span><span class="meta">3 tasks</span><span class="d">12m</span></div></div></div></div></div><div class="notch"><b>Claude Code</b><div class="nr" style="--c:var(--working)"><span class="nd"></span>replays<span class="ns">1 shell running</span></div><div class="nr" style="--c:var(--done)"><span class="nd"></span>catalog<span class="ns">Turn finished</span></div></div></section>
+  </div>
+  <ul class="notes">
+    <li>Only the <code>Stop</code> hook says what is still running (<code>background_tasks</code>), so a task started mid-turn shows once the turn ends.</li>
+    <li>Scheduled wakeups (<code>/loop</code>) don't count: a session waiting for its next loop is Done between them.</li>
+    <li>Claude Code from before <code>background_tasks</code>: Done, as today.</li>
+  </ul>
+</div>
+</body>
+</html>

@@ -36,17 +36,33 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `should listen to the eight session events Claude Code reports`() {
-        let events = HookInstaller.hookEvents
-        #expect(events.contains("StopFailure"))
-        #expect(events.contains("SessionStart"))
-        #expect(events.contains("SessionEnd"))
-        #expect(events.contains("TaskCompleted"))
-        #expect(events.contains("SubagentStart"))
-        #expect(events.contains("SubagentStop"))
-        #expect(events.contains("Stop"))
-        #expect(events.contains("UserPromptSubmit"))
-        #expect(events.count == 8)
+    func `should listen to every session event ClaudeBar reads`() {
+        #expect(Set(HookInstaller.hookEvents) == Set(SessionEvent.EventName.allCases.map(\.rawValue)))
+        #expect(HookInstaller.hookEvents.contains("Notification"))
+    }
+
+    @Test
+    func `should call the hook for questions only on tool events`() {
+        #expect(HookInstaller.matcher(for: "PreToolUse") == "AskUserQuestion")
+        #expect(HookInstaller.matcher(for: "PostToolUse") == "AskUserQuestion")
+        #expect(HookInstaller.matcher(for: "Stop") == ".*")
+    }
+
+    @Test
+    func `should call the hook for prompts that wait on the person only`() {
+        #expect(HookInstaller.matcher(for: "Notification") == "permission_prompt|elicitation_dialog")
+    }
+
+    @Test
+    func `should install each event with its own matcher`() throws {
+        let file = SettingsFile()
+        defer { file.remove() }
+
+        try HookInstaller.install(at: file.path)
+
+        #expect(try file.hooks("PreToolUse").first?["matcher"] as? String == "AskUserQuestion")
+        #expect(try file.hooks("Notification").first?["matcher"] as? String == "permission_prompt|elicitation_dialog")
+        #expect(try file.hooks("Stop").first?["matcher"] as? String == ".*")
     }
 
     // MARK: - Claude Code's settings file

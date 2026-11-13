@@ -72,7 +72,7 @@ public struct NotchActivityResolver: Sendable {
             .awaitingInput(session)
         case .subagentsWorking:
             .agentsWorking(session)
-        case .active:
+        case .active, .inBackground:
             .working(session)
         case .stopped, .ended:
             finishedActivity(for: session, now: now)

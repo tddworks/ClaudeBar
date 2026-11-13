@@ -69,12 +69,16 @@ public final class SessionMonitor {
             sessions[index].subagentStarted()
         case .subagentStop:
             sessions[index].subagentStopped()
-        case .stop, .stopFailure:
+        case .stop:
+            sessions[index].stop(at: event.receivedAt, leaving: event.backgroundTasks)
+        case .stopFailure:
             sessions[index].stop(at: event.receivedAt)
         case .userPromptSubmit:
             sessions[index].resume()
-        case .notification:
+        case .notification, .preToolUse:
             sessions[index].awaitInput(event.message, at: event.receivedAt)
+        case .postToolUse:
+            sessions[index].resume()
         }
     }
 
@@ -95,7 +99,8 @@ public final class SessionMonitor {
 
     /// Every running session, the one that most needs the user's eye first:
     /// a blocked session outranks one with agents working, which outranks one
-    /// working alone, which outranks one that has stopped. Among equals, the
+    /// working alone, then one with work in the background, then one that has
+    /// stopped. Among equals, the
     /// one heard from last comes first. This is the order a list shows them in.
     public var sessionsByProminence: [ClaudeSession] {
         sessions.sorted { lhs, rhs in
@@ -127,7 +132,7 @@ public final class SessionMonitor {
     public var tally: SessionTally {
         SessionTally(
             needsYou: sessions.count { $0.phase == .awaitingInput },
-            working: sessions.count { $0.phase == .active || $0.phase == .subagentsWorking },
+            working: sessions.count { $0.phase.isWorking },
             done: sessions.count { $0.phase == .stopped }
         )
     }
@@ -160,9 +165,10 @@ public final class SessionMonitor {
 
     private static func prominence(of phase: ClaudeSession.Phase) -> Int {
         switch phase {
-        case .awaitingInput: 3
-        case .subagentsWorking: 2
-        case .active: 1
+        case .awaitingInput: 4
+        case .subagentsWorking: 3
+        case .active: 2
+        case .inBackground: 1
         case .stopped, .ended: 0
         }
     }
@@ -186,7 +192,7 @@ public final class SessionMonitor {
             phase: event.eventName == .sessionStart ? .stopped : .active
         )
         switch event.eventName {
-        case .sessionStart, .userPromptSubmit, .subagentStart, .notification:
+        case .sessionStart, .userPromptSubmit, .subagentStart, .notification, .preToolUse, .postToolUse:
             break
         case .subagentStop, .taskCompleted, .stop, .stopFailure, .sessionEnd:
             session.stop(at: event.receivedAt)

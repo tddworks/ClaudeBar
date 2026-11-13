@@ -459,4 +459,58 @@ struct ClaudeSessionTests {
 
         #expect(session.canBringForward)
     }
+
+    // MARK: - Work left running in the background
+
+    @Test
+    func `should stay in play while its background tasks run`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/replays")
+
+        session.stop(at: Date(), leaving: [BackgroundTask(id: "b1", kind: .shell)])
+
+        #expect(session.phase == .inBackground)
+        #expect(session.phase.isWorking)
+        #expect(session.backgroundTasks == [BackgroundTask(id: "b1", kind: .shell)])
+    }
+
+    @Test
+    func `should not count as finished while its tasks run`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/replays")
+
+        session.stop(at: Date(), leaving: [BackgroundTask(id: "b1", kind: .shell)])
+
+        #expect(session.finishedAt == nil)
+    }
+
+    @Test
+    func `should be done when its turn ends with none running`() {
+        let end = Date(timeIntervalSince1970: 2_000)
+        var session = ClaudeSession(id: "s", cwd: "/code/replays")
+        session.stop(at: end.addingTimeInterval(-60), leaving: [BackgroundTask(id: "b1", kind: .shell)])
+
+        session.stop(at: end, leaving: [])
+
+        #expect(session.phase == .stopped)
+        #expect(session.backgroundTasks.isEmpty)
+        #expect(session.finishedAt == end)
+    }
+
+    @Test
+    func `should be done when its turn doesn't say what still runs`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/replays")
+
+        session.stop(at: Date(), leaving: nil)
+
+        #expect(session.phase == .stopped)
+    }
+
+    @Test
+    func `should work again in the foreground when the person sends a prompt`() {
+        var session = ClaudeSession(id: "s", cwd: "/code/replays")
+        session.stop(at: Date(), leaving: [BackgroundTask(id: "b1", kind: .shell)])
+
+        session.resume()
+
+        #expect(session.phase == .active)
+    }
 }

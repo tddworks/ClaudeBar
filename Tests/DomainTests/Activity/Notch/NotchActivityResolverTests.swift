@@ -336,4 +336,16 @@ struct NotchActivityResolverTests {
 
         #expect(result?.session?.id == "claudebar")
     }
+
+    // MARK: - Work left running in the background
+
+    @Test
+    func `should show a session with work in the background as working, never finished`() {
+        var session = running("replays")
+        session.stop(at: now, leaving: [BackgroundTask(id: "b1", kind: .shell)])
+
+        let result = resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now)
+
+        #expect(result == .working(session))
+    }
 }

@@ -58,6 +58,12 @@ struct SessionIndicatorView: View {
                             .foregroundStyle(theme.textSecondary)
                     }
 
+                    if let background = session.backgroundWorkText {
+                        Text("\(background) running")
+                            .popoverFont(9, weight: .medium, design: theme.fontDesign)
+                            .foregroundStyle(theme.textSecondary)
+                    }
+
                     Text(session.durationDescription)
                         .popoverFont(9, weight: .medium, design: theme.fontDesign)
                         .foregroundStyle(theme.textTertiary)

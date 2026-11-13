@@ -663,7 +663,6 @@ test first. Findings that need a decision first are in §9.
 | Data Sources | failures worded by workers (*No file at*, *Network error*, OAuth's *Token refresh failed*), retry decided by `tag == "executionFailed"`, `Unavailable` returns text, a missing CloudWatch client words its own | wider `ErrorFact` (`network`, `fileMissing`, `unavailable`, …), one table of failure names |
 | Data Sources | `DataSource` reads the refresher's state to decide renewal; the secret field names are a set on the aggregate | the refresher is told and answers a renewal; `Credential` knows its secrets |
 | SDK clients | Bedrock's prices and model names in `AWSClients`' Swift | a price file in the definition |
-| Activity | the hooks installed are a list beside `SessionEvent.EventName`, without `Notification`, so *Needs you* never comes | the installer registers every `EventName` |
 | Activity | "ClaudeBar's own CLI run" decided in four places; `CLAUDEBAR_PROBE` written by hand in `claude.json` and the guest-pass runner | Data Sources marks every child it starts and answers "is this one of my runs" |
 | Activity | the notch ranks quotas by `percentRemaining`, and prints its own phase words and colours | `Left.share`; `Phase.label` and its colour |
 | Activity | following Claude Code (hooks file, setting, event loop, sweep, notification text) in `HooksPane` and `ClaudeBarApp` | an Activity root told `turnOn()` / `turnOff()`; the App constructs it |

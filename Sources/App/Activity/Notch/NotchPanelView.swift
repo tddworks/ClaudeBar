@@ -153,6 +153,8 @@ struct NotchPanelView: View {
             "\(session.activeSubagentCount) agents working"
         case .active:
             session.completedTaskCount > 0 ? "Active · \(session.completedTaskCount) tasks" : "Active"
+        case .inBackground:
+            session.backgroundWorkText.map { "\($0) running" } ?? "In background"
         case .stopped:
             "Turn finished"
         case .ended:
