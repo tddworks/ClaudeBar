@@ -65,6 +65,8 @@ final class NotchViewState {
     /// so the view stays free of app plumbing.
     var refresh: (() -> Void)?
     var snooze: (() -> Void)?
+    /// Brings a listed session's terminal forward.
+    var bringForward: ((ClaudeSession) -> Void)?
 
     var activity: NotchActivity? { content.activity }
 }

@@ -45,7 +45,8 @@ struct NotchRootView: View {
                 NotchPanelView(
                     content: state.content,
                     refresh: state.refresh,
-                    snooze: state.snooze
+                    snooze: state.snooze,
+                    bringForward: state.bringForward
                 )
                 .environment(\.appTheme, theme)
                 .padding(.horizontal, 18)

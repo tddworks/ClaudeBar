@@ -26,6 +26,8 @@
     <string>15.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>ClaudeBar brings the terminal tab that runs a Claude Code session to the front when you click the session.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright 2025 TDDWorks. All rights reserved.</string>
     <key>NSPrincipalClass</key>

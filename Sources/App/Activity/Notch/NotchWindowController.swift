@@ -115,9 +115,10 @@ final class NotchWindowController {
     }
 
     /// Wires the panel's buttons to the app.
-    func setActions(refresh: @escaping () -> Void, snooze: @escaping () -> Void) {
+    func setActions(refresh: @escaping () -> Void, snooze: @escaping () -> Void, bringForward: @escaping (ClaudeSession) -> Void) {
         state.refresh = refresh
         state.snooze = snooze
+        state.bringForward = bringForward
     }
 
     // MARK: - Placement

@@ -40,6 +40,7 @@ ignore:
   - "Sources/Infrastructure/Activity/Hooks/HookHTTPServer.swift"  # a local socket server
   - "Sources/Infrastructure/Alerting/LocalAPI/LocalAPIServer.swift"  # a local socket server; its framing is LocalAPIRequestFrame's, tested
   - "Sources/Infrastructure/Alerting/SystemAlertSender.swift"  # NSAlert, notifications
+  - "Sources/Infrastructure/Activity/Focus/ScriptedTerminalFocus.swift"  # NSAppleScript, tmux, NSRunningApplication; what it runs is TerminalScripts', tested
   - "Sources/Infrastructure/Monitoring/SystemPowerStateProvider.swift"  # IOKit
   - "Modules/Monitoring/Sources/SystemClock.swift"  # the clock
   - "Sources/Infrastructure/DataSources/SimpleCLIExecutor.swift"  # Process

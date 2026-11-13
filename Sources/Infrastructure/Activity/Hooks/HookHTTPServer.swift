@@ -143,7 +143,11 @@ public final class HookHTTPServer: @unchecked Sendable {
         guard let bodyData = bodyString.data(using: .utf8) else { return }
 
         let processId = headerValue(HookConstants.processIdHeader, in: headerPart)
-        if let event = SessionEventParser.parse(bodyData, processId: processId) {
+        var environment: [String: String] = [:]
+        for variable in SessionTerminal.Variable.allCases {
+            environment[variable.rawValue] = headerValue(HookConstants.environmentHeader(variable), in: headerPart)
+        }
+        if let event = SessionEventParser.parse(bodyData, processId: processId, environment: environment) {
             AppLog.hooks.info("Received hook event: \(event.eventName.rawValue) for session \(event.sessionId)")
             continuation?.yield(event)
         } else {

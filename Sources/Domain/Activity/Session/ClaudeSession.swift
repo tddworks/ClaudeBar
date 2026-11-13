@@ -33,6 +33,20 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// The title Claude Code wrote for the session, once its transcript has one.
     public private(set) var generated: String?
 
+    /// Where the session runs, once an event has said.
+    public private(set) var terminal: SessionTerminal?
+
+    /// Where a click brings the session forward: its terminal and folder,
+    /// once it said which terminal app it runs in. A tmux pane alone isn't
+    /// enough: selecting it would leave the terminal around tmux where it is.
+    public var place: TerminalPlace? {
+        guard let terminal, terminal.app != nil else { return nil }
+        return TerminalPlace(terminal: terminal, folder: cwd)
+    }
+
+    /// Whether the session can be brought forward: it has a `place`.
+    public var canBringForward: Bool { place != nil }
+
     /// - Parameter phase: `.active` for a session seen mid-turn; `.stopped` for
     ///   one that has just opened at its prompt — idle, with nothing finished
     ///   yet, so `finishedAt` stays nil and the notch has nothing to flash.
@@ -79,6 +93,11 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// Records which process runs this session, when a later event says.
     public mutating func runs(inProcess processId: Int) {
         self.processId = processId
+    }
+
+    /// Records where the session runs, from its latest event that said.
+    public mutating func runs(in terminal: SessionTerminal) {
+        self.terminal = terminal
     }
 
     /// Takes the titles read from the session's transcript. A title not found

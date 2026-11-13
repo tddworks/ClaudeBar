@@ -34,6 +34,10 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     /// nil when nobody has read them.
     public let titles: TranscriptTitles?
 
+    /// Where the session runs, from what the hook found in Claude Code's
+    /// environment; nil when it said nothing usable.
+    public let terminal: SessionTerminal?
+
     public init(
         sessionId: String,
         eventName: EventName,
@@ -42,7 +46,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         message: String? = nil,
         processId: Int? = nil,
         transcriptPath: String? = nil,
-        titles: TranscriptTitles? = nil
+        titles: TranscriptTitles? = nil,
+        terminal: SessionTerminal? = nil
     ) {
         self.sessionId = sessionId
         self.eventName = eventName
@@ -52,6 +57,7 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         self.processId = processId
         self.transcriptPath = transcriptPath
         self.titles = titles
+        self.terminal = terminal
     }
 
     /// This event, carrying the titles read from its session's transcript.
@@ -64,7 +70,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
             message: message,
             processId: processId,
             transcriptPath: transcriptPath,
-            titles: titles
+            titles: titles,
+            terminal: terminal
         )
     }
 

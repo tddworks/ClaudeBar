@@ -24,6 +24,13 @@ struct HookInstallerTests {
     }
 
     @Test
+    func `should send where a session runs with each event`() {
+        for variable in SessionTerminal.Variable.allCases {
+            #expect(HookInstaller.hookCommand.contains("-H \"\(HookConstants.environmentHeader(variable)): $\(variable.rawValue)\""))
+        }
+    }
+
+    @Test
     func `should find ClaudeBar's port in the file ClaudeBar leaves for it`() {
         #expect(HookInstaller.hookCommand.contains("claudebar-hook-port"))
     }

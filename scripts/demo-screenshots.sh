@@ -31,7 +31,8 @@
 #        DEMO_SCENE=sessions  hooks on in the demo home, and six made-up Claude
 #                           Code sessions posted to the hook server: one needs
 #                           you, one with agents, four done (three in one repo),
-#                           titled by made-up transcripts in the demo home.
+#                           titled by made-up transcripts in the demo home,
+#                           each saying it runs in iTerm2 (numbered rows).
 #                           Your own Claude Code sessions post to the same
 #                           port and show up too: point them elsewhere while
 #                           you shoot (printf 9 > ~/.claude/claudebar-hook-port)
@@ -210,7 +211,9 @@ if [[ "${DEMO_SCENE:-}" == "sessions" ]]; then
         title blocked custom-title customTitle "Checkout tax rounding"
         title busy ai-title aiTitle "Show session titles on the card"
         title done-1 ai-title aiTitle "Paginate the product search"
+        # Each says it runs in iTerm2, so its row is numbered and clickable.
         hook() { curl -s -o /dev/null -X POST "http://127.0.0.1:19847/hook" -H 'Content-Type: application/json' \
+            -H 'X-ClaudeBar-Env-TERM_PROGRAM: iTerm.app' \
             -d "{\"session_id\":\"$1\",\"hook_event_name\":\"$2\",\"cwd\":\"/Users/demo/code/$3\",\"transcript_path\":\"$DEMO_HOME/transcripts/$1.jsonl\"}"; }
         for _ in $(seq 60); do curl -s -o /dev/null -X POST http://127.0.0.1:19847/hook && break; sleep 1; done
         hook done-1 Stop catalog; hook done-2 Stop claudebar; sleep 2

@@ -21,9 +21,19 @@ public enum HookInstaller {
     ///
     /// Claude Code exports its process ID to hooks as `CLAUDE_PID`; the POST
     /// carries it in a header so ClaudeBar can notice when the process is gone.
+    /// It also carries what the terminal set in Claude Code's environment
+    /// (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TMUX_PANE`, …), so a click on the
+    /// session can bring its terminal forward.
     static let hookCommand = """
-    __claudebar_hook() { [ "$\(HookConstants.probeEnvironmentKey)" = "1" ] && return 0; PORT=$(cat "$HOME/.claude/claudebar-hook-port" 2>/dev/null || echo \(HookConstants.defaultPort)); cat | curl -s -X POST "http://localhost:${PORT}/hook" -H 'Content-Type: application/json' -H "\(HookConstants.processIdHeader): $CLAUDE_PID" -d @- > /dev/null 2>&1 & }; __claudebar_hook
+    __claudebar_hook() { [ "$\(HookConstants.probeEnvironmentKey)" = "1" ] && return 0; PORT=$(cat "$HOME/.claude/claudebar-hook-port" 2>/dev/null || echo \(HookConstants.defaultPort)); cat | curl -s -X POST "http://localhost:${PORT}/hook" -H 'Content-Type: application/json' -H "\(HookConstants.processIdHeader): $CLAUDE_PID"\(environmentHeaders) -d @- > /dev/null 2>&1 & }; __claudebar_hook
     """
+
+    /// ` -H "X-ClaudeBar-Env-TERM_PROGRAM: $TERM_PROGRAM"`, one per variable.
+    private static var environmentHeaders: String {
+        SessionTerminal.Variable.allCases
+            .map { " -H \"\(HookConstants.environmentHeader($0)): $\($0.rawValue)\"" }
+            .joined()
+    }
 
     /// The event names to register hooks for
     static let hookEvents = [
