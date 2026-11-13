@@ -64,9 +64,10 @@ public final class StatusAlerts {
             told[login] = nil
         }
         // A login told before its quota had a reset time takes the first one
-        // it reports, so the next window can tell it again.
+        // it reports, so the next window can tell it again — or, when that
+        // reset has already passed, starts a new window now.
         if let window = told[login], window.forgetsAt == nil, let resetsAt {
-            told[login] = Told(status: window.status, forgetsAt: resetsAt)
+            told[login] = resetsAt > now ? Told(status: window.status, forgetsAt: resetsAt) : nil
         }
         guard current > was, current > (told[login]?.status ?? .healthy) else { return }
         told[login] = Told(status: current, forgetsAt: resetsAt)

@@ -71,7 +71,7 @@ onRefreshed(login)                                         // statusAlerts.follo
                       resetsAt: usage?.worstQuota(under: policy)?.resetsAt)
     was = last[login.id] ?? .healthy;  last[login.id] = now
     forget told[login.id] once its resetsAt has passed (no resetsAt: once now is healthy)
-    told[login.id] has no resetsAt and one is known now → keep its status, take that resetsAt
+    told[login.id] has no resetsAt and one is known now → keep its status, take that resetsAt, or forget it if that reset has already passed
     if now > was && now > told[login.id] → told[login.id] = (now, resetsAt)
                                            await destination.announce(.status(StatusAlert(…)))   // AlertDestinations
 ```
