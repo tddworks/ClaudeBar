@@ -9,6 +9,7 @@ ClaudeBar tells you, once, when a login's quota gets worse: *running low* (below
 ## When it tells you
 
 - When a login's status **gets worse**: healthy → low, low → critical, critical → depleted. Not while it stays there, and not when it recovers.
+- **Once per window**: a login that eases and turns critical again before its quota resets is not told twice. After the reset it can be told again. A quota with no reset time can be told again once it reads healthy.
 - **Per login**, named as the menu names it: *Claude · work Quota Alert*.
 - Quotas you hid in the popover are left out.
 - A **paused** login is never refreshed, so it is never told.

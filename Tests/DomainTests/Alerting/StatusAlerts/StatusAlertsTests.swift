@@ -84,15 +84,70 @@ struct StatusAlertsTests {
         #expect(told.alerts.map(\.now) == [.critical])
     }
 
-    @Test func `should tell again when a login gets worse after improving`() async {
+    // MARK: - Once per window
+
+    private let reset = Date(timeIntervalSince1970: 1_000_000)
+
+    @Test func `should stay quiet when a login eases and worsens again before its window resets`() async {
+        let alerts = alerts()
+
+        for status in [QuotaStatus.warning, .critical, .warning, .critical] {
+            await alerts.review("claude", named: "Claude", provider: "claude", status: status,
+                                resetsAt: reset, at: reset.addingTimeInterval(-600))
+        }
+
+        #expect(told.alerts.map(\.now) == [.warning, .critical])
+    }
+
+    @Test func `should stay quiet when a login recovers and worsens again before its window resets`() async {
+        let alerts = alerts()
+
+        for status in [QuotaStatus.critical, .healthy, .critical] {
+            await alerts.review("claude", named: "Claude", provider: "claude", status: status,
+                                resetsAt: reset, at: reset.addingTimeInterval(-600))
+        }
+
+        #expect(told.alerts.map(\.now) == [.critical])
+    }
+
+    @Test func `should tell a status worse than any told this window`() async {
+        let alerts = alerts()
+
+        for status in [QuotaStatus.critical, .warning, .depleted] {
+            await alerts.review("claude", named: "Claude", provider: "claude", status: status,
+                                resetsAt: reset, at: reset.addingTimeInterval(-600))
+        }
+
+        #expect(told.alerts.map(\.now) == [.critical, .depleted])
+        #expect(told.alerts.last?.was == .warning)
+    }
+
+    @Test func `should tell again once the window has reset`() async {
+        let alerts = alerts()
+
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            resetsAt: reset, at: reset.addingTimeInterval(-600))
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .healthy,
+                            resetsAt: reset.addingTimeInterval(18_000), at: reset.addingTimeInterval(60))
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            resetsAt: reset.addingTimeInterval(18_000), at: reset.addingTimeInterval(120))
+
+        #expect(told.alerts.map(\.now) == [.critical, .critical])
+    }
+
+    @Test func `should tell again after recovering when the quota has no reset time`() async {
         let alerts = alerts()
 
         for status in [QuotaStatus.critical, .warning, .critical] {
             await alerts.review("claude", named: "Claude", provider: "claude", status: status)
         }
+        #expect(told.alerts.map(\.now) == [.critical])
+
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .healthy)
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical)
 
         #expect(told.alerts.map(\.now) == [.critical, .critical])
-        #expect(told.alerts.last?.was == .warning)
+        #expect(told.alerts.last?.was == .healthy)
     }
 
     @Test func `should say nothing about a login with no usage`() async {

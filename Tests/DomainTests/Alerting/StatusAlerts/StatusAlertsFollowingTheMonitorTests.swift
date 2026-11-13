@@ -20,6 +20,14 @@ struct StatusAlertsFollowingTheMonitorTests {
 
     private let told = Told()
 
+    /// The share left on each refresh, in turn. Refreshes run one after
+    /// another, so the box is never read from two places at once.
+    private final class Lefts: @unchecked Sendable {
+        private var lefts: [Double]
+        init(_ lefts: [Double]) { self.lefts = lefts }
+        func next() -> Double { lefts.count > 1 ? lefts.removeFirst() : lefts[0] }
+    }
+
     private func claude(left: Double, resetsIn: TimeInterval? = nil) -> Provider {
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
@@ -93,5 +101,27 @@ struct StatusAlertsFollowingTheMonitorTests {
         await monitor.refresh(providerId: "claude")
 
         #expect(told.alerts.map(\.now) == [.warning])
+    }
+
+    @Test func `should tell once when a login leaves critical and returns before its window resets`() async {
+        // critical, healthy, critical again — all in one 5-hour window.
+        let resetsAt = Date().addingTimeInterval(2 * 3600)
+        let lefts = Lefts([15, 70, 15])
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willProduce { @Sendable in
+            UsageSnapshot(
+                providerId: "claude",
+                quotas: [UsageQuota(percentRemaining: lefts.next(), quotaType: .session, providerId: "claude",
+                                    resetsAt: resetsAt, windowDuration: 5 * 3600)],
+                capturedAt: Date()
+            )
+        }
+        let monitor = monitor(stubbedProduct("claude", probe: probe,
+                                             settings: MockRepositoryFactory.makeSettingsRepository()))
+
+        for _ in 0..<3 { await monitor.refresh(providerId: "claude") }
+
+        #expect(told.alerts.map(\.now) == [.critical])
     }
 }

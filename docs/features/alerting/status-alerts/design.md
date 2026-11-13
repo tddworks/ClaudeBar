@@ -46,6 +46,7 @@ comes named as the lineup names it.
 |---|---|
 | a login's status is read under the person's `StatusPolicy`, hidden quotas left out | `QuotaMonitor.status(of:)` (unchanged) |
 | tell when a login's status got **worse** and is not healthy; quiet when it stays, improves or recovers | `StatusAlerts` |
+| each status is told **once per window**: quiet until the status is worse than any told since the quota setting it last reset; with no reset time, until the login reads healthy — the [pace-aware status](../../../architecture/CANONICAL_MODEL.md) can flip as a login is paused and resumed. *Was* is the last status read | `StatusAlerts`, handed the reset by `follow` (`worstQuota(under:)`) |
 | the first status seen for a login is compared with *healthy*, so a login that starts critical is told once | `StatusAlerts` |
 | per login, never per product: two Claude logins are two things, each named by its `lineupName` | `StatusAlerts` (handed the name, never looking it up) |
 | a paused login is never refreshed, so it is never told | `Account.isPaused` (unchanged) |
@@ -56,7 +57,7 @@ comes named as the lineup names it.
 | Piece | Where | One job | |
 |---|---|---|---|
 | `StatusAlert` ◇ | `Domain/Alerting/StatusAlerts` | `login` (lineupName), `providerId`, `was`, `now` | **built** |
-| `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | `review(_:named:provider:status:) async` — keeps each login's last status, decides, tells every destination; `follow(monitor)` hears each refresh | **built** |
+| `StatusAlerts` ◆ | `Domain/Alerting/StatusAlerts` | `review(_:named:provider:status:resetsAt:at:) async` — keeps each login's last status and the worst told this window, decides, tells every destination; `follow(monitor)` hears each refresh | **built** |
 | `Alert` · `AlertDestination` | `Domain/Alerting` | the alert both deciders hand out, and the one port that hears it ([webhooks design](../webhooks/design.md#the-pieces)) | **built** |
 | `Notifications` | `Infrastructure/Alerting/Notifications` | words `.status`: *Claude · work Quota Alert*, *Your Claude · work quota is critically low! Save important work.* | **built** |
 | `QuotaMonitor` | `Domain/Monitoring` | refreshes; `status(of:)` under the policy, hidden quotas left out | **built** |
@@ -66,9 +67,12 @@ comes named as the lineup names it.
 ```
 onRefreshed(login)                                         // statusAlerts.follow(monitor)
   statusAlerts.review(login.id, named: monitor.lineupName(of: login), provider: login.providerId,
-                      status: monitor.status(of: login))      // nil (no usage) → nothing
+                      status: monitor.status(of: login),       // nil (no usage) → nothing
+                      resetsAt: usage?.worstQuota(under: policy)?.resetsAt)
     was = last[login.id] ?? .healthy;  last[login.id] = now
-    if now > was && now != .healthy → await destination.announce(.status(StatusAlert(…)))   // AlertDestinations
+    forget told[login.id] once its resetsAt has passed (no resetsAt: once now is healthy)
+    if now > was && now > told[login.id] → told[login.id] = (now, resetsAt)
+                                           await destination.announce(.status(StatusAlert(…)))   // AlertDestinations
 ```
 
 `QuotaAlerts` runs beside it on the same refresh; the two never read each
