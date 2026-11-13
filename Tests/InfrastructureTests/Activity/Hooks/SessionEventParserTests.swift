@@ -217,4 +217,73 @@ struct SessionEventParserTests {
 
         #expect(SessionEventParser.parse(json.data(using: .utf8)!)?.terminal == nil)
     }
+
+    // MARK: - Background tasks
+
+    @Test
+    func `should read the tasks still running when a turn ended`() {
+        let json = """
+        {"session_id": "s", "hook_event_name": "Stop", "cwd": "/code/replays",
+         "background_tasks": [
+           {"id": "b1", "type": "shell", "status": "running", "description": "rerun the replays", "command": "make replays"},
+           {"id": "a1", "type": "subagent", "status": "running", "description": "review", "agent_type": "Explore"},
+           {"id": "w1", "type": "workflow", "status": "running", "description": "audit", "name": "audit"}
+         ],
+         "session_crons": [{"id": "c1", "schedule": "0 9 * * *", "recurring": true, "prompt": "check"}]}
+        """
+
+        let event = SessionEventParser.parse(json.data(using: .utf8)!)
+
+        #expect(event?.backgroundTasks == [
+            BackgroundTask(id: "b1", kind: .shell),
+            BackgroundTask(id: "a1", kind: .agent),
+            BackgroundTask(id: "w1", kind: .other),
+        ])
+    }
+
+    @Test
+    func `should say nothing of background tasks when the event doesn't`() {
+        let json = """
+        {"session_id": "s", "hook_event_name": "Stop", "cwd": "/code/replays"}
+        """
+
+        #expect(SessionEventParser.parse(json.data(using: .utf8)!)?.backgroundTasks == nil)
+    }
+
+    @Test
+    func `should read no background tasks when none are running`() {
+        let json = """
+        {"session_id": "s", "hook_event_name": "Stop", "cwd": "/code/replays", "background_tasks": []}
+        """
+
+        #expect(SessionEventParser.parse(json.data(using: .utf8)!)?.backgroundTasks == [])
+    }
+
+    // MARK: - A question Claude asks
+
+    @Test
+    func `should read a question Claude asks`() {
+        let json = """
+        {"session_id": "s", "hook_event_name": "PreToolUse", "cwd": "/code/claudebar", "tool_name": "AskUserQuestion",
+         "tool_input": {"questions": [
+           {"question": "Which design should we build?", "header": "Design", "multiSelect": false, "options": []},
+           {"question": "Which branch?", "header": "Branch", "multiSelect": false, "options": []}
+         ]}}
+        """
+
+        let event = SessionEventParser.parse(json.data(using: .utf8)!)
+
+        #expect(event?.eventName == .preToolUse)
+        #expect(event?.message == "Which design should we build?")
+    }
+
+    @Test
+    func `should read a question answered`() {
+        let json = """
+        {"session_id": "s", "hook_event_name": "PostToolUse", "cwd": "/code/claudebar", "tool_name": "AskUserQuestion",
+         "tool_input": {"questions": [{"question": "Which design should we build?"}]}, "tool_response": {}}
+        """
+
+        #expect(SessionEventParser.parse(json.data(using: .utf8)!)?.eventName == .postToolUse)
+    }
 }

@@ -7,7 +7,7 @@ extension ClaudeSession.Phase {
     /// Needs you is the loudest; Done recedes (docs/features/activity/session-hooks/design.md).
     var color: Color {
         switch self {
-        case .active: return .green
+        case .active, .inBackground: return .green
         case .subagentsWorking: return .blue
         case .awaitingInput: return .red
         case .stopped: return .gray
@@ -24,7 +24,7 @@ extension AppThemeProvider {
         switch phase {
         case .awaitingInput: statusCritical
         case .subagentsWorking: accentPrimary
-        case .active: statusHealthy
+        case .active, .inBackground: statusHealthy
         case .stopped, .ended: textTertiary
         }
     }

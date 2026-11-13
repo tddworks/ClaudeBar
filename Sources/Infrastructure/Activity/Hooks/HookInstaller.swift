@@ -35,17 +35,20 @@ public enum HookInstaller {
             .joined()
     }
 
-    /// The event names to register hooks for
-    static let hookEvents = [
-        "SessionStart",
-        "SessionEnd",
-        "TaskCompleted",
-        "SubagentStart",
-        "SubagentStop",
-        "Stop",
-        "StopFailure",
-        "UserPromptSubmit",
-    ]
+    /// The event names to register hooks for: every event ClaudeBar reads.
+    static let hookEvents = SessionEvent.EventName.allCases.map(\.rawValue)
+
+    /// Which of an event's occurrences call the hook. The tool events only for
+    /// a question Claude asks, never for every tool; `Notification` only for
+    /// the prompts that wait on the person, not the idle prompt Claude Code
+    /// sends a minute after a turn ends.
+    static func matcher(for event: String) -> String {
+        switch SessionEvent.EventName(rawValue: event) {
+        case .preToolUse, .postToolUse: "AskUserQuestion"
+        case .notification: "permission_prompt|elicitation_dialog"
+        default: ".*"
+        }
+    }
 
     /// Installs hooks into the Claude settings file.
     /// Creates the file and directory if they don't exist.
@@ -69,7 +72,7 @@ public enum HookInstaller {
 
             // Add the new hook in matcher format
             matcherEntries.append([
-                "matcher": ".*",
+                "matcher": matcher(for: event),
                 "hooks": [
                     [
                         "type": "command",

@@ -265,6 +265,12 @@ struct SessionsCardView: View {
             Text(session.phase.label.uppercased())
                 .badge(theme.color(for: session.phase))
 
+            if let background = session.backgroundWorkText {
+                Text(background)
+                    .popoverFont(9, weight: .medium, design: theme.fontDesign)
+                    .foregroundStyle(theme.textSecondary)
+            }
+
             Spacer()
 
             if session.completedTaskCount > 0 {

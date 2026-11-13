@@ -397,12 +397,12 @@ final class StatusItemLabelDriver {
     static func compose(_ content: LabelContent, theme: any AppThemeProvider) -> NSImage {
         var parts: [NSImage] = []
 
-        // Only surface the session glyph while Claude is actively working. A
+        // Only surface the session glyph while Claude is working (`isWorking`). A
         // finished/idle (.stopped) or .ended session must not leave a lone
         // orange glyph sitting in the menu bar — that reads as a frozen crash
         // (the user's report) since `Stop` fires at the end of every turn.
         var showsSessionGlyph = false
-        if let phase = content.sessionPhase, phase == .active || phase == .subagentsWorking {
+        if let phase = content.sessionPhase, phase.isWorking {
             let color = sessionGlyphColor(
                 phase: phase, theme: theme, status: content.fallbackStatus,
                 showsUsageText: content.label != nil, darkMenuBar: content.isDarkAppearance

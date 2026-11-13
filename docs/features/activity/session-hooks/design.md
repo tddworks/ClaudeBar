@@ -145,6 +145,76 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 
 `HookInstallerTests`: should send where a session runs with each event.
 
+## Work left running in the background
+
+**Status:** BUILT on `feat/session-background-tasks`. Mockup: [design-concept/session-background/index.html](../../../../design-concept/session-background/index.html).
+
+Ana asks Claude to rerun 96 replays. Claude starts them as a background shell, says *I'll compare them when they finish*, and ends its turn. Today `Stop` makes the session **Done**: its row leaves the rows in play and joins the Done group, and the notch flashes it finished. But nothing is done. Claude wakes up by itself when the shell ends, and iTerm2's own Claude Code integration shows the tab as *working · 1 background task running*. ClaudeBar says the opposite of the terminal beside it.
+
+```
+ ■■■□□ Claude Code                                            ▾
+ 1 needs you · 2 working · 3 done
+ ─────────────────────────────────────────────────────────────────
+ 1 ● tinyshop   [Needs you]                              1m 03s
+ 2 ● airy-poc   [In background]          1 shell         3m 24s     ← turn over, its shell still running
+     Gateway provisioning guide steps 3+
+ 3 ● claudebar  [Working]                                   40s
+ 3 done ›
+```
+
+- **What tells ClaudeBar**: Claude Code's `Stop` hook input carries `background_tasks`, one entry per task still running when the turn ended, each with an `id`, a `type` (`shell`, `subagent`, `monitor`, `workflow`, …), a `status` and a `description`. Claude Code's reference says it is there so a hook can tell *"session is done"* from *"session is paused waiting for background work to wake it back up"*. The hook already sends `Stop`'s whole input; only the parser ignores the field. iTerm2's integration reads the same field.
+- **The phase**: a turn that ends with background tasks leaves the session **In background**, not Done. It is in play: it keeps its row, the count line counts it under *working*, and the menu bar glyph shows as for Working. It ranks below Working and above Done.
+- **The row**: the badge *In background*, and beside it what is running: *1 shell*, *2 shells*, *1 agent*, or *3 tasks* when they are of several types. In the notch's panel: *1 shell running*.
+- **When it ends**: when the work finishes, Claude Code wakes the session for a turn of its own, and that turn's `Stop` comes with no background tasks: the session is Done then, and the notch flashes it finished then, not before. A new prompt from the person makes it Working as any prompt does.
+- **What it doesn't change**: a `Stop` without the field (Claude Code from before it, or `StopFailure`) is Done as today. `SubagentStop` carries the same list, scoped to the parent session; it is ignored, as the turn's own `Stop` comes after it. Scheduled wakeups (`session_crons`, from `/loop` and `ScheduleWakeup`) don't count: a session waiting hours for its next loop is Done between them.
+- **A task that never ends** (a `monitor` tailing a log) keeps its session In background for as long as it runs. That is true, and iTerm2 says the same.
+- **Not here**: the tasks' descriptions or commands in the popover; counting tasks started during a turn (only `Stop` says).
+
+### Laws and owners
+
+| Law | Owner |
+|---|---|
+| The tasks still running when a turn ended, each with its kind; none for an event that didn't say | `SessionEvent.backgroundTasks` (new) → `[BackgroundTask]?`: `id`, `kind` (`shell`, `agent`, `other`), parsed from `Stop`'s `background_tasks` by `SessionEventParser` |
+| A turn that ends with tasks running leaves the session In background; with none, or not said, Done | `ClaudeSession.stop(at:leaving:)`: phase `.inBackground` (new), `backgroundTasks` (new), `finishedAt` nil until Done |
+| A session that is working: Working, Agents working, In background | `ClaudeSession.Phase.isWorking` (new); used by the tally, the menu bar glyph and the notch, which each compared phases themselves |
+| Order of need: Needs you → Agents working → Working → In background → Done | `SessionMonitor.sessionsByProminence` (exists) |
+| How a row words what runs: *1 shell*, *2 agents*, *3 tasks* | `SessionsCardView`, `NotchPanelView`: presentation, from `ClaudeSession.backgroundTasks` |
+| The phase's colour: Working's green in the menu bar and the notch; `statusHealthy` in the card | `ClaudeSession.Phase.color` · `AppThemeProvider.color(for:)` |
+
+### Tests
+
+`SessionEventParserTests`: should read the tasks still running when a turn ended · should say nothing of background tasks when the event doesn't · should read no background tasks when none are running.
+
+`ClaudeSessionTests`: should stay in play while its background tasks run · should not count as finished while its tasks run · should be done when its turn ends with none running · should be done when its turn doesn't say what still runs · should work again in the foreground when the person sends a prompt.
+
+`SessionMonitorTests`: should count a session with work in the background as working · should rank work in the background below working and above done · should be done when the turn that work woke ends with none running · should be done when a turn ends in an error.
+
+`NotchActivityResolverTests`: should show a session with work in the background as working, never finished.
+
+`BackgroundWorkTextTests`: should name one kind of work by what it is · should call work of several kinds tasks · should say nothing when no work runs.
+
+## A question Claude asks
+
+**Status:** BUILT on `feat/session-background-tasks`.
+
+Claude asks Ana to choose between three designs (`AskUserQuestion`) and waits. iTerm2's tab says *waiting*; ClaudeBar says **Working** until she answers. ClaudeBar's log for such a session shows only `UserPromptSubmit`, then nothing, while the question was open. *Needs you* is the phase for exactly this, and two things keep it from coming:
+
+- **ClaudeBar never installed `Notification`**: its hook list sits beside `SessionEvent.EventName` and leaves it out (CANONICAL_MODEL's open gap), so a permission prompt shows Working too.
+- **A question is no `Notification`**: Claude Code sends one for permission prompts and dialogs, not for `AskUserQuestion`.
+
+- **What tells ClaudeBar**: `PreToolUse` fires as Claude calls the tool, with `tool_name` `AskUserQuestion` and the questions in `tool_input.questions`, each with its `question` text. `PostToolUse` fires once she has answered. iTerm2's integration listens to `PreToolUse` too.
+- **The hooks**: the installer registers every `EventName`, each with its matcher: `PreToolUse` and `PostToolUse` match `AskUserQuestion`, so Claude Code calls the hook for that tool only, never for every `Bash` or `Read`; `Notification` matches `permission_prompt|elicitation_dialog`, the prompts that wait on the person, and not `idle_prompt`, which Claude Code sends a minute after a turn ends and would turn a Done session into Needs you; every other event `.*`. Existing installs get them at the next launch, as ClaudeBar reinstalls its hooks when they are on.
+- **The phase**: `PreToolUse` for a question makes the session **Needs you**, its prompt the first question's text (*Which design should we build?*), as a permission prompt's is. The notch shows it as it shows a permission prompt. `PostToolUse` makes it Working again.
+- **Not here**: plan approval (`ExitPlanMode`), which also waits on the person; whether a `Notification` covers it is not yet checked.
+
+| Law | Owner |
+|---|---|
+| A question opened, with its text; a question answered | `SessionEvent.EventName` `.preToolUse`, `.postToolUse` (new), `SessionEvent.message` the first question's text, parsed by `SessionEventParser` |
+| The hooks: every event ClaudeBar reads, each with its matcher | `HookInstaller`: events from `SessionEvent.EventName.allCases`; `AskUserQuestion` for the tool events, `permission_prompt\|elicitation_dialog` for `Notification`, `.*` for the rest |
+| A question opened makes the session Needs you; answered, Working | `SessionMonitor.processEvent` → `awaitInput(_:at:)` · `resume()` (exist) |
+
+`SessionEventParserTests`: should read a question Claude asks · should read a question answered. `SessionMonitorTests`: should need you while Claude waits on its question · should work again once the question is answered. `HookInstallerTests`: should listen to every session event ClaudeBar reads · should call the hook for questions only on tool events · should call the hook for prompts that wait on the person only.
+
 ## Phase colours
 
 `ClaudeSession.Phase.color` serves the menu bar glyph and the notch. This change moves two of them:
@@ -154,6 +224,7 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 | `awaitingInput` | Needs you | yellow | **red**: the one that wants a keystroke, the loudest colour |
 | `subagentsWorking` | Agents working | blue | blue |
 | `active` | Working | green | green |
+| `inBackground` | In background | — | green, as Working (*Work left running in the background*) |
 | `stopped` | Done | orange | **grey**: needs nothing, recedes |
 | `ended` | Ended | grey | grey |
 

@@ -33,6 +33,10 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     /// The title Claude Code wrote for the session, once its transcript has one.
     public private(set) var generated: String?
 
+    /// The work left running when the latest turn ended; empty unless the
+    /// session is `.inBackground`.
+    public private(set) var backgroundTasks: [BackgroundTask] = []
+
     /// Where the session runs, once an event has said.
     public private(set) var terminal: SessionTerminal?
 
@@ -70,6 +74,9 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     public enum Phase: String, Sendable, Equatable {
         case active
         case subagentsWorking
+        /// The turn is over, but work it started still runs, and Claude wakes
+        /// up by itself when that work finishes.
+        case inBackground
         /// Claude Code is blocked waiting on the user — typically a permission prompt.
         case awaitingInput
         case stopped
@@ -81,9 +88,19 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
             switch self {
             case .active: return "Working"
             case .subagentsWorking: return "Agents working"
+            case .inBackground: return "In background"
             case .awaitingInput: return "Needs you"
             case .stopped: return "Done"
             case .ended: return "Ended"
+            }
+        }
+
+        /// Whether the session is working: on a turn, with agents, or with
+        /// work in the background.
+        public var isWorking: Bool {
+            switch self {
+            case .active, .subagentsWorking, .inBackground: true
+            case .awaitingInput, .stopped, .ended: false
             }
         }
     }
@@ -151,19 +168,28 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
         completedTaskCount += 1
     }
 
-    /// Marks the session as stopped (Claude Code stopped responding)
-    public mutating func stop(at date: Date = Date()) {
+    /// Ends the turn. With work still running (`tasks` not empty) the session
+    /// is `.inBackground` and not finished; with none, or when the turn
+    /// didn't say (nil), it is Done.
+    public mutating func stop(at date: Date = Date(), leaving tasks: [BackgroundTask]? = nil) {
         guard phase != .ended else { return }
-        phase = .stopped
         activeSubagentCount = 0
-        stoppedAt = date
         pendingPrompt = nil
+        backgroundTasks = tasks ?? []
+        if backgroundTasks.isEmpty {
+            phase = .stopped
+            stoppedAt = date
+        } else {
+            phase = .inBackground
+            stoppedAt = nil
+        }
     }
 
     /// Marks the session as ended
     public mutating func end(at date: Date = Date()) {
         phase = .ended
         activeSubagentCount = 0
+        backgroundTasks = []
         endedAt = date
     }
 
@@ -226,6 +252,7 @@ public struct ClaudeSession: Sendable, Equatable, Identifiable {
     private mutating func updatePhase() {
         pendingPrompt = nil
         stoppedAt = nil
+        backgroundTasks = []
         if activeSubagentCount > 0 {
             phase = .subagentsWorking
         } else {

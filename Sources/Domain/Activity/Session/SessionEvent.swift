@@ -38,6 +38,10 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     /// environment; nil when it said nothing usable.
     public let terminal: SessionTerminal?
 
+    /// The work still running when the turn ended, from `Stop`; nil when the
+    /// event didn't say (another event, or Claude Code from before it said).
+    public let backgroundTasks: [BackgroundTask]?
+
     public init(
         sessionId: String,
         eventName: EventName,
@@ -47,7 +51,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         processId: Int? = nil,
         transcriptPath: String? = nil,
         titles: TranscriptTitles? = nil,
-        terminal: SessionTerminal? = nil
+        terminal: SessionTerminal? = nil,
+        backgroundTasks: [BackgroundTask]? = nil
     ) {
         self.sessionId = sessionId
         self.eventName = eventName
@@ -58,6 +63,7 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         self.transcriptPath = transcriptPath
         self.titles = titles
         self.terminal = terminal
+        self.backgroundTasks = backgroundTasks
     }
 
     /// This event, carrying the titles read from its session's transcript.
@@ -71,7 +77,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
             processId: processId,
             transcriptPath: transcriptPath,
             titles: titles,
-            terminal: terminal
+            terminal: terminal,
+            backgroundTasks: backgroundTasks
         )
     }
 
@@ -100,7 +107,7 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     }
 
     /// The types of hook events from Claude Code
-    public enum EventName: String, Sendable, Equatable, Codable {
+    public enum EventName: String, Sendable, Equatable, Codable, CaseIterable {
         case sessionStart = "SessionStart"
         case sessionEnd = "SessionEnd"
         case taskCompleted = "TaskCompleted"
@@ -117,5 +124,10 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         /// Fires when Claude Code needs the user — most importantly a
         /// permission prompt. The session is blocked until it is answered.
         case notification = "Notification"
+        /// Claude calls a tool. ClaudeBar hears it for a question
+        /// (`AskUserQuestion`) only: Claude waits on the person until it is answered.
+        case preToolUse = "PreToolUse"
+        /// A tool has finished: for a question, the person has answered.
+        case postToolUse = "PostToolUse"
     }
 }
