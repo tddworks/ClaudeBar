@@ -29,6 +29,8 @@ public struct NotchActivityResolver: Sendable {
     ///     nothing louder is happening. Nil before the first probe returns.
     ///   - whenIdle: What the person chose for when nothing louder is
     ///     happening: the glance, or a hidden notch.
+    ///   - policy: The person's `StatusPolicy`, so a quota takes over the notch
+    ///     exactly when it reads critical or depleted everywhere else.
     ///   - now: The reference time, so the "done" flash can expire deterministically.
     /// - Returns: The winning activity, or nil when the notch should stay hidden.
     public func resolve(
@@ -36,11 +38,12 @@ public struct NotchActivityResolver: Sendable {
         quotas: [UsageQuota],
         headlineQuota: UsageQuota?,
         whenIdle: NotchWhenIdle = .default,
+        policy: StatusPolicy = .absolute,
         now: Date
     ) -> NotchActivity? {
         var candidates = sessions.compactMap { activity(for: $0, now: now) }
 
-        if let quota = mostDepletedQuotaNeedingAttention(in: quotas) {
+        if let quota = mostDepletedQuotaNeedingAttention(in: quotas, under: policy, at: now) {
             candidates.append(.quotaThreshold(quota))
         }
 
@@ -86,10 +89,12 @@ public struct NotchActivityResolver: Sendable {
     /// Only `.critical` and `.depleted` quotas are worth taking over the notch.
     /// `.warning` is real but not urgent, and a notch that lights up at half a
     /// tank stops meaning anything.
-    private func mostDepletedQuotaNeedingAttention(in quotas: [UsageQuota]) -> UsageQuota? {
+    private func mostDepletedQuotaNeedingAttention(
+        in quotas: [UsageQuota], under policy: StatusPolicy, at now: Date
+    ) -> UsageQuota? {
         quotas
             .filter { quota in
-                switch QuotaStatus.from(percentRemaining: quota.percentRemaining) {
+                switch quota.status(under: policy, at: now) {
                 case .critical, .depleted: true
                 case .healthy, .warning: false
                 }

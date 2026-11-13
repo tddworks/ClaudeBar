@@ -13,7 +13,7 @@ Mockup: [notch-live-activity.html](../../../../design-concept/notch-live-activit
 1. **Settings → General → Notch Live Activity**. It's off by default.
 2. For session states, also turn on **Settings → Hooks → Claude Code Hooks** ([session hooks](../session-hooks/README.md)). That installs ClaudeBar's hooks into Claude Code, which report when a session starts, finishes a turn or waits for you. Without hooks, the notch shows quota only.
 
-3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota drops under 20%.
+3. Optional: **When Nothing's Happening**, just below it. **Show the Quota** (the default) keeps the notch up with the quota glance. **Hide** puts it away until a session is working, waits for you or just finished, or a quota is critical or out (with **Warn when a quota will run out before it resets** on, critical means it runs out within a tenth of its window).
 
 The notch follows the provider that's selected in the popover. Pick a different provider there to watch a different quota.
 
@@ -25,7 +25,7 @@ When several states apply at once, the one that needs you most wins:
 |---|---|---|---|
 | 1 | **Needs you**: Claude Code is waiting for a permission or an answer | ⚠︎ "Needs you" and the prompt text | Claude Code carries on and finishes the turn, you send a new prompt, or the session ends. Never times out |
 | 2 | **Done**: a turn or session just finished | ✓, the repo, the task count and duration | After 4 seconds |
-| 3 | **Quota low**: a quota of the selected provider is under 20% left | That quota's name, % left, bar and reset time | The quota recovers |
+| 3 | **Quota low**: a quota of the selected provider is empty, or critical: with **Warn when a quota will run out before it resets** on, it runs out within a tenth of its window; with it off, or before there is a rate to read, it has under 20% left | That quota's name, % left, bar and reset time | The quota recovers |
 | 4 | **Agents working**: subagents are running | The repo, "N agents", elapsed time | The subagents finish |
 | 5 | **Working**: Claude Code is on a turn | A green dot, the repo, elapsed time | The turn ends |
 | 6 | **Quota glance**: nothing else is happening | The selected provider's lowest quota: % left, bar, reset time. Hidden instead when **When Nothing's Happening** is **Hide** | — |
@@ -48,7 +48,7 @@ Move the pointer away to close the panel.
 
 ## Gotchas
 
-- **With Hide and no hooks, the notch is mostly away.** Without [session hooks](../session-hooks/README.md) (for example with Codex or Gemini) nothing tells ClaudeBar an agent is busy, so under **Hide** the notch shows only a quota under 20%. Keep **Show the Quota** if that's your setup.
+- **With Hide and no hooks, the notch is mostly away.** Without [session hooks](../session-hooks/README.md) (for example with Codex or Gemini) nothing tells ClaudeBar an agent is busy, so under **Hide** the notch shows only a quota that runs low. Keep **Show the Quota** if that's your setup.
 - **Only session states need hooks.** If the notch shows quota but never "Working", check **Settings → Hooks**. The hooks are installed in Claude Code's own settings file.
 - **One session at a time.** ClaudeBar follows the most recently started Claude Code session. Starting a second one moves the notch to it and puts the first in the finished list.
 - **Which display.** The notch goes on the first display with a physical notch. Without one, it goes on the main display as a virtual notch the height of the menu bar.

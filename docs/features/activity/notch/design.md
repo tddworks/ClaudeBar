@@ -26,16 +26,16 @@ The gap is specific and daily: **you start Claude in a repo, switch to a browser
 
 ## Rules
 
-What the notch shows is decided in one pure function, `NotchActivityResolver.resolve(sessions:quotas:headlineQuota:whenIdle:now:)`, which touches no AppKit. It returns one `NotchActivity`, or nil to hide the notch. Activities rank by severity:
+What the notch shows is decided in one pure function, `NotchActivityResolver.resolve(sessions:quotas:headlineQuota:whenIdle:policy:now:)`, which touches no AppKit. It returns one `NotchActivity`, or nil to hide the notch. Activities rank by severity:
 
 | Severity | Activity | From |
 |---|---|---|
 | 5 | `awaitingInput` | Session phase `.awaitingInput`, set by the `Notification` hook with the prompt text |
 | 4 | `finished` | Phase `.stopped` / `.ended`, for 4 s after `finishedAt` |
-| 3 | `quotaThreshold` | The most depleted quota whose `QuotaStatus.from(percentRemaining:)` is `.critical` or `.depleted` (under 20% left) |
+| 3 | `quotaThreshold` | The most depleted quota whose `status(under: policy)` is `.critical` or `.depleted`, under the monitor's `statusPolicy` ([status colors](../../quota/status-colors/design.md)) |
 | 2 | `agentsWorking` | Phase `.subagentsWorking` |
 | 1 | `working` | Phase `.active` |
-| 0 | `quotaGlance` | The headline quota: the selected provider's `lowestQuota`. Only while `NotchWhenIdle` is `.showQuota` |
+| 0 | `quotaGlance` | The headline quota: the selected provider's quota that sets its status under the person's policy (`UsageSnapshot.worstQuota(under:)`); the panel's three quotas follow `quotasWorstFirst(under:)`. Only while `NotchWhenIdle` is `.showQuota` |
 
 Rules that follow (the resolver's are pinned by `NotchActivityResolverTests`):
 

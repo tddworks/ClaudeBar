@@ -444,29 +444,4 @@ struct ProviderTests {
         #expect(acme.status == .critical)
         #expect(acme.accounts.best === acme.accounts[0])
     }
-
-    @Test
-    func `should name the login that sets the product's status, and none when all is well`() async throws {
-        let network = AcmeNetwork()
-        network.answer(Self.api, used: 70)
-        network.answer(Self.api, login: "low", used: 90)
-        let acme = acme(network, logins: ["low"])
-
-        #expect(acme.accounts.cause == nil)
-        for account in acme.accounts { try await acme.refresh(account) }
-
-        // The plain login (30% left) is the best one, so it is the one to name.
-        #expect(acme.accounts.cause === acme.accounts[0])
-    }
-
-    @Test
-    func `should name no login while one of them is healthy`() async throws {
-        let network = AcmeNetwork()
-        network.answer(Self.api, used: 10)
-        network.answer(Self.api, login: "low", used: 100)
-        let acme = acme(network, logins: ["low"])
-        for account in acme.accounts { try await acme.refresh(account) }
-
-        #expect(acme.accounts.cause == nil)
-    }
 }

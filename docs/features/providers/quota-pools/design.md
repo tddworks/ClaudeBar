@@ -32,7 +32,7 @@ percentage of anything bigger.**
 The model already calls a product's logins *a pool* — interchangeable, the
 healthiest one standing for the product ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)).
 This feature lets the pool say its total. It adds one derived read beside
-`status` · `best` · `cause`, owned by the same aggregate that owns those.
+`status` · `best`, owned by the same aggregate that owns those.
 
 ## What it sums — and what it doesn't
 

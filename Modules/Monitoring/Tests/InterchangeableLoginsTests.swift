@@ -69,4 +69,42 @@ struct InterchangeableLoginsTests {
 
         #expect(monitor.lowestQuota()?.percentRemaining == 40)
     }
+
+    // MARK: - The login the popover names, under pace-aware
+
+    private func twoLogins(policy: StatusPolicy) throws -> (QuotaMonitor, codex: Provider) {
+        let settings = InMemoryProviderSettings()
+        let work = ProviderAccountConfig(accountId: "work", label: "work", probeConfig: ["folder": "/tmp/work", "accountId": "work"])
+        let codex = try ProviderFactory.make("codex", settings: settings, accounts: [work])
+        return (QuotaMonitor(providers: kept([codex]), clock: SystemClock(), statusPolicy: { policy }), codex)
+    }
+
+    /// A 5-hour quota with `left` percent left and `elapsed` percent of its window gone.
+    private func paced(left: Double, elapsed: Double) -> UsageSnapshot {
+        let length: TimeInterval = 5 * 3600
+        return UsageSnapshot(providerId: "p", quotas: [
+            UsageQuota(percentRemaining: left, quotaType: .session, providerId: "p",
+                       resetsAt: Date().addingTimeInterval(length * (100 - elapsed) / 100), windowDuration: length),
+        ], capturedAt: Date())
+    }
+
+    @Test
+    func `should name no login while one login lasts, even when another with more left runs out soon`() throws {
+        let (monitor, codex) = try twoLogins(policy: .paceAware)
+        codex.accounts[0].snapshot = paced(left: 40, elapsed: 10)   // empty in 20 minutes: critical
+        codex.accounts[1].snapshot = paced(left: 35, elapsed: 90)   // lasts: healthy
+
+        #expect(monitor.status(of: codex) == .healthy)
+        #expect(monitor.cause(of: codex) == nil)
+    }
+
+    @Test
+    func `should name the login that sets the product's status under pace-aware, not the one with the most left`() throws {
+        let (monitor, codex) = try twoLogins(policy: .paceAware)
+        codex.accounts[0].snapshot = paced(left: 40, elapsed: 10)   // empty in 20 minutes: critical
+        codex.accounts[1].snapshot = paced(left: 30, elapsed: 50)   // empty in about an hour: warning
+
+        #expect(monitor.status(of: codex) == .warning)
+        #expect(monitor.cause(of: codex) === codex.accounts[1])
+    }
 }

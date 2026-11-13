@@ -94,4 +94,46 @@ struct QuotaMonitorProductStatusTests {
 
         #expect(monitor.status(of: product) == nil)
     }
+
+    // MARK: - The login the popover names
+
+    /// A 5-hour quota with `left` percent left and `elapsed` percent of its window gone.
+    private func paced(left: Double, elapsed: Double) -> UsageQuota {
+        let length: TimeInterval = 5 * 3600
+        return UsageQuota(percentRemaining: left, quotaType: .session, providerId: "p",
+                          resetsAt: Date().addingTimeInterval(length * (100 - elapsed) / 100), windowDuration: length)
+    }
+
+    private func monitor(_ id: String, left: Double, elapsed: Double, policy: StatusPolicy) async -> (QuotaMonitor, Provider) {
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(snapshot(paced(left: left, elapsed: elapsed)))
+        let settings = MockRepositoryFactory.makeSettingsRepository()
+        let product = stubbedProduct(id, probe: probe, settings: settings)
+        let monitor = QuotaMonitor(providers: kept([product]), clock: SystemClock(), statusPolicy: { policy })
+        await monitor.refresh(providerId: id)
+        return (monitor, product)
+    }
+
+    @Test
+    func `should name no login when a low quota lasts until the reset under pace-aware`() async {
+        let (monitor, product) = await monitor("claude", left: 19, elapsed: 97.3, policy: .paceAware)
+
+        #expect(monitor.status(of: product) == .healthy)
+        #expect(monitor.cause(of: product) == nil)
+    }
+
+    @Test
+    func `should name the login whose quota runs out soon under pace-aware`() async {
+        let (monitor, product) = await monitor("claude", left: 60, elapsed: 3.5, policy: .paceAware)
+
+        #expect(monitor.cause(of: product) === product.accounts.best)
+    }
+
+    @Test
+    func `should name the login under 20 percent left under absolute`() async {
+        let (monitor, product) = await monitor("claude", left: 19, elapsed: 97.3, policy: .absolute)
+
+        #expect(monitor.cause(of: product) === product.accounts.best)
+    }
 }

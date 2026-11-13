@@ -196,7 +196,7 @@ struct NotchRootView: View {
     }
 
     private func quotaColor(_ quota: UsageQuota) -> Color {
-        theme.statusColor(for: QuotaStatus.from(percentRemaining: quota.percentRemaining))
+        theme.statusColor(for: state.content.status(of: quota))
     }
 }
 

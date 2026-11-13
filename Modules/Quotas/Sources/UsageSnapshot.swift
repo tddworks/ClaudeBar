@@ -233,11 +233,6 @@ public struct QuotaGroup: Sendable, Equatable, Identifiable {
 
     public var id: String { title ?? "" }
 
-    /// The most critical status within this group — shown while collapsed.
-    public var worstStatus: QuotaStatus {
-        quotas.map(\.status).max() ?? .healthy
-    }
-
     /// The quota with the least headroom — summarized while collapsed.
     public var lowestQuota: UsageQuota? {
         // A balance has no percentage to compare; it is the lowest only when

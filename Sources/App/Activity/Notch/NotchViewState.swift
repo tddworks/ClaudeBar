@@ -26,6 +26,15 @@ struct NotchContent: Equatable {
     /// Whether a probe is in flight, which the notch shows rather than hides.
     var isRefreshing = false
 
+    /// The person's status policy, so the notch paints a quota the same way
+    /// the menu bar and the cards do.
+    var policy: StatusPolicy = .absolute
+
+    /// A quota's status under the person's policy: the one colour the notch paints it.
+    func status(of quota: UsageQuota, at now: Date = Date()) -> QuotaStatus {
+        quota.status(under: policy, at: now)
+    }
+
     static let empty = NotchContent()
 }
 
