@@ -138,7 +138,8 @@ struct StatusAlertsTests {
     @Test func `should tell again after a reset the quota reported only after it was told`() async {
         let alerts = alerts()
 
-        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical)
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            at: reset.addingTimeInterval(-900))
         await alerts.review("claude", named: "Claude", provider: "claude", status: .warning,
                             resetsAt: reset, at: reset.addingTimeInterval(-600))
         await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
@@ -150,12 +151,40 @@ struct StatusAlertsTests {
     @Test func `should tell again when the reset time the quota reports late has already passed`() async {
         let alerts = alerts()
 
-        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical)
-        await alerts.review("claude", named: "Claude", provider: "claude", status: .warning)
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            at: reset.addingTimeInterval(-600))
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .warning,
+                            at: reset.addingTimeInterval(-300))
         await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
                             resetsAt: reset, at: reset.addingTimeInterval(60))
 
         #expect(told.alerts.map(\.now) == [.critical, .critical])
+    }
+
+    @Test func `should stay quiet while the quota keeps reporting a reset that passed before the login was told again`() async {
+        let alerts = alerts()
+
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            at: reset.addingTimeInterval(-600))
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .warning,
+                            at: reset.addingTimeInterval(-300))
+        for (status, after) in [(QuotaStatus.critical, 60.0), (.warning, 120), (.critical, 180), (.warning, 240), (.critical, 300)] {
+            await alerts.review("claude", named: "Claude", provider: "claude", status: status,
+                                resetsAt: reset, at: reset.addingTimeInterval(after))
+        }
+
+        #expect(told.alerts.map(\.now) == [.critical, .critical])
+    }
+
+    @Test func `should stay quiet when a login is told with a reset that has already passed and flips again`() async {
+        let alerts = alerts()
+
+        for (status, after) in [(QuotaStatus.critical, 60.0), (.warning, 120), (.critical, 180)] {
+            await alerts.review("claude", named: "Claude", provider: "claude", status: status,
+                                resetsAt: reset, at: reset.addingTimeInterval(after))
+        }
+
+        #expect(told.alerts.map(\.now) == [.critical])
     }
 
     @Test func `should tell again after recovering when the quota has no reset time`() async {
