@@ -63,6 +63,11 @@ public final class StatusAlerts {
         if let window = told[login], window.forgetsAt.map({ now >= $0 }) ?? (current == .healthy) {
             told[login] = nil
         }
+        // A login told before its quota had a reset time takes the first one
+        // it reports, so the next window can tell it again.
+        if let window = told[login], window.forgetsAt == nil, let resetsAt {
+            told[login] = Told(status: window.status, forgetsAt: resetsAt)
+        }
         guard current > was, current > (told[login]?.status ?? .healthy) else { return }
         told[login] = Told(status: current, forgetsAt: resetsAt)
         await destination.announce(.status(StatusAlert(login: name, providerId: provider, was: was, now: current)))

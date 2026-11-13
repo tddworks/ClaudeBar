@@ -135,6 +135,18 @@ struct StatusAlertsTests {
         #expect(told.alerts.map(\.now) == [.critical, .critical])
     }
 
+    @Test func `should tell again after a reset the quota reported only after it was told`() async {
+        let alerts = alerts()
+
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical)
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .warning,
+                            resetsAt: reset, at: reset.addingTimeInterval(-600))
+        await alerts.review("claude", named: "Claude", provider: "claude", status: .critical,
+                            resetsAt: reset.addingTimeInterval(18_000), at: reset.addingTimeInterval(60))
+
+        #expect(told.alerts.map(\.now) == [.critical, .critical])
+    }
+
     @Test func `should tell again after recovering when the quota has no reset time`() async {
         let alerts = alerts()
 
