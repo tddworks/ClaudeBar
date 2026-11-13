@@ -28,10 +28,12 @@ public struct StatusAlert: Sendable, Equatable {
 /// ([design](docs/features/alerting/status-alerts/design.md)).
 @MainActor
 public final class StatusAlerts {
-    /// The worst status a login was told this window, and when the window
-    /// that set it resets.
+    /// The worst status a login was told this window, when it was told, and
+    /// when the window that set it resets — `nil` while no reset still ahead
+    /// is known.
     private struct Told {
         let status: QuotaStatus
+        let at: Date
         let forgetsAt: Date?
     }
 
@@ -53,25 +55,35 @@ public final class StatusAlerts {
     /// is compared with healthy. `status` is the one the person sees — under
     /// the policy, hidden quotas left out; `nil` (no usage) says nothing.
     /// `resetsAt` is when the quota that sets the status resets: what was
-    /// told is forgotten then, or — with no reset time — once the login reads
-    /// healthy.
+    /// told is forgotten once a reset passes after it was told, or — with no
+    /// reset time — once the login reads healthy. A reset that had already
+    /// passed when the status was told says nothing about this window.
     public func review(_ login: String, named name: String, provider: String, status: QuotaStatus?,
                        resetsAt: Date? = nil, at now: Date = Date()) async {
         guard let current = status else { return }
         let was = last[login] ?? .healthy
         last[login] = current
-        if let window = told[login], window.forgetsAt.map({ now >= $0 }) ?? (current == .healthy) {
+        if let window = told[login], Self.isOver(window, current: current, resetsAt: resetsAt, at: now) {
             told[login] = nil
         }
-        // A login told before its quota had a reset time takes the first one
-        // it reports, so the next window can tell it again — or, when that
-        // reset has already passed, starts a new window now.
-        if let window = told[login], window.forgetsAt == nil, let resetsAt {
-            told[login] = resetsAt > now ? Told(status: window.status, forgetsAt: resetsAt) : nil
+        // A login told before its quota had a reset still ahead takes the
+        // first one it reports, so the next window can tell it again.
+        if let window = told[login], window.forgetsAt == nil, let resetsAt, resetsAt > now {
+            told[login] = Told(status: window.status, at: window.at, forgetsAt: resetsAt)
         }
         guard current > was, current > (told[login]?.status ?? .healthy) else { return }
-        told[login] = Told(status: current, forgetsAt: resetsAt)
+        told[login] = Told(status: current, at: now, forgetsAt: resetsAt.flatMap { $0 > now ? $0 : nil })
         await destination.announce(.status(StatusAlert(login: name, providerId: provider, was: was, now: current)))
+    }
+
+    /// A told window ends at its own reset; with none known, at a reported
+    /// reset that passed after the status was told, or once the login reads
+    /// healthy. A stale reset, already past when told, never ends it, so a
+    /// quota that keeps reporting one is not told on every flip.
+    private static func isOver(_ window: Told, current: QuotaStatus, resetsAt: Date?, at now: Date) -> Bool {
+        if let forgetsAt = window.forgetsAt { return now >= forgetsAt }
+        if let resetsAt, resetsAt > window.at, resetsAt <= now { return true }
+        return current == .healthy
     }
 
     /// Follows every refresh of `monitor`: the login, as the lineup names it,

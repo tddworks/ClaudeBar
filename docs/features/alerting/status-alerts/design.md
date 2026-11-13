@@ -46,7 +46,7 @@ comes named as the lineup names it.
 |---|---|
 | a login's status is read under the person's `StatusPolicy`, hidden quotas left out | `QuotaMonitor.status(of:)` (unchanged) |
 | tell when a login's status got **worse** and is not healthy; quiet when it stays, improves or recovers | `StatusAlerts` |
-| each status is told **once per window**: quiet until the status is worse than any told since the quota setting it last reset; with no reset time, until the login reads healthy, or until the first reset time it then reports passes — the [pace-aware status](../../../architecture/CANONICAL_MODEL.md) can flip as a login is paused and resumed. *Was* is the last status read | `StatusAlerts`, handed the reset by `follow` (`worstQuota(under:)`) |
+| each status is told **once per window**: quiet until the status is worse than any told since the quota setting it last reset; with no reset time still ahead, until the login reads healthy or a reset passes after the status was told (a reset already past when it was told is stale and ends nothing) — the [pace-aware status](../../../architecture/CANONICAL_MODEL.md) can flip as a login is paused and resumed. *Was* is the last status read | `StatusAlerts`, handed the reset by `follow` (`worstQuota(under:)`) |
 | the first status seen for a login is compared with *healthy*, so a login that starts critical is told once | `StatusAlerts` |
 | per login, never per product: two Claude logins are two things, each named by its `lineupName` | `StatusAlerts` (handed the name, never looking it up) |
 | a paused login is never refreshed, so it is never told | `Account.isPaused` (unchanged) |
@@ -70,9 +70,9 @@ onRefreshed(login)                                         // statusAlerts.follo
                       status: monitor.status(of: login),       // nil (no usage) → nothing
                       resetsAt: usage?.worstQuota(under: policy)?.resetsAt)
     was = last[login.id] ?? .healthy;  last[login.id] = now
-    forget told[login.id] once its resetsAt has passed (no resetsAt: once now is healthy)
-    told[login.id] has no resetsAt and one is known now → keep its status, take that resetsAt, or forget it if that reset has already passed
-    if now > was && now > told[login.id] → told[login.id] = (now, resetsAt)
+    forget told[login.id] at its own resetsAt; with none: at a reported resetsAt in (told at, now], or once now is healthy
+    told[login.id] has no resetsAt and a reported one is still ahead → keep its status, take that resetsAt
+    if now > was && now > told[login.id] → told[login.id] = (now, at: now, resetsAt if still ahead)
                                            await destination.announce(.status(StatusAlert(…)))   // AlertDestinations
 ```
 
