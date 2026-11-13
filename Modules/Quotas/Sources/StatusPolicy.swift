@@ -69,10 +69,19 @@ extension UsageSnapshot {
     /// The quota that sets the snapshot's status under the person's policy:
     /// the worst, the one with the least left on a tie.
     public func worstQuota(under policy: StatusPolicy, at now: Date = Date()) -> UsageQuota? {
-        quotas.max { a, b in
-            let (sa, sb) = (a.status(under: policy, at: now), b.status(under: policy, at: now))
-            return sa != sb ? sa < sb : a.percentRemaining > b.percentRemaining
-        }
+        quotasWorstFirst(under: policy, at: now).first
+    }
+
+    /// The quotas in the order a surface that leads with "what needs me"
+    /// reads them: worst status under the person's policy first, then the
+    /// one with the least left.
+    public func quotasWorstFirst(under policy: StatusPolicy, at now: Date = Date()) -> [UsageQuota] {
+        quotas
+            .map { (quota: $0, status: $0.status(under: policy, at: now)) }
+            .sorted { a, b in
+                a.status != b.status ? a.status > b.status : a.quota.percentRemaining < b.quota.percentRemaining
+            }
+            .map(\.quota)
     }
 }
 

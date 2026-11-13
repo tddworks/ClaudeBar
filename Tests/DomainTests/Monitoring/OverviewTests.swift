@@ -51,6 +51,25 @@ struct OverviewTests {
     }
 
     @Test
+    func `should ring the quota that sets the status under pace-aware, not the one with the least left`() {
+        let now = Date()
+        let length: TimeInterval = 5 * 3600
+        func paced(left: Double, elapsed: Double, _ type: QuotaType) -> UsageQuota {
+            UsageQuota(percentRemaining: left, quotaType: type, providerId: "p",
+                       resetsAt: now.addingTimeInterval(length * (100 - elapsed) / 100), windowDuration: length)
+        }
+        let lasting = paced(left: 19, elapsed: 97.3, .session)   // lasts until the reset: healthy
+        let runningOut = paced(left: 60, elapsed: 3.5, .weekly)  // empty in about 16 minutes: critical
+        let usage = snapshot(lasting, runningOut)
+        let card = card("claude", OverviewCard.Login(id: "claude", name: "claude", snapshot: usage,
+                                                     status: usage.overallStatus(under: .paceAware),
+                                                     state: .init(), policy: .paceAware))
+
+        #expect(card.tightest == runningOut)
+        #expect(card.next == lasting)
+    }
+
+    @Test
     func `should not name a login when the provider has only one`() {
         let card = card("claude", login("claude", snapshot(quota(50))))
 

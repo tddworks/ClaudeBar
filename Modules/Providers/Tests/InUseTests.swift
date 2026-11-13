@@ -161,7 +161,7 @@ struct InUseTests {
         defer { stub.cleanUp() }
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
 
-        #expect(codex.inUse?.worthSwitchingTo === work)
+        #expect(codex.inUse?.worthSwitching(reading: \.status) === work)
     }
 
     @Test
@@ -173,7 +173,7 @@ struct InUseTests {
             UsageQuota(left: .money(Money(12), of: nil), quotaType: .modelSpecific("Credits"), providerId: "codex"),
         ], capturedAt: Date())
 
-        #expect(codex.inUse?.worthSwitchingTo == nil)
+        #expect(codex.inUse?.worthSwitching(reading: \.status) == nil)
     }
 
     @Test
@@ -182,10 +182,10 @@ struct InUseTests {
         defer { stub.cleanUp() }
 
         try await InUseFixture.usage(stub, codex, me: 40, work: 10)
-        #expect(codex.inUse?.worthSwitchingTo == nil)
+        #expect(codex.inUse?.worthSwitching(reading: \.status) == nil)
 
         try await InUseFixture.usage(stub, codex, me: 92, work: 95)
-        #expect(codex.inUse?.worthSwitchingTo == nil)
+        #expect(codex.inUse?.worthSwitching(reading: \.status) == nil)
     }
 
     @Test
@@ -204,7 +204,7 @@ struct InUseTests {
         let paceAware = { (login: Account) in login.snapshot?.overallStatus(under: .paceAware) ?? .healthy }
         #expect(inUse.worthSwitching(reading: paceAware) == nil)
         #expect(try inUse.review(reading: paceAware) == nil)
-        #expect(inUse.worthSwitchingTo === work)
+        #expect(inUse.worthSwitching(reading: \.status) === work)
     }
 
     // MARK: - After each refresh: what is worth telling
@@ -216,8 +216,8 @@ struct InUseTests {
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
         let inUse = try #require(codex.inUse)
 
-        #expect(try inUse.review() == .worthSwitching(from: codex.defaultAccount, to: work))
-        #expect(try inUse.review() == nil)
+        #expect(try inUse.review(reading: \.status) == .worthSwitching(from: codex.defaultAccount, to: work))
+        #expect(try inUse.review(reading: \.status) == nil)
     }
 
     @Test
@@ -226,13 +226,13 @@ struct InUseTests {
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
-        _ = try inUse.review()
+        _ = try inUse.review(reading: \.status)
 
         try await InUseFixture.usage(stub, codex, me: 30, work: 15)
-        #expect(try inUse.review() == nil)
+        #expect(try inUse.review(reading: \.status) == nil)
         try await InUseFixture.usage(stub, codex, me: 95, work: 15)
 
-        #expect(try inUse.review() == .worthSwitching(from: codex.defaultAccount, to: work))
+        #expect(try inUse.review(reading: \.status) == .worthSwitching(from: codex.defaultAccount, to: work))
     }
 
     @Test
@@ -243,7 +243,7 @@ struct InUseTests {
         inUse.switchWhenLow.isOn = true
         try await InUseFixture.usage(stub, codex, me: 95, work: 15)
 
-        #expect(try inUse.review() == .switched(from: codex.defaultAccount, to: work))
+        #expect(try inUse.review(reading: \.status) == .switched(from: codex.defaultAccount, to: work))
         #expect(codex.inUse?.isInUse(work) == true)
     }
 }

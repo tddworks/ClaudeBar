@@ -35,7 +35,7 @@ second page and not a mode of the popover.
 | **All** | the pill, and the page it opens: a card per provider in the lineup |
 | **page** | what the popover shows under the pills: *All*, *Leaderboard*, or one provider |
 | **card** | one provider on *All*: its badge, its **tightest** quota as a ring, the next quota, a tap target |
-| **tightest** | the quota with the least left (`UsageSnapshot.lowestQuota`); with several logins, the healthiest login's — the one the product's status reads |
+| **tightest** | the quota that sets the login's status under the person's policy, the one with the least left on a tie (`UsageSnapshot.quotasWorstFirst(under:)`); with several logins, the healthiest login's — the one the product's status reads |
 | **Open on** | where the popover lands each time it opens: *Where I left it* (default) or *All* |
 | **All page style** | how a provider reads on *All*: *Rings* (default, the cards) or *Bars* |
 | **row** | one provider on *All* in **Bars**: a header and one **line** per watched quota |
@@ -86,7 +86,7 @@ today). The divider shows when either of them does.
 |---|---|
 | All is offered only with two or more products in the lineup; with fewer, the page falls back to the provider | `Overview.isOffered` |
 | cards follow the pill order; they never re-sort as quotas change | `Overview.cards` |
-| a card's ring is its tightest quota; with several logins, the healthiest login's, named — a product's logins are interchangeable ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | `OverviewCard` |
+| a card's ring is its tightest quota, the one that sets its status under the person's policy, so the ring's colour is the card's; with several logins, the healthiest login's, named — a product's logins are interchangeable ([CANONICAL §5](../../../architecture/CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | `OverviewCard` |
 | a product with no numbers still gets a card, saying *Unavailable*, *Not set up* or *Syncing* like the header (#259) | `OverviewCard.badge` |
 | the header's badge on All is the worst card's; the counts are of cards with numbers | `Overview` |
 | tapping a card opens that product on its first login | `MenuContentView` → `PopoverPage.provider` |

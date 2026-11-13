@@ -147,7 +147,6 @@ struct ClaudeBarApp: App {
         let providers = ProviderFactory.make(definitions, engine: engine)
         AppLog.providers.info("Created \(providers.count) providers")
 
-
         // Initialize the domain service
         // QuotaMonitor automatically validates selected provider on init
         // The settings repository carries the user's provider order (issue #141),

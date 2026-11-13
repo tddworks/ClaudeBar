@@ -35,7 +35,7 @@ What the notch shows is decided in one pure function, `NotchActivityResolver.res
 | 3 | `quotaThreshold` | The most depleted quota whose `status(under: policy)` is `.critical` or `.depleted`, under the monitor's `statusPolicy` ([status colors](../../quota/status-colors/design.md)) |
 | 2 | `agentsWorking` | Phase `.subagentsWorking` |
 | 1 | `working` | Phase `.active` |
-| 0 | `quotaGlance` | The headline quota: the selected provider's `lowestQuota`. Only while `NotchWhenIdle` is `.showQuota` |
+| 0 | `quotaGlance` | The headline quota: the selected provider's quota that sets its status under the person's policy (`UsageSnapshot.worstQuota(under:)`); the panel's three quotas follow `quotasWorstFirst(under:)`. Only while `NotchWhenIdle` is `.showQuota` |
 
 Rules that follow (the resolver's are pinned by `NotchActivityResolverTests`):
 

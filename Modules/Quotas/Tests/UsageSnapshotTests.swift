@@ -406,7 +406,7 @@ struct UsageSnapshotTests {
         let groups = snapshot.quotaGroups
         #expect(groups.map(\.title) == ["Codex", "Claude"])
         #expect(groups[0].quotas.count == 2)
-        #expect(groups[0].worstStatus == .warning) // 40% remaining
+        #expect(groups[0].worstStatus(under: .absolute) == .warning) // 40% remaining
         #expect(groups[0].lowestQuota?.percentRemaining == 40)
         #expect(groups[1].quotas.count == 1)
     }

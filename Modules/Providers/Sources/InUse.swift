@@ -83,13 +83,10 @@ public final class InUse {
         loginId = accounts.plain.id
     }
 
-    /// The login worth moving to: the one in use is critical or out, and
-    /// another enabled login has more left — the most.
-    public var worthSwitchingTo: Account? { worthSwitching { $0.status } }
-
     /// The login worth moving to, by the status every surface reads (the
-    /// person's policy, hidden quotas left out): the one in use reads critical
-    /// or out, and another enabled login has more left.
+    /// person's policy, hidden quotas left out, `QuotaMonitor.status(of:)`):
+    /// the one in use reads critical or out, and another enabled login has
+    /// more left — the most.
     public func worthSwitching(reading status: (Account) -> QuotaStatus) -> Account? {
         let current = login
         guard status(current) >= .critical, let left = current.percentLeft else { return nil }
@@ -100,7 +97,7 @@ public final class InUse {
 
     /// What to tell the person after a refresh: that *Switch when low* moved
     /// new sessions, or — once per low — which login is worth moving to.
-    public func review(reading status: (Account) -> QuotaStatus = { $0.status }) throws -> InUseNotice? {
+    public func review(reading status: (Account) -> QuotaStatus) throws -> InUseNotice? {
         let current = login
         if let next = switchWhenLow.next(from: current, among: logins) {
             try use(next)

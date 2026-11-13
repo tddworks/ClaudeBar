@@ -20,7 +20,7 @@ menu-bar names (slice 2); `accounts.signIn`, `provider.signIn` /
 `signInAgain` (slice 4); `accounts.form`, `addAccount(filling:)`,
 `SecretStore.scoped(to:)` and `SecretVault`, with API providers made in Add
 Provider asking for a key per account (slice 5); the popover by provider —
-`ProductTab`, `QuotaMonitor.tabs` / `selectedTab`, `Accounts.cause` (was `worstAccount`),
+`ProductTab`, `QuotaMonitor.tabs` / `selectedTab`, `QuotaMonitor.cause(of:)` (was `Accounts.cause`, before that `worstAccount`),
 account chips and the callout (slice 6); **pausing from the popover** —
 `ProductTab.logins` / `.unpaused` (was `.watched`) / `.paused`, `QuotaMonitor.pause(_:)` /
 `resume(_:)` as the one door the popover's account menu and the Accounts card share,
@@ -312,9 +312,8 @@ Monitor ◆                                  the menu bar's root
          │   │                             surfaces read monitor.status(of:): the same rule
          │   │                             under the person's policy, hidden quotas left out
          │   ├── best                      DERIVED — the most left: "switch to work"
-         │   ├── cause                     DERIVED — best, while it isn't healthy (absolute); the
-         │   │                             callout reads monitor.cause(of:): the login the status
-         │   │                             comes from, under the person's policy
+         │   │                             (the callout's subject is monitor.cause(of:): the login
+         │   │                             the status comes from, under the person's policy)
          │   └── Account ◆                 A LOGIN — no behaviour of its own
          │       ├── id                    `<provider>` · `<provider>.<acct>` — pins and settings keyed by it
          │       ├── label?                the person's name for it
@@ -524,7 +523,7 @@ model disagree, the decision and its reason are in §8.
 │ ┌ OPUS 18% ────────┐ ┌ SONNET 41% ───────┐   │
 │ S SIDE PROJECT                [Re-auth ↻]    │ ← account.sync.lastError — FETCH health:
 │ ┌ OPUS — (72% · 2h ago) ┐                    │   grey, last usage kept, never a Status colour
-│ (no callout: Personal has room, so the       │ ← provider.cause (DERIVED) — nil while the best
+│ (no callout: Personal has room, so the       │ ← monitor.cause(of:) (DERIVED) — nil while the best
 │  product reads Healthy)                      │   account is healthy; else it names that account
 └──────────────────────────────────────────────┘
 ```

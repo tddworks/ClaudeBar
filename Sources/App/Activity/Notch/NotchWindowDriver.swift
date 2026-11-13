@@ -138,7 +138,9 @@ final class NotchWindowDriver {
         let selected = monitor.selectedLogin
         let snapshot = selected.flatMap { monitor.usage(of: $0) }
         let quotas = snapshot?.quotas ?? []
-        let headline = snapshot?.lowestQuota
+        // Lead with the quota that sets the status, as the menu bar and the cards read it.
+        let worstFirst = snapshot?.quotasWorstFirst(under: monitor.statusPolicy) ?? []
+        let headline = worstFirst.first
 
         var activity = resolver.resolve(
             sessions: sessions,
@@ -155,9 +157,9 @@ final class NotchWindowDriver {
         return NotchContent(
             activity: activity,
             sessions: Array(sessions.prefix(3)),
-            // The panel is about what is nearly gone, so lead with the most
-            // depleted rather than whichever quota happens to be first.
-            quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
+            // The panel is about what needs the person, so lead with the
+            // quota that sets the status rather than whichever happens to be first.
+            quotas: Array(worstFirst.prefix(3)),
             today: (selected?.usageHistory?.report ?? snapshot?.dailyUsageReport)?.today,
             headline: headline,
             isRefreshing: selected?.isSyncing ?? false,

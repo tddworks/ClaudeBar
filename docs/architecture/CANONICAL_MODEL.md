@@ -139,8 +139,6 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── status                      DERIVED — unpaused-with-usage .map(status).min(): the product
 │       │   │                               has room while one login does. ← THE RULE, one owner
 │       │   ├── best → Account?             DERIVED — the unpaused login with the most left: "switch to work"
-│       │   ├── cause → Account?            DERIVED — best, while it isn't healthy: the callout's subject
-│       │   │                               ("Home is at 18% Weekly — causing Warning")
 │       │   ├── pool → Pool?  ◇             DERIVED — the logins' shares, summed: "340% left across 3
 │       │   │                               logins" — a SUM OF SHARES, never a forecast, never a
 │       │   │                               percentage of a bigger whole; nil below two shares
@@ -217,7 +215,8 @@ Monitor  ◆                                  THE ROOT — what the menu bar is 
 │       │   ├── login: Account              the one in use — the plain login until another is chosen
 │       │   ├── logins: [Account]           the plain login and every folder login; a choice when > 1
 │       │   ├── command: TerminalCommand ◇  `claude` + `CLAUDE_CONFIG_DIR` — from `accounts.signIn`
-│       │   ├── worthSwitchingTo: Account?  DERIVED — the login in use is low, another has more left
+│       │   ├── worthSwitching(reading:) → Account?  DERIVED — the login in use reads low (by the
+│       │   │                               status it is handed: monitor.status(of:)), another has more left
 │       │   └── switchWhenLow: SwitchWhenLow  ◆   opt-in: isOn · below · mayPick(login)
 │       └── status                          DERIVED → accounts.status (tell, don't ask)
 │
@@ -337,7 +336,7 @@ question it answers for the person.
 | its logins — add (form · folder · sign-in), remove, rename, reorder | never empty; the default login's id is the provider's; no two logins share a folder |
 | its settings | a kind owns its rule; an account's own value beats the provider's; a change rebinds the logins |
 | how it finds out — data source choice, fallback, refresh per login, *Test Connection* | the last usage survives a failure; the failed step is named; a 429 is a rate limit; a fallback is never silent |
-| derived reads — status, best account, cause | its logins are a pool: the healthiest login's status; the best is the one with the most left |
+| derived reads — status, best account | its logins are a pool: the healthiest login's status; the best is the one with the most left. The login the callout names (the cause) is the Monitor's, `monitor.cause(of:)`, since it reads the person's policy |
 
 **Offered** — CAPABILITIES. Each answers *another* question, on its own
 cadence and often with its own store, so the provider only **declares** it in
@@ -651,7 +650,7 @@ test first. Findings that need a decision first are in §9.
 | Providers | `Provider` and `Account` write storage keys (`plainLoginKey`, `isEnabled(forProvider: loginId)`, `verifiedAtLeastOnce`) and migrate old ones | a pause/switch port; compatibility in `JSONSettingsRepository`'s tables |
 | Providers | `providerId` is the product in `Account`, the login in a `Usage` and its quotas, either in settings | a login's id under its own name; `ProviderAccount` the one parser of lineup ids |
 | Providers | `ProviderFactory.customDefinitions`, a global registry read by views and alerts | `Providers.provider(of:)`; the factory only makes |
-| Providers · In use | *the login with the most left* in `Accounts.best`, `InUse.worthSwitchingTo` and `SwitchWhenLow.next`, each slightly different | `Accounts.best`, given what may be picked |
+| Providers · In use | *the login with the most left* in `Accounts.best`, `InUse.worthSwitching(reading:)` and `SwitchWhenLow.next`, each slightly different | `Accounts.best`, given what may be picked |
 | Providers | *signed out* decided in `Provider.isSignedOut`, `Account.fail` (by tag string) and `Account.needsSetup` | the error answers `isSignedOut` itself |
 | Providers · In use | refusals (*already listed*, *another login's folder*) thrown as `UsageError.executionFailed(String)` | a `Refusal` per aggregate, as `QuotaAlerts` has |
 | Providers | guest passes run `settings.cliPath ?? cli`, skipping `Configuration`'s CLI places | the login's `configuration.running.cli` |
