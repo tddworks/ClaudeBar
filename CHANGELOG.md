@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **A permission prompt no longer leaves a session on Needs you**: after you answered, the session could show **Needs you** for the rest of its turn. A permission prompt shows **Working** again, as before 0.5.27; a question Claude asks still shows **Needs you**. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
+- **A permission prompt no longer leaves a session on Needs you**: after you answered, the session could show **Needs you** for the rest of its turn. A permission prompt shows **Working** again, as before 0.5.27; a question Claude asks still shows **Needs you**. ([#713](https://github.com/tddworks/ClaudeBar/pull/713)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
 
 ---
 
