@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.27] - 2026-11-13
+
 ### Changed
 - **A Claude Code session with work left running isn't Done**: when Claude ends its turn with a shell or agent still running in the background, the session shows **In background** with what runs (*1 shell*) and counts as working, like iTerm2's tab, until that work finishes. ([#712](https://github.com/tddworks/ClaudeBar/pull/712)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
 - **Breaking: with "Warn when a quota will run out before it resets" on, a low quota that lasts is no longer red**, here or on the notch. Critical now means it runs out within a tenth of the window. Turn the option off to keep the fixed thresholds. ([#707](https://github.com/tddworks/ClaudeBar/issues/707)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/quota/status-colors/README.md)
@@ -434,7 +438,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.27...HEAD
+[0.5.27]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...v0.5.27
 [0.5.26]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...v0.5.26
 [0.5.25]: https://github.com/tddworks/ClaudeBar/compare/v0.5.24...v0.5.25
 [0.5.24]: https://github.com/tddworks/ClaudeBar/compare/v0.5.23...v0.5.24
