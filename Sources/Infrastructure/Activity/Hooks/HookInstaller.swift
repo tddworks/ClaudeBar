@@ -35,19 +35,26 @@ public enum HookInstaller {
             .joined()
     }
 
-    /// The event names to register hooks for: every event ClaudeBar reads.
-    static let hookEvents = SessionEvent.EventName.allCases.map(\.rawValue)
+    /// The event names to register hooks for: every event ClaudeBar reads
+    /// that has a matcher.
+    static let hookEvents = SessionEvent.EventName.allCases.map(\.rawValue).filter { matcher(for: $0) != nil }
 
-    /// Which of an event's occurrences call the hook. The tool events only for
-    /// a question Claude asks, never for every tool; `Notification` only for
-    /// the prompts that wait on the person, not the idle prompt Claude Code
-    /// sends a minute after a turn ends.
-    static func matcher(for event: String) -> String {
+    /// Which of an event's occurrences call the hook; nil for an event not
+    /// installed. The tool events only for a question Claude asks, never for
+    /// every tool. `Notification` not at all: a permission prompt would make
+    /// the session Needs you, and nothing says when the person answers it.
+    static func matcher(for event: String) -> String? {
         switch SessionEvent.EventName(rawValue: event) {
         case .preToolUse, .postToolUse: "AskUserQuestion"
-        case .notification: "permission_prompt|elicitation_dialog"
+        case .notification: nil
         default: ".*"
         }
+    }
+
+    /// Every event ClaudeBar has ever hooked, to take its hook off one it no
+    /// longer listens to.
+    private static var everyEvent: [String] {
+        SessionEvent.EventName.allCases.map(\.rawValue)
     }
 
     /// Installs hooks into the Claude settings file.
@@ -62,7 +69,7 @@ public enum HookInstaller {
         var settings = try readOrCreateSettings(at: path)
         var hooks = settings["hooks"] as? [String: Any] ?? [String: Any]()
 
-        for event in hookEvents {
+        for event in everyEvent {
             var matcherEntries = hooks[event] as? [[String: Any]] ?? [[String: Any]]()
 
             // Remove any existing ClaudeBar matcher entries for this event
@@ -70,9 +77,14 @@ public enum HookInstaller {
                 containsClaudeBarHook(in: entry)
             }
 
+            guard let matcher = matcher(for: event) else {
+                if matcherEntries.isEmpty { hooks.removeValue(forKey: event) } else { hooks[event] = matcherEntries }
+                continue
+            }
+
             // Add the new hook in matcher format
             matcherEntries.append([
-                "matcher": matcher(for: event),
+                "matcher": matcher,
                 "hooks": [
                     [
                         "type": "command",
@@ -94,7 +106,7 @@ public enum HookInstaller {
         guard var settings = try? readOrCreateSettings(at: path) else { return }
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
 
-        for event in hookEvents {
+        for event in everyEvent {
             guard var matcherEntries = hooks[event] as? [[String: Any]] else { continue }
 
             matcherEntries.removeAll { entry in
