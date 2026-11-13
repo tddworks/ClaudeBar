@@ -24,44 +24,27 @@ public protocol TerminalFocus: Sendable {
 
 /// Brings the terminal of a session the person picked in the Claude Code card
 /// or the notch to the front (docs/features/activity/session-hooks/design.md,
-/// *Bring a session forward*).
+/// *Bring a session forward*). Where it goes is the session's own answer
+/// (`ClaudeSession.place`, `DoneRepo.place`); this only tells the port.
 @MainActor
 public final class SessionFocus {
-    private let sessions: SessionMonitor
     private let terminals: any TerminalFocus
 
-    public init(sessions: SessionMonitor, terminals: any TerminalFocus) {
-        self.sessions = sessions
+    public init(terminals: any TerminalFocus) {
         self.terminals = terminals
-    }
-
-    /// Where `session` would be brought forward; nil when it never said where it runs.
-    public func place(of session: ClaudeSession) -> TerminalPlace? {
-        guard session.canBringForward, let terminal = session.terminal else { return nil }
-        return TerminalPlace(terminal: terminal, folder: session.cwd)
-    }
-
-    /// Where a Done row would be brought forward: its session that finished last.
-    public func place(of repo: DoneRepo) -> TerminalPlace? {
-        sessions.sessions.first { $0.id == repo.latestSessionId }.flatMap(place(of:))
-    }
-
-    /// Whether a Done row can be brought forward.
-    public func canBringForward(_ repo: DoneRepo) -> Bool {
-        place(of: repo) != nil
     }
 
     /// Brings `session`'s terminal forward; nothing when it never said where it runs.
     /// Answers the work under way, for whoever wants to wait for it.
     @discardableResult
     public func bringForward(_ session: ClaudeSession) -> Task<Void, Never>? {
-        go(to: place(of: session))
+        go(to: session.place)
     }
 
     /// Brings forward the Done row's session that finished last.
     @discardableResult
     public func bringForward(_ repo: DoneRepo) -> Task<Void, Never>? {
-        go(to: place(of: repo))
+        go(to: repo.place)
     }
 
     private func go(to place: TerminalPlace?) -> Task<Void, Never>? {

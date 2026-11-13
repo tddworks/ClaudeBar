@@ -21,18 +21,22 @@ public struct DoneRepo: Sendable, Equatable, Identifiable {
     public let count: Int
     /// The latest finish among them; a session idle since it opened counts from its start.
     public let lastFinishedAt: Date
-    /// The session that finished last: the one the row brings forward.
-    public let latestSessionId: String
+    /// Where the session that finished last runs: the one the row brings
+    /// forward; nil when it never said.
+    public let place: TerminalPlace?
     /// The session's title when the row stands for one session; a folded row has none.
     public let title: String?
 
     public var id: String { repoName }
 
-    public init(repoName: String, count: Int, lastFinishedAt: Date, latestSessionId: String, title: String? = nil) {
+    /// Whether the row can be brought forward: its latest session has a place.
+    public var canBringForward: Bool { place != nil }
+
+    public init(repoName: String, count: Int, lastFinishedAt: Date, place: TerminalPlace? = nil, title: String? = nil) {
         self.repoName = repoName
         self.count = count
         self.lastFinishedAt = lastFinishedAt
-        self.latestSessionId = latestSessionId
+        self.place = place
         self.title = title
     }
 }

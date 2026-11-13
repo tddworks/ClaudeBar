@@ -18,15 +18,15 @@ public struct SessionTerminal: Sendable, Equatable, Codable {
         case tmuxPane = "TMUX_PANE"
     }
 
-    /// The terminal app a session runs in.
+    /// The terminal app a session runs in, among those ClaudeBar can bring
+    /// forward. Any other (an IDE's terminal, Hyper, kitty) is not an app
+    /// here, so its row is never a button that does nothing.
     public enum App: Sendable, Hashable, Codable {
         case iTerm2
         case ghostty
         case terminal
         case warp
         case wezTerm
-        /// A terminal known only by the name it gave itself.
-        case other(String)
     }
 
     /// A tmux pane and the server that holds it.
@@ -77,13 +77,12 @@ public struct SessionTerminal: Sendable, Equatable, Codable {
     private static func app(termProgram: String?, lcTerminal: String?) -> App? {
         if lcTerminal == "iTerm2" { return .iTerm2 }
         switch termProgram {
-        case nil, "tmux", "screen": return nil
         case "iTerm.app": return .iTerm2
         case "ghostty": return .ghostty
         case "Apple_Terminal": return .terminal
         case "WarpTerminal": return .warp
         case "WezTerm": return .wezTerm
-        case let name?: return .other(name)
+        default: return nil
         }
     }
 

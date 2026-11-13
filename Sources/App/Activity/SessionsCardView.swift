@@ -63,7 +63,7 @@ struct SessionsCardView: View {
     /// is their number.
     private func targets(shown: [ClaudeSession]) -> [Target] {
         let sessions = shown.filter(\.canBringForward).map(Target.session)
-        let repos = card.showsDone ? sessionMonitor.doneByRepo.filter(focus.canBringForward).map(Target.repo) : []
+        let repos = card.showsDone ? sessionMonitor.doneByRepo.filter(\.canBringForward).map(Target.repo) : []
         return sessions + repos
     }
 

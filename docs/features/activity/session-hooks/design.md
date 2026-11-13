@@ -75,7 +75,7 @@ Two terminals in one repo give two rows that read *claudebar*. Each session's ti
 
 ## Bring a session forward
 
-**Status:** BUILT on `feat/session-focus`. Mockup: [design-concept/session-focus/index.html](../../../../design-concept/session-focus/index.html).
+**Status:** BUILT. Tried by hand in iTerm2; tmux, Ghostty (its AppleScript reads `working directory`, so two terminals in one folder go to the first) and the notch click are best-effort until tried. Mockup: [design-concept/session-focus/index.html](../../../../design-concept/session-focus/index.html).
 
 Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm2's windows and tabs for it. Instead, clicking the row (or pressing its number) brings that terminal to the front, on the tab that runs the session.
 
@@ -102,8 +102,8 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 | tmux, inside iTerm2 | Selects the pane and its window in tmux (zoomed out first if another pane is zoomed), then does the same as iTerm2's own row |
 | tmux, inside another terminal | Nothing: the row is not clickable and has no number. tmux sets `TERM_PROGRAM` to `tmux`, so the terminal around it is unknown, and selecting the pane alone would leave that terminal where it is. Only iTerm2 says itself through tmux, in `LC_TERMINAL` |
 | Ghostty | Focuses the Ghostty terminal whose folder is the session's, then brings Ghostty to the front |
-| Terminal, Warp, WezTerm, or another that names itself in `TERM_PROGRAM` | Brings that app to the front (another by the name it gave); none has a way to name a tab from outside |
-| Unknown (hooks from before this change, kitty and Alacritty, which set no `TERM_PROGRAM`, nothing said) | Nothing: the row is not clickable and has no number |
+| Terminal, Warp, WezTerm | Brings that app to the front; none has a way to name a tab from outside |
+| Any other (an IDE's terminal: VS Code and Cursor say `vscode`, Zed `zed`; Hyper; kitty and Alacritty, which set no `TERM_PROGRAM`), hooks from before this change, nothing said | Nothing: the row is not clickable and has no number. A row is a button only when ClaudeBar knows the app by its bundle ID, so a click never does nothing |
 
 - **What tells ClaudeBar where it runs**: the hook runs inside Claude Code's environment, so it sends what the terminal set there, in headers beside the process ID it sends today: `TERM_PROGRAM`, `LC_TERMINAL` (iTerm2 sets it, and it survives tmux), `ITERM_SESSION_ID`, `TMUX` and `TMUX_PANE`. A session takes the place it runs from its latest event that said one. Existing installs get the new hook at the next launch: ClaudeBar reinstalls its hooks when they are already on.
 - **Sessions already running** say nothing until their next event (the next prompt or the end of a turn). Until then their row is not clickable.
@@ -123,9 +123,9 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 | Where a session runs: which terminal, its iTerm2 session, its tmux pane and server, from what the terminal set in Claude Code's environment; nothing when it said nothing | `SessionTerminal` (Activity, new): built from the raw values by `SessionTerminal(environment:)`. iTerm2 when `LC_TERMINAL` is `iTerm2` or `TERM_PROGRAM` is `iTerm.app`; the iTerm2 ID is the UUID after `:` and only `[A-Za-z0-9-]`, else none |
 | Where an event says its session runs | `SessionEvent.terminal` (new): the hook's `X-ClaudeBar-Env-<VARIABLE>` headers (`HookConstants.environmentHeader`), read by `HookHTTPServer`, turned into a `SessionTerminal` by `SessionEventParser` |
 | A session takes the place its latest event names; an event that names none leaves it as it was | `ClaudeSession.terminal` (new), set in `SessionMonitor.processEvent` |
-| Whether a row can be brought forward | `ClaudeSession.canBringForward`: it has a `terminal`; a Done row's through `SessionFocus.canBringForward(_ repo:)` |
-| Which session a folded Done row stands for: the one that finished last | `DoneRepo.latestSessionId` (new), set by `SessionMonitor.doneByRepo` |
-| Bringing a session forward | `SessionFocus` (Activity, new): `bringForward(_ session:)`, `bringForward(_ repo:)`, over the `TerminalFocus` port |
+| Where a click brings a session: its terminal, when that names an app ClaudeBar brings forward, and its folder; nil otherwise, and then the row is no button | `ClaudeSession.place` (new) · `canBringForward` (`place != nil`) |
+| Where a folded Done row goes: the place of its session that finished last | `DoneRepo.place` (new) · `canBringForward`, set by `SessionMonitor.doneByRepo` |
+| Bringing a session forward | `SessionFocus` (Activity, new): `bringForward(_ session:)`, `bringForward(_ repo:)` hand the row's own `place` to the `TerminalFocus` port; it decides nothing itself |
 | Telling the OS: tmux, then the terminal's tab or terminal, then the app; or the app alone when sandboxed | `TerminalFocus` port (Domain, `@Mockable`), `ScriptedTerminalFocus` (Infrastructure, new): AppleScript for iTerm2 and Ghostty, `tmux` by `Process`, `NSRunningApplication.activate()` |
 | A row's number: its place among the card's drawn, clickable rows | `SessionsCardView`: presentation |
 
@@ -133,15 +133,15 @@ Ana sees *tinyshop · Needs you* in the card. Today she then hunts through iTerm
 
 ### Tests
 
-`SessionTerminalTests`: should run in iTerm2 when iTerm2 says so · should run in iTerm2 inside tmux · should keep only the iTerm2 session's own ID · should have no iTerm2 session when its ID isn't one · should run in tmux with its pane and server · should run in Ghostty · should run in an unknown terminal by its name · should run nowhere known when nothing was said.
+`SessionTerminalTests`: should run in iTerm2 when iTerm2 says so · should run in iTerm2 inside tmux · should keep only the iTerm2 session's own ID · should have no iTerm2 session when its ID isn't one · should run in tmux with its pane and server · should run in Ghostty · should name no app for a terminal it can't bring forward · should run nowhere known when nothing was said.
 
 `SessionEventParserTests`: should read where a session runs from the hook.
 
-`SessionMonitorTests`: should know where a session runs from its event · should keep where a session runs when an event doesn't say · should bring forward a repo's done session that finished last.
+`SessionMonitorTests`: should know where a session runs from its event · should keep where a session runs when an event doesn't say · should bring forward a repo's done session that finished last · should not bring forward a done repo whose latest session never said where it runs.
 
 `ClaudeSessionTests`: should be brought forward only once it is known where it runs · should not be brought forward when only its tmux pane is known · should be brought forward in tmux when the terminal around it is known.
 
-`SessionFocusTests`, on what `SessionFocus.place(of:)` answers (the terminal and folder it would hand the port), never on calls: should bring forward the terminal of the session clicked · should bring forward the latest of a folded repo · should have nowhere to go for a session that never said where it runs.
+`SessionFocusTests`, on where a fake terminal ended up: should bring the clicked session's terminal to the front · should bring the latest session of a clicked folded repo to the front · should bring nothing forward when the session never said where it runs.
 
 `HookInstallerTests`: should send where a session runs with each event.
 

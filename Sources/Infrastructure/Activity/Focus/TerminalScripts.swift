@@ -16,16 +16,14 @@ enum TerminalScripts {
         }
     }
 
-    /// The bundle ID of a terminal app ClaudeBar knows; nil for one known
-    /// only by its name.
-    static func bundleId(of app: SessionTerminal.App) -> String? {
+    /// The bundle ID of a terminal app ClaudeBar brings forward.
+    static func bundleId(of app: SessionTerminal.App) -> String {
         switch app {
         case .iTerm2: "com.googlecode.iterm2"
         case .ghostty: "com.mitchellh.ghostty"
         case .terminal: "com.apple.Terminal"
         case .warp: "dev.warp.Warp-Stable"
         case .wezTerm: "com.github.wez.wezterm"
-        case .other: nil
         }
     }
 

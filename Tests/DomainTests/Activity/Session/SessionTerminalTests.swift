@@ -54,8 +54,9 @@ struct SessionTerminalTests {
         #expect(SessionTerminal(environment: ["TERM_PROGRAM": "WezTerm"])?.app == .wezTerm)
     }
 
-    @Test func `should run in an unknown terminal by its name`() {
-        #expect(SessionTerminal(environment: ["TERM_PROGRAM": "Hyper"])?.app == .other("Hyper"))
+    @Test func `should name no app for a terminal it can't bring forward`() {
+        #expect(SessionTerminal(environment: ["TERM_PROGRAM": "vscode"]) == nil)
+        #expect(SessionTerminal(environment: ["TERM_PROGRAM": "Hyper"]) == nil)
     }
 
     @Test func `should run nowhere known when nothing was said`() {

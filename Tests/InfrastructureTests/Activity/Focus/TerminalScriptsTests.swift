@@ -35,7 +35,7 @@ struct TerminalScriptsTests {
 
     @Test
     func `should have no script for a terminal that can only be brought forward`() {
-        for app: SessionTerminal.App in [.terminal, .warp, .wezTerm, .other("kitty")] {
+        for app: SessionTerminal.App in [.terminal, .warp, .wezTerm] {
             #expect(TerminalScripts.script(for: place(SessionTerminal(app: app))) == nil)
         }
     }
@@ -56,7 +56,6 @@ struct TerminalScriptsTests {
         #expect(TerminalScripts.bundleId(of: .terminal) == "com.apple.Terminal")
         #expect(TerminalScripts.bundleId(of: .warp) == "dev.warp.Warp-Stable")
         #expect(TerminalScripts.bundleId(of: .wezTerm) == "com.github.wez.wezterm")
-        #expect(TerminalScripts.bundleId(of: .other("kitty")) == nil)
     }
 
     // MARK: - tmux

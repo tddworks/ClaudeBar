@@ -143,7 +143,7 @@ public final class SessionMonitor {
                     repoName: repoName,
                     count: sessions.count,
                     lastFinishedAt: finished(latest),
-                    latestSessionId: latest.id,
+                    place: latest.place,
                     title: sessions.count == 1 ? sessions[0].title : nil
                 )
             }

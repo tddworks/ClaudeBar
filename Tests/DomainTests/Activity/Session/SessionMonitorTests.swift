@@ -290,7 +290,7 @@ struct SessionMonitorTests {
         monitor.processEvent(makeEvent(sessionId: "b", eventName: .stop, cwd: "/code/claudebar", receivedAt: start.addingTimeInterval(60)))
         monitor.processEvent(makeEvent(sessionId: "c", eventName: .userPromptSubmit, cwd: "/code/claudebar", receivedAt: start.addingTimeInterval(90)))
 
-        #expect(monitor.doneByRepo == [DoneRepo(repoName: "claudebar", count: 2, lastFinishedAt: start.addingTimeInterval(60), latestSessionId: "b")])
+        #expect(monitor.doneByRepo == [DoneRepo(repoName: "claudebar", count: 2, lastFinishedAt: start.addingTimeInterval(60), place: nil)])
     }
 
     @Test
@@ -309,7 +309,7 @@ struct SessionMonitorTests {
         let opened = Date()
         monitor.processEvent(makeEvent(sessionId: "fresh", eventName: .sessionStart, cwd: "/code/tinyshop", receivedAt: opened))
 
-        #expect(monitor.doneByRepo == [DoneRepo(repoName: "tinyshop", count: 1, lastFinishedAt: opened, latestSessionId: "fresh")])
+        #expect(monitor.doneByRepo == [DoneRepo(repoName: "tinyshop", count: 1, lastFinishedAt: opened, place: nil)])
     }
 
     @Test
@@ -676,10 +676,22 @@ struct SessionMonitorTests {
     func `should bring forward a repo's done session that finished last`() {
         let monitor = SessionMonitor()
         let start = Date(timeIntervalSince1970: 1_000)
+        let ghostty = SessionTerminal(app: .ghostty)
 
-        monitor.processEvent(makeEvent(sessionId: "early", eventName: .stop, cwd: "/code/claudebar", receivedAt: start))
-        monitor.processEvent(makeEvent(sessionId: "late", eventName: .stop, cwd: "/code/claudebar", receivedAt: start.addingTimeInterval(60)))
+        monitor.processEvent(makeEvent(sessionId: "early", eventName: .stop, cwd: "/code/claudebar", receivedAt: start,
+                                       terminal: SessionTerminal(app: .iTerm2, iTermSessionId: "ABC")))
+        monitor.processEvent(makeEvent(sessionId: "late", eventName: .stop, cwd: "/code/claudebar",
+                                       receivedAt: start.addingTimeInterval(60), terminal: ghostty))
 
-        #expect(monitor.doneByRepo.first?.latestSessionId == "late")
+        #expect(monitor.doneByRepo.first?.place == TerminalPlace(terminal: ghostty, folder: "/code/claudebar"))
+    }
+
+    @Test
+    func `should not bring forward a done repo whose latest session never said where it runs`() {
+        let monitor = SessionMonitor()
+
+        monitor.processEvent(makeEvent(sessionId: "s", eventName: .stop, cwd: "/code/catalog"))
+
+        #expect(monitor.doneByRepo.first?.canBringForward == false)
     }
 }

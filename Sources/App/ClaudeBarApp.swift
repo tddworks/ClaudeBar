@@ -209,7 +209,7 @@ struct ClaudeBarApp: App {
 
         let sessionMonitor = SessionMonitor()
         self.sessionMonitor = sessionMonitor
-        let sessionFocus = SessionFocus(sessions: sessionMonitor, terminals: ScriptedTerminalFocus())
+        let sessionFocus = SessionFocus(terminals: ScriptedTerminalFocus())
         self.sessionFocus = sessionFocus
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle

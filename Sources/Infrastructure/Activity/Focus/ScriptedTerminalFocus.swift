@@ -43,15 +43,8 @@ public struct ScriptedTerminalFocus: TerminalFocus {
 
     @MainActor
     private static func activate(_ app: SessionTerminal.App) {
-        let running = NSWorkspace.shared.runningApplications
-        let match: NSRunningApplication? = if let bundleId = TerminalScripts.bundleId(of: app) {
-            running.first { $0.bundleIdentifier == bundleId }
-        } else if case .other(let name) = app {
-            running.first { $0.localizedName?.localizedCaseInsensitiveContains(name) == true }
-        } else {
-            nil
-        }
-        guard let match else {
+        let bundleId = TerminalScripts.bundleId(of: app)
+        guard let match = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleId }) else {
             AppLog.ui.info("The terminal of a Claude Code session isn't running; nothing to bring forward")
             return
         }

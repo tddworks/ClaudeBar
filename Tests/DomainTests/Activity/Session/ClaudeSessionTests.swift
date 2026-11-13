@@ -439,7 +439,7 @@ struct ClaudeSessionTests {
 
         session.runs(in: SessionTerminal(app: .ghostty))
 
-        #expect(session.canBringForward)
+        #expect(session.place == TerminalPlace(terminal: SessionTerminal(app: .ghostty), folder: "/code/claudebar"))
     }
 
     @Test
