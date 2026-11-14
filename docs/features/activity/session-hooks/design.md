@@ -197,23 +197,21 @@ Ana asks Claude to rerun 96 replays. Claude starts them as a background shell, s
 
 **Status:** BUILT on `feat/session-background-tasks`.
 
-Claude asks Ana to choose between three designs (`AskUserQuestion`) and waits. iTerm2's tab says *waiting*; ClaudeBar says **Working** until she answers. ClaudeBar's log for such a session shows only `UserPromptSubmit`, then nothing, while the question was open. *Needs you* is the phase for exactly this, and two things keep it from coming:
-
-- **ClaudeBar never installed `Notification`**: its hook list sits beside `SessionEvent.EventName` and leaves it out (CANONICAL_MODEL's open gap), so a permission prompt shows Working too.
-- **A question is no `Notification`**: Claude Code sends one for permission prompts and dialogs, not for `AskUserQuestion`.
+Claude asks Ana to choose between three designs (`AskUserQuestion`) and waits. iTerm2's tab says *waiting*; ClaudeBar says **Working** until she answers. ClaudeBar's log for such a session shows only `UserPromptSubmit`, then nothing, while the question was open. *Needs you* is the phase for exactly this. ClaudeBar never installed `Notification`, and a question sends none anyway: Claude Code sends one for permission prompts and dialogs, not for `AskUserQuestion`.
 
 - **What tells ClaudeBar**: `PreToolUse` fires as Claude calls the tool, with `tool_name` `AskUserQuestion` and the questions in `tool_input.questions`, each with its `question` text. `PostToolUse` fires once she has answered. iTerm2's integration listens to `PreToolUse` too.
-- **The hooks**: the installer registers every `EventName`, each with its matcher: `PreToolUse` and `PostToolUse` match `AskUserQuestion`, so Claude Code calls the hook for that tool only, never for every `Bash` or `Read`; `Notification` matches `permission_prompt|elicitation_dialog`, the prompts that wait on the person, and not `idle_prompt`, which Claude Code sends a minute after a turn ends and would turn a Done session into Needs you; every other event `.*`. Existing installs get them at the next launch, as ClaudeBar reinstalls its hooks when they are on.
-- **The phase**: `PreToolUse` for a question makes the session **Needs you**, its prompt the first question's text (*Which design should we build?*), as a permission prompt's is. The notch shows it as it shows a permission prompt. `PostToolUse` makes it Working again.
-- **Not here**: plan approval (`ExitPlanMode`), which also waits on the person; whether a `Notification` covers it is not yet checked.
+- **The hooks**: the installer registers every `EventName` that has a matcher: `PreToolUse` and `PostToolUse` match `AskUserQuestion`, so Claude Code calls the hook for that tool only, never for every `Bash` or `Read`; every other event `.*`; `Notification` none, so it isn't installed (below). Installing also takes ClaudeBar's hook off an event it no longer listens to. Existing installs get the hooks at the next launch, as ClaudeBar reinstalls them when they are on.
+- **The phase**: `PreToolUse` for a question makes the session **Needs you**, its prompt the first question's text (*Which design should we build?*). The notch shows the question; the card's row keeps the session's title. `PostToolUse` makes it Working again.
+- **Not here: permission prompts.** `Notification` (`permission_prompt`) would make the session Needs you, but nothing says when the person answers: Claude Code sends no event on approval, `PermissionDenied` fires only for auto mode's denials, and `PermissionRequest` carries no `tool_use_id` to match the approved tool's `PostToolUse`. The session would stay Needs you until the turn ends, the approved command running meanwhile. A permission prompt shows Working, as before: `SessionMonitor` leaves a session as it is on `Notification`, so a hook 0.5.27 installed, still sent by a session started before the upgrade, changes nothing. Following it needs its own design. Plan approval (`ExitPlanMode`) too.
 
 | Law | Owner |
 |---|---|
 | A question opened, with its text; a question answered | `SessionEvent.EventName` `.preToolUse`, `.postToolUse` (new), `SessionEvent.message` the first question's text, parsed by `SessionEventParser` |
-| The hooks: every event ClaudeBar reads, each with its matcher | `HookInstaller`: events from `SessionEvent.EventName.allCases`; `AskUserQuestion` for the tool events, `permission_prompt\|elicitation_dialog` for `Notification`, `.*` for the rest |
+| The hooks: every event ClaudeBar reads that has a matcher; its hook taken off any other | `HookInstaller.matcher(for:)`: `AskUserQuestion` for the tool events, none for `Notification`, `.*` for the rest |
 | A question opened makes the session Needs you; answered, Working | `SessionMonitor.processEvent` → `awaitInput(_:at:)` · `resume()` (exist) |
+| A permission prompt leaves the session as it is | `SessionMonitor.processEvent`: `.notification` changes nothing |
 
-`SessionEventParserTests`: should read a question Claude asks · should read a question answered. `SessionMonitorTests`: should need you while Claude waits on its question · should work again once the question is answered. `HookInstallerTests`: should listen to every session event ClaudeBar reads · should call the hook for questions only on tool events · should call the hook for prompts that wait on the person only.
+`SessionEventParserTests`: should read a question Claude asks · should read a question answered. `SessionMonitorTests`: should need you while Claude waits on its question · should work again once the question is answered · should keep working when Claude Code asks for permission, as nothing says when it is answered. `HookInstallerTests`: should listen to every session event ClaudeBar reads but permission prompts · should call the hook for questions only on tool events · should not listen to permission prompts, as nothing says when one is answered · should install each event with its own matcher · should take its hook off an event it no longer listens to, leaving other tools' hooks.
 
 ## Phase colours
 

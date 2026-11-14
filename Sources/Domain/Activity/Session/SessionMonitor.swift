@@ -75,7 +75,12 @@ public final class SessionMonitor {
             sessions[index].stop(at: event.receivedAt)
         case .userPromptSubmit:
             sessions[index].resume()
-        case .notification, .preToolUse:
+        case .notification:
+            // A permission prompt: nothing says when it is answered, so it
+            // leaves the session as it is (session-hooks design, *A question
+            // Claude asks*). Only a hook an older ClaudeBar installed still sends it.
+            break
+        case .preToolUse:
             sessions[index].awaitInput(event.message, at: event.receivedAt)
         case .postToolUse:
             sessions[index].resume()

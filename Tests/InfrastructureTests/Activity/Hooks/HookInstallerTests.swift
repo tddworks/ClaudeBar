@@ -36,9 +36,9 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `should listen to every session event ClaudeBar reads`() {
-        #expect(Set(HookInstaller.hookEvents) == Set(SessionEvent.EventName.allCases.map(\.rawValue)))
-        #expect(HookInstaller.hookEvents.contains("Notification"))
+    func `should listen to every session event ClaudeBar reads but permission prompts`() {
+        let read = SessionEvent.EventName.allCases.filter { $0 != .notification }.map(\.rawValue)
+        #expect(Set(HookInstaller.hookEvents) == Set(read))
     }
 
     @Test
@@ -49,8 +49,8 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `should call the hook for prompts that wait on the person only`() {
-        #expect(HookInstaller.matcher(for: "Notification") == "permission_prompt|elicitation_dialog")
+    func `should not listen to permission prompts, as nothing says when one is answered`() {
+        #expect(HookInstaller.matcher(for: "Notification") == nil)
     }
 
     @Test
@@ -61,7 +61,7 @@ struct HookInstallerTests {
         try HookInstaller.install(at: file.path)
 
         #expect(try file.hooks("PreToolUse").first?["matcher"] as? String == "AskUserQuestion")
-        #expect(try file.hooks("Notification").first?["matcher"] as? String == "permission_prompt|elicitation_dialog")
+        #expect(try file.hooks("Notification").isEmpty)
         #expect(try file.hooks("Stop").first?["matcher"] as? String == ".*")
     }
 
@@ -110,6 +110,21 @@ struct HookInstallerTests {
         for event in HookInstaller.hookEvents {
             #expect(try commands(file.hooks(event)) == [HookInstaller.hookCommand])
         }
+    }
+
+    @Test
+    func `should take its hook off an event it no longer listens to, leaving other tools' hooks`() throws {
+        let file = SettingsFile()
+        defer { file.remove() }
+        let settings: [String: Any] = ["hooks": ["Notification": [
+            ["matcher": "permission_prompt", "hooks": [["type": "command", "command": HookInstaller.hookCommand]]],
+            ["matcher": "", "hooks": [["type": "command", "command": "other-tool"]]],
+        ]]]
+        try file.write(String(decoding: try JSONSerialization.data(withJSONObject: settings), as: UTF8.self))
+
+        try HookInstaller.install(at: file.path)
+
+        #expect(try commands(file.hooks("Notification")) == ["other-tool"])
     }
 
     @Test
