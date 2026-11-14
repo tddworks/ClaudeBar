@@ -77,9 +77,24 @@ struct HTTPStepsFetcher: Fetching {
             return missing.contains(String(template.dropFirst(2).dropLast(2)).trimmingCharacters(in: .whitespaces))
         }
         var url = request.url
-        if var components = URLComponents(string: request.url), let items = components.queryItems {
-            components.queryItems = items.filter { !isMissing($0.value) }
-            url = components.string ?? request.url
+        if let qMark = request.url.firstIndex(of: "?") {
+            let hash = request.url.firstIndex(of: "#")
+            if hash == nil || qMark < hash! {
+                let beforeQuery = request.url[..<qMark]
+                let afterQMark = request.url[request.url.index(after: qMark)...]
+                let queryEnd = hash ?? request.url.endIndex
+                let queryPart = afterQMark[..<queryEnd]
+                let fragmentPart = request.url[queryEnd...]
+                let kept = queryPart.split(separator: "&", omittingEmptySubsequences: false).filter { part in
+                    let pieces = part.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                    guard pieces.count == 2 else { return true }
+                    let value = String(pieces[1]).removingPercentEncoding ?? String(pieces[1])
+                    return !isMissing(value)
+                }
+                url = kept.isEmpty
+                    ? String(beforeQuery) + fragmentPart
+                    : String(beforeQuery) + "?" + kept.joined(separator: "&") + fragmentPart
+            }
         }
         var body = request.body
         if let text = request.body, var object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any] {

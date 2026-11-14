@@ -50,6 +50,27 @@
                 "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
               },
               "dropEmpty": ["orgId"]
+            },
+            {
+              "name": "subscriptions",
+              "optional": true,
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/billing/subscriptions?orgId={{orgId}}",
+                "timeout": 15,
+                "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
+              },
+              "keep": { "periodStart": ["$.data.currentPeriodStart", "$.currentPeriodStart"] },
+              "dropEmpty": ["orgId"]
+            },
+            {
+              "name": "summary",
+              "optional": true,
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/usage/summary?orgId={{orgId}}&since={{periodStart}}",
+                "timeout": 15,
+                "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" }
+              },
+              "dropEmpty": ["orgId", "periodStart"]
             }
           ]
         }
