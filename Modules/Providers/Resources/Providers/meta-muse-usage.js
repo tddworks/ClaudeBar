@@ -37,6 +37,10 @@ function read(response, context) {
         }
         // The payload names a week but gives no length for the session.
         if (key === 'weekly') quota.windowSeconds = 604800;
+        else {
+            quota.compactTitle = 'Session';
+            quota.menuBarTitle = 'Session';
+        }
         quotas.push(quota);
     }
     if (!quotas.length) return failure('Muse reported no quota windows');

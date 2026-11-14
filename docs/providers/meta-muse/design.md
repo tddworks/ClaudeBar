@@ -32,13 +32,15 @@ The text form names the same three values: Tier, Window and Weekly. No account i
 - Keep the stable id `meta-muse`, display name `Muse Code`, CLI `muse`, and lineup order 310. Enable it by default, as with the other installed-CLI providers. No dashboard URL was verified, so none is declared.
 - Convert `usedPercent` into `100 - usedPercent`. Accept finite JSON numbers from 0 through 100; reject strings, flags and out-of-range values instead of presenting them as valid quota.
 - Map `window` to Session and `weekly` to Weekly. Convert `resetsAtMs` into epoch seconds by dividing by 1000. A missing or null reset means an unknown reset; reject a supplied nonnumeric or negative timestamp.
-- State the weekly length as seven days. The capture gives neither the session's start nor its length. Leave its `windowSeconds` absent so pace calculations do not assume five hours. The generic Session menu-bar short label remains `5h`; confirming Muse's session length is still needed before treating that label as a measured duration.
+- State the weekly length as seven days with `windowSeconds: 604800`. The capture gives neither the session's start nor its length. Leave its `windowSeconds` absent so pace calculations do not assume five hours. Give the session quota `compactTitle` and `menuBarTitle` values of `Session` for the notch, Touch Bar and menu bar. Keep `QuotaType.shortLabel` unchanged, including Claude's five-hour `5h` label.
 - Preserve a nonblank `allowance.tier` as a custom plan badge, including its spelling. Do not add a vendor case to `AccountTier`. Leave the badge absent if Muse supplies no tier.
 - `asOfMs` and `source` describe Muse's allowance capture. ClaudeBar keeps its own refresh time and does not infer token usage or cost from either field.
 
 ### Why a mapping script
 
 The existing JSON mapper has no schema guard or response-dependent error rule. It also has no epoch-millisecond reset case. Adding only that reset case would still allow an unsupported schema or a null allowance to pass without explaining Muse's `reason` and `hint`. The provider therefore uses the existing, sandboxed `Mapping.script` case for this envelope, as Oh My Pi does. This adds no engine case or Swift vendor type.
+
+The generic `ScriptOutput` reader decodes optional `compactTitle` and `menuBarTitle` fields and forwards them to the interim `UsageQuota` model. Scripts that omit them keep the existing label fallbacks. `JSONMapper` and the extension-format `UsageMapper` have no corresponding title fields in their contracts; this change leaves those formats unchanged.
 
 The script requires numeric `schemaVersion: 1` and an object allowance with at least one readable quota window. A missing quota window is unknown and omitted; a supplied malformed window fails the response. Unknown schemas and malformed payloads fail the mapping step. A null allowance with a reason or hint reports those fields as an error, rather than a zero-usage quota. Known sign-in reason words report Session expired; other reasons report an execution failure. No full JSON body is copied into an error.
 

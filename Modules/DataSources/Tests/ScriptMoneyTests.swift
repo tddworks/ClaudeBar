@@ -45,6 +45,15 @@ struct ScriptMoneyTests {
         #expect(usage.quotas.map(\.group) == ["Kimi", nil])
     }
 
+    @Test(arguments: ["percentRemaining:37", "left:{money:'12.50'}"])
+    func `should keep a quota's card and menu-bar titles without changing its kind or guessing its duration`(_ amount: String) throws {
+        let usage = try read("{quotas:[{type:'session',\(amount),compactTitle:'Current',menuBarTitle:'Current session'}]}")
+        let quota = try #require(usage.quota(for: .session))
+        #expect(quota.compactTitle == "Current")
+        #expect(quota.menuBarTitle == "Current session")
+        #expect(quota.windowDuration == nil)
+    }
+
     @Test
     func `should show a group with nothing to measure with its note`() throws {
         let usage = try read(#"{quotas:[{type:'time',name:'Kimi 5h',percentRemaining:40,group:'Kimi'}],notes:[{group:'Copilot · me',text:'No usage reported'}]}"#)
@@ -56,6 +65,8 @@ struct ScriptMoneyTests {
     func `should keep showing the percentage a script reports`() throws {
         let usage = try read(#"{quotas:[{type:'session',percentRemaining:37}]}"#)
         #expect(usage.quotas.first?.left == .share(37))
+        #expect(usage.quotas.first?.compactTitle == nil)
+        #expect(usage.quotas.first?.menuBarTitle == nil)
     }
 
     @Test(arguments: [#"{type:'model',name:'Balance'}"#, #"{type:'model',name:'Balance',percentRemaining:50,left:{money:'1'}}"#, #"{type:'model',name:'Balance',left:{money:'nope'}}"#])

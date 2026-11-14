@@ -61,6 +61,18 @@ struct MetaMuseDefinitionTests {
         #expect(usage.costUsage == nil)
     }
 
+    @Test func `should label Muse's session without claiming a duration`() async throws {
+        let usage = try await make().refreshPlain()
+        let session = try #require(usage.quota(for: .session))
+        let weekly = try #require(usage.quota(for: .weekly))
+        #expect(session.compactTitle == "Session")
+        #expect(session.menuBarTitle == "Session")
+        #expect(session.windowDuration == nil)
+        #expect(weekly.compactTitle == nil)
+        #expect(weekly.menuBarTitle == nil)
+        #expect(weekly.windowDuration == 604_800)
+    }
+
     @Test func `should convert millisecond resets without guessing the session length`() async throws {
         let usage = try await make().refreshPlain()
         #expect(usage.quota(for: .session)?.resetsAt == Date(timeIntervalSince1970: 1_794_651_434))
