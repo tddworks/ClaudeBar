@@ -12,7 +12,8 @@ function read(response, context) {
     const number = value => typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
     const text = value => ["string","number"].includes(typeof value) && String(value).trim() ? String(value).trim() : null;
     const timestamp = value => {
-        if (typeof value === "number" && Number.isFinite(value)) return value > 1e12 ? value / 1000 : value;
+        const numeric = number(value);
+        if (Number.isFinite(numeric)) return numeric > 1e12 ? numeric / 1000 : numeric;
         if (typeof value === "string" && value.trim() && Number.isFinite(Date.parse(value))) return Date.parse(value) / 1000;
         return null;
     };

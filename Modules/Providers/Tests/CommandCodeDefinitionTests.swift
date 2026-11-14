@@ -319,6 +319,17 @@ struct CommandCodeDefinitionTests {
         #expect(session.resetsAt == Date(timeIntervalSince1970: 1_770_000_000))
     }
 
+    @Test(arguments: ["1770000000000", "1770000000"])
+    func `should know the reset when it is a numeric string`(_ resetAt: String) async throws {
+        let json = """
+        { "windowLimits": { "fiveHour": { "used": 10, "cap": 40, "resetAt": "\(resetAt)" } } }
+        """
+
+        let session = try #require(try await parse(json).quota(for: .session))
+
+        #expect(session.resetsAt == Date(timeIntervalSince1970: 1_770_000_000))
+    }
+
     @Test
     func `should size the credits by the most specific plan name`() async throws {
         // individual-pro-v1 ($80) must not match individual-pro ($30)
