@@ -106,6 +106,22 @@ struct HTTPStepsTests {
     }
 
     @Test
+    func `should still fill a kept value in the URL when another query item was dropped`() async throws {
+        let sent = Sent()
+        let source = make(try decode("""
+        {"kind":"api","fetch":{"http":{"steps":[
+           {"name":"who","request":{"url":"https://acme.test/who"},"keep":{"org":"$.org.id","since":"$.since"}},
+           {"name":"usage","request":{"url":"https://acme.test/usage?org={{org}}&since={{since}}"},"dropEmpty":["org","since"]}]}},
+         "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"usage.used"}]}}}
+        """), network: network(["/who": (200, #"{"org":{"id":42}}"#), "/usage": (200, #"{"used":5}"#)], sent: sent))
+
+        _ = try await source.fetchUsage()
+
+        #expect(sent.query("org", at: "/usage") == "42")
+        #expect(sent.query("since", at: "/usage") == nil)
+    }
+
+    @Test
     func `should send no header for a value that wasn't found`() async throws {
         let sent = Sent()
         let source = make(try decode("""
