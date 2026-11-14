@@ -61,6 +61,7 @@ Or download the signed and notarized DMG from [Releases](https://github.com/tddw
 | Cloudflare AI | Workers AI neurons against 10k a day, Workers AI and AI Gateway tokens, the Workers Paid overage and the last invoice | [docs](docs/providers/cloudflare-ai/README.md) |
 | Runcrate | Credit balance in dollars | [docs](docs/providers/runcrate/README.md) |
 | UberLLM | Prepaid balance in dollars, less what running requests hold | [docs](docs/providers/uberllm/README.md) |
+| Muse Code | Session and weekly subscription allowances through the Muse CLI | [docs](docs/providers/meta-muse/README.md) |
 | Your own | Anything a script can print, via `~/.claudebar/extensions/` | [docs](docs/features/providers/extensions/README.md) |
 
 ## What It Covers
