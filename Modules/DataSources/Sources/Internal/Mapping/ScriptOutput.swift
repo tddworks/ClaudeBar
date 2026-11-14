@@ -14,9 +14,12 @@ struct ScriptOutput: Decodable {
         let windowSeconds: Double?
         /// The account or source it belongs to, when a report holds several.
         let group: String?
+        let compactTitle: String?
+        let menuBarTitle: String?
 
         private enum CodingKeys: String, CodingKey {
             case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds, group
+            case compactTitle, menuBarTitle
         }
 
         private struct MoneyLeft: Decodable {
@@ -48,6 +51,8 @@ struct ScriptOutput: Decodable {
             resetText = try container.decodeIfPresent(String.self, forKey: .resetText)
             windowSeconds = try container.decodeIfPresent(Double.self, forKey: .windowSeconds)
             group = try container.decodeIfPresent(String.self, forKey: .group)
+            compactTitle = try container.decodeIfPresent(String.self, forKey: .compactTitle)
+            menuBarTitle = try container.decodeIfPresent(String.self, forKey: .menuBarTitle)
         }
     }
 
@@ -120,7 +125,9 @@ struct ScriptOutput: Decodable {
                 resetsAt: quota.resetsAt.map { Date(timeIntervalSince1970: $0) },
                 resetText: quota.resetText,
                 windowDuration: quota.windowSeconds,
-                group: quota.group
+                group: quota.group,
+                compactTitle: quota.compactTitle,
+                menuBarTitle: quota.menuBarTitle
             )
         }
         let costUsage = cost.map { cost in
