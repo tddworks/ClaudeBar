@@ -28,7 +28,7 @@ Muse reports a subscription allowance, not a separate limit for each model. Clau
 - **Session expired** means the allowance response reports a sign-in failure. Follow Muse's hint or run `muse login` and refresh.
 - **Muse usage: …** shows the reason and hint Muse returned instead of an allowance.
 - **Unsupported Muse usage schema** means the CLI changed its JSON contract. The tested version is Muse Code 1.4.20 with schema version 1.
-- **Session pace is unavailable.** Muse's JSON does not state the session window length. ClaudeBar keeps it unknown; the generic Session short label is still `5h`.
+- **Session pace is unavailable.** Muse's JSON does not state the session window length. ClaudeBar keeps it unknown, so the session reads **Session**, not `5h`.
 
 ## Permissions
 
