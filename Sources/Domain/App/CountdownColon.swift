@@ -11,8 +11,8 @@ import Foundation
 /// indistinguishable from a stale one. Pulsing the colon is the signal that the
 /// value is live, the same way a digital clock blinks its separator.
 ///
-/// Only a `digit:digit-digit` run counts. A probe can set a `menuBarTitle`
-/// containing a colon (e.g. an account discriminator), and that punctuation
+/// Only a `digit:digit-digit` run counts. A quota's name can contain a colon
+/// (e.g. an account discriminator), and that punctuation
 /// must not pulse — it isn't counting down.
 ///
 /// Lives in Domain because "which characters are the countdown separator" is a

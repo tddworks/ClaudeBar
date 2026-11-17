@@ -1895,7 +1895,7 @@ struct WrappedStatCard: View {
                         .popoverFont(9, weight: .bold)
                         .foregroundStyle(statusColor)
 
-                    Text((quota.compactTitle ?? quota.quotaType.displayName).uppercased())
+                    Text(QuotaLabel(quota).name.uppercased())
                         .popoverFont(8, weight: .medium)
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
@@ -2103,7 +2103,7 @@ struct WrappedStatCard: View {
     }
 
     private var iconName: String {
-        let title = (quota.compactTitle ?? quota.quotaType.displayName).lowercased()
+        let title = QuotaLabel(quota).name.lowercased()
         if title.contains("build") { return "hammer.fill" }
         if title.contains("chat") { return "bubble.left.fill" }
         if title.contains("imagine") { return "sparkles" }

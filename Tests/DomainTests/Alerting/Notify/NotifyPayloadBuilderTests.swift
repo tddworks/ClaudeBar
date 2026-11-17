@@ -19,7 +19,7 @@ struct NotifyPayloadBuilderTests {
         quotaType: QuotaType = .session,
         resetsAt: Date? = nil,
         dollarRemaining: Decimal? = nil,
-        compactTitle: String? = nil
+        statesWindow: Bool = true
     ) -> NotifyQuotaReading {
         NotifyQuotaReading(
             providerId: provider,
@@ -29,8 +29,9 @@ struct NotifyPayloadBuilderTests {
                 quotaType: quotaType,
                 providerId: provider,
                 resetsAt: resetsAt,
-                dollarRemaining: dollarRemaining,
-                compactTitle: compactTitle
+                // Providers state their window; a label prints it only then.
+                windowDuration: statesWindow ? quotaType.conventionalWindow.seconds : nil,
+                dollarRemaining: dollarRemaining
             )
         )
     }
@@ -197,14 +198,13 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `should label a window with its quota's own short title over 7d`() {
-        // A probe that already named the window better than "7d" knows more
-        // about it than the quota type does.
+    func `should label a window with its stated length, and with its name when the length is unknown`() {
         let payload = builder.payload(readings: [
-            reading(70, quotaType: .weekly, compactTitle: "Spark 7d"),
+            reading(70, provider: "claude", name: "Claude", quotaType: .weekly),
+            reading(60, provider: "muse", name: "Muse", quotaType: .session, statesWindow: false),
         ])
 
-        #expect(payload.tile?.metrics.first?.label == "Spark 7d")
+        #expect(Set(payload.tile?.metrics.map(\.label) ?? []) == ["Claude 7d", "Muse Session"])
     }
 
     // MARK: - The row's arrangement

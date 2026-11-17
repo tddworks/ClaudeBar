@@ -1,0 +1,26 @@
+{
+  "profile": {
+    "id": "meta-muse",
+    "name": "Muse Code",
+    "look": {
+      "symbol": "m.square.fill",
+      "icon": "MetaMuseIcon",
+      "color": { "light": [0.03, 0.4, 1.0], "dark": [0.22, 0.59, 1.0] },
+      "gradientEnd": { "light": [0.02, 0.25, 0.78], "dark": [0.08, 0.4, 0.9] }
+    }
+  },
+  "cli": "muse",
+  "enabledByDefault": true,
+  "order": 310,
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Runs `muse usage --json` with your Meta login on this Mac",
+      "fetch": { "command": { "cli": "muse", "args": ["usage", "--json"], "timeout": 30 } },
+      "mapping": { "script": { "file": "meta-muse-usage.js" } },
+      "errors": { "cli.missing": { "cliNotFound": "muse" } }
+    }
+  ]
+}

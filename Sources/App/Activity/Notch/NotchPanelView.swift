@@ -195,7 +195,7 @@ struct NotchPanelView: View {
 
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(quota.compactTitle ?? quota.quotaType.shortLabel)
+                Text(QuotaLabel(quota).short)
                     .font(theme.font(size: 10.5, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.72))
                     .lineLimit(1)

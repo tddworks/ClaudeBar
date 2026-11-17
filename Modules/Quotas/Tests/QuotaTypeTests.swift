@@ -28,7 +28,6 @@ struct QuotaTypeTests {
     func `should show the Fable quota as Fable and read it back after saving it`() {
         let fable = QuotaType.modelSpecific("fable")
         #expect(fable.displayName == "Fable")
-        #expect(fable.shortLabel == "Fable")
         #expect(fable.quotaKey == "model:fable")
         #expect(QuotaType(quotaKey: "model:fable") == fable)
     }
@@ -46,30 +45,6 @@ struct QuotaTypeTests {
         #expect(QuotaType.timeLimit("MCP").displayName == "MCP")
         #expect(QuotaType.timeLimit("Daily Limit").displayName == "Daily Limit")
         #expect(QuotaType.timeLimit("Claude 5h").displayName == "Claude 5h")
-    }
-
-    // MARK: - Short Label Tests
-
-    @Test
-    func `should label the session quota 5h on the pill`() {
-        #expect(QuotaType.session.shortLabel == "5h")
-    }
-
-    @Test
-    func `should label the weekly quota 7d on the pill`() {
-        #expect(QuotaType.weekly.shortLabel == "7d")
-    }
-
-    @Test
-    func `should label a model's quota with the capitalized model name on the pill`() {
-        #expect(QuotaType.modelSpecific("opus").shortLabel == "Opus")
-        #expect(QuotaType.modelSpecific("sonnet").shortLabel == "Sonnet")
-    }
-
-    @Test
-    func `should label a time-limit quota on the pill exactly as the provider wrote it`() {
-        #expect(QuotaType.timeLimit("Monthly").shortLabel == "Monthly")
-        #expect(QuotaType.timeLimit("Codex 7d").shortLabel == "Codex 7d")
     }
 
     // MARK: - Duration Tests

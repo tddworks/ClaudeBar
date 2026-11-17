@@ -112,7 +112,7 @@ enum QuotaLineText {
     /// The quota's word: its compact title, or its type's name — with the
     /// login's name first when several logins need telling apart.
     static func title(_ quota: UsageQuota, login: String? = nil, shown: (String) -> String = { $0 }) -> String {
-        let name = quota.compactTitle ?? quota.quotaType.displayName
+        let name = QuotaLabel(quota).name
         return login.map { "\(shown($0)) · \(name)" } ?? name
     }
 

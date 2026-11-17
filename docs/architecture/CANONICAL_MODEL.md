@@ -486,6 +486,7 @@ definition.missingSettings           → [Setting]    Import: "Key needed"
 | **`left` is ONE OF TWO**: a share, or money. A balance with no ceiling has NO percentage — writing 100% is a lie the status then believes | `Quota.left` |
 | money keeps its currency; two currencies are never added or compared | `Money` |
 | **a window's length is the provider's word**, never guessed from a quota's name — the Codex RPC's primary window can be the weekly one | `Window` |
+| a quota's short label prints its window's length (*5h*, *7d*) only when the provider stated it; otherwise it is the quota's name (*Session*). A quota carries no title of its own — the page names it, and trims it to fit | `QuotaLabel` (the page's) |
 | pace exists only inside a window with a reset; outside it is `unknown`, never `onPace` | `Quota.pace` |
 | **ONE rate per quota**: how fast it is spent against its window — one used share (from `left`, so a capped money quota by its money), one noise floor (3% of the window) — and pace, the pace tick, the pace-aware status and the forecast all read it, never their own copy | `SpendRate` · `Quota.rate` |
 | a quota runs out before its reset ⇔ it is used more than 5 points ahead of the share of its window gone; within 5 either side it is on the line. ONE rule, read by Pace, the forecast and the pace-aware status | `SpendRate.runsOutBeforeReset` |
@@ -626,7 +627,7 @@ is built is not listed — the code is its record. What isn't yet:
 | `Usage` | carries `extensionMetrics` and `dailyUsageReport` | kernel fields only — usage history is read from `account.usageHistory` |
 | `Account.budget` | `app.claudeApiBudget` (Claude's card) and Bedrock's `dailyBudget` as a quota | a `Budget` beside the login's `Cost`, judged as `BudgetStatus`; the old keys read as the default login's budget |
 | `StatusPolicy` | `StatusColorPolicy` is in `Domain` | colours move to the App |
-| page state | `MenuBarLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`, with the menu-bar builders (`menuBarLabel(…)` and its siblings) as `QuotaMonitor+MenuBar` beside them, so the `Monitoring` module returns none of them | the App |
+| page state | `MenuBarLabel`, `QuotaLabel`, `CountdownColon`, `PopoverContentHeight`, `MenuBarStackedSize` in `Domain/App`, with the menu-bar builders (`menuBarLabel(…)` and its siblings) as `QuotaMonitor+MenuBar` beside them, so the `Monitoring` module returns none of them | the App |
 | `Day` | `DailyUsageReport` / `DailyUsageStat` (with `lines`) | `Day` — the sum of its lines, one per model; records with no model, one unnamed line |
 | *Add Provider* | no *Edit*; one quota per response from the sheet | *Edit*; several quotas from one response |
 | In use | folder logins only | an environment-variable record for API-key providers |

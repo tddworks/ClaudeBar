@@ -31,21 +31,6 @@ public enum QuotaType: Sendable, Equatable, Hashable {
         }
     }
 
-    /// Compact label used when several quota windows share the menu bar
-    /// (e.g. "5h" + "7d"). Terser than `displayName` to conserve menu bar width.
-    public var shortLabel: String {
-        switch self {
-        case .session:
-            "5h"
-        case .weekly:
-            "7d"
-        case .modelSpecific(let modelName):
-            modelName.capitalized
-        case .timeLimit(let name):
-            name
-        }
-    }
-
     /// Stable key used for persisted quota selection.
     public var quotaKey: String {
         switch self {
