@@ -183,6 +183,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="16.66%"><a href="https://github.com/heydryft"><img src="https://avatars.githubusercontent.com/u/48842933?v=4?s=80" width="80px;" alt="Nirupam Bhowmick"/><br /><sub><b>Nirupam Bhowmick</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=heydryft" title="Code">💻</a></td>
       <td align="center" valign="top" width="16.66%"><a href="https://psa.team/"><img src="https://avatars.githubusercontent.com/u/155616440?v=4?s=80" width="80px;" alt="Penguin Secret Agency"/><br /><sub><b>Penguin Secret Agency</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=PSA-Team-source" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/abhishek-paramaiq"><img src="https://avatars.githubusercontent.com/u/305433364?v=4?s=80" width="80px;" alt="abhishek-paramaiq"/><br /><sub><b>abhishek-paramaiq</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=abhishek-paramaiq" title="Code">💻</a></td>
+    </tr>
   </tbody>
   <tfoot>
     <tr>
