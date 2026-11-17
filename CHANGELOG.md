@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.28] - 2026-11-17
+
 ### Fixed
 - **Command Code shows your monthly Credits card again**: Command Code moved `planId` and the billing period from `/alpha/billing/credits` to `/alpha/billing/subscriptions`, so the monthly Credits bar vanished when 5-hour or weekly limits were present. ([#714](https://github.com/tddworks/ClaudeBar/issues/714)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/commandcode/README.md)
 - **A permission prompt no longer leaves a session on Needs you**: after you answered, the session could show **Needs you** for the rest of its turn. A permission prompt shows **Working** again, as before 0.5.27; a question Claude asks still shows **Needs you**. ([#713](https://github.com/tddworks/ClaudeBar/pull/713)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
@@ -447,7 +451,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.27...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.28...HEAD
+[0.5.28]: https://github.com/tddworks/ClaudeBar/compare/v0.5.27...v0.5.28
 [0.5.27]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...v0.5.27
 [0.5.26]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...v0.5.26
 [0.5.25]: https://github.com/tddworks/ClaudeBar/compare/v0.5.24...v0.5.25
