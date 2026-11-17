@@ -14,7 +14,7 @@ Below a provider's quota cards, the popover can show what you've used **today**,
 
 Each card ends with a line like "Vs Sep 23 +$5.00 (12.5%)": green when today is lower, orange when it's higher.
 
-Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output), **Cache** (writes and reads) or **Models** (the bar stacked by the models the tool's log names — hover a day to see each model's part, largest first; only when the log names models), with the thirty-day total in the corner. Hover a bar to see that day. The chip you pick is the unit everything speaks: the corner total, the hovered day's value and each model's part are all in it. **Cost** is offered only when the log prices its records and a day holds a cost — a log that writes a cost of zero everywhere (a free plan) counts tokens instead.
+Below them, **Daily usage — last 30 days** charts the same login's last thirty days, one bar a day: **Cost**, **Tokens** (input and output), **Cache** (writes and reads) or **Models** (the bar stacked by the models the tool's log names, with each model's thirty-day part listed under the chart — hover a day and the same list shows that day's parts; only when the log names models), with the thirty-day total in the corner. Hover a bar to see that day. The chip you pick is the unit everything speaks: the corner total, the hovered day's value and each model's part are all in it. **Cost** is offered only when the log prices its records and a day holds a cost — a log that writes a cost of zero everywhere (a free plan) counts tokens instead.
 
 ## Quick start
 

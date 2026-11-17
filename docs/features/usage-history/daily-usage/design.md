@@ -25,7 +25,8 @@ states it) — so a chart can stack by model and still add up to the day.
 Records with no model form one unnamed line. Sessions, working time and
 cache savings stay the day's own. Nothing about "today and yesterday" is a
 type; a range of days is one answer, `Days`, and every view is a question
-asked of it — which models, in order; a day's lines, largest first; its
+asked of it — which models, in order; a day's lines, largest first; each
+model's part of the range, and of one day in the range's rows; its
 total in a unit; which units it offers.
 
 A unit is **cost, tokens or cache**, and it is the unit the *view* chose:
@@ -425,7 +426,7 @@ something to show.
 | `DayLedger` (`Providers/Internal`) | closed days kept per login; open days asked of the `UsageLog` | — (new) |
 | `UsageHistory` (`Providers`, @Observable, one per login) | `days(in:)`, every date present | `Domain/UsageHistory` (one object for all logins, two days only) |
 | `Day` (`Quotas`) | the answer — the sum of its lines, one per model; records with no model, one unnamed line; `DailyUsageStat` until the words land | `Quotas` |
-| `Days` (`Quotas`) | a range of days: which models in order, a day's lines largest first, its total in a unit, the units it offers | — (new; the chart's arithmetic moves here) |
+| `Days` (`Quotas`) | a range of days: which models in order, a day's lines largest first, each model's part of the range and of a day in the same rows, its total in a unit, the units it offers | — (new; the chart's arithmetic moves here) |
 
 A model's display name is a mechanical rule, no vendor named: drop a
 leading segment when at least two remain (`claude-opus-4-6` reads

@@ -42,6 +42,33 @@ struct DaysTests {
             == ["claude-sonnet-5", "claude-opus-4-6", ""])
     }
 
+    @Test func `should add up each model's part over the range, largest first, the unnamed line among them`() {
+        let days = Days([day(15, lines: [sonnet, unnamed, opus]), day(14, lines: [opus])], knowsCost: true)
+
+        let lines = days.lines(in: .cost)
+
+        #expect(lines.map(\.model) == ["claude-opus-4-6", "claude-sonnet-5", ""])
+        #expect(lines.map { $0.spend.value(in: .cost) } == [24, 2, 1])
+        #expect(days.lines(in: .tokens).map(\.model) == ["claude-sonnet-5", "claude-opus-4-6", ""])
+    }
+
+    @Test func `should order models that spent the same by name, so the list never reshuffles`() {
+        let haiku = ModelUsageLine(model: "claude-haiku-5", totalTokens: 10, cost: 2)
+        let days = Days([day(4, lines: [sonnet, haiku])], knowsCost: true)
+
+        #expect(days.lines(in: .cost).map(\.model) == ["claude-haiku-5", "claude-sonnet-5"])
+    }
+
+    @Test func `should keep the range's models in their order on a day, nothing for one the day didn't use`() {
+        let onlyOpus = day(14, lines: [opus])
+        let days = Days([day(15, lines: [sonnet, unnamed, opus]), onlyOpus], knowsCost: true)
+
+        let lines = days.lines(in: .cost, on: onlyOpus)
+
+        #expect(lines.map(\.model) == ["claude-opus-4-6", "claude-sonnet-5", ""])
+        #expect(lines.map { $0.spend.value(in: .cost) } == [12, 0, 0])
+    }
+
     @Test func `should total the days in the unit asked`() {
         let days = Days([day(15, lines: [opus], tokens: 900, cacheWrite: 10, cacheRead: 40),
                          day(3, lines: [sonnet], tokens: 100, cacheWrite: 5, cacheRead: 20)], knowsCost: true)

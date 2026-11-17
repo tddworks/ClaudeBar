@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Command Code shows your monthly Credits card again**: Command Code moved `planId` and the billing period from `/alpha/billing/credits` to `/alpha/billing/subscriptions`, so the monthly Credits bar vanished when 5-hour or weekly limits were present. ([#714](https://github.com/tddworks/ClaudeBar/issues/714)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/commandcode/README.md)
 - **A permission prompt no longer leaves a session on Needs you**: after you answered, the session could show **Needs you** for the rest of its turn. A permission prompt shows **Working** again, as before 0.5.27; a question Claude asks still shows **Needs you**. ([#713](https://github.com/tddworks/ClaudeBar/pull/713)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/activity/session-hooks/README.md)
+- **Daily usage's per-model list is no longer cut off**: on **by model**, hovering a bar added that day's models below the chart, where the popover's bottom bar could hide them. Each model's 30-day part now always sits under the chart, and hovering shows that day's in the same rows. ([#718](https://github.com/tddworks/ClaudeBar/pull/718))
 - **A session reads 5h only when its provider says it lasts 5 hours**: the menu bar, notch, Touch Bar and Notify! printed *5h* for every session. A session whose length the provider doesn't state now reads **Session**. ([#715](https://github.com/tddworks/ClaudeBar/pull/715))
 
 ### Added

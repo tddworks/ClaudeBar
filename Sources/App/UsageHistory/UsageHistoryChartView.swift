@@ -82,14 +82,10 @@ struct UsageHistoryChartView: View {
                 Spacer(minLength: 0)
                 legend
             }
-            if shownSplit == .models {
-                modelsLegend
-            }
-
             chart
                 .frame(height: 110)
-            if shownSplit == .models, let day = selectedDay {
-                modelsDetail(for: day)
+            if shownSplit == .models {
+                modelsList
             }
         }
         .padding(12)
@@ -146,7 +142,7 @@ struct UsageHistoryChartView: View {
     }
 
     /// The colours' names, when a bar has more than one part. Models keep
-    /// their names in the wrapped key under the controls.
+    /// their names in the list under the chart.
     @ViewBuilder
     private var legend: some View {
         if shownSplit != .models, kinds.count > 1 {
@@ -158,21 +154,6 @@ struct UsageHistoryChartView: View {
                             .font(theme.font(size: 8, weight: .medium))
                             .foregroundStyle(theme.textTertiary)
                     }
-                }
-            }
-        }
-    }
-
-    /// The models' colour key, wrapped — a log may name several.
-    private var modelsLegend: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 8)], alignment: .leading, spacing: 4) {
-            ForEach(modelKinds, id: \.self) { model in
-                HStack(spacing: 3) {
-                    Circle().fill(color(of: model)).frame(width: 5, height: 5)
-                    Text(ModelUsageLine.displayName(model))
-                        .font(theme.font(size: 8, weight: .medium))
-                        .foregroundStyle(theme.textTertiary)
-                        .lineLimit(1)
                 }
             }
         }
@@ -299,12 +280,13 @@ struct UsageHistoryChartView: View {
 
     // MARK: - Formatting
 
-    /// The hovered day's models, by name, largest part first — wrapped, since
-    /// a day may name more models than one row holds. The unnamed line among
-    /// them, so they read as adding up to the day.
-    private func modelsDetail(for day: DailyUsageStat) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 4) {
-            ForEach(days.lines(of: day, in: shownCount), id: \.model) { line in
+    /// The models' colour key and parts, wrapped — a log may name several.
+    /// Always shown, so hovering a day never makes the card taller: the
+    /// thirty-day parts, or the hovered day's, in the same rows.
+    private var modelsList: some View {
+        let lines = selectedDay.map { days.lines(in: shownCount, on: $0) } ?? days.lines(in: shownCount)
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 8)], alignment: .leading, spacing: 4) {
+            ForEach(lines, id: \.model) { line in
                 HStack(spacing: 4) {
                     Circle().fill(color(of: line.model)).frame(width: 5, height: 5)
                     Text(ModelUsageLine.displayName(line.model))
