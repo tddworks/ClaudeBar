@@ -404,7 +404,7 @@ private struct QuotaVisibilityCard: View {
 
     private func toggleRow(_ quota: UsageQuota) -> some View {
         let key = quota.quotaType.quotaKey
-        return SettingsRow(title: quota.compactTitle ?? quota.quotaType.displayName, subtitle: nil) {
+        return SettingsRow(title: QuotaLabel(quota).name, subtitle: nil) {
             SettingsSwitch(isOn: Binding(
                 get: { !monitor.hiddenQuotaKeys(for: provider).contains(key) },
                 set: { watched in

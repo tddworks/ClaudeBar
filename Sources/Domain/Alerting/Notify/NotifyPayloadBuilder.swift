@@ -342,10 +342,9 @@ public struct NotifyPayloadBuilder: Sendable {
         return "\(providerName) \(slot.windowLabel)"
     }
 
-    /// The quota's own short title when its probe set one, otherwise the
-    /// window's short label ("5h", "7d").
+    /// The quota's short label: its stated window ("5h", "7d"), else its name.
     static func windowLabel(for quota: UsageQuota) -> String {
-        quota.compactTitle ?? quota.quotaType.shortLabel
+        QuotaLabel(quota).short
     }
 
     /// A percentage as a bare integer, or the formatted balance for a quota

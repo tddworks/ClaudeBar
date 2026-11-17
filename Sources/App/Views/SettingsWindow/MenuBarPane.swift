@@ -156,7 +156,7 @@ private struct MenuBarProviderCard: View {
                 MenuBarChoices {
                     ForEach(quotas, id: \.quotaType.quotaKey) { quota in
                         MenuBarQuotaChoiceButton(
-                            title: quota.menuBarTitle ?? quota.quotaType.displayName,
+                            title: QuotaLabel(quota).name,
                             isSelected: primaryKey == quota.quotaType.quotaKey
                         ) {
                             binding(\.primaryQuotaKey).wrappedValue = quota.quotaType.quotaKey
@@ -174,7 +174,7 @@ private struct MenuBarProviderCard: View {
                         }
                         ForEach(secondaryQuotas, id: \.quotaType.quotaKey) { quota in
                             MenuBarQuotaChoiceButton(
-                                title: quota.menuBarTitle ?? quota.quotaType.displayName,
+                                title: QuotaLabel(quota).name,
                                 isSelected: config.secondaryQuotaKey == quota.quotaType.quotaKey
                             ) {
                                 binding(\.secondaryQuotaKey).wrappedValue = quota.quotaType.quotaKey

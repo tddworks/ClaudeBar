@@ -72,7 +72,7 @@ struct CountdownColonTests {
 
     @Test
     func `should not blink a colon in a provider's own title, like an account name`() {
-        // A probe-supplied menuBarTitle can carry a colon (e.g. an account
+        // A quota's name can carry a colon (e.g. an account
         // discriminator). Only a digit:digit-digit run is a countdown.
         #expect(CountdownColon.ranges(in: "acct:main 12% · 45m").isEmpty)
     }

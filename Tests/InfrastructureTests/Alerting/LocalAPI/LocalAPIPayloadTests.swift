@@ -39,13 +39,12 @@ struct LocalAPIPayloadTests {
         #expect(report.resetsInMinutes == 120)
     }
 
-    @Test func `should use the card's short title for the quota name when it has one`() {
+    @Test func `should name a quota by what the person calls it, not its window's length`() {
         let quota = UsageQuota(
-            percentRemaining: 62, quotaType: .weekly, providerId: "claude",
-            compactTitle: "7d"
+            percentRemaining: 62, quotaType: .weekly, providerId: "claude", windowDuration: 604_800
         )
 
-        #expect(QuotaReport(quota: quota, at: now).name == "7d")
+        #expect(QuotaReport(quota: quota, at: now).name == "Weekly")
     }
 
     @Test func `should report a balance with no ceiling as money with no percentage`() {

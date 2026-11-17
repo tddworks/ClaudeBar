@@ -173,7 +173,7 @@ public struct QuotaReport: Codable, Equatable, Sendable {
 
     public init(quota: UsageQuota, at now: Date = Date()) {
         self.key = quota.quotaType.quotaKey
-        self.name = quota.compactTitle ?? quota.quotaType.displayName
+        self.name = QuotaLabel(quota).name
         self.percentLeft = quota.percentLeft
         if case let .money(remaining, of: cap) = quota.left {
             self.dollarRemaining = NSDecimalNumber(decimal: remaining.amount).doubleValue

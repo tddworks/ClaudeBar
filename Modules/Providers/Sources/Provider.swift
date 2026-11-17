@@ -441,7 +441,7 @@ public final class Provider {
                     percentRemaining: quota.percentRemaining, quotaType: quota.quotaType, providerId: account.id,
                     resetsAt: quota.resetsAt, resetText: quota.resetText, windowDuration: quota.windowDuration,
                     dollarRemaining: quota.dollarRemaining, dollarUsed: quota.dollarUsed, dollarCap: quota.dollarCap,
-                    group: quota.group, compactTitle: quota.compactTitle, menuBarTitle: quota.menuBarTitle,
+                    group: quota.group,
                     currency: quota.currency
                 )
             },

@@ -527,7 +527,7 @@ struct NotifyPane: View {
                             HStack(spacing: 8) {
                                 ForEach(gaugeQuotaOptions, id: \.quotaType.quotaKey) { quota in
                                     MenuBarQuotaChoiceButton(
-                                        title: quota.menuBarTitle ?? quota.quotaType.displayName,
+                                        title: QuotaLabel(quota).name,
                                         isSelected: settings.notifyGaugeQuotaKey == quota.quotaType.quotaKey
                                     ) {
                                         settings.notifyGaugeQuotaKey = quota.quotaType.quotaKey

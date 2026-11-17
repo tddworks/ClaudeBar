@@ -181,7 +181,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
     ) -> (providerId: String, name: String) {
         if provider.id.lowercased() == "antigravity" {
             if isMultiple, let quota {
-                let compact = quota.menuBarTitle ?? quota.compactTitle ?? quota.quotaType.displayName
+                let compact = QuotaLabel(quota).name
                 if !compact.isEmpty {
                     return (provider.id, compact)
                 }
@@ -191,7 +191,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
 
         let baseName = monitor?.lineupName(of: provider) ?? provider.displayName
         if isMultiple, let quota {
-            let compact = quota.menuBarTitle ?? quota.compactTitle ?? quota.quotaType.shortLabel
+            let compact = QuotaLabel(quota).short
             if !compact.isEmpty, !baseName.localizedCaseInsensitiveContains(compact) {
                 return (provider.id, "\(baseName) \(compact)")
             }

@@ -119,7 +119,7 @@ struct NotchRootView: View {
             }
         case .quotaThreshold(let quota), .quotaGlance(let quota):
             NotchLane {
-                NotchLabel(quota.compactTitle ?? quota.quotaType.shortLabel)
+                NotchLabel(QuotaLabel(quota).short)
                 Text("\(Int(quota.percentRemaining))%")
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
@@ -183,7 +183,7 @@ struct NotchRootView: View {
                     .fill(.white.opacity(0.18))
                     .frame(width: 1, height: 11)
 
-                NotchMeta("\(quota.compactTitle ?? quota.quotaType.shortLabel) \(Int(quota.percentRemaining))%")
+                NotchMeta("\(QuotaLabel(quota).short) \(Int(quota.percentRemaining))%")
                     .fixedSize()
 
                 if state.content.isRefreshing {

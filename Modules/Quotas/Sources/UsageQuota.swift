@@ -6,7 +6,7 @@ import Foundation
 /// - Note: Interim — today's shape, moved unchanged into the kernel.
 ///   Final version (docs/architecture/CANONICAL_MODEL.md) — becomes `Quota` with `left: Left` — a share OR money, never both. A balance
 ///   with no ceiling has no percentage; writing `percentRemaining: 100` for one is
-///   the lie §5 forbids. `menuBarTitle` and `compactTitle` are the page's (§6).
+///   the lie §5 forbids. What the page calls it is the page's (§6, `QuotaLabel`).
 public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// The percentage of quota remaining (can be negative when over quota, capped at 100)
     public let percentRemaining: Double
@@ -45,20 +45,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// nil for providers whose quotas render as one flat list.
     public let group: String?
 
-    /// Short card title used when the quota renders inside its group's
-    /// section (e.g. "5h", "Spark 7d"). The UI falls back to
-    /// `quotaType.displayName` when nil. The full label stays in
-    /// `quotaType` so persisted quota keys and the menu bar are unaffected.
-    public let compactTitle: String?
-
-    /// Menu-bar window title used when this quota renders as one of two
-    /// joined/stacked windows (e.g. "Claude 7d · jkjk987…"). Mappings set it
-    /// when the full label is too wide for the menu bar — typically a long
-    /// account discriminator. The menu bar falls back to
-    /// `quotaType.shortLabel` when nil. The full label stays in `quotaType`
-    /// so persisted quota keys are unaffected.
-    public let menuBarTitle: String?
-
     /// ISO 4217 currency code for dollar-based quotas (e.g. "USD", "CNY").
     /// nil means USD (the default). Used by `formattedDollarRemaining` to pick
     /// the display symbol; ignored for percentage-based quotas.
@@ -81,8 +67,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         dollarUsed: Decimal? = nil,
         dollarCap: Decimal? = nil,
         group: String? = nil,
-        compactTitle: String? = nil,
-        menuBarTitle: String? = nil,
         currency: String? = nil
     ) {
         self.percentRemaining = min(100, percentRemaining)  // Allow negative, cap at 100
@@ -95,8 +79,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         self.dollarUsed = dollarUsed
         self.dollarCap = dollarCap
         self.group = group
-        self.compactTitle = compactTitle
-        self.menuBarTitle = menuBarTitle
         self.currency = currency
         // The legacy shape: a balance with no ceiling was written as 100%.
         if let dollarRemaining, dollarCap == nil, percentRemaining == 100 {
@@ -117,15 +99,13 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         resetsAt: Date? = nil,
         resetText: String? = nil,
         windowDuration: TimeInterval? = nil,
-        group: String? = nil,
-        compactTitle: String? = nil,
-        menuBarTitle: String? = nil
+        group: String? = nil
     ) {
         switch left {
         case .share(let percent):
             self.init(percentRemaining: percent, quotaType: quotaType, providerId: providerId,
                       resetsAt: resetsAt, resetText: resetText, windowDuration: windowDuration,
-                      group: group, compactTitle: compactTitle, menuBarTitle: menuBarTitle)
+                      group: group)
         case .money(let remaining, let ceiling):
             let share = ceiling.flatMap { Self.share(of: remaining, in: $0) }
             self.init(percentRemaining: share ?? 100, quotaType: quotaType, providerId: providerId,
@@ -133,7 +113,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
                       dollarRemaining: remaining.amount,
                       dollarUsed: ceiling.map { $0.amount - remaining.amount },
                       dollarCap: ceiling?.amount,
-                      group: group, compactTitle: compactTitle, menuBarTitle: menuBarTitle,
+                      group: group,
                       currency: remaining.currency)
         }
     }

@@ -45,7 +45,7 @@ A stale-but-plausible countdown is worse than an obviously missing one: nothing 
 │   UsageQuota.compactResetTime ──▶ "4:40"        (unchanged)               │
 │                                                                           │
 │   CountdownColon.ranges(in:) ──▶ [Range<String.Index>]                    │
-│     matches \d(:)\d\d only — a probe's menuBarTitle colon never pulses    │
+│     matches \d(:)\d\d only — a quota name's colon never pulses            │
 │                                                                           │
 │   ObservationRenderSync.refreshNow()  ★ new entry point                   │
 └──────────────────────────────────────────────────────────────────────────┘

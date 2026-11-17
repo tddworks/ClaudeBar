@@ -8,13 +8,13 @@ import Foundation
 ///
 /// Built by `QuotaMonitor.menuBarLabel(...)`. When two quota windows are shown
 /// together (e.g. session + weekly), each window is prefixed with its
-/// `QuotaType.shortLabel` so the numbers stay distinguishable, and the overall
+/// `QuotaLabel.short` so the numbers stay distinguishable, and the overall
 /// status is the most severe of the shown windows. The per-window breakdown is
 /// also kept in `segments` so renderers that draw the windows individually
 /// (the stacked menu bar mode) can tint each one by its own status.
 public struct MenuBarLabel: Sendable, Equatable {
     /// One quota window's slice of the label: its rendered text (including the
-    /// `QuotaType.shortLabel` prefix when two windows are shown) and that
+    /// `QuotaLabel.short` prefix when two windows are shown) and that
     /// window's own status, before the worst-case merge that produces the
     /// label-level `status`.
     public struct Segment: Sendable, Equatable {
