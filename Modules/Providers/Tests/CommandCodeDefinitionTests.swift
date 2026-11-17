@@ -8,8 +8,8 @@ import Quotas
 import FoundationNetworking
 #endif
 
-/// Command Code as data: `whoami`, then `credits` with the org it named,
-/// read by `commandcode-credits.js` — the old probe's fixtures, quota for quota.
+/// Command Code as data: `whoami`, `credits`, optional `subscriptions`, and optional `summary`,
+/// read by `commandcode-credits.js`.
 @MainActor @Suite
 struct CommandCodeDefinitionTests {
 
@@ -30,24 +30,45 @@ struct CommandCodeDefinitionTests {
     """
 
     private func make(_ json: String = sampleResponse, whoami: String = #"{"user":{"userName":"alice"},"org":{"id":42}}"#,
-                      status: Int = 200, creditsStatus: Int? = nil, networkFailure: Bool = false, acceptedTokens: [String] = ["personal", "work", "file"], vault: MemoryVault = MemoryVault(["commandcode.apiKey":"personal"]),
+                      subscriptions: String = "{}", summary: String = "{}",
+                      status: Int = 200, creditsStatus: Int? = nil, subscriptionsStatus: Int = 200, summaryStatus: Int = 200,
+                      networkFailure: Bool = false, acceptedTokens: [String] = ["personal", "work", "file"],
+                      vault: MemoryVault = MemoryVault(["commandcode.apiKey":"personal"]),
                       environment: [String:String] = [:], home: URL = FileManager.default.temporaryDirectory) throws -> Provider {
         let definition = try ProviderFactory.builtIn("commandcode")
         let first = (try? JSONSerialization.jsonObject(with:Data(whoami.utf8))) as? [String:Any] ?? [:]
         let payload = first["data"] as? [String:Any] ?? first
         let expectedOrg = ((payload["org"] as? [String:Any])?["id"]).map { String(describing:$0) }
+        let subRoot = (try? JSONSerialization.jsonObject(with:Data(subscriptions.utf8))) as? [String:Any] ?? [:]
+        let subPayload = subRoot["data"] as? [String:Any] ?? subRoot
+        let expectedSince = subPayload["currentPeriodStart"] as? String
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             #expect(request.url?.host == "api.commandcode.ai")
             #expect(request.timeoutInterval == 15)
             #expect(acceptedTokens.map { "Bearer " + $0 }.contains(request.value(forHTTPHeaderField:"Authorization") ?? ""))
             if networkFailure { throw URLError(.notConnectedToInternet) }
-            let first = request.url?.path == "/alpha/whoami"
-            if !first {
-                let query = URLComponents(url:request.url!,resolvingAgainstBaseURL:false)?.queryItems?.first(where:{$0.name == "orgId"})?.value
+            let path = request.url?.path
+            let queryItems = URLComponents(url:request.url!,resolvingAgainstBaseURL:false)?.queryItems ?? []
+            if path != "/alpha/whoami" {
+                let query = queryItems.first(where:{$0.name == "orgId"})?.value
                 #expect(query == expectedOrg)
             }
-            return (Data((first ? whoami : json).utf8),HTTPURLResponse(url:request.url!,statusCode:first ? status : (creditsStatus ?? status),httpVersion:nil,headerFields:nil)!)
+            switch path {
+            case "/alpha/whoami":
+                return (Data(whoami.utf8),HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:nil,headerFields:nil)!)
+            case "/alpha/billing/credits":
+                return (Data(json.utf8),HTTPURLResponse(url:request.url!,statusCode:creditsStatus ?? status,httpVersion:nil,headerFields:nil)!)
+            case "/alpha/billing/subscriptions":
+                return (Data(subscriptions.utf8),HTTPURLResponse(url:request.url!,statusCode:subscriptionsStatus,httpVersion:nil,headerFields:nil)!)
+            case "/alpha/usage/summary":
+                let since = queryItems.first(where:{$0.name == "since"})?.value
+                #expect(since == expectedSince)
+                return (Data(summary.utf8),HTTPURLResponse(url:request.url!,statusCode:summaryStatus,httpVersion:nil,headerFields:nil)!)
+            default:
+                Issue.record("Unexpected path: \(path ?? "<nil>")")
+                return (Data("{}".utf8),HTTPURLResponse(url:request.url!,statusCode:404,httpVersion:nil,headerFields:nil)!)
+            }
         }
         return Provider(definition:definition,settings:InMemoryProviderSettings(),makeDataSource:{source,login in
             DataSources.make(source,providerId:definition.id,cliExecutor:MockCLIExecutor(),network:network,
@@ -55,9 +76,136 @@ struct CommandCodeDefinitionTests {
                 environment:{environment[$0]},homeDirectory:home,now:{Date()})
         },vault:vault)
     }
-    private func parse(_ json: String, accountEmail: String? = nil) async throws -> UsageSnapshot {
+    private func parse(_ json: String, accountEmail: String? = nil, subscriptions: String = "{}", summary: String = "{}") async throws -> UsageSnapshot {
         let user = try JSONSerialization.data(withJSONObject:["user":["userName":accountEmail ?? ""],"org":["id":42]])
-        return try await make(json,whoami:String(decoding:user,as:UTF8.self)).refreshPlain()
+        return try await make(json,whoami:String(decoding:user,as:UTF8.self),subscriptions:subscriptions,summary:summary).refreshPlain()
+    }
+
+    @Test
+    func `should show the monthly credits from subscriptions when credits omits planId`() async throws {
+        let creditsJson = """
+        {
+          "credits": {
+            "belowThreshold": false,
+            "creditThreshold": 0,
+            "monthlyCredits": 0.1,
+            "purchasedCredits": 0,
+            "freeCredits": 0
+          },
+          "windowLimits": {
+            "limited": true,
+            "fiveHour": { "used": 0.4, "cap": 3, "resetAt": 1794653072303 },
+            "weekly": { "used": 0.6, "cap": 6, "resetAt": 1795174633785 }
+          }
+        }
+        """
+        let subscriptionsJson = """
+        {
+          "success": true,
+          "data": {
+            "status": "active",
+            "planId": "individual-go-v1",
+            "currentPeriodStart": "2026-10-25T09:28:05.000Z",
+            "currentPeriodEnd": "2026-11-25T09:28:05.000Z"
+          }
+        }
+        """
+
+        let snapshot = try await parse(creditsJson, subscriptions: subscriptionsJson)
+
+        #expect(snapshot.quotas.count == 3)
+        let credits = try #require(snapshot.quota(for: .timeLimit("Credits")))
+        #expect(credits.left == .money(Money(Decimal(string: "0.1")!, currency: "USD"), of: Money(10, currency: "USD")))
+        #expect(credits.percentRemaining == 1)
+        #expect(credits.resetsAt == Date(timeIntervalSince1970: 1_795_598_885))
+        #expect(credits.windowDuration == TimeInterval(31 * 86400))
+    }
+
+    @Test
+    func `should fall back to usage summary and remaining credits when the active plan is unknown`() async throws {
+        let creditsJson = """
+        {
+          "credits": { "monthlyCredits": 7.5, "purchasedCredits": 0, "freeCredits": 0 },
+          "windowLimits": {
+            "fiveHour": { "used": 1, "cap": 4, "resetAt": 1794653072303 }
+          }
+        }
+        """
+        let subscriptionsJson = """
+        {
+          "data": {
+            "status": "active",
+            "planId": "enterprise-custom",
+            "currentPeriodStart": "2026-10-25T09:28:05.000Z",
+            "currentPeriodEnd": "2026-11-25T09:28:05.000Z"
+          }
+        }
+        """
+        let summaryJson = #"{ "totalCost": 22.5 }"#
+
+        let snapshot = try await parse(creditsJson, subscriptions: subscriptionsJson, summary: summaryJson)
+
+        #expect(snapshot.quotas.count == 2)
+        let credits = try #require(snapshot.quota(for: .timeLimit("Credits")))
+        #expect(credits.left == .money(Money(Decimal(string: "7.5")!, currency: "USD"), of: Money(30, currency: "USD")))
+        #expect(credits.percentRemaining == 25)
+        #expect(credits.resetsAt == Date(timeIntervalSince1970: 1_795_598_885))
+        #expect(credits.windowDuration == TimeInterval(31 * 86400))
+    }
+
+    @Test(arguments: [404, 500])
+    func `should still show window limits when subscriptions or summary fails`(_ status: Int) async throws {
+        let creditsJson = """
+        {
+          "credits": { "monthlyCredits": 4, "purchasedCredits": 0, "freeCredits": 0 },
+          "windowLimits": {
+            "fiveHour": { "used": 10, "cap": 40, "resetAt": 1770000000000 },
+            "weekly": { "used": 50, "cap": 200, "resetAt": 1770500000000 }
+          }
+        }
+        """
+
+        let snapshot = try await make(creditsJson, subscriptionsStatus: status, summaryStatus: status).refreshPlain()
+
+        #expect(snapshot.quotas.count == 2)
+        #expect(snapshot.quota(for: .session)?.percentRemaining == 75)
+        #expect(snapshot.quota(for: .weekly)?.percentRemaining == 75)
+    }
+
+    @Test
+    func `should ignore monthly plan allowance and period reset when the subscription is canceled`() async throws {
+        let creditsJson = """
+        {
+          "credits": { "monthlyCredits": 0, "purchasedCredits": 5, "freeCredits": 0, "planId": "individual-go-v1" }
+        }
+        """
+        let subscriptionsJson = """
+        {
+          "data": {
+            "status": "canceled",
+            "planId": "individual-go-v1",
+            "currentPeriodStart": "2026-09-25T09:28:05.000Z",
+            "currentPeriodEnd": "2026-10-25T09:28:05.000Z"
+          }
+        }
+        """
+        let summaryJson = #"{ "totalCost": 15 }"#
+
+        let credits = try #require(try await parse(creditsJson, subscriptions: subscriptionsJson, summary: summaryJson).quota(for: .timeLimit("Credits")))
+
+        #expect(credits.left == .money(Money(5, currency: "USD"), of: nil))
+        #expect(credits.dollarCap == nil)
+        #expect(credits.resetsAt == nil)
+        #expect(credits.windowDuration == nil)
+    }
+
+    @Test(arguments: [(401, "sessionExpired"), (429, "rateLimited")])
+    func `should ask to sign in again or wait when subscriptions is refused or rate limited`(_ status: Int, _ tag: String) async throws {
+        let product = try make(subscriptionsStatus: status)
+        let account = product.defaultAccount
+
+        await #expect { try await product.refresh(account) } throws: { ($0 as? UsageError)?.tag == tag }
+        #expect(account.snapshot == nil)
     }
 
     @Test
@@ -164,6 +312,17 @@ struct CommandCodeDefinitionTests {
     func `should know the reset when it is in seconds`() async throws {
         let json = """
         { "windowLimits": { "fiveHour": { "used": 10, "cap": 40, "resetAt": 1770000000 } } }
+        """
+
+        let session = try #require(try await parse(json).quota(for: .session))
+
+        #expect(session.resetsAt == Date(timeIntervalSince1970: 1_770_000_000))
+    }
+
+    @Test(arguments: ["1770000000000", "1770000000"])
+    func `should know the reset when it is a numeric string`(_ resetAt: String) async throws {
+        let json = """
+        { "windowLimits": { "fiveHour": { "used": 10, "cap": 40, "resetAt": "\(resetAt)" } } }
         """
 
         let session = try #require(try await parse(json).quota(for: .session))

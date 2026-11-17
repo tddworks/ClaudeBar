@@ -18,7 +18,7 @@ ClaudeBar only needs the key; the `cmd` binary doesn't have to be on your PATH. 
 
 - **"Session expired. Run `cmd login` or set COMMAND_CODE_API_KEY."** means Command Code rejected the key (HTTP 401 or 403). The key doesn't expire on its own, so it was revoked or replaced: log in again.
 - **The environment variable must be in ClaudeBar's environment**, not only your shell profile. ClaudeBar reads its own process environment, so a variable exported in `~/.zshrc` isn't seen when the app starts from Finder or at login. `cmd login` always works.
-- **Credits card without a percentage:** the percentage needs your plan's monthly allowance, which ClaudeBar knows only for the plans it recognises. On an unknown plan the card shows just the balance, and only when there are no 5-hour or weekly limits to show.
+- **Credits card without a percentage:** the percentage and renewal date come from your active subscription plan (or current-period spend). Without an active plan cap the card shows just the balance, and only when there are no 5-hour or weekly limits to show.
 - **Nothing shows and there's no error:** no API key was found, so ClaudeBar skips the provider.
 
 ## See also
