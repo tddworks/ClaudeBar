@@ -55,6 +55,29 @@ public struct Days: Sendable, Equatable {
         day.lines.sorted { $0.spend.value(in: unit) > $1.spend.value(in: unit) }
     }
 
+    /// Each model's part of the whole range, largest first in `unit` — the
+    /// unnamed line among them, so they add up to the range's total.
+    public func lines(in unit: Unit) -> [ModelUsageLine] {
+        var spends: [String: Spend] = [:]
+        for line in stats.flatMap(\.lines) {
+            spends[line.model, default: .none] = spends[line.model, default: .none] + line.spend
+        }
+        return spends.map { ModelUsageLine(model: $0.key, spend: $0.value) }.sorted {
+            let (lhs, rhs) = ($0.spend.value(in: unit), $1.spend.value(in: unit))
+            return lhs != rhs ? lhs > rhs : $0.model < $1.model
+        }
+    }
+
+    /// The range's models, in the range's order, each with its part of `day`
+    /// — nothing for a model the day didn't use — so a list that switches
+    /// from the range to a day keeps its rows where they were.
+    public func lines(in unit: Unit, on day: DailyUsageStat) -> [ModelUsageLine] {
+        lines(in: unit).map { range in
+            ModelUsageLine(model: range.model,
+                           spend: day.lines.first { $0.model == range.model }?.spend ?? .none)
+        }
+    }
+
     /// A day's total in `unit`.
     public func value(of day: DailyUsageStat, in unit: Unit) -> Double {
         day.spend.value(in: unit)
