@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Claude's limit resets**: in API mode, Claude shows how many Fable resets and limit resets your account holds, for accounts Claude gives them to. Use one with `/limit-reset` in Claude Code. ([#720](https://github.com/tddworks/ClaudeBar/pull/720)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/claude/README.md)
+
 ---
 
 ## [0.5.28] - 2026-11-17
