@@ -27,13 +27,34 @@ so the choice is always there to switch with.
 ## Take it with you — the HTML report
 
 The export button (top right of the card) writes the recap you are looking at
-out as **one HTML file**: the total, the change, the split, a bar for every
-day, the models, and the highlights — styled on its own, in light or dark to
-match the reader's system, with no script and nothing to install. Pick where
-to save it; the file opens in your browser when saved, and if it can't be
-written the card says why. It carries the card's
-numbers and then the detail the card only summarises — a bar for every day
-and a row for every named model — and the app never reads it back.
+out as **one HTML file** — styled on its own, in light or dark to match the
+reader's system, with nothing to install and nothing fetched from the network.
+Pick where to save it; the file opens in your browser when saved, and if it
+can't be written the card says why. The app never reads it back.
+
+It carries the card's numbers and then the detail the card only summarises:
+
+| In the report | What it says |
+|---|---|
+| **The week / month** | the total, the change, tokens, time worked, sessions |
+| **Day by day** | a bar for every day; point at one for that day's cost, tokens, sessions, time worked, cache savings and top models |
+| **Where it went · Models · Projects** | a row for every provider, every named model and every named project, each with its value, its share and its change against the period before |
+| **Tokens by kind** | input, output, cache writes and cache reads |
+| **Highlights** | top model, biggest day, active days, the average per active day and per session, what the cache saved and its hit rate |
+
+And you can ask it things:
+
+- **Cost · Tokens · Cache** (top right) reads the whole page in another unit.
+  Dollars are offered only when the recap itself reads in dollars.
+- **Total · Provider · Model · Project** stacks each day's bar by that split.
+- **Click a day** and every list below reads for that day alone; click it
+  again, or *Show the whole week*, to go back.
+- **Sort** a list by name, value or change; a long list shows its first eight
+  rows and *Show all*.
+
+If the reader's browser runs no script (some mail previews don't), the page
+still says the whole recap in the unit the card used — only the choices are
+gone.
 
 ## Where it is
 
@@ -85,9 +106,10 @@ background.
 - **A second login of the same provider is added in**, not shown apart: the
   split is by provider, so *Personal* and *Work* Claude read as one **Claude**.
 - **Nothing leaves the Mac by itself.** The recap is read and drawn here. The
-  HTML report goes only where *you* save it, and holds only what the card
-  shows — provider and model names among them — so send it only to people who
-  may read those. The recap itself travels out only if you tick **Weekly
+  HTML report goes only where *you* save it, and holds what the card shows
+  plus the detail behind it — provider, model and **project names** (a
+  project is the folder's name, never its path) among them — so send it only
+  to people who may read those. The recap itself travels out only if you tick **Weekly
   recap** on a [webhook](../../alerting/webhooks/README.md). The shareable
   image and a Mac notification of its own are not built.
 

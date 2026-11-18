@@ -51,6 +51,13 @@ public struct Spend: Sendable, Equatable, Codable {
               cost: whole.cost - part.cost)
     }
 
+    /// How much of the input came from the cache: cache reads over cache
+    /// reads and fresh input, 0…1 — 0 when neither was counted.
+    public var cacheHitRate: Double {
+        let asked = cacheReadTokens + inputTokens
+        return asked > 0 ? Double(cacheReadTokens) / Double(asked) : 0
+    }
+
     /// The spend in `unit`: its cost, its tokens, or its cache tokens.
     public func value(in unit: Days.Unit) -> Double {
         switch unit {

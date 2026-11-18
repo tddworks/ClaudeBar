@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The recap's HTML report says more, and answers back**: each provider's, model's and project's change, every day's own figures, tokens by kind. Switch cost, tokens or cache, stack the bars by provider, model or project, click a day to read it alone, sort a list. ([#PRNUM](https://github.com/tddworks/ClaudeBar/pull/PRNUM)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md)
+
 ---
 
 ## [0.5.28] - 2026-11-17
