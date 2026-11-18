@@ -230,7 +230,7 @@ provider gets**, never a Codex special case:
 | `resetsAt`: `epochSeconds` · `secondsFromNow` · `iso8601` | both shapes occur | all |
 | `window`: `seconds` · `minutes` | the window length is the provider's word ([the law](CANONICAL_MODEL.md#5--the-laws-on-the-node-that-owns-them)) | all |
 | `kindByWindow` | Pro lists its only window, a week, where Plus lists its 5-hour one | any provider whose plans differ in their windows |
-| `notes` · `when` · `text` · `round` | the number of usage limit resets is a count, not a limit; the credit balance has no limit and isn't money | any provider that reports a count or a balance beside its limits |
+| `notes` · `when` · `text` · `round` · `sum` | the number of usage limit resets is a count, not a limit; the credit balance has no limit and isn't money | any provider that reports a count or a balance beside its limits; Claude, whose resets are a sum over grants |
 | name rules: `firstOf`, `dropPrefix`, `capitalize`, `suffix` | `codex_spark` → `Spark`, `Spark 7d` | any provider with model names |
 
 **A rule the language cannot say yet** (today's free-plan defaults in the RPC

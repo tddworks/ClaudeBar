@@ -105,4 +105,45 @@ struct MappingNotesTests {
         #expect(try notes(rules, #"{"credits":{"has_credits":true,"unlimited":true,"balance":"10"}}"#) == [ExtensionMetric(label: "Credits", value: "Unlimited", unit: "")])
         #expect(try notes(rules, #"{"credits":{"has_credits":true,"unlimited":false,"balance":"10"}}"#) == [ExtensionMetric(label: "Credits", value: "10", unit: "credits")])
     }
+
+    // MARK: - A count spread over the elements of an array
+
+    /// Claude's limit resets: one count per grant, Fable grants apart.
+    private let resets = #"""
+    [{ "label": "Fable resets", "sum": { "each": "$.grants", "value": "resets_left", "where": { "path": "gives_back_weekly", "equals": true } }, "unit": "available" },
+     { "label": "Limit resets", "sum": { "each": "$.grants", "value": "resets_left", "unless": { "path": "gives_back_weekly", "equals": true } }, "unit": "available" }]
+    """#
+
+    @Test
+    func `should add up the count of every element the note is about`() throws {
+        let body = #"""
+        {"grants":[{"resets_left":1,"gives_back_weekly":false},{"resets_left":1,"gives_back_weekly":true},
+                   {"resets_left":2,"gives_back_weekly":true},{"resets_left":3}]}
+        """#
+
+        #expect(try notes(resets, body) == [
+            ExtensionMetric(label: "Fable resets", value: "3", unit: "available"),
+            ExtensionMetric(label: "Limit resets", value: "4", unit: "available"),
+        ])
+    }
+
+    @Test
+    func `should show none of a count when the array holds nothing it is about`() throws {
+        #expect(try notes(resets, #"{"grants":[]}"#) == [
+            ExtensionMetric(label: "Fable resets", value: "0", unit: "available"),
+            ExtensionMetric(label: "Limit resets", value: "0", unit: "available"),
+        ])
+    }
+
+    @Test(arguments: [#"{}"#, #"{"grants":null}"#, #"{"grants":{"resets_left":1}}"#])
+    func `should show no added-up note when the answer doesn't send the array`(_ body: String) throws {
+        #expect(try notes(resets, body) == nil)
+    }
+
+    @Test
+    func `should leave out an element that sends no count`() throws {
+        let body = #"{"grants":[{"resets_left":"n/a"},{"resets_left":null},{"resets_left":2}]}"#
+
+        #expect(try notes(resets, body)?.last == ExtensionMetric(label: "Limit resets", value: "2", unit: "available"))
+    }
 }

@@ -207,13 +207,13 @@
       },
       "fetch": {
         "http": {
-          "url": "https://api.anthropic.com/api/oauth/usage",
+          "url": "https://api.anthropic.com/api/oauth/usage?cedar_ember=1",
           "headers": {
             "Authorization": "Bearer {{token}}",
             "Accept": "application/json",
             "Content-Type": "application/json",
             "anthropic-beta": "oauth-2025-04-20",
-            "User-Agent": "ClaudeBar"
+            "User-Agent": "claude-cli/2.1.311 (external, cli)"
           },
           "timeout": 15
         }
@@ -355,6 +355,28 @@
                 "amount": "$.extra_usage.monthly_limit",
                 "decimals": ["$.extra_usage.decimal_places", 2]
               }
+            }
+          ],
+          "notes": [
+            {
+              "label": "Fable resets",
+              "when": { "path": "$.cedar_ember.eligible", "equals": true },
+              "sum": {
+                "each": "$.cedar_ember.grants",
+                "value": "resets_left",
+                "where": { "path": "gives_back_weekly", "equals": true }
+              },
+              "unit": "available"
+            },
+            {
+              "label": "Limit resets",
+              "when": { "path": "$.cedar_ember.eligible", "equals": true },
+              "sum": {
+                "each": "$.cedar_ember.grants",
+                "value": "resets_left",
+                "unless": { "path": "gives_back_weekly", "equals": true }
+              },
+              "unit": "available"
             }
           ]
         }

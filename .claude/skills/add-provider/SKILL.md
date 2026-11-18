@@ -186,7 +186,9 @@ where they are read: a path list (`["{{account.folder}}/.claude.json",
   ],
   "notes": [{ "label": "Usage limit resets", "value": "$.resets.count", "unit": "available" },  // a count, not a limit
     { "label": "Credits", "when": { "path": "$.credits.unlimited", "equals": true }, "text": "Unlimited" },  // one note per label:
-    { "label": "Credits", "value": "$.credits.balance", "unit": "credits", "round": 0 }],                  // the first that answers
+    { "label": "Credits", "value": "$.credits.balance", "unit": "credits", "round": 0 },                   // the first that answers
+    { "label": "Fable resets", "sum": { "each": "$.grants", "value": "resets_left",                      // added up over an array,
+      "where": { "path": "gives_back_weekly", "equals": true } }, "unit": "available" }],                // `unless` to leave some out
   "cost": [                                                    // the first shape that answers
     { "kind": "extraUsage", "when": { "path": "$.spend.enabled", "equals": true },
       "used":  { "amount": "$.spend.used.amount_minor", "decimals": "$.spend.used.exponent" },

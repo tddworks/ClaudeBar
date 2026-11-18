@@ -487,7 +487,7 @@ struct ClaudeCLIDefinitionTests {
             Issue.record("api is not an HTTP data source")
             throw UsageError.noData
         }
-        #expect(request.url == "https://api.anthropic.com/api/oauth/usage")
+        #expect(request.url == "https://api.anthropic.com/api/oauth/usage?cedar_ember=1")
     }
 
     @Test
