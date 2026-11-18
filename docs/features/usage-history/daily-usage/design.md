@@ -367,6 +367,13 @@ natural unit to keep:
   them. A `Hasher` value can't be kept: its seed is the process's.
 - **Dedupe stays exact**: a record's identity only has to be remembered
   while its day is open.
+- **A day kept before hours were is read again, once.** A day is also split
+  by the hour of the day its records were written in
+  ([recap §3](../recap/design.md#3--the-model)). A day the ledger holds
+  without that split is asked of the logs again; the answer replaces it when
+  it holds at least what was kept, and when the logs have since been cleared
+  the kept day stays, marked as read (`UsageHistory.settled`) — so the split
+  costs no bump of the summing version and never a kept day.
 - **A ledger is a cache, not a record**: deleting it re-reads the logs; a
   change to the definition (`usageHistory` or the prices), or to how days
   are summed — both carried in the log's fingerprint — invalidates it.

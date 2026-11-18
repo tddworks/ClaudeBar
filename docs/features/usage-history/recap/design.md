@@ -22,7 +22,9 @@ the recap written out: one self-contained HTML file, saved where the person
 says, opened anywhere. It holds what the card says — the total, the change, the
 split, the highlights — and the shape behind them: the day by day, the model by
 model, the project by project, each provider's, model's and project's change,
-and every day's own figures, each read from its own owner. A month is thirty
+every day's own figures, and the range **hour by hour** — a row a day,
+twenty-four cells, shaded by what each hour spent — each read from its own
+owner. A month is thirty
 bars, and a page that only prints cannot say them all, so the report answers
 what its reader asks of it: *in tokens?*, *which model was that day?*, *what
 happened on the 7th?* — it shows another unit, stacks the bars by a split,
@@ -74,6 +76,9 @@ recap.read(in: .tokens)   // the same range in another unit it offers: every fig
 | a **read in another unit** | the same recap in a unit it offers besides its own: tokens beside dollars, the cache when the range holds any (`Recap.units`, `read(in:)`) | dollars beside a token recap; a unit per provider |
 | a part's **change** | one provider's, model's or project's value against its own in the period before | a change for a part that used nothing before |
 | a **day's part** | a provider's, model's or project's value on one day, and its share of that day — the range's rows, each with its part | a list rebuilt per day in another order |
+| a day's **hours** | the day split by the hour of the day its records were written in, 0…23 in the log's own calendar: an hour line each, adding up to the day's tokens and cost (`DailyUsageStat.hours`, `HourUsageLine`) | sessions or working time by hour — they span hours and stay the day's |
+| hours **not known** | a day that used something and has no hour line: summed before hours were kept and its logs since cleared, or added up with a day like that (`DailyUsageStat.knowsHours`) | an idle day, whose hours are known to be empty; twenty-four cells of zero |
+| the **hour by hour** | every day of the range with its twenty-four hours, each against the range's busiest hour; and the hours of the day added up over the range (`HourActivity`) | a clock of sessions; an average per weekday |
 | a **report** | the recap written out as one HTML file: what the card says, plus the day-by-day, model-by-model and project-by-project shape and each day's own figures, in every unit the recap offers; saved only when the person saves it | a stored report the app reads back; an automatic share; a second source of days |
 | the report's **page** | what the report shows, already read and already in words, once per unit (`RecapReportPage`) | the days themselves; numbers for a script to add up |
 
@@ -104,6 +109,7 @@ Recap(range: DateRange, this: [String: Days], before: [String: Days])           
  ├ models      ModelMix(of: merged, in: unit).parts — every model, largest first   (ModelMix)
  ├ biggestDay  DayActivity(of: merged, in: unit).busiest                           (DayActivity)
  ├ days        DayActivity(of: merged, in: unit).days — every day, oldest first    (DayActivity)
+ ├ hours       HourActivity(of: merged, in: unit) — a row a day, the hours of the day summed, the busiest hour   (HourActivity)
  ├ projects    ByProject(of: merged, in: unit).parts — none when no log names one   (ByProject)
  ├ units       its own, then tokens and cache when the range holds any — never cost beside a token recap
  ├ read(in:)   the same range in a unit it offers; a unit it doesn't offer reads as it is
@@ -115,6 +121,9 @@ Recap(range: DateRange, this: [String: Days], before: [String: Days])           
  ├ tokens      the week in tokens beside a total in another unit; nil when the unit is tokens
  └ isEmpty     no provider used anything
 
+DailyUsageStat.hours        [HourUsageLine]? — a line per hour that held a record; nil when the day was summed before hours were kept
+DailyUsageStat.knowsHours   an idle day knows (none); a day that used something needs a line
+HourActivity(of:in:)        days: [Day(date · hours ×24 · isKnown)] · ofDay ×24 · busiest (date, hour)
 Days.merged([Days])         several ranges as one: each date once, its days added (DailyUsageStat +)
 DailyUsageStat +            two days of one date as one: every count, cost, time, savings; one line per model and per named project (UsageLine +)
 ```
@@ -124,6 +133,8 @@ DailyUsageStat +            two days of one date as one: every count, cost, time
 | `DateRange.week`, `DateRange.month` | the calendar's week or month holding a day, as a plain run of days | `Modules/Quotas/Sources/DateRange.swift` |
 | `RecapPeriod` | the span a recap adds up, and the period before it | `Sources/Domain/UsageHistory/RecapPeriod.swift` |
 | `RecapRange` | this or last of a period, and the range it is read against | `Sources/Domain/UsageHistory/RecapRange.swift` |
+| `HourUsageLine`, `DailyUsageStat.hours` | when in the day it was spent: a `UsageLine` keyed by the hour, so it adds up as a model's line does | `Modules/Quotas/Sources/` |
+| `HourActivity` | the range hour by hour in a unit: each hour against the busiest, the hours of the day added up, which days know theirs | `Modules/Quotas/Sources/HourActivity.swift` |
 | `Recap` | the range across providers, in one unit, against the range before; it carries its dates | `Modules/Quotas/Sources/Recap.swift` |
 | `Days.merged`, `isEmpty`, `workingTime`, `sessions`, `activeDays`, `spend` | several ranges as one; whether it holds anything; plain sums; the days that held anything; the tokens by kind | `Modules/Quotas/Sources/Days.swift` |
 | `DailyUsageStat` `+` | two days of one date as one | `Modules/Quotas/Sources/DailyUsageStat.swift` |
@@ -165,6 +176,11 @@ word (*week*, *month*) are the App's words for them.
 | the recap is read again only when a week or month turned, the lineup changed, or a login's days were read again since the last read that finished; otherwise the last read stands, and a cancelled read is read again next time | `Recaps` |
 | a range that read nothing has no say in whether the merged range is priced | `Days.merged` |
 | a value is written once per unit | `UsageFormat` (App) |
+| a record counts in the hour of the day it was written in, in the log's own calendar, as it counts in the day; a day's hours add up to its tokens and cost | `DayAggregator` (DataSources) |
+| a day's hours are known when it used nothing, or keeps an hour line; two days added up know their hours only when both do — half a day's hours never read as the whole day's | `DailyUsageStat` (`knowsHours`, `+`) |
+| an hour's share is its value against the range's busiest hour; the hours of the day are summed over the days that know theirs, each against the busiest of the twenty-four; a day that doesn't know its hours is said, never drawn empty | `HourActivity` |
+| a day kept before hours were is read from the logs again, once: what the logs say stands when it holds at least what was kept; when they say less — a tool cleared them — the kept day stays, marked as read with no hours to offer. A re-read never loses a day | `UsageHistory` (`settled`) |
+| an hour's shading band is the heatmap's: five bands by its share, the App's beside its legend | `UsageHeatmap` (App) |
 | a recap can be read in the units every provider offers and the range holds something in: its own, tokens, the cache — never cost when it reads in tokens. Another unit is the same recap read again, so the total, the change, the order and every part follow | `Recap.units` · `Recap.read(in:)` |
 | a part's change is its value against its own in the period before, by the recap's one rule; none when it used nothing before | `Recap` (`Part.change`, `change(of:)`) |
 | a day's parts are the range's rows, each with its part of the day — nothing for one the day didn't hold — so a day's part always names a row of the range and keeps its colour | `Recap` (`providers(on:)`, `parts(of:on:)`) |
@@ -191,6 +207,8 @@ word (*week*, *month*) are the App's words for them.
 | the All page (`MenuContentView`) | shows the card while the person shows the **Recap** section (`UsageSection.weeklyRecap`, a key kept from when it held weeks only; on by default, through `AppSettingsRepository.isShown`), and tells `Recaps` to read if stale when the card appears and after the logins' usage is read | `Sources/App/Views/` |
 | `UsageFormat` | a value in a unit, a share, a change, a duration | `Sources/App/UsageHistory/` |
 | `RecapReportPage` | what the report shows, read once from the recap for every unit it offers and written in the card's words (`UsageFormat`, `RecapRange`'s): the total and change, each split's rows with their change, every day's value, its part of every split and its own figures, the highlights, the tokens by kind. It is the page's data; it counts nothing the recap doesn't say | `Sources/App/UsageHistory/` |
+| `DayAggregator` | sums a day's records by hour beside its models and projects | `Modules/DataSources/Sources/Internal/Logs/` |
+| `UsageHistory.days(in:)` | reads a day kept without hours again, once, and settles it against the kept one | `Modules/Providers/Sources/` |
 | `RecapHTMLReport` | the page as one self-contained HTML file: the plain markup in the recap's unit, the page's data, the stylesheet and the script, the system's light or dark, everything escaped. Mocked up at [design-concept/recap/report.html](../../../../design-concept/recap/report.html) | `Sources/App/UsageHistory/` |
 | `RecapReportScript` | the report's own script: shows another unit, the bars stacked by provider, model or project, a day's figures beside its bar, the lists for one picked day, a list in another order or in full. It reads the page's data and nothing else | `Sources/App/UsageHistory/` |
 | `ReportSaver` | where a report leaves the app: the save panel (named for the range), the atomic write, the file opened when saved; a failed write is its `failure`, which the card shows. The App's edge, kept thin | `Sources/App/UsageHistory/` |
@@ -230,6 +248,7 @@ which is offered from two providers.
 | the report to look different | its stylesheet — one place, the report's own; the words stay `UsageFormat`'s |
 | another section in the report | a value built from `Days` in `recap.unit` (`Recap.days`, `Recap.models`, `Recap.projects`), then a line in `RecapReportPage` — never a count in the report or its script |
 | another split in the report (by login, by tool) | a `UsageLine` and its mix; `RecapReportPage` adds one `Split`, and the chart's choice, the day's list and the sorting follow |
+| hours by weekday, or an hour split by model | a value built from `DailyUsageStat.hours` beside `HourActivity`; a model per hour is an hour line per model, kept by the day |
 | another thing to pick in the report | `RecapReportScript`: one more piece of what is shown, over the same page |
 
 ## 7 · Considered and rejected
@@ -243,6 +262,10 @@ which is offered from two providers.
 | the card cutting each week out of `lastThirtyDays` | cutting a range is `UsageHistory.days(in:)`'s job |
 | a stored weekly report | the days are the record; a kept recap is a second truth |
 | the report in the person's app theme | the file travels alone: its own stylesheet keeps it self-contained and follows the system's light or dark, not a theme the reader doesn't have |
+| starting every ledger over to gain the hours (a bump of the summing version) | a tool that clears its logs after thirty days would take every older kept day with it; a day kept without hours is read again alone, and kept when its logs are gone |
+| an hour line per model (and per project) | the day's file grows by a line per hour per model for one more row in a tooltip; the hour says how much, the day says which model |
+| sessions and working time by hour | a session spans hours, and where to cut it is a second rule; an hour holds what was written in it — tokens and cost |
+| hours for the sum of two days when only one knows its own | the row would shade half the day's spend and read as all of it |
 | a report with no script at all | it was the first build: a month's thirty bars could say one value, a second unit and a day's detail had nowhere to go, and each new figure made the page longer instead of deeper |
 | the script adding up raw days it is handed | a second count, in a second language, with its own rounding and its own idea of a unit; the page hands it figures already read and already in words |
 | a charting library, from a CDN or inlined | the file travels alone and must open offline; a bar is a `div` with a height |

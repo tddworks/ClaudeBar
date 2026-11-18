@@ -65,7 +65,8 @@ public final class UsageHistory {
 
     /// One range of dates, every date present. Closed days come from the
     /// ledger; the logs are read only from the first day the ledger doesn't
-    /// hold.
+    /// hold — or holds from before days were split by hour, which is read
+    /// again once (`settled`).
     public func days(in range: DateRange) async -> Quotas.Days {
         let knowsCost = log.knowsCost
         guard let ledger else {
@@ -76,12 +77,16 @@ public final class UsageHistory {
         let kept = ledger.days(readAs: log.fingerprint)
         let dates = range.days(in: calendar)
         guard let firstMissing = dates.first(where: { day in
-            !DayLedger.isClosed(day, at: now, calendar: calendar) || kept[DayLedger.name(of: day, calendar: calendar)] == nil
+            guard DayLedger.isClosed(day, at: now, calendar: calendar),
+                  let held = kept[DayLedger.name(of: day, calendar: calendar)] else { return true }
+            return held.hours == nil && !held.isEmpty
         }) else {
             return Quotas.Days(dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }, knowsCost: knowsCost)
         }
 
-        let read = await log.days(in: DateRange(first: firstMissing, last: range.last, calendar: calendar))
+        let read = await log.days(in: DateRange(first: firstMissing, last: range.last, calendar: calendar)).map { day in
+            Self.settled(day, over: kept[DayLedger.name(of: day.date, calendar: calendar)])
+        }
         var closed: [String: DailyUsageStat] = [:]
         for day in read where DayLedger.isClosed(day.date, at: now, calendar: calendar) {
             closed[DayLedger.name(of: day.date, calendar: calendar)] = day
@@ -90,6 +95,17 @@ public final class UsageHistory {
 
         let before = dates.prefix { $0 < firstMissing }.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }
         return Quotas.Days(before + read, knowsCost: knowsCost)
+    }
+
+    /// A day read again over the one kept before days were split by hour.
+    /// The logs' answer stands when it holds at least what was kept; when a
+    /// tool has since cleared its logs and they say less, the kept day stays
+    /// — marked as read, with no hours to offer — so a day is never lost to
+    /// a re-read, and is read again only once.
+    static func settled(_ read: DailyUsageStat, over kept: DailyUsageStat?) -> DailyUsageStat {
+        guard let kept, kept.hours == nil, !kept.isEmpty,
+              read.isEmpty || read.totalTokens < kept.totalTokens || read.totalCost < kept.totalCost else { return read }
+        return kept.with(hours: [])
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,

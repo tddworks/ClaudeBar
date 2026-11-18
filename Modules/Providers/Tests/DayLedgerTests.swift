@@ -161,4 +161,53 @@ struct DayLedgerTests {
             ModelUsageLine(model: "m-small", inputTokens: 100, outputTokens: 200, totalTokens: 300, cost: 0.25),
         ])
     }
+
+    // MARK: - The hours of a day
+
+    @Test func `should keep the hours a closed day was spent in after the logs are gone`() async throws {
+        let now = today(at: 12)
+        try log([(41, 1)], now: now)
+        _ = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+
+        try forgetLogs()
+        let days = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+
+        #expect(days.stats.first?.hours?.map(\.spend.cost) == [41])
+    }
+
+    /// The days on the shelf, as they were kept before days were split by hour.
+    private func forgetHours() {
+        guard let page = shelf.pages["acme"] else { return }
+        shelf.pages["acme"] = LedgerPage(fingerprint: page.fingerprint, days: page.days.mapValues { $0.with(hours: nil) })
+    }
+
+    /// A day kept by an earlier version has no hours; its logs still do.
+    @Test func `should read a day kept before hours again for its hours`() async throws {
+        let now = today(at: 12)
+        try log([(41, 1)], now: now)
+        _ = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+        forgetHours()
+
+        let days = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+
+        #expect(days.stats.first?.totalCost == 41)
+        #expect(days.stats.first?.knowsHours == true)
+        #expect(shelf.pages["acme"]?.days.values.first?.knowsHours == true)
+    }
+
+    /// A tool cleared its logs: the kept day is all there is, and it stays.
+    @Test func `should keep a day kept before hours when its logs are gone, without its hours`() async throws {
+        let now = today(at: 12)
+        try log([(41, 1)], now: now)
+        _ = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+        forgetHours()
+        try forgetLogs()
+
+        let days = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+
+        #expect(days.stats.first?.totalCost == 41)
+        #expect(days.stats.first?.knowsHours == false)
+        // Read again once: the kept day is marked, never asked of the logs again.
+        #expect(shelf.pages["acme"]?.days.values.first?.hours == [])
+    }
 }

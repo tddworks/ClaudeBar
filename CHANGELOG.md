@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Claude's limit resets**: in API mode, Claude shows how many Fable resets and limit resets your account holds, for accounts Claude gives them to. Use one with `/limit-reset` in Claude Code. ([#720](https://github.com/tddworks/ClaudeBar/pull/720)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/providers/claude/README.md)
+- **The recap's HTML report shows when in the day you work**: an *Hour by hour* heatmap, a row a day and a cell an hour, shaded by what the hour spent. Point at a cell for its cost and tokens. Days from before this version whose logs are gone keep their totals without hours. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md) ([#PRNUM](https://github.com/tddworks/ClaudeBar/pull/PRNUM))
 
 ---
 

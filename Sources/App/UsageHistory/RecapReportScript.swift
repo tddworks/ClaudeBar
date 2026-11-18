@@ -113,6 +113,73 @@ enum RecapReportScript {
         return section;
       }
 
+      // A row a day, a cell an hour; pointing at one says it in every unit.
+      function hours(view) {
+        if (!view.hours) return null;
+        var section = card('Hour by hour', null);
+        add(section, el('div', 'peak', 'Busiest hour: ' + view.hours.peak));
+        var grid = el('div', 'heat live' + (view.days.length > 10 ? ' month' : ''));
+        var axis = add(el('div', 'hr axis'), el('span', 'hl'));
+        for (var mark = 0; mark < 24; mark += 3) add(axis, el('span', 'ha', (mark < 10 ? '0' : '') + mark));
+        add(grid, axis);
+        function row(cls, label, cells, index) {
+          var line = add(el('div', cls), el('span', 'hl', label));
+          var held = {};
+          cells.forEach(function (cell) { held[cell.h] = cell; });
+          for (var h = 0; h < 24; h++) {
+            var box = el('i', held[h] ? 'h' + held[h].level : null);
+            box.dataset.h = h;
+            if (index != null) box.dataset.d = index;
+            line.appendChild(box);
+          }
+          return line;
+        }
+        add(grid, row('hr all', 'All', view.hours.ofDay, null));
+        view.hours.rows.forEach(function (day, index) {
+          var cls = 'hr' + (state.day === index ? ' sel' : '');
+          var line = day.known ? row(cls, data.days[index].label, day.cells, index)
+            : add(el('div', cls), el('span', 'hl', data.days[index].label), el('span', 'nk', 'no hours kept for this day'));
+          line.dataset.d = index;
+          grid.appendChild(line);
+        });
+        grid.onmouseover = function (event) {
+          var h = event.target.dataset.h;
+          if (h == null) return hide();
+          hour(event.target, +h, event.target.dataset.d == null ? null : +event.target.dataset.d);
+        };
+        grid.onmouseleave = hide;
+        grid.onclick = function (event) {
+          var line = event.target.closest('.hr');
+          if (!line || line.dataset.d == null) return;
+          state.day = state.day === +line.dataset.d ? null : +line.dataset.d;
+          hide();
+          render();
+        };
+        var legend = add(el('div', 'legend'), el('span', null, 'Less'));
+        for (var level = 0; level <= 4; level++) add(legend, el('i', level ? 'h' + level : null));
+        return add(section, grid, add(legend, el('span', null, 'More')));
+      }
+
+      // One hour's figures beside its cell, in every unit the page offers.
+      function hour(anchor, h, index) {
+        tip.textContent = '';
+        var next = (h + 1) % 24;
+        var span = (h < 10 ? '0' : '') + h + ':00\u2013' + (next < 10 ? '0' : '') + next + ':00';
+        add(tip, el('b', null, index == null ? 'Every day \u00B7 ' + span : data.days[index].title + ' \u00B7 ' + span));
+        var any = false;
+        data.units.forEach(function (unit) {
+          var all = data.views[unit.id].hours;
+          var cells = !all ? [] : index == null ? all.ofDay : all.rows[index].cells;
+          cells.forEach(function (cell) {
+            if (cell.h !== h) return;
+            any = true;
+            add(tip, add(el('div', 'f'), el('span', null, unit.name), el('span', null, cell.value)));
+          });
+        });
+        if (!any) add(tip, el('div', 'f', 'Nothing in this hour.'));
+        place(anchor);
+      }
+
       // The picked day's own figures.
       function picked(view) {
         if (state.day == null) return null;
@@ -214,6 +281,9 @@ enum RecapReportScript {
               el('span', null, each.part.value)));
           });
         }
+        place(anchor);
+      }
+      function place(anchor) {
         tip.hidden = false;
         var box = anchor.getBoundingClientRect(), mine = tip.getBoundingClientRect();
         var left = box.left + box.width / 2 - mine.width / 2;
@@ -227,7 +297,7 @@ enum RecapReportScript {
         var view = data.views[state.unit];
         if (state.by !== 'total' && splitAt(view, state.by) < 0) state.by = 'total';
         live.textContent = '';
-        add(live, lead(view), chart(view), picked(view));
+        add(live, lead(view), chart(view), picked(view), hours(view));
         view.splits.forEach(function (_, at) { live.appendChild(split(view, at)); });
         if (data.tokens.length) add(live, add(card('Tokens by kind', null), facts(data.tokens, 'tiles')));
         if (view.tiles.length) add(live, add(card('Highlights', null), facts(view.tiles, 'tiles')));

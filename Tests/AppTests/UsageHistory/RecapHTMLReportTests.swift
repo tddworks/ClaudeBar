@@ -242,6 +242,50 @@ struct RecapHTMLReportTests {
         #expect(html.contains("75%"))
     }
 
+    // MARK: - Hour by hour
+
+    private func hour(_ hour: Int, cost: Decimal) -> HourUsageLine {
+        HourUsageLine(hour: hour, spend: Spend(totalTokens: 10, cost: cost))
+    }
+
+    @Test func `should shade each hour of each day against the busiest hour of the range`() throws {
+        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 8), hour(14, cost: 2)])
+        let html = report(read(this: ["a": priced(worked)])).html
+        let plain = html.components(separatedBy: "<script")[0]
+
+        #expect(plain.contains("Hour by hour"))
+        #expect(plain.contains(#"<i class="h4" title="09:00–10:00 · $8.00"></i>"#))
+        #expect(plain.contains(#"<i class="h1" title="14:00–15:00 · $2.00"></i>"#))
+        #expect(plain.contains("Busiest hour:"))
+        #expect(plain.contains("09:00–10:00 · $8.00"))
+    }
+
+    @Test func `should tell each day's hours in every unit the reader can switch to`() throws {
+        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 8), hour(14, cost: 2)])
+        let page = try data(of: report(read(this: ["a": priced(worked)])))
+        let views = try #require(page["views"] as? [String: [String: Any]])
+        let tokens = try #require((views["tokens"]?["hours"] as? [String: Any])?["rows"] as? [[String: Any]])
+
+        #expect((tokens[0]["cells"] as? [[String: Any]])?.map { $0["h"] as? Int } == [9, 14])
+        #expect((tokens[0]["cells"] as? [[String: Any]])?.map { $0["value"] as? String } == ["10", "10"])
+    }
+
+    /// A day kept before hours were: it says so, never twenty-four empty cells.
+    @Test func `should say a day's hours were not kept, beside the days that kept theirs`() {
+        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 10)])
+        let html = report(read(this: ["a": priced(worked, day(tuesday, cost: 4))])).html
+
+        #expect(html.contains("no hours kept for this day"))
+    }
+
+    @Test func `should leave the hour by hour out when no day kept its hours`() throws {
+        let page = try data(of: report(twoProviders))
+        let cost = try #require((page["views"] as? [String: [String: Any]])?["cost"])
+
+        #expect(!report(twoProviders).html.contains("<h2>Hour by hour</h2>"))
+        #expect(cost["hours"] == nil)
+    }
+
     /// The page's data, as its script reads it.
     private func data(of report: RecapHTMLReport) throws -> [String: Any] {
         let html = report.html
