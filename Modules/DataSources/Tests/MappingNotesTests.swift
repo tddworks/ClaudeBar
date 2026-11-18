@@ -141,6 +141,21 @@ struct MappingNotesTests {
     }
 
     @Test
+    func `should read an added-up note written in Swift the same as one written in JSON`() throws {
+        let written = NoteRule(
+            label: "Limit resets",
+            unit: "available",
+            sum: NoteRule.Sum(each: "$.grants", value: "resets_left", unless: Match(path: "gives_back_weekly", equals: .bool(true)))
+        )
+        let read = try JSONDecoder().decode(NoteRule.self, from: Data(#"""
+        { "label": "Limit resets", "unit": "available",
+          "sum": { "each": "$.grants", "value": "resets_left", "unless": { "path": "gives_back_weekly", "equals": true } } }
+        """#.utf8))
+
+        #expect(written == read)
+    }
+
+    @Test
     func `should leave out an element that sends no count`() throws {
         let body = #"{"grants":[{"resets_left":"n/a"},{"resets_left":null},{"resets_left":2}]}"#
 
