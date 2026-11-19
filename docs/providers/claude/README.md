@@ -4,7 +4,7 @@ description: Track Claude 5-hour session, weekly and per-model (Opus, Sonnet, Fa
 
 # Claude
 
-Shows your Claude Code 5-hour session and weekly limits, any model-specific weekly limits (Opus, Sonnet, Fable), Extra Usage spend when it's turned on, and today's cost and tokens from your local session logs. Pay-as-you-go API accounts get a cost card instead of quota bars. The badge names your plan: PRO, MAX, ULTRA (the plan that used to be Max 20x), TEAM or ENTERPRISE.
+Shows your Claude Code 5-hour session and weekly limits, any model-specific weekly limits (Opus, Sonnet, Fable), Extra Usage spend when it's turned on, how many **Fable resets** and **Limit resets** you hold (API mode), and today's cost and tokens from your local session logs. Pay-as-you-go API accounts get a cost card instead of quota bars. The badge names your plan: PRO, MAX, ULTRA (the plan that used to be Max 20x), TEAM or ENTERPRISE.
 
 ## Setup
 
@@ -47,6 +47,7 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 - **Daily cost and token cards** read `~/.claude/projects/*/*.jsonl`. They're only calculated when the popover is open, not during background refreshes.
 - **Claude Desktop's tokens** appear as their own **Claude Desktop · Token Usage** card on your usual login, read from Desktop's app-data folder: `~/Library/Application Support/Claude/buddy-tokens.json` on macOS, `%APPDATA%\Claude\buddy-tokens.json` on Windows (or `~/AppData/Roaming/Claude/buddy-tokens.json` if `APPDATA` is empty or unset). It counts Desktop on this computer only, shows no cost, and doesn't change your limits or the menu bar. Your session and weekly limits still need Claude Code: without it, Claude says so in a card with a *Set up Claude Code* button, with the Desktop card below it.
 - **No session bar on Ultra.** A verified Ultra account has no 5-hour limit, so Claude shows only the weekly and model limits, and so does ClaudeBar. An Ultra account Anthropic hasn't verified yet still has a temporary session limit, and ClaudeBar shows it.
+- **Fable resets and Limit resets** count the one-time limit resets Claude has given your account: Fable resets refill only Fable; Limit resets refill your session or weekly limits. Use one with `/limit-reset` in Claude Code; ClaudeBar only counts them. They show in API mode only (`claude /usage` doesn't print them), and only for accounts Claude offers resets to.
 - **Share Claude Code** (guest passes) only appears for Max and Ultra accounts.
 - **Claude API Budget** in the same pane only applies to pay-as-you-go API accounts, not to Max or Pro Extra Usage.
 

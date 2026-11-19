@@ -165,10 +165,24 @@ struct JSONMapper: Reading {
     private func noteText(_ rule: NoteRule, in scope: JSONScope) -> String? {
         if let condition = rule.when, !Self.holds(condition, in: scope) { return nil }
         if let text = rule.text { return text }
+        if let sum = rule.sum {
+            return Self.total(sum, in: scope).map { Self.number($0, places: rule.round ?? 0) }
+        }
         if let places = rule.round {
             return rule.value.lazy.compactMap { scope.number($0) }.first.map { Self.number($0, places: places) }
         }
         return rule.value.lazy.compactMap { Self.noteText(scope.value($0)) }.first
+    }
+
+    private static func total(_ sum: NoteRule.Sum, in scope: JSONScope) -> Double? {
+        guard let elements = scope.value(sum.each) as? [Any] else { return nil }
+        return elements.reduce(0) { total, element in
+            let item = scope.moved(to: element)
+            guard sum.where.map({ holds($0, in: item) }) ?? true,
+                  !(sum.unless.map { holds($0, in: item) } ?? false),
+                  let count = item.number(sum.value) else { return total }
+            return total + count
+        }
     }
 
     /// A note's text: words as sent, or a number — never a flag.
