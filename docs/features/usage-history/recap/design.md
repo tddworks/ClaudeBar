@@ -20,8 +20,14 @@ And when the week is done, a person asks one more thing: **can I keep this, or
 send it?** The card lives in a popover — closed, it is gone. A **report** is
 the recap written out: one self-contained HTML file, saved where the person
 says, opened anywhere. It holds what the card says — the total, the change, the
-split, the highlights — and the shape behind them, the day by day and the model
-by model, each read from its own owner. The person drives it: a button on the
+split, the highlights — and the shape behind them: the day by day, the model by
+model, the project by project, each provider's, model's and project's change,
+and every day's own figures, each read from its own owner. A month is thirty
+bars, and a page that only prints cannot say them all, so the report answers
+what its reader asks of it: *in tokens?*, *which model was that day?*, *what
+happened on the 7th?* — it shows another unit, stacks the bars by a split,
+reads the lists for one day, and reorders a list, with a script of its own that
+only shows what the recap already said. The person drives it: a button on the
 card, a save panel, one file. The card only tells; saving is `ReportSaver`'s,
 and a save that fails is shown, not only logged. The app never reads the file back — the days stay
 the record.
@@ -46,6 +52,9 @@ recap.change        // against before; nil when nothing was used before
 recap.providers     // one part per provider: value, share — largest first
 recap.topModel      // ModelMix(of: merged, in: unit).top
 recap.biggestDay    // DayActivity(of: merged, in: unit).busiest
+recap.projects      // ByProject(of: merged, in: unit).parts
+recap.units         // its own unit, then the others every provider offers — never cost beside a token recap
+recap.read(in: .tokens)   // the same range in another unit it offers: every figure follows
 ```
 
 ## 2 · The words
@@ -62,7 +71,11 @@ recap.biggestDay    // DayActivity(of: merged, in: unit).busiest
 | a **part** | one provider's total in the unit, and its share of the range | a login: two logins of one provider are one part |
 | the **change** | the range against the period before it, as a fraction | a change against a range with nothing in it |
 | **tokens** | what `Days` and the chart count: input and output, never the cache | `totalTokensWithCache` |
-| a **report** | the recap written out as one HTML file: what the card says, plus the day-by-day and model-by-model shape; saved only when the person saves it | a stored report the app reads back; an automatic share; a second source of days |
+| a **read in another unit** | the same recap in a unit it offers besides its own: tokens beside dollars, the cache when the range holds any (`Recap.units`, `read(in:)`) | dollars beside a token recap; a unit per provider |
+| a part's **change** | one provider's, model's or project's value against its own in the period before | a change for a part that used nothing before |
+| a **day's part** | a provider's, model's or project's value on one day, and its share of that day — the range's rows, each with its part | a list rebuilt per day in another order |
+| a **report** | the recap written out as one HTML file: what the card says, plus the day-by-day, model-by-model and project-by-project shape and each day's own figures, in every unit the recap offers; saved only when the person saves it | a stored report the app reads back; an automatic share; a second source of days |
+| the report's **page** | what the report shows, already read and already in words, once per unit (`RecapReportPage`) | the days themselves; numbers for a script to add up |
 
 ## 3 · The model
 
@@ -91,6 +104,13 @@ Recap(range: DateRange, this: [String: Days], before: [String: Days])           
  ├ models      ModelMix(of: merged, in: unit).parts — every model, largest first   (ModelMix)
  ├ biggestDay  DayActivity(of: merged, in: unit).busiest                           (DayActivity)
  ├ days        DayActivity(of: merged, in: unit).days — every day, oldest first    (DayActivity)
+ ├ projects    ByProject(of: merged, in: unit).parts — none when no log names one   (ByProject)
+ ├ units       its own, then tokens and cache when the range holds any — never cost beside a token recap
+ ├ read(in:)   the same range in a unit it offers; a unit it doesn't offer reads as it is
+ ├ Part.change · change(of: a model's or project's part)   against its own value before; nil when none
+ ├ providers(on:) · parts(of:on:)   the range's rows, each with its part of one day
+ ├ whole       every provider's days as one — a day's own figures are read here
+ ├ activeDays · dailyAverage · perSession    the days that held anything; the total over them, and over the sessions
  ├ cacheSavings · workingTime · sessions      plain sums of merged
  ├ tokens      the week in tokens beside a total in another unit; nil when the unit is tokens
  └ isEmpty     no provider used anything
@@ -105,7 +125,7 @@ DailyUsageStat +            two days of one date as one: every count, cost, time
 | `RecapPeriod` | the span a recap adds up, and the period before it | `Sources/Domain/UsageHistory/RecapPeriod.swift` |
 | `RecapRange` | this or last of a period, and the range it is read against | `Sources/Domain/UsageHistory/RecapRange.swift` |
 | `Recap` | the range across providers, in one unit, against the range before; it carries its dates | `Modules/Quotas/Sources/Recap.swift` |
-| `Days.merged`, `isEmpty`, `workingTime`, `sessions` | several ranges as one; whether it holds anything; plain sums | `Modules/Quotas/Sources/Days.swift` |
+| `Days.merged`, `isEmpty`, `workingTime`, `sessions`, `activeDays`, `spend` | several ranges as one; whether it holds anything; plain sums; the days that held anything; the tokens by kind | `Modules/Quotas/Sources/Days.swift` |
 | `DailyUsageStat` `+` | two days of one date as one | `Modules/Quotas/Sources/DailyUsageStat.swift` |
 
 **One unit for the whole recap.** A sum across providers is only honest in a
@@ -145,10 +165,17 @@ word (*week*, *month*) are the App's words for them.
 | the recap is read again only when a week or month turned, the lineup changed, or a login's days were read again since the last read that finished; otherwise the last read stands, and a cancelled read is read again next time | `Recaps` |
 | a range that read nothing has no say in whether the merged range is priced | `Days.merged` |
 | a value is written once per unit | `UsageFormat` (App) |
-| the report holds what the card holds, in the card's words, plus the day-by-day and model-by-model shape read from their own owners — never a second count; its peak is the recap's biggest day, its dates the recap's range | `Recap.days` · `Recap.models` · `Recap.biggestDay` · `RecapHTMLReport` (App) |
+| a recap can be read in the units every provider offers and the range holds something in: its own, tokens, the cache — never cost when it reads in tokens. Another unit is the same recap read again, so the total, the change, the order and every part follow | `Recap.units` · `Recap.read(in:)` |
+| a part's change is its value against its own in the period before, by the recap's one rule; none when it used nothing before | `Recap` (`Part.change`, `change(of:)`) |
+| a day's parts are the range's rows, each with its part of the day — nothing for one the day didn't hold — so a day's part always names a row of the range and keeps its colour | `Recap` (`providers(on:)`, `parts(of:on:)`) |
+| a picked day lists only what that day held, largest first; the page writes a day's parts only for the rows it used, so a range that names two hundred projects stays a small file | `RecapReportPage` · `RecapReportScript` (App) |
+| the report holds what the card holds, in the card's words, plus the day-by-day, model-by-model and project-by-project shape and each day's figures read from their own owners — never a second count; its peak is the recap's biggest day, its dates the recap's range | `Recap` · `RecapReportPage` (App) |
+| what the report shows is read once into a page, per unit, already in words; its markup and its script both show that page. The script picks what is shown — a unit, a stacking, a day, an order — and never counts usage or formats a number | `RecapReportPage` · `RecapReportScript` (App) |
+| the report says the whole recap in plain markup, in the recap's own unit; a reader whose browser runs no script loses the choices, never the recap | `RecapHTMLReport` (App) |
+| a name read from a log is text to the page and to its script — escaped in the markup, written as an escape in the data, set as text by the script — never markup | `RecapHTMLReport` · `RecapReportScript` (App) |
 | one list of hues in the App: a model's colour is its place among the range's models in name order, in the chart, the mix and the report alike; a recap's providers take the same hues by their place; the report writes them as hex for light and dark | `ModelColors` (App) |
 | a report is saved only when the person saves it, where they say; a write that fails is shown to them; the app never reads it back | `ReportSaver` (App) |
-| the report travels alone: its own stylesheet, no script, the system's light or dark — not the app's theme | `RecapHTMLReport` (App) |
+| the report travels alone: its own stylesheet and its own script, nothing fetched, the system's light or dark — not the app's theme | `RecapHTMLReport` (App) |
 
 ## 5 · The pieces
 
@@ -163,7 +190,9 @@ word (*week*, *month*) are the App's words for them.
 | `ModelColors` | the App's one list of hues: a model's by its place among the range's models, a provider's by its place in the split, and each as hex for the report | `Sources/App/UsageHistory/` |
 | the All page (`MenuContentView`) | shows the card while the person shows the **Recap** section (`UsageSection.weeklyRecap`, a key kept from when it held weeks only; on by default, through `AppSettingsRepository.isShown`), and tells `Recaps` to read if stale when the card appears and after the logins' usage is read | `Sources/App/Views/` |
 | `UsageFormat` | a value in a unit, a share, a change, a duration | `Sources/App/UsageHistory/` |
-| `RecapHTMLReport` | the recap as one self-contained HTML page: the card's words (`UsageFormat`, `RecapRange`'s), the day-by-day and model-by-model shape from `Recap.days` / `Recap.models`, pure CSS, no script, the system's light or dark, everything escaped. Mocked up at [design-concept/recap/report.html](../../../../design-concept/recap/report.html) | `Sources/App/UsageHistory/` |
+| `RecapReportPage` | what the report shows, read once from the recap for every unit it offers and written in the card's words (`UsageFormat`, `RecapRange`'s): the total and change, each split's rows with their change, every day's value, its part of every split and its own figures, the highlights, the tokens by kind. It is the page's data; it counts nothing the recap doesn't say | `Sources/App/UsageHistory/` |
+| `RecapHTMLReport` | the page as one self-contained HTML file: the plain markup in the recap's unit, the page's data, the stylesheet and the script, the system's light or dark, everything escaped. Mocked up at [design-concept/recap/report.html](../../../../design-concept/recap/report.html) | `Sources/App/UsageHistory/` |
+| `RecapReportScript` | the report's own script: shows another unit, the bars stacked by provider, model or project, a day's figures beside its bar, the lists for one picked day, a list in another order or in full. It reads the page's data and nothing else | `Sources/App/UsageHistory/` |
 | `ReportSaver` | where a report leaves the app: the save panel (named for the range), the atomic write, the file opened when saved; a failed write is its `failure`, which the card shows. The App's edge, kept thin | `Sources/App/UsageHistory/` |
 
 ```
@@ -199,7 +228,9 @@ which is offered from two providers.
 | the week to start on Sunday | the person's calendar — no code |
 | provider colours from the provider's look | the App: `ModelColors`' hues, or the provider's own; nothing in the kernel |
 | the report to look different | its stylesheet — one place, the report's own; the words stay `UsageFormat`'s |
-| another section in the report | a value built from `Days` in `recap.unit` (`Recap.days`, `Recap.models`), never a count in the report |
+| another section in the report | a value built from `Days` in `recap.unit` (`Recap.days`, `Recap.models`, `Recap.projects`), then a line in `RecapReportPage` — never a count in the report or its script |
+| another split in the report (by login, by tool) | a `UsageLine` and its mix; `RecapReportPage` adds one `Split`, and the chart's choice, the day's list and the sorting follow |
+| another thing to pick in the report | `RecapReportScript`: one more piece of what is shown, over the same page |
 
 ## 7 · Considered and rejected
 
@@ -212,6 +243,10 @@ which is offered from two providers.
 | the card cutting each week out of `lastThirtyDays` | cutting a range is `UsageHistory.days(in:)`'s job |
 | a stored weekly report | the days are the record; a kept recap is a second truth |
 | the report in the person's app theme | the file travels alone: its own stylesheet keeps it self-contained and follows the system's light or dark, not a theme the reader doesn't have |
+| a report with no script at all | it was the first build: a month's thirty bars could say one value, a second unit and a day's detail had nowhere to go, and each new figure made the page longer instead of deeper |
+| the script adding up raw days it is handed | a second count, in a second language, with its own rounding and its own idea of a unit; the page hands it figures already read and already in words |
+| a charting library, from a CDN or inlined | the file travels alone and must open offline; a bar is a `div` with a height |
+| every choice written out as markup the script only reveals | one page per unit, stacking and day: megabytes for a month, and the same markup written twice |
 | the report rebuilding the day-by-day from `lastThirtyDays` | the shape is `DayActivity`'s and `ModelMix`'s read of the merged range; a second cut is a second truth |
 | four flat cases (*thisWeek* … *lastMonth*) and a *isMonth* flag | the period hides as a Bool; *before* switches on case pairs, and a quarter is an edit to every switch |
 | a parallel map of each range's dates beside the recaps | two answers to *which dates*; the recap carries its own range |

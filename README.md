@@ -185,6 +185,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     </tr>
     <tr>
       <td align="center" valign="top" width="16.66%"><a href="https://github.com/abhishek-paramaiq"><img src="https://avatars.githubusercontent.com/u/305433364?v=4?s=80" width="80px;" alt="abhishek-paramaiq"/><br /><sub><b>abhishek-paramaiq</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=abhishek-paramaiq" title="Code">💻</a></td>
+      <td align="center" valign="top" width="16.66%"><a href="https://github.com/al-global-tech"><img src="https://avatars.githubusercontent.com/u/155616440?v=4?s=80" width="80px;" alt="AL Global"/><br /><sub><b>AL Global</b></sub></a><br /><a href="https://github.com/tddworks/claudebar/commits?author=al-global-tech" title="Code">💻</a></td>
     </tr>
   </tbody>
   <tfoot>

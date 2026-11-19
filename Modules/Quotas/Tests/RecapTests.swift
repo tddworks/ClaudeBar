@@ -172,6 +172,103 @@ struct RecapTests {
         #expect(recap.models.isEmpty)
     }
 
+    // MARK: - The other units, the projects and each part's change
+
+    /// A priced recap can be read in tokens too: every figure follows.
+    @Test func `should read the same range in tokens when the person asks`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 10, tokens: 100)),
+                                 "b": priced(day(monday, cost: 5, tokens: 900))],
+                          before: ["a": priced(day(monday, cost: 1, tokens: 500))])
+        let tokens = recap.read(in: .tokens)
+
+        #expect(recap.units == [.cost, .tokens])
+        #expect(tokens.unit == .tokens)
+        #expect(tokens.total == 1_000)
+        #expect(tokens.change == 1)
+        #expect(tokens.providers.map(\.provider) == ["b", "a"])
+    }
+
+    /// Dollars would count an unpriced provider as nothing, so they are never offered.
+    @Test func `should never offer cost when one provider prices nothing`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 10, tokens: 100)),
+                                 "b": unpriced(day(monday, tokens: 900))], before: [:])
+
+        #expect(recap.units == [.tokens])
+        #expect(recap.read(in: .cost).unit == .tokens)
+    }
+
+    @Test func `should offer the cache as a unit when the range holds cache tokens`() {
+        let cached = DailyUsageStat(date: monday, totalCost: 0, totalTokens: 100, workingTime: 0, sessionCount: 1,
+                                    cacheCreationTokens: 50, cacheReadTokens: 150)
+        let recap = Recap(range: week, this: ["a": unpriced(cached)], before: [:])
+
+        #expect(recap.units == [.tokens, .cache])
+        #expect(recap.read(in: .cache).total == 200)
+    }
+
+    @Test func `should tell each provider's change against the range before`() {
+        let recap = Recap(range: week, this: ["a": priced(day(tuesday, cost: 15)), "b": priced(day(tuesday, cost: 5))],
+                          before: ["a": priced(day(monday, cost: 10))])
+
+        #expect(recap.providers.map(\.change) == [0.5, nil])
+    }
+
+    @Test func `should tell a model's change against the range before`() {
+        let earlier = ModelUsageLine(model: large.model, totalTokens: 100, cost: 6)
+        let recap = Recap(range: week, this: ["a": priced(day(tuesday, cost: 14, lines: [large, small]))],
+                          before: ["a": priced(day(monday, cost: 6, lines: [earlier]))])
+
+        #expect(recap.models.map { recap.change(of: $0) } == [1, nil])
+    }
+
+    /// Where the work went: every named project, and what the logs left unnamed.
+    @Test func `should split the range by project across every provider`() {
+        let site = ProjectUsageLine(project: "site", cost: 6)
+        let app = ProjectUsageLine(project: "app", cost: 3)
+        let a = DailyUsageStat(date: monday, totalCost: 8, totalTokens: 0, workingTime: 0, sessionCount: 1, projects: [site])
+        let b = DailyUsageStat(date: monday, totalCost: 3, totalTokens: 0, workingTime: 0, sessionCount: 1, projects: [app])
+        let recap = Recap(range: week, this: ["a": priced(a), "b": priced(b)], before: [:])
+
+        #expect(recap.projects.map(\.line.project) == ["site", "app", ""])
+        #expect(recap.projects.map(\.value) == [6, 3, 2])
+    }
+
+    @Test func `should split by no project when no log names one`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 8))], before: [:])
+
+        #expect(recap.projects.isEmpty)
+    }
+
+    /// A day's list keeps the range's rows, each with its part of the day.
+    @Test func `should tell each provider's part of a day, in the range's order`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 8), day(tuesday, cost: 6)),
+                                 "b": priced(day(monday, cost: 2))], before: [:])
+
+        #expect(recap.providers(on: monday).map(\.value) == [8, 2])
+        #expect(recap.providers(on: monday).map(\.share) == [0.8, 0.2])
+        #expect(recap.providers(on: tuesday).map(\.value) == [6, 0])
+    }
+
+    @Test func `should tell each model's part of a day, in the range's order`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 14, lines: [large, small]),
+                                                           day(tuesday, cost: 2, lines: [small]))], before: [:])
+
+        #expect(recap.parts(of: recap.models, on: tuesday).map(\.line.model) == [large.model, small.model])
+        #expect(recap.parts(of: recap.models, on: tuesday).map(\.value) == [0, 2])
+        #expect(recap.parts(of: recap.models, on: tuesday).map(\.share) == [0, 1])
+    }
+
+    /// An average over the days that held anything, so an idle weekend doesn't thin it.
+    @Test func `should average over the days that held anything, and over the sessions`() {
+        let recap = Recap(range: week, this: ["a": priced(day(monday, cost: 8, sessions: 3), day(tuesday, cost: 4, sessions: 1),
+                                                           DailyUsageStat.empty(for: tuesday.addingTimeInterval(86_400)))],
+                          before: [:])
+
+        #expect(recap.activeDays == 2)
+        #expect(recap.dailyAverage == 6)
+        #expect(recap.perSession == 3)
+    }
+
     // MARK: - Nothing
 
     @Test func `should hold nothing when no provider used anything in the week`() {

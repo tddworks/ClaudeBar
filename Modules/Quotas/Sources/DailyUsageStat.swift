@@ -219,11 +219,7 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
 
     /// Cache hit rate: portion of input that was served from cache.
     /// Formula: cache_read / (cache_read + input). Returns 0 when denominator is zero.
-    public var cacheHitRate: Double {
-        let denom = cacheReadTokens + inputTokens
-        guard denom > 0 else { return 0 }
-        return Double(cacheReadTokens) / Double(denom)
-    }
+    public var cacheHitRate: Double { spend.cacheHitRate }
 
     /// Formatted cache hit rate (e.g., "92.4%")
     public var formattedHitRate: String {
