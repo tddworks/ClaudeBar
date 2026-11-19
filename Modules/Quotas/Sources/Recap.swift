@@ -71,6 +71,9 @@ public struct Recap: Sendable, Equatable {
     /// Every provider's days in the range as one — what the report reads a
     /// day's own figures from.
     public let whole: Days
+    /// The range hour by hour, across every provider — the activity's read,
+    /// for the report's hour by hour.
+    public let hours: HourActivity
     /// The units the recap can be read in (`read(in:)`), its own first: a
     /// unit every provider offers and the range holds something in — never
     /// cost when the recap itself reads in tokens.
@@ -127,6 +130,7 @@ public struct Recap: Sendable, Equatable {
         tokens = unit == .tokens ? nil : week.total(in: .tokens)
         isEmpty = week.isEmpty
         activeDays = week.activeDays
+        hours = HourActivity(of: week, in: unit)
         units = [own] + Days.Unit.allCases.filter { $0 != own && $0 != .cost && week.total(in: $0) > 0 }
     }
 

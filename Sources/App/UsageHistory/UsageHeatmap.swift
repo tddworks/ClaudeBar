@@ -30,8 +30,14 @@ struct UsageHeatmap {
     /// A day's band: 0 for a day with nothing, else 1…4 by its share of the
     /// busiest day — how full it is, never a colour.
     static func level(of day: DayValue) -> Int {
-        guard day.value > 0, day.share > 0 else { return 0 }
-        return max(1, min(4, Int((day.share * 4).rounded(.up))))
+        day.value > 0 ? level(ofShare: day.share) : 0
+    }
+
+    /// The band of a share of the busiest — a day's, or an hour's in the
+    /// recap's report: 0 for nothing, else 1…4.
+    static func level(ofShare share: Double) -> Int {
+        guard share > 0 else { return 0 }
+        return max(1, min(4, Int((share * 4).rounded(.up))))
     }
 
     /// Lays `days` out a column a week, oldest first, in `calendar`'s

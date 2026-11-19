@@ -4,7 +4,8 @@ import Quotas
 /// Records into days: each record on the local day its own time falls in,
 /// priced, with working sessions split by `sessionGap`. A day is the sum of
 /// its lines — one per model, and, when the log names a working directory,
-/// one per project (daily-usage design §1, quota-by-project design §3).
+/// one per project (daily-usage design §1, quota-by-project design §3) —
+/// and one per hour of the day a record was written in (recap design §3).
 enum DayAggregator {
     /// Bumped when how days are summed changes. The log's fingerprint
     /// carries it, so kept days are summed again — a ledger is a cache, not
@@ -20,17 +21,19 @@ enum DayAggregator {
             calendar.startOfDay(for: $0.at)
         }
         return range.days(in: calendar).map { day in
-            stat(byDay[day] ?? [], on: day, sessionGap: sessionGap, prices: prices, servedLocally: day == freeOn)
+            stat(byDay[day] ?? [], on: day, calendar: calendar, sessionGap: sessionGap, prices: prices,
+                 servedLocally: day == freeOn)
         }
     }
 
-    static func stat(_ records: [LogRecord], on day: Date, sessionGap: Double?, prices: PriceList?,
-                     servedLocally: Bool) -> DailyUsageStat {
+    static func stat(_ records: [LogRecord], on day: Date, calendar: Calendar, sessionGap: Double?,
+                     prices: PriceList?, servedLocally: Bool) -> DailyUsageStat {
         guard !records.isEmpty else { return .empty(for: day) }
         var cost: Decimal = 0
         var savings: Decimal = 0
         var models: [String: Spend] = [:]
         var projects: [String: Spend] = [:]
+        var hours: [Int: Spend] = [:]
         for record in records {
             let spent: Decimal?
             if let own = record.cost {
@@ -54,6 +57,10 @@ enum DayAggregator {
             // directory's last path component — the one place the naming
             // happens, so a day is never kept with a path. What no project
             // names is the day's remainder, the day's own to work out.
+            // …and to the hour of the day it was written in, in the log's
+            // own calendar, as the day itself is.
+            let hour = calendar.component(.hour, from: record.at)
+            hours[hour, default: .none] = hours[hour, default: .none] + spend
             let project = record.project.map { ProjectUsageLine.name(of: $0) } ?? ""
             if !project.isEmpty {
                 projects[project, default: .none] = projects[project, default: .none] + spend
@@ -82,7 +89,8 @@ enum DayAggregator {
             cachedSavings: savings,
             lines: lines,
             // The named projects, in name order; the remainder is the day's.
-            projects: projects.sorted { $0.key < $1.key }.map { ProjectUsageLine(project: $0.key, spend: $0.value) }
+            projects: projects.sorted { $0.key < $1.key }.map { ProjectUsageLine(project: $0.key, spend: $0.value) },
+            hours: .known(hours.sorted { $0.key < $1.key }.map { HourUsageLine(hour: $0.key, spend: $0.value) })
         )
     }
 

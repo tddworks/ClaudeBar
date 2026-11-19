@@ -67,6 +67,29 @@ struct RecapReportPage: Encodable {
         let parts: [[DayPart]]
     }
 
+    /// One hour that held something: the hour of the day, its shading band
+    /// (`UsageHeatmap`'s, 1…4) and its value.
+    struct HourCell: Encodable {
+        let h: Int
+        let level: Int
+        let value: String
+    }
+
+    /// One day hour by hour — only the hours that held something — or a day
+    /// whose hours were never kept.
+    struct HourRow: Encodable {
+        let known: Bool
+        let cells: [HourCell]
+    }
+
+    /// The range hour by hour: a row a day, the hours of the day added up
+    /// over the range, and the busiest hour in words.
+    struct Hours: Encodable {
+        let rows: [HourRow]
+        let ofDay: [HourCell]
+        let peak: String
+    }
+
     /// The whole recap read in one unit.
     struct View: Encodable {
         let total: String
@@ -76,6 +99,8 @@ struct RecapReportPage: Encodable {
         let tiles: [Fact]
         let splits: [Split]
         let days: [Day]
+        /// None when no day of the range knows its hours.
+        let hours: Hours?
     }
 
     /// A day's own figures, whatever the unit: its label under a bar, its
@@ -161,7 +186,28 @@ struct RecapReportPage: Encodable {
                         byModel.rows.isEmpty ? nil : parts(recap.parts(of: recap.models, on: day.date).map { ($0.value, $0.share) }, in: unit),
                         byProject.rows.isEmpty ? nil : parts(recap.parts(of: recap.projects, on: day.date).map { ($0.value, $0.share) }, in: unit),
                     ].compactMap { $0 })
-            })
+            },
+            hours: hours(of: recap.hours, in: unit))
+    }
+
+    /// The hour by hour, or nothing when no day knows its hours.
+    private static func hours(of activity: HourActivity, in unit: Days.Unit) -> Hours? {
+        guard let busiest = activity.busiest else { return nil }
+        func cells(_ hours: [HourActivity.Hour]) -> [HourCell] {
+            hours.filter { $0.value > 0 }.map {
+                HourCell(h: $0.hour, level: UsageHeatmap.level(ofShare: $0.share),
+                         value: UsageFormat.value($0.value, in: unit))
+            }
+        }
+        let day = busiest.date.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        return Hours(rows: activity.days.map { HourRow(known: $0.isKnown, cells: cells($0.hours)) },
+                     ofDay: cells(activity.ofDay),
+                     peak: "\(day), \(span(busiest.hour.hour)) · \(UsageFormat.value(busiest.hour.value, in: unit))")
+    }
+
+    /// An hour of the day as the span it covers — "14:00–15:00".
+    static func span(_ hour: Int) -> String {
+        String(format: "%02d:00–%02d:00", hour, (hour + 1) % 24)
     }
 
     private static func tiles(of recap: Recap) -> [Fact] {

@@ -103,6 +103,7 @@ struct RecapHTMLReport {
         let sections = [
             lead(view),
             section("Day by day", daysMarkup(page, view)),
+            view.hours.map { section("Hour by hour", hoursMarkup(page, $0)) } ?? "",
             view.splits.map { section($0.title, rowsMarkup($0)) }.joined(separator: "\n"),
             section("Tokens by kind", tilesMarkup(page.tokens)),
             section("Highlights", tilesMarkup(view.tiles)),
@@ -147,6 +148,38 @@ struct RecapHTMLReport {
         let quiet = range.period == .month ? " month" : ""
         return "<div class=\"chart\(quiet)\">" + bars.joined(separator: "\n") + "</div>"
     }
+
+    /// Every day of the range hour by hour: a row a day, twenty-four cells,
+    /// each shaded by its band against the range's busiest hour; over them
+    /// the hours of the day added up. A day whose hours were never kept says
+    /// so, never twenty-four empty cells.
+    private func hoursMarkup(_ page: RecapReportPage, _ hours: RecapReportPage.Hours) -> String {
+        func cells(_ cells: [RecapReportPage.HourCell]) -> String {
+            (0..<24).map { hour in
+                cells.first { $0.h == hour }.map { #"<i class="h\#($0.level)" title="\#(RecapReportPage.span(hour)) · \#($0.value)"></i>"# } ?? "<i></i>"
+            }.joined()
+        }
+        let axis = #"<div class="hr axis"><span class="hl"></span>"#
+            + stride(from: 0, to: 24, by: 3).map { #"<span class="ha">\#(String(format: "%02d", $0))</span>"# }.joined()
+            + "</div>"
+        let all = #"<div class="hr all"><span class="hl">All</span>\#(cells(hours.ofDay))</div>"#
+        let rows = zip(hours.rows, page.days).map { row, own in
+            let label = #"<span class="hl">\#(Self.escape(own.label))</span>"#
+            return row.known
+                ? #"<div class="hr">\#(label)\#(cells(row.cells))</div>"#
+                : #"<div class="hr"><span class="hl">\#(Self.escape(own.label))</span><span class="nk">no hours kept for this day</span></div>"#
+        }
+        let quiet = range.period == .month ? " month" : ""
+        return #"<div class="peak">Busiest hour: \#(Self.escape(hours.peak))</div>"#
+            + "<div class=\"heat\(quiet)\">" + ([axis, all] + rows).joined(separator: "\n") + "</div>"
+            + Self.heatLegend
+    }
+
+    /// The bands, lightest first — each cell is shaded against the range's
+    /// busiest hour.
+    private static let heatLegend = #"<div class="legend"><span>Less</span>"#
+        + UsageHeatmap.levels.map { $0 == 0 ? "<i></i>" : #"<i class="h\#($0)"></i>"# }.joined()
+        + "<span>More</span></div>"
 
     /// A split of the range — its providers, its models, its projects — a
     /// stacked bar over a row each, largest first.
@@ -219,8 +252,8 @@ struct RecapHTMLReport {
         }
         let colors = "\(hues(dark: false))\n@media (prefers-color-scheme:dark){\(hues(dark: true))}"
         return """
-        :root{--bg:#F6F4FA;--wash:#EDE8F6;--card:#FFFFFF;--hair:#E6E1F0;--ink:#1D1B2E;--muted:#6B6580;--faint:#9A93AE;--track:#ECE6F5;--up:#C46A00;--down:#1F8A4D;--glow:rgba(140,110,220,.10);--on:#FFFFFF;--tip:#FFFFFF;--accent:#6B4FD8}
-        @media (prefers-color-scheme:dark){:root{--bg:#0C0D12;--wash:#14151D;--card:rgba(255,255,255,.045);--hair:rgba(255,255,255,.09);--ink:#F2F2F5;--muted:#A8A8B3;--faint:#6E6E7A;--track:rgba(255,255,255,.07);--up:#FF9F0A;--down:#30D158;--glow:rgba(120,90,220,.16);--on:rgba(255,255,255,.14);--tip:#1E1F29;--accent:#A892FF}}
+        :root{--bg:#F6F4FA;--wash:#EDE8F6;--card:#FFFFFF;--hair:#E6E1F0;--ink:#1D1B2E;--muted:#6B6580;--faint:#9A93AE;--track:#ECE6F5;--up:#C46A00;--down:#1F8A4D;--glow:rgba(140,110,220,.10);--on:#FFFFFF;--tip:#FFFFFF;--accent:#6B4FD8;--heat:123 91 230}
+        @media (prefers-color-scheme:dark){:root{--bg:#0C0D12;--wash:#14151D;--card:rgba(255,255,255,.045);--hair:rgba(255,255,255,.09);--ink:#F2F2F5;--muted:#A8A8B3;--faint:#6E6E7A;--track:rgba(255,255,255,.07);--up:#FF9F0A;--down:#30D158;--glow:rgba(120,90,220,.16);--on:rgba(255,255,255,.14);--tip:#1E1F29;--accent:#A892FF;--heat:168 132 255}}
         *{box-sizing:border-box}
         [hidden]{display:none!important}
         body{margin:0;background:radial-gradient(900px 340px at 50% -120px,var(--glow),transparent 70%),var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -281,6 +314,33 @@ struct RecapHTMLReport {
         .chart .v{flex:none;font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
         .chart .l{font-size:11px;color:var(--faint)}
         .chart .peak .l{color:var(--ink);font-weight:700}
+        .peak{margin:-4px 0 12px;font-size:12.5px;color:var(--muted)}
+        .heat{display:flex;flex-direction:column;gap:3px}
+        .heat.month{gap:2px}
+        .hr{display:grid;grid-template-columns:38px repeat(24,1fr);gap:3px;align-items:center}
+        .heat.month .hr{gap:2px}
+        .hr i{display:block;height:20px;border-radius:3px;background:var(--track)}
+        .heat.month .hr i{height:13px;border-radius:2px}
+        .hr .h1{background:rgb(var(--heat)/.28)}
+        .hr .h2{background:rgb(var(--heat)/.5)}
+        .hr .h3{background:rgb(var(--heat)/.75)}
+        .hr .h4{background:rgb(var(--heat))}
+        .hr .hl{padding-right:8px;text-align:right;font-size:10.5px;color:var(--faint);white-space:nowrap}
+        .hr .ha{grid-column:span 3;font-size:10.5px;color:var(--faint)}
+        .hr.all{margin-bottom:6px}
+        .hr.all .hl{font-weight:700;color:var(--muted)}
+        .hr .nk{grid-column:span 24;font-size:10.5px;color:var(--faint);border:1px dashed var(--hair);border-radius:3px;padding:0 8px;line-height:18px}
+        .heat.month .hr .nk{line-height:11px;font-size:9.5px}
+        .hr.sel .hl{color:var(--accent);font-weight:700}
+        .heat.live .hr:not(.axis):not(.all){cursor:pointer}
+        .heat.live .hr i:hover{outline:2px solid var(--ink);outline-offset:1px}
+        .legend{display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:10px;font-size:10.5px;color:var(--faint)}
+        .legend span{padding:0 4px}
+        .legend i{display:block;width:13px;height:13px;border-radius:2px;background:var(--track)}
+        .legend .h1{background:rgb(var(--heat)/.28)}
+        .legend .h2{background:rgb(var(--heat)/.5)}
+        .legend .h3{background:rgb(var(--heat)/.75)}
+        .legend .h4{background:rgb(var(--heat))}
         .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
         .tile{border:1px solid var(--hair);border-radius:12px;padding:12px 14px;background:var(--wash)}
         .tile .k{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}

@@ -38,6 +38,7 @@ It carries the card's numbers and then the detail the card only summarises:
 |---|---|
 | **The week / month** | the total, the change, tokens, time worked, sessions |
 | **Day by day** | a bar for every day; point at one for that day's cost, tokens, sessions, time worked, cache savings and top models |
+| **Hour by hour** | a row for every day and a cell for every hour, shaded by what that hour spent — when in the day you work; the **All** row adds the days up. Point at a cell for that hour in every unit, click a row to pick its day |
 | **Where it went · Models · Projects** | a row for every provider, every named model and every named project, each with its value, its share and its change against the period before |
 | **Tokens by kind** | input, output, cache writes and cache reads |
 | **Highlights** | top model, biggest day, active days, the average per active day and per session, what the cache saved and its hit rate |
@@ -93,6 +94,15 @@ background.
   turns, or when the popover reads your logs again.
 
 ## Gotchas
+
+- **A day says *no hours kept for this day***: ClaudeBar began keeping hours
+  with this version. A past day whose tool has since cleared its logs keeps its
+  totals but can't say when they were spent. The same row shows when one of
+  several providers can't say — half a day's hours would read as the whole
+  day's.
+- **No *Hour by hour* section at all**: no day of the range knows its hours
+  yet. Open the popover once after updating; days whose logs still exist are
+  read again.
 
 - **No card at all**: nothing in *any* range (no sessions this week, last
   week, this month or last month), **Recap** is off, or you have only one
