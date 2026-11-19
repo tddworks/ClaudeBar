@@ -90,7 +90,7 @@ enum DayAggregator {
             lines: lines,
             // The named projects, in name order; the remainder is the day's.
             projects: projects.sorted { $0.key < $1.key }.map { ProjectUsageLine(project: $0.key, spend: $0.value) },
-            hours: hours.sorted { $0.key < $1.key }.map { HourUsageLine(hour: $0.key, spend: $0.value) }
+            hours: .known(hours.sorted { $0.key < $1.key }.map { HourUsageLine(hour: $0.key, spend: $0.value) })
         )
     }
 

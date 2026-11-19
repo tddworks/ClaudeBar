@@ -15,7 +15,8 @@ struct HourActivityTests {
     }
 
     private func day(_ date: Date, cost: Decimal, tokens: Int = 0, hours: [HourUsageLine]?) -> DailyUsageStat {
-        DailyUsageStat(date: date, totalCost: cost, totalTokens: tokens, workingTime: 0, sessionCount: 1, hours: hours)
+        DailyUsageStat(date: date, totalCost: cost, totalTokens: tokens, workingTime: 0, sessionCount: 1,
+                       hours: hours.map(DayHours.known) ?? .notRead)
     }
 
     @Test func `should read every hour of a day, an idle one as nothing`() {
@@ -73,7 +74,7 @@ struct HourActivityTests {
     @Test func `should add two days' hours into one when the days add up`() {
         let sum = day(monday, cost: 4, hours: [hour(9, cost: 4)]) + day(monday, cost: 3, hours: [hour(9, cost: 1), hour(11, cost: 2)])
 
-        #expect(sum.hours == [hour(9, cost: 5), hour(11, cost: 2)])
+        #expect(sum.hours == .known([hour(9, cost: 5), hour(11, cost: 2)]))
     }
 
     /// Half a day's hours would read as the whole day's.
@@ -81,6 +82,50 @@ struct HourActivityTests {
         let sum = day(monday, cost: 4, hours: [hour(9, cost: 4)]) + day(monday, cost: 3, hours: nil)
 
         #expect(!sum.knowsHours)
+        #expect(sum.needsHoursRead)
+    }
+
+    @Test func `should name the busiest hour and its day`() {
+        let activity = HourActivity(of: Days([day(monday, cost: 4, hours: [hour(9, cost: 4)])], knowsCost: true), in: .cost)
+
+        #expect(activity.busiest == HourActivity.Peak(date: monday, hour: HourActivity.Hour(hour: 9, value: 4, share: 1)))
+    }
+
+    // MARK: - What a day knows of its hours
+
+    /// A day that used nothing knows its hours — none — however it is built.
+    @Test func `should know an idle day's hours whatever it was told`() {
+        #expect(DailyUsageStat.empty(for: monday).hours == .known([]))
+        #expect(DailyUsageStat.empty(for: monday).with(hours: .notKept).hours == .known([]))
+        #expect(!DailyUsageStat.empty(for: monday).needsHoursRead)
+    }
+
+    @Test func `should need its hours read only when it was never asked`() {
+        #expect(day(monday, cost: 4, hours: nil).needsHoursRead)
+        #expect(!day(monday, cost: 4, hours: nil).with(hours: .notKept).needsHoursRead)
+        #expect(!day(monday, cost: 4, hours: [hour(9, cost: 4)]).needsHoursRead)
+    }
+
+    /// A day whose logs were cleared says so when kept, and is not asked again.
+    @Test func `should keep that a day's hours were not kept when it is written and read back`() throws {
+        let cleared = day(monday, cost: 4, hours: nil).with(hours: .notKept)
+        let read = try JSONDecoder().decode(DailyUsageStat.self, from: JSONEncoder().encode(cleared))
+
+        #expect(read.hours == .notKept)
+        #expect(!read.knowsHours)
+    }
+
+    @Test func `should not know a sum's hours when one of its days' were not kept`() {
+        let sum = day(monday, cost: 4, hours: [hour(9, cost: 4)]) + day(monday, cost: 3, hours: nil).with(hours: .notKept)
+
+        #expect(sum.hours == .notKept)
+    }
+
+    /// An idle day kept before hours were is written back as it was read.
+    @Test func `should write an idle day as it was read`() throws {
+        let data = try JSONEncoder().encode(DailyUsageStat.empty(for: monday))
+
+        #expect(!String(decoding: data, as: UTF8.self).contains("hours"))
     }
 
     @Test func `should write a day never split by hour as it was read`() throws {

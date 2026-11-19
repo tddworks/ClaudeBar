@@ -46,11 +46,10 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
     /// directory (quota-by-project design §3).
     public let projects: [ProjectUsageLine]
 
-    /// One line per hour of the day that held a record, in the day's order —
-    /// *when* in the day it was spent. `nil` for a day summed before hours
-    /// were kept: its hours were never read, which is not the same as a day
-    /// read and found to name none (recap design §3).
-    public let hours: [HourUsageLine]?
+    /// *When* in the day it was spent: the hour lines, or why there are
+    /// none — never read, or read and not kept. A day that used nothing
+    /// knows its hours, none, whatever it is built with (recap design §3).
+    public let hours: DayHours
 
     public init(
         date: Date,
@@ -65,7 +64,7 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         cachedSavings: Decimal = 0,
         lines: [ModelUsageLine] = [],
         projects: [ProjectUsageLine] = [],
-        hours: [HourUsageLine]? = nil
+        hours: DayHours = .notRead
     ) {
         self.date = date
         self.totalCost = totalCost
@@ -79,7 +78,13 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         self.cachedSavings = cachedSavings
         self.lines = lines
         self.projects = projects.filter { !$0.project.isEmpty }
-        self.hours = hours
+        self.hours = Self.settled(hours, idle: totalTokens == 0 && totalCost == 0 && workingTime == 0)
+    }
+
+    /// A day that used nothing knows its hours: none. Any other day's are as
+    /// it was told.
+    private static func settled(_ hours: DayHours, idle: Bool) -> DayHours {
+        idle ? .known([]) : hours
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -103,7 +108,9 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         lines = try container.decodeIfPresent([ModelUsageLine].self, forKey: .lines) ?? []
         projects = (try container.decodeIfPresent([ProjectUsageLine].self, forKey: .projects) ?? [])
             .filter { !$0.project.isEmpty }
-        hours = try container.decodeIfPresent([HourUsageLine].self, forKey: .hours)
+        // A day kept before hours were has no key: never read.
+        hours = Self.settled(try container.decodeIfPresent(DayHours.self, forKey: .hours) ?? .notRead,
+                             idle: totalTokens == 0 && totalCost == 0 && workingTime == 0)
     }
 
     /// Written as it is read; a day with no project lines writes none, and
@@ -123,16 +130,24 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
         try container.encode(cachedSavings, forKey: .cachedSavings)
         try container.encode(lines, forKey: .lines)
         if !projects.isEmpty { try container.encode(projects, forKey: .projects) }
-        try container.encodeIfPresent(hours, forKey: .hours)
+        switch hours {
+        case .notRead: break
+        case .known(let lines) where lines.isEmpty: break
+        case .notKept, .known: try container.encode(hours, forKey: .hours)
+        }
     }
 
-    /// Whether the day can say when it was spent: a day that used nothing
-    /// can (never), and one that did needs an hour line.
-    public var knowsHours: Bool { isEmpty || !(hours ?? []).isEmpty }
+    /// Whether the day can say when it was spent.
+    public var knowsHours: Bool { hours.lines != nil }
+
+    /// Whether the day's hours are still to read from the logs: it was
+    /// summed before hours were kept and hasn't been asked since. The one
+    /// place that says so.
+    public var needsHoursRead: Bool { hours == .notRead }
 
     /// The same day with `hours` as its hour lines — every other figure as
     /// it was.
-    public func with(hours: [HourUsageLine]?) -> DailyUsageStat {
+    public func with(hours: DayHours) -> DailyUsageStat {
         DailyUsageStat(date: date, totalCost: totalCost, totalTokens: totalTokens, workingTime: workingTime,
                        sessionCount: sessionCount, inputTokens: inputTokens, outputTokens: outputTokens,
                        cacheCreationTokens: cacheCreationTokens, cacheReadTokens: cacheReadTokens,
@@ -176,10 +191,7 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
             cachedSavings: lhs.cachedSavings + rhs.cachedSavings,
             lines: ModelUsageLine.summed(lhs.lines + rhs.lines),
             projects: ProjectUsageLine.summed(lhs.projects + rhs.projects),
-            // The sum knows its hours only when every day that used something
-            // knows its own: half a day's hours would read as the whole day's.
-            hours: lhs.knowsHours && rhs.knowsHours
-                ? HourUsageLine.summed((lhs.hours ?? []) + (rhs.hours ?? [])) : nil
+            hours: lhs.hours + rhs.hours
         )
     }
 

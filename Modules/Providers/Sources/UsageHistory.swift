@@ -65,8 +65,10 @@ public final class UsageHistory {
 
     /// One range of dates, every date present. Closed days come from the
     /// ledger; the logs are read only from the first day the ledger doesn't
-    /// hold — or holds from before days were split by hour, which is read
-    /// again once (`settled`).
+    /// hold — or holds from before days were split by hour, whose hours are
+    /// still to read (`needsHoursRead`). Every day from there on is read
+    /// again, and none of them is replaced by a read that says less
+    /// (`settled`).
     public func days(in range: DateRange) async -> Quotas.Days {
         let knowsCost = log.knowsCost
         guard let ledger else {
@@ -79,7 +81,7 @@ public final class UsageHistory {
         guard let firstMissing = dates.first(where: { day in
             guard DayLedger.isClosed(day, at: now, calendar: calendar),
                   let held = kept[DayLedger.name(of: day, calendar: calendar)] else { return true }
-            return held.hours == nil && !held.isEmpty
+            return held.needsHoursRead
         }) else {
             return Quotas.Days(dates.compactMap { kept[DayLedger.name(of: $0, calendar: calendar)] }, knowsCost: knowsCost)
         }
@@ -97,15 +99,16 @@ public final class UsageHistory {
         return Quotas.Days(before + read, knowsCost: knowsCost)
     }
 
-    /// A day read again over the one kept before days were split by hour.
-    /// The logs' answer stands when it holds at least what was kept; when a
-    /// tool has since cleared its logs and they say less, the kept day stays
-    /// — marked as read, with no hours to offer — so a day is never lost to
-    /// a re-read, and is read again only once.
+    /// A day read again over the one the ledger holds — whatever the kept
+    /// day knows of its hours. The logs' answer stands when it holds at
+    /// least what was kept; when a tool has since cleared its logs and they
+    /// say less, the kept day stays, so a kept day is never lost to a
+    /// re-read. A kept day whose hours were still to read is then marked as
+    /// not kept, and never asked of the logs again.
     static func settled(_ read: DailyUsageStat, over kept: DailyUsageStat?) -> DailyUsageStat {
-        guard let kept, kept.hours == nil, !kept.isEmpty,
+        guard let kept, !kept.isEmpty,
               read.isEmpty || read.totalTokens < kept.totalTokens || read.totalCost < kept.totalCost else { return read }
-        return kept.with(hours: [])
+        return kept.needsHoursRead ? kept.with(hours: .notKept) : kept
     }
 
     /// Reads the logs again: today against yesterday first, for the cards,

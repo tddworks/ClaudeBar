@@ -172,13 +172,19 @@ struct DayLedgerTests {
         try forgetLogs()
         let days = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
 
-        #expect(days.stats.first?.hours?.map(\.spend.cost) == [41])
+        #expect(days.stats.first?.hours.lines?.map(\.spend.cost) == [41])
     }
 
     /// The days on the shelf, as they were kept before days were split by hour.
     private func forgetHours() {
         guard let page = shelf.pages["acme"] else { return }
-        shelf.pages["acme"] = LedgerPage(fingerprint: page.fingerprint, days: page.days.mapValues { $0.with(hours: nil) })
+        shelf.pages["acme"] = LedgerPage(fingerprint: page.fingerprint, days: page.days.mapValues { $0.with(hours: .notRead) })
+    }
+
+    /// The day kept for `daysAgo` days before `now`.
+    private func kept(_ daysAgo: Int, now: Date) -> DailyUsageStat? {
+        let day = calendar.date(byAdding: .day, value: -daysAgo, to: calendar.startOfDay(for: now))!
+        return shelf.pages["acme"]?.days.values.first { $0.date == day }
     }
 
     /// A day kept by an earlier version has no hours; its logs still do.
@@ -192,7 +198,7 @@ struct DayLedgerTests {
 
         #expect(days.stats.first?.totalCost == 41)
         #expect(days.stats.first?.knowsHours == true)
-        #expect(shelf.pages["acme"]?.days.values.first?.knowsHours == true)
+        #expect(kept(1, now: now)?.knowsHours == true)
     }
 
     /// A tool cleared its logs: the kept day is all there is, and it stays.
@@ -207,7 +213,46 @@ struct DayLedgerTests {
 
         #expect(days.stats.first?.totalCost == 41)
         #expect(days.stats.first?.knowsHours == false)
-        // Read again once: the kept day is marked, never asked of the logs again.
-        #expect(shelf.pages["acme"]?.days.values.first?.hours == [])
+        // Asked once: the kept day is marked, never asked of the logs again.
+        #expect(kept(1, now: now)?.hours == .notKept)
+    }
+
+    /// The thirty days are read first and mark yesterday; the year then
+    /// starts at an older day still to read and reads through yesterday
+    /// again. Its logs are gone, and it must not go with them.
+    @Test func `should keep a day already marked when a longer range is read again from an older day`() async throws {
+        let now = today(at: 12)
+        try log([(41, 1), (7, 5)], now: now)
+        _ = await history(now: now).days(in: .last(6, endingOn: now, calendar: calendar))
+        forgetHours()
+        try forgetLogs()
+        _ = await history(now: now).days(in: .last(2, endingOn: now, calendar: calendar))
+        #expect(kept(1, now: now)?.hours == .notKept)
+        #expect(kept(5, now: now)?.needsHoursRead == true)
+
+        let days = await history(now: now).days(in: .last(6, endingOn: now, calendar: calendar))
+
+        #expect(days.stats.map(\.totalCost) == [7, 0, 0, 0, 41, 0])
+        #expect(kept(1, now: now)?.totalCost == 41)
+        #expect(kept(5, now: now)?.hours == .notKept)
+    }
+
+    /// The same re-read never takes a day that knows its hours either.
+    @Test func `should keep a day that knows its hours when a longer range is read again and its logs are gone`() async throws {
+        let now = today(at: 12)
+        try log([(41, 1), (7, 5)], now: now)
+        _ = await history(now: now).days(in: .last(6, endingOn: now, calendar: calendar))
+        let yesterday = try #require(kept(1, now: now))
+        let older = try #require(kept(5, now: now))
+        shelf.pages["acme"] = shelf.pages["acme"].map { page in
+            LedgerPage(fingerprint: page.fingerprint,
+                       days: page.days.mapValues { $0.date == older.date ? $0.with(hours: .notRead) : $0 })
+        }
+        try forgetLogs()
+
+        let days = await history(now: now).days(in: .last(6, endingOn: now, calendar: calendar))
+
+        #expect(days.stats[4] == yesterday)
+        #expect(kept(1, now: now) == yesterday)
     }
 }

@@ -30,17 +30,24 @@ public struct HourActivity: Sendable, Equatable {
     /// The range's hours of the day, 0…23: each hour summed over the days
     /// that know theirs, against the busiest of the twenty-four.
     public let ofDay: [Hour]
+    /// The hour used most, on its day.
+    public struct Peak: Sendable, Equatable {
+        /// The day, at its start.
+        public let date: Date
+        public let hour: Hour
+    }
+
     /// The hour used most, and its day — nil when no hour is known.
-    public let busiest: (date: Date, hour: Hour)?
+    public let busiest: Peak?
     /// Whether no day of the range knows an hour that held anything.
     public var isEmpty: Bool { busiest == nil }
 
     /// `range`'s days read hour by hour in `unit`.
     public init(of range: Days, in unit: Days.Unit) {
         let read: [(date: Date, values: [Double]?)] = range.stats.map { day in
-            guard day.knowsHours else { return (day.date, nil) }
+            guard let lines = day.hours.lines else { return (day.date, nil) }
             var values = Array(repeating: 0.0, count: 24)
-            for line in day.hours ?? [] where values.indices.contains(line.hour) {
+            for line in lines where values.indices.contains(line.hour) {
                 values[line.hour] += line.spend.value(in: unit)
             }
             return (day.date, values)
@@ -59,11 +66,7 @@ public struct HourActivity: Sendable, Equatable {
             Hour(hour: $0.offset, value: $0.element, share: fullest > 0 ? $0.element / fullest : 0)
         }
         busiest = most > 0
-            ? days.lazy.compactMap { day in day.hours.first { $0.value == most }.map { (day.date, $0) } }.first
+            ? days.lazy.compactMap { day in day.hours.first { $0.value == most }.map { Peak(date: day.date, hour: $0) } }.first
             : nil
-    }
-
-    public static func == (lhs: HourActivity, rhs: HourActivity) -> Bool {
-        lhs.days == rhs.days && lhs.ofDay == rhs.ofDay
     }
 }

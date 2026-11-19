@@ -249,7 +249,7 @@ struct RecapHTMLReportTests {
     }
 
     @Test func `should shade each hour of each day against the busiest hour of the range`() throws {
-        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 8), hour(14, cost: 2)])
+        let worked = day(monday, cost: 10).with(hours: .known([hour(9, cost: 8), hour(14, cost: 2)]))
         let html = report(read(this: ["a": priced(worked)])).html
         let plain = html.components(separatedBy: "<script")[0]
 
@@ -261,7 +261,7 @@ struct RecapHTMLReportTests {
     }
 
     @Test func `should tell each day's hours in every unit the reader can switch to`() throws {
-        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 8), hour(14, cost: 2)])
+        let worked = day(monday, cost: 10).with(hours: .known([hour(9, cost: 8), hour(14, cost: 2)]))
         let page = try data(of: report(read(this: ["a": priced(worked)])))
         let views = try #require(page["views"] as? [String: [String: Any]])
         let tokens = try #require((views["tokens"]?["hours"] as? [String: Any])?["rows"] as? [[String: Any]])
@@ -272,7 +272,7 @@ struct RecapHTMLReportTests {
 
     /// A day kept before hours were: it says so, never twenty-four empty cells.
     @Test func `should say a day's hours were not kept, beside the days that kept theirs`() {
-        let worked = day(monday, cost: 10).with(hours: [hour(9, cost: 10)])
+        let worked = day(monday, cost: 10).with(hours: .known([hour(9, cost: 10)]))
         let html = report(read(this: ["a": priced(worked, day(tuesday, cost: 4))])).html
 
         #expect(html.contains("no hours kept for this day"))

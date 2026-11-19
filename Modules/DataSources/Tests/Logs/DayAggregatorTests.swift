@@ -201,10 +201,10 @@ struct DayAggregatorTests {
             LogRecord(at: start.addingTimeInterval(22 * 3600), input: 300, cost: 0.25),
         ], on: start, calendar: calendar, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.hours == [
+        #expect(stat.hours == .known([
             HourUsageLine(hour: 9, spend: Spend(inputTokens: 1_000, outputTokens: 500, totalTokens: 1_500, cost: 2)),
             HourUsageLine(hour: 22, spend: Spend(inputTokens: 300, totalTokens: 300, cost: 0.25)),
-        ])
+        ]))
     }
 
     @Test func `should make a day's hours add up to the day`() {
@@ -214,8 +214,8 @@ struct DayAggregatorTests {
             LogRecord(at: start.addingTimeInterval(50_000), input: 300, output: 100, cost: 0.25),
         ], on: start, calendar: calendar, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.hours?.reduce(0) { $0 + $1.spend.cost } == stat.totalCost)
-        #expect(stat.hours?.reduce(0) { $0 + $1.spend.totalTokens } == stat.totalTokens)
+        #expect(stat.hours.lines?.reduce(0) { $0 + $1.spend.cost } == stat.totalCost)
+        #expect(stat.hours.lines?.reduce(0) { $0 + $1.spend.totalTokens } == stat.totalTokens)
     }
 
     /// The hour is the log's own calendar's, as the day is.
@@ -226,6 +226,6 @@ struct DayAggregatorTests {
         let stat = DayAggregator.stat([LogRecord(at: start.addingTimeInterval(7 * 3600), input: 10)],
                                       on: start, calendar: tokyo, sessionGap: nil, prices: nil, servedLocally: false)
 
-        #expect(stat.hours?.map(\.hour) == [7])
+        #expect(stat.hours.lines?.map(\.hour) == [7])
     }
 }

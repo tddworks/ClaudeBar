@@ -77,7 +77,7 @@ recap.read(in: .tokens)   // the same range in another unit it offers: every fig
 | a part's **change** | one provider's, model's or project's value against its own in the period before | a change for a part that used nothing before |
 | a **day's part** | a provider's, model's or project's value on one day, and its share of that day — the range's rows, each with its part | a list rebuilt per day in another order |
 | a day's **hours** | the day split by the hour of the day its records were written in, 0…23 in the log's own calendar: an hour line each, adding up to the day's tokens and cost (`DailyUsageStat.hours`, `HourUsageLine`) | sessions or working time by hour — they span hours and stay the day's |
-| hours **not known** | a day that used something and has no hour line: summed before hours were kept and its logs since cleared, or added up with a day like that (`DailyUsageStat.knowsHours`) | an idle day, whose hours are known to be empty; twenty-four cells of zero |
+| what a day knows of its **hours** | one of three things, each named (`DayHours`): **not read** — summed before hours were kept, the logs not asked since; **not kept** — asked, and the logs no longer hold the day; **known** — its hour lines. A day that used nothing knows its hours: none | a list that is `nil`, empty or full, each meaning something only beside whether the day was idle |
 | the **hour by hour** | every day of the range with its twenty-four hours, each against the range's busiest hour; and the hours of the day added up over the range (`HourActivity`) | a clock of sessions; an average per weekday |
 | a **report** | the recap written out as one HTML file: what the card says, plus the day-by-day, model-by-model and project-by-project shape and each day's own figures, in every unit the recap offers; saved only when the person saves it | a stored report the app reads back; an automatic share; a second source of days |
 | the report's **page** | what the report shows, already read and already in words, once per unit (`RecapReportPage`) | the days themselves; numbers for a script to add up |
@@ -121,9 +121,9 @@ Recap(range: DateRange, this: [String: Days], before: [String: Days])           
  ├ tokens      the week in tokens beside a total in another unit; nil when the unit is tokens
  └ isEmpty     no provider used anything
 
-DailyUsageStat.hours        [HourUsageLine]? — a line per hour that held a record; nil when the day was summed before hours were kept
-DailyUsageStat.knowsHours   an idle day knows (none); a day that used something needs a line
-HourActivity(of:in:)        days: [Day(date · hours ×24 · isKnown)] · ofDay ×24 · busiest (date, hour)
+DailyUsageStat.hours        DayHours: .notRead | .notKept | .known([HourUsageLine]) — a missing key reads as not read; an idle day is known, none
+DailyUsageStat.knowsHours · needsHoursRead   known ⇔ it has its lines; still to read ⇔ not read — the one place that says so
+HourActivity(of:in:)        days: [Day(date · hours ×24 · isKnown)] · ofDay ×24 · busiest: Peak(date, hour)
 Days.merged([Days])         several ranges as one: each date once, its days added (DailyUsageStat +)
 DailyUsageStat +            two days of one date as one: every count, cost, time, savings; one line per model and per named project (UsageLine +)
 ```
@@ -133,7 +133,7 @@ DailyUsageStat +            two days of one date as one: every count, cost, time
 | `DateRange.week`, `DateRange.month` | the calendar's week or month holding a day, as a plain run of days | `Modules/Quotas/Sources/DateRange.swift` |
 | `RecapPeriod` | the span a recap adds up, and the period before it | `Sources/Domain/UsageHistory/RecapPeriod.swift` |
 | `RecapRange` | this or last of a period, and the range it is read against | `Sources/Domain/UsageHistory/RecapRange.swift` |
-| `HourUsageLine`, `DailyUsageStat.hours` | when in the day it was spent: a `UsageLine` keyed by the hour, so it adds up as a model's line does | `Modules/Quotas/Sources/` |
+| `HourUsageLine`, `DayHours`, `DailyUsageStat.hours` | when in the day it was spent: a line per hour, summed by the hour itself; and the three things a day can know of its hours, with their own Codable | `Modules/Quotas/Sources/` |
 | `HourActivity` | the range hour by hour in a unit: each hour against the busiest, the hours of the day added up, which days know theirs | `Modules/Quotas/Sources/HourActivity.swift` |
 | `Recap` | the range across providers, in one unit, against the range before; it carries its dates | `Modules/Quotas/Sources/Recap.swift` |
 | `Days.merged`, `isEmpty`, `workingTime`, `sessions`, `activeDays`, `spend` | several ranges as one; whether it holds anything; plain sums; the days that held anything; the tokens by kind | `Modules/Quotas/Sources/Days.swift` |
@@ -177,9 +177,10 @@ word (*week*, *month*) are the App's words for them.
 | a range that read nothing has no say in whether the merged range is priced | `Days.merged` |
 | a value is written once per unit | `UsageFormat` (App) |
 | a record counts in the hour of the day it was written in, in the log's own calendar, as it counts in the day; a day's hours add up to its tokens and cost | `DayAggregator` (DataSources) |
-| a day's hours are known when it used nothing, or keeps an hour line; two days added up know their hours only when both do — half a day's hours never read as the whole day's | `DailyUsageStat` (`knowsHours`, `+`) |
+| a day knows one of three things of its hours — not read, not kept, known — and a day that used nothing knows them: none. Two days added up know their hours only when both do — half a day's hours never read as the whole day's — and stay to read while either is | `DayHours` (`+`) · `DailyUsageStat` (`knowsHours`, `needsHoursRead`) |
 | an hour's share is its value against the range's busiest hour; the hours of the day are summed over the days that know theirs, each against the busiest of the twenty-four; a day that doesn't know its hours is said, never drawn empty | `HourActivity` |
-| a day kept before hours were is read from the logs again, once: what the logs say stands when it holds at least what was kept; when they say less — a tool cleared them — the kept day stays, marked as read with no hours to offer. A re-read never loses a day | `UsageHistory` (`settled`) |
+| an hour is the calendar's hour of the day, so a daylight-saving day still has twenty-four cells: on the autumn change the hour that comes twice shares one cell, and on the spring change the hour that is skipped stays empty | `DayAggregator` (DataSources) |
+| a day whose hours are still to read starts a re-read of the logs from that day on. **No kept day is replaced by a read that says less**, whatever it knows of its hours: when a tool has cleared its logs the kept day stays, and one whose hours were to read is marked not kept and never asked again. A re-read never loses a day | `UsageHistory` (`settled`) · `DailyUsageStat.needsHoursRead` |
 | an hour's shading band is the heatmap's: five bands by its share, the App's beside its legend | `UsageHeatmap` (App) |
 | a recap can be read in the units every provider offers and the range holds something in: its own, tokens, the cache — never cost when it reads in tokens. Another unit is the same recap read again, so the total, the change, the order and every part follow | `Recap.units` · `Recap.read(in:)` |
 | a part's change is its value against its own in the period before, by the recap's one rule; none when it used nothing before | `Recap` (`Part.change`, `change(of:)`) |
@@ -262,9 +263,11 @@ which is offered from two providers.
 | the card cutting each week out of `lastThirtyDays` | cutting a range is `UsageHistory.days(in:)`'s job |
 | a stored weekly report | the days are the record; a kept recap is a second truth |
 | the report in the person's app theme | the file travels alone: its own stylesheet keeps it self-contained and follows the system's light or dark, not a theme the reader doesn't have |
-| starting every ledger over to gain the hours (a bump of the summing version) | a tool that clears its logs after thirty days would take every older kept day with it; a day kept without hours is read again alone, and kept when its logs are gone |
+| starting every ledger over to gain the hours (a bump of the summing version) | a tool that clears its logs after thirty days would take every older kept day with it; a day kept without hours starts a re-read from that day on, and no kept day in it is replaced by less, and kept when its logs are gone |
 | an hour line per model (and per project) | the day's file grows by a line per hour per model for one more row in a tooltip; the hour says how much, the day says which model |
 | sessions and working time by hour | a session spans hours, and where to cut it is a second rule; an hour holds what was written in it — tokens and cost |
+| the hours as an optional list (`nil` not read, empty not kept, full known) | three states hidden in one type, each true only beside whether the day was idle, and *needs a read* written wherever it was asked; `DayHours` names them and the day says `needsHoursRead` once |
+| an hour line as a `UsageLine`, its name the hour in two digits | a sum by name round-trips the hour through text, and a name that doesn't parse becomes midnight; hours are summed by the hour |
 | hours for the sum of two days when only one knows its own | the row would shade half the day's spend and read as all of it |
 | a report with no script at all | it was the first build: a month's thirty bars could say one value, a second unit and a day's detail had nowhere to go, and each new figure made the page longer instead of deeper |
 | the script adding up raw days it is handed | a second count, in a second language, with its own rounding and its own idea of a unit; the page hands it figures already read and already in words |
