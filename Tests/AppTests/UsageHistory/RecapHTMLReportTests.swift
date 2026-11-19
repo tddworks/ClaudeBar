@@ -4,8 +4,9 @@ import Domain
 @testable import ClaudeBar
 
 /// The recap written out as one HTML file: what the card says, in the card's
-/// words, plus the day-by-day and model-by-model shape read from their own
-/// owners — self-contained, no script, everything escaped.
+/// words, plus the day-by-day, model-by-model and project-by-project shape
+/// read from their own owners, in every unit the recap offers —
+/// self-contained, nothing fetched, everything escaped.
 @Suite
 struct RecapHTMLReportTests {
     private let calendar: Calendar = {
@@ -129,17 +130,125 @@ struct RecapHTMLReportTests {
         let html = report(recap).html
 
         #expect(html.contains("&lt;script&gt;"))
-        #expect(!html.contains("<script"))
+        #expect(!html.contains("<script>alert"))
         #expect(html.contains("&lt;em&gt;"))
         #expect(!html.contains("<em>"))
     }
 
-    @Test func `should travel alone — its own stylesheet, no script, light and dark`() {
+    /// A name from a log is data to the page's script too: it can never end
+    /// the element the data sits in.
+    @Test func `should keep a name from closing the page's data`() {
+        let sneaky = ModelUsageLine(model: "</script><script>alert(1)</script>", totalTokens: 100, cost: 12)
+        let recap = read(this: ["a": priced(day(monday, cost: 12, lines: [sneaky]))])
+        let html = report(recap).html
+
+        #expect(!html.contains("alert(1)</script>"))
+        #expect(html.components(separatedBy: "</script>").count == 3)
+    }
+
+    @Test func `should travel alone — its own stylesheet and script, nothing fetched, light and dark`() {
         let html = report(twoProviders).html
 
         #expect(html.contains("<style"))
         #expect(html.contains("prefers-color-scheme"))
-        #expect(!html.contains("<script"))
+        #expect(!html.contains("src="))
+        #expect(!html.contains("href="))
+        #expect(!html.contains("http"))
+    }
+
+    /// Without its script the page still says the recap: the plain markup is whole.
+    @Test func `should say the whole recap in plain markup, for a reader whose browser runs no script`() {
+        let html = report(twoProviders).html
+        let plain = html.components(separatedBy: "<script")[0]
+
+        #expect(plain.contains("$20.00"))
+        #expect(plain.contains("Where it went"))
+        #expect(plain.contains("Day by day"))
+        #expect(plain.contains("Highlights"))
+    }
+
+    // MARK: - What the reader can switch to
+
+    @Test func `should offer the tokens beside a dollar recap, each with its own total`() throws {
+        let page = try data(of: report(twoProviders))
+        let views = try #require(page["views"] as? [String: [String: Any]])
+
+        #expect(page["unit"] as? String == "cost")
+        #expect((page["units"] as? [[String: String]])?.map { $0["id"] } == ["cost", "tokens"])
+        #expect(views["cost"]?["total"] as? String == "$20.00")
+        #expect(views["tokens"]?["total"] as? String == "20")
+    }
+
+    /// One unpriced provider turns the whole recap to tokens — the page too.
+    @Test func `should never offer dollars when one provider prices nothing`() throws {
+        let recap = read(this: ["a": priced(day(monday, cost: 15)),
+                                 "b": Days([day(tuesday, cost: 0)], knowsCost: false)])
+        let page = try data(of: report(recap))
+
+        #expect((page["units"] as? [[String: String]])?.map { $0["id"] } == ["tokens"])
+    }
+
+    @Test func `should tell each provider's change against the range before`() {
+        let html = report(twoProviders).html
+
+        #expect(html.contains(#"<span class="chg up">+50%</span>"#))
+    }
+
+    @Test func `should name every project the range names, and what is left unnamed`() {
+        let site = ProjectUsageLine(project: "site", cost: 9)
+        let worked = DailyUsageStat(date: monday, totalCost: 12, totalTokens: 10, workingTime: 0, sessionCount: 1,
+                                    projects: [site])
+        let html = report(read(this: ["a": priced(worked)])).html
+
+        #expect(html.contains("Projects"))
+        #expect(html.contains(#"<span class="name">site</span><span class="val">$9.00</span>"#))
+        #expect(html.contains(#"<span class="name">—</span><span class="val">$3.00</span>"#))
+    }
+
+    @Test func `should leave the projects out when no log names one`() {
+        #expect(!report(twoProviders).html.contains("Projects"))
+    }
+
+    /// A day's own figures, and what it held of every split — each part naming its row.
+    @Test func `should tell each day's own figures and what it held of every split`() throws {
+        let recap = read(this: ["a": priced(day(monday, cost: 12, lines: [large]), day(tuesday, cost: 2, lines: [small]))])
+        let page = try data(of: report(recap))
+        let days = try #require(page["days"] as? [[String: Any]])
+        let view = try #require((page["views"] as? [String: [String: Any]])?["cost"])
+        let tuesdays = try #require((view["days"] as? [[String: Any]])?[1])
+        let models = try #require((tuesdays["parts"] as? [[[String: Any]]])?[1])
+
+        #expect((days[1]["facts"] as? [[String: String]])?.contains { $0["k"] == "Sessions" && $0["v"] == "2" } == true)
+        #expect(models.map { $0["value"] as? String } == ["$2.00"])
+        #expect(models.map { $0["row"] as? Int } == [1])
+    }
+
+    @Test func `should tell the active days, the average over them and over the sessions`() {
+        let recap = read(this: ["a": priced(day(monday, cost: 12), day(tuesday, cost: 8))])
+        let html = report(recap).html
+
+        #expect(html.contains("2 of 2"))
+        #expect(html.contains("$10.00"))
+        #expect(html.contains("$5.00"))
+    }
+
+    @Test func `should tell the tokens by kind when the logs keep them`() {
+        let kinds = DailyUsageStat(date: monday, totalCost: 1, totalTokens: 1_500, workingTime: 0, sessionCount: 1,
+                                   inputTokens: 1_000, outputTokens: 500, cacheReadTokens: 3_000)
+        let html = report(read(this: ["a": priced(kinds)])).html
+
+        #expect(html.contains("Tokens by kind"))
+        #expect(html.contains("Cache read"))
+        #expect(html.contains("75%"))
+    }
+
+    /// The page's data, as its script reads it.
+    private func data(of report: RecapHTMLReport) throws -> [String: Any] {
+        let html = report.html
+        let start = try #require(html.range(of: #"<script type="application/json" id="recap-data">"#))
+        let end = try #require(html.range(of: "</script>", range: start.upperBound..<html.endIndex))
+        let json = try JSONSerialization.jsonObject(with: Data(html[start.upperBound..<end.lowerBound].utf8))
+        return try #require(json as? [String: Any])
     }
 
     @Test func `should say the range held nothing when it did`() {

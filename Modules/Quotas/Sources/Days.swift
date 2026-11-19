@@ -103,6 +103,12 @@ public struct Days: Sendable, Equatable {
     /// The sessions over the range.
     public var sessions: Int { stats.reduce(0) { $0 + $1.sessionCount } }
 
+    /// The days of the range that held anything.
+    public var activeDays: Int { stats.count { !$0.isEmpty } }
+
+    /// What the whole range spent — its tokens by kind and its cost.
+    public var spend: Spend { stats.reduce(.none) { $0 + $1.spend } }
+
     /// Several ranges read as one: each date once, oldest first, its days
     /// added up (`DailyUsageStat +`). Cost speaks for the whole only when every
     /// range that read something prices its records.
