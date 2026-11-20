@@ -122,7 +122,7 @@ Both reference apps replace the HUD, and that only works if they're always on to
 
 ## Architecture
 
-- **Domain** (`Sources/Domain/Activity/Notch/`): `NotchActivity`, `NotchActivityResolver`, `NotchWhenIdle` and `NotchMetrics`, all pure and all unit-tested.
+- **Domain** (`Sources/Modules/Activity/Sources/Notch/`): `NotchActivity`, `NotchActivityResolver`, `NotchWhenIdle` and `NotchMetrics`, all pure and all unit-tested.
 - **Infrastructure**: `NSScreen+NotchMetrics` feeds raw `NSScreen` values into `NotchMetrics.measure(...)` and picks `preferredNotchScreen`, the first screen with a physical notch, else `main`.
 - **App** (`Sources/App/Activity/Notch/`): `NotchWindowDriver` watches `app.notchEnabled` and, while it's on, reads `QuotaMonitor`, `SessionMonitor` and `app.notchWhenIdle` through `ObservationRenderSync` and pushes `NotchContent` to `NotchWindowController`, which owns the `NotchWindow` panel and a SwiftUI root view.
 

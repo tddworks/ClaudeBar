@@ -98,7 +98,7 @@ key.
 | `ProjectUsageLine` | `project` + `Spend`; the project's **name** — the last path component of the directory | `Modules/Quotas/Sources/ProjectUsageLine.swift` |
 | `DailyUsageStat.projects` · `projectSplit` | the named lines, in name order — decoded empty from days kept before; the split: those and the remainder | `Modules/Quotas/Sources/DailyUsageStat.swift` |
 | `UsageMix` (`ByProject`) | each line summed over the range, largest first in a unit, each part with its share; `top`; `names`, the named parts in name order; `isEmpty`, whether it names none | `Modules/Quotas/Sources/UsageMix.swift` |
-| `UsageSection.projectMix` | whether the popover shows the projects card — hidden until the person shows it, and it reads the year | `Sources/Domain/Settings/UsageSection.swift` |
+| `UsageSection.projectMix` | whether the popover shows the projects card — hidden until the person shows it, and it reads the year | `Sources/App/Settings/UsageSection.swift` |
 | `ProjectMixView` | the split as one bar and a row per project, largest first | `Sources/App/UsageHistory/` |
 
 **The day owns its split.** A day keeps its *named* project lines only. A
@@ -137,7 +137,7 @@ no card shows.
 | `UsageLog.Shape.project`, `LogRecord.project`, `DayAggregator`'s split | the capture: a definition's word, the record's raw directory, the day's split | `Modules/DataSources/Sources/` |
 | `Spend`, `UsageLine`, `UsageMix`, `ProjectUsageLine`, `DailyUsageStat.projectSplit` | the kernel values, shared with the model line and the mix | `Modules/Quotas/Sources/` |
 | `claude.json`'s `"project": "$.cwd"` | Claude Code attributes its records — the one provider whose log writes the directory on every line it reads | `Modules/Providers/Resources/Providers/` |
-| `UsageSection.projectMix`, the settings switch | the person's choice, hidden by default beside *Model mix* | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |
+| `UsageSection.projectMix`, the settings switch | the person's choice, hidden by default beside *Model mix* | `Sources/App/Settings/` (`AppSettingsFile`) |
 | `ProjectMixView`, `ModelColors` | the card and the palette it reads | `Sources/App/UsageHistory/` |
 
 The card sits in the popover's usage area beside the heatmap and the model

@@ -107,12 +107,12 @@ takes `policy:` too, and the notch's driver passes the monitor's.
 | `Modules/Quotas/Sources/QuotaStatus.swift` | the four statuses, the absolute bands, severity order |
 | `Modules/Quotas/Sources/SpendRate.swift` | the rate, the noise floor, the margin, `runsOutBeforeReset` |
 | `Modules/Quotas/Sources/StatusPolicy.swift` | the two policies; `status(under:)` and `overallStatus(under:)` |
-| `Modules/Monitoring/Sources/QuotaMonitor.swift` · `Sources/Domain/App/QuotaMonitor+MenuBar.swift` | holds the policy; the menu-bar label and a login's status read it |
-| `Sources/Domain/App/MenuBar{Percentage,Duration}Display.swift` | a menu-bar readout's status under the policy |
-| `Sources/Domain/Alerting/StatusAlerts/StatusAlerts.swift` | tells once when a login's status gets worse |
+| `Modules/Monitoring/Sources/QuotaMonitor.swift` · `Sources/App/MenuBar/QuotaMonitor+MenuBar.swift` | holds the policy; the menu-bar label and a login's status read it |
+| `Sources/App/MenuBar/MenuBar{Percentage,Duration}Display.swift` | a menu-bar readout's status under the policy |
+| `Sources/Modules/Alerting/Sources/StatusAlerts/StatusAlerts.swift` | tells once when a login's status gets worse |
 | `Sources/App/Settings/AppSettings.swift` | `burnRateWarningEnabled` → `statusPolicy` |
 | `Sources/App/Views/SettingsWindow/GeneralPane.swift` | the switch and its words |
-| `Sources/Domain/App/StatusColorPolicy.swift` · `Sources/App/Theme/StatusColorOverridingTheme.swift` | a status's colour |
+| `Sources/App/Theme/StatusColorPolicy.swift` · `Sources/App/Theme/StatusColorOverridingTheme.swift` | a status's colour |
 
 ## 7 · What the person sees
 

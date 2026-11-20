@@ -692,7 +692,7 @@ Its code is the `Leaderboard` module of the package that also builds on Windows,
 | `WindowsMachineIdentity`: "Windows PC", and the SMBIOS system UUID from the firmware table | `Modules/Leaderboard/Sources/Internal/Windows/` |
 | `CredentialManagerSigningKeyStore`, the key as a Credential Manager generic credential kept on this PC; `WindowsMachineIdentity`, "Windows PC" | `Modules/Leaderboard/Sources/Internal/Windows/` |
 | `SecretToolSigningKeyStore`, the key in the person's secret store through libsecret's `secret-tool`, with `DefaultsSigningKeyStore` when it refuses; `LinuxMachineIdentity`, "Linux", and the SMBIOS system UUID from `/sys`, usually `nil` (§2a) | `Modules/Leaderboard/Sources/Internal/Linux/` |
-| Settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
+| Settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Modules/Storage/` |
 | `AppLeaderboard` (wiring through the factory with the app's `X-Client` name, `board` and `board(period:provider:)`, so a board outlives the popover, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh, `share(_:)` for *Share my rank*, `turnOff()`/`turnOn()` and the one-time `offNotice`), `MonitorTokenLogs`, popover tab, `RankCardImage` (the image, in the member's theme) and `RankShareOverlay`, `TurnOffMenu` (the tab's *Turn off ▾*, drawn in the popover's top layer so the scroll view never clips it), `LeaderboardPane` (with its *Devices* list, *Add a device*, and the notices for a device added, a copied key and a refused day), the join form's *Already a member? Add this Mac* | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 

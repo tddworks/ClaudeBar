@@ -171,21 +171,6 @@ no longer exist.
 4. **Form-urlencoded token refresh**: Matches the OpenAI OAuth spec (not JSON body)
 5. **Header-first usage parsing**: Check response headers first, fall back to response body
 
-## Files to Create/Modify
-
-### New Files
-- `Sources/Domain/Settings/CodexProbeMode.swift`
-- `Sources/Infrastructure/Adapters/CodexCredentialLoader.swift`
-- `Sources/Infrastructure/CLI/Codex/CodexAPIUsageProbe.swift`
-- `Tests/InfrastructureTests/CLI/Codex/CodexAPIUsageProbeTests.swift`
-- `Tests/InfrastructureTests/Adapters/CodexCredentialLoaderTests.swift`
-
-### Modified Files
-- `Sources/Domain/Provider/ProviderSettingsRepository.swift` - Add `CodexSettingsRepository` protocol
-- `Sources/Domain/Provider/CodexProvider.swift` - Add dual-probe support (cliProbe + apiProbe)
-- `Sources/Infrastructure/Settings/Storage/JSONSettingsRepository.swift` - Implement `CodexSettingsRepository`
-- `Sources/App/ClaudeBarApp.swift` - Pass API probe to CodexProvider
-- `Sources/App/Views/SettingsView.swift` - Add Codex probe mode picker
 ## Findings since
 
 This plan covered the API probe. What was learned afterwards, mostly about the RPC probe (the default):

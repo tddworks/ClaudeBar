@@ -23,7 +23,7 @@ speaks for itself (About, the Settings sidebar).
 
 | Piece | Where | One job |
 |---|---|---|
-| `PopoverTitle` | `Sources/Domain/App/PopoverTitle.swift` | a value: turns what the person typed into what the header shows (`shown`) and says whether it is the default (`isDefault`) |
+| `PopoverTitle` | `Sources/App/Popover/PopoverTitle.swift` | a value: turns what the person typed into what the header shows (`shown`) and says whether it is the default (`isDefault`) |
 | `AppSettingsRepository.popoverTitle()` / `setPopoverTitle(_:)` | Domain port, `JSONSettingsRepository` | keeps the raw text at `app.popoverTitle`, `""` when never set |
 | `AppSettings.popoverTitle` | `Sources/App/Settings/AppSettings.swift` | the observed setting; writes through on change |
 | Header | `MenuContentView` | renders `settings.popoverTitle.shown` — never trims, counts or compares |
