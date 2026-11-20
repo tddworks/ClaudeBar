@@ -1,15 +1,15 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Domain
+import Storage
 
 @Suite @MainActor
 struct AppSettingsStatusColorTests {
     private func makeSettings() -> (AppSettings, URL, URL) {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let file = dir.appendingPathComponent("settings.json")
-        let settings = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let settings = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         return (settings, dir, file)
     }
 
@@ -29,7 +29,7 @@ struct AppSettingsStatusColorTests {
         settings.setStatusColorOverride(custom, for: .warning)
         settings.highContrastEnabled = true
 
-        let reloaded = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let reloaded = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(reloaded.statusColorOverrides[.warning] == custom)
         #expect(reloaded.statusColorOverrides[.healthy] == nil)
         #expect(reloaded.highContrastEnabled == true)

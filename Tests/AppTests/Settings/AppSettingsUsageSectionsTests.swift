@@ -1,15 +1,15 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Domain
+import Storage
 
 @Suite @MainActor
 struct AppSettingsUsageSectionsTests {
     private let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
     private func load() -> AppSettings {
-        AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json"))))
+        AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json"))), settings: Storage.makeSettings(fileURL: dir.appendingPathComponent("settings.json")))
     }
 
     @Test func `should remember a usage section the person hides or shows`() {

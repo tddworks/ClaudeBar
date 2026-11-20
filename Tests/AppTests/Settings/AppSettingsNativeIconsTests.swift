@@ -1,8 +1,8 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Domain
+import Storage
 
 @Suite @MainActor
 struct AppSettingsNativeIconsTests {
@@ -11,7 +11,7 @@ struct AppSettingsNativeIconsTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
         func load() -> AppSettings {
-            AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+            AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         }
         let settings = load()
         #expect(!settings.nativeMenuBarIconsEnabled)

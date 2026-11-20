@@ -115,19 +115,16 @@ struct ClaudeBarApp: App {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         AppLog.ui.info("ClaudeBar v\(version) (\(build)) initializing...")
 
-        // Create the shared settings repository (JSON-backed: ~/.claudebar/settings.json)
-        // JSONSettingsRepository implements all sub-protocols:
-        // - AppSettingsRepository (app-level display/sync settings)
-        // - ProviderSettingsRepository + all provider sub-protocols
-        // - HookSettingsRepository
-        let settingsRepository = JSONSettingsRepository.shared
+        // Every module's settings, in ~/.claudebar/settings.json; the App's own
+        // are AppSettings', in the same file.
+        let settingsRepository = Storage.settings
 
         // Every provider is a definition on disk — the bundle, Add Provider's
         // ~/.claudebar/providers and ~/.claudebar/extensions — found by the
         // catalog and made on one engine; no line here names a provider
         // (TARGET_ARCHITECTURE §10). The engine is everything that touches
         // this Mac: a definition uses what its cases ask for.
-        let vault = ProviderVault()
+        let vault = Storage.makeVault()
         // A variable exported only in the login shell (#170), for a lookup that says `loginShell`.
         let engine = Engine(
             settings: settingsRepository,
@@ -141,8 +138,8 @@ struct ClaudeBarApp: App {
         )
         let definitions = ProviderCatalog().detect()
         // What was saved for an extension before it was a definition moves once.
-        ExtensionSettingsUpgrade.run(definitions.filter { $0.profile.origin == .extension },
-                                     store: .shared, settings: settingsRepository, vault: vault)
+        Storage.upgradeExtensionSettings(definitions.filter { $0.profile.origin == .extension },
+                                         settings: settingsRepository, vault: vault)
         // The products, in lineup order; each holds its logins, and the
         // lineup is the enabled logins of enabled products (CANONICAL §1).
         let providers = ProviderFactory.make(definitions, engine: engine)

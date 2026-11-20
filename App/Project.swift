@@ -69,6 +69,16 @@ let project = Project(
         .external(name: "Providers"),
         .external(name: "Monitoring"),
         .external(name: "Diagnostics"),
+    ]) + appModule("Storage", dependencies: [
+        .external(name: "Quotas"),
+        .external(name: "DataSources"),
+        .external(name: "Providers"),
+        .external(name: "Monitoring"),
+        .external(name: "Leaderboard"),
+        .external(name: "Diagnostics"),
+        .target(name: "Activity"),
+        .target(name: "Alerting"),
+        .target(name: "LocalAPI"),
     ]) + [
         // MARK: - Domain Layer
         .target(
@@ -82,6 +92,7 @@ let project = Project(
                 .target(name: "Activity"),
                 .target(name: "Alerting"),
                 .target(name: "LocalAPI"),
+                .target(name: "Storage"),
                 .external(name: "Quotas"),
                 .external(name: "DataSources"),
                 .external(name: "Providers"),
@@ -179,35 +190,6 @@ let project = Project(
             dependencies: [
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
-                .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
-        // MARK: - Infrastructure Tests
-        .target(
-            name: "InfrastructureTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.infrastructure-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["../Tests/InfrastructureTests/**"],
-            dependencies: [
-                .target(name: "Infrastructure"),
-                .external(name: "DataSources"),
-                .external(name: "Diagnostics"),
-                .external(name: "Providers"),
-                .target(name: "Domain"),
                 .external(name: "Mockable"),
                 .external(name: "AWSCloudWatch"),
                 .external(name: "AWSSTS"),

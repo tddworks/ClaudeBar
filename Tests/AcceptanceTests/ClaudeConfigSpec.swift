@@ -3,8 +3,9 @@ import Foundation
 import Mockable
 import DataSources
 import Providers
-@testable import Domain
-@testable import Infrastructure
+import Monitoring
+import Domain
+import Storage
 
 /// Feature: Claude Configuration
 ///
@@ -38,7 +39,7 @@ struct ClaudeConfigSpec {
     /// A fresh home folder, isolated settings, a stubbed terminal and network.
     final class World {
         let home: URL
-        let settings: JSONSettingsRepository
+        let settings: any SettingsFile
         let cli = MockCLIExecutor()
         let network = MockNetworkClient()
 
@@ -130,7 +131,7 @@ struct ClaudeConfigSpec {
             #expect(claudeProduct.configuration.activeKind == "cli")
 
             // When — the Claude card saves API mode
-            world.settings.setClaudeProbeMode(.api)
+            world.settings.setDataSourceKind("api", forProvider: "claude")
             let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
             await monitor.refresh(providerId: "claude")
 
@@ -140,13 +141,12 @@ struct ClaudeConfigSpec {
         }
 
         @Test
-        func `should remember the chosen Claude data source, CLI by default`() {
+        func `should remember the chosen Claude data source`() {
             let settings = isolatedSettings()
-            #expect(settings.claudeProbeMode() == .cli)
+            #expect(settings.dataSourceKind(forProvider: "claude") == nil)
 
-            settings.setClaudeProbeMode(.api)
+            settings.setDataSourceKind("api", forProvider: "claude")
 
-            #expect(settings.claudeProbeMode() == .api)
             #expect(settings.dataSourceKind(forProvider: "claude") == "api")
         }
 
@@ -155,7 +155,7 @@ struct ClaudeConfigSpec {
             // Given — API mode, nobody logged in, the CLI works
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
-            world.settings.setClaudeProbeMode(.api)
+            world.settings.setDataSourceKind("api", forProvider: "claude")
             let claudeProduct = try world.claude()
             let claude = claudeProduct.defaultAccount
             let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
@@ -173,8 +173,8 @@ struct ClaudeConfigSpec {
             // Given — API mode with the card's "CLI fallback" off
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
-            world.settings.setClaudeProbeMode(.api)
-            world.settings.setClaudeCliFallbackEnabled(false)
+            world.settings.setDataSourceKind("api", forProvider: "claude")
+            world.settings.setOn(false, "cliFallbackEnabled", forProvider: "claude")
             let claudeProduct = try world.claude()
             let claude = claudeProduct.defaultAccount
 
@@ -235,8 +235,8 @@ struct ClaudeConfigSpec {
         func `should tell the person their session expired, naming claude, when the saved login and its refresh are refused`() async throws {
             // Given — API mode, the token is refused and so is its refresh
             let world = try World()
-            world.settings.setClaudeProbeMode(.api)
-            world.settings.setClaudeCliFallbackEnabled(false)
+            world.settings.setDataSourceKind("api", forProvider: "claude")
+            world.settings.setOn(false, "cliFallbackEnabled", forProvider: "claude")
             world.apiAnswers("", status: 401)
             try world.loggedIn()
             let claudeProduct = try world.claude()

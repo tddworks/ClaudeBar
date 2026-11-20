@@ -1,9 +1,9 @@
-import Domain
 import Foundation
-import Infrastructure
 import Providers
 import Testing
 @testable import ClaudeBar
+import Domain
+import Storage
 
 /// Hidden quotas belong to the product (#140): Gemini's models are the same
 /// for every Gemini login, so hiding one hides it for all of them.
@@ -12,8 +12,7 @@ import Testing
 struct HiddenQuotasAccountsTests {
     @Test
     func `should hide a quota for every account of a provider once it is hidden (#140)`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("hidden-\(UUID().uuidString).json")))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("hidden-\(UUID().uuidString).json"))
         settings.setHiddenQuotaKeys(["model:codex-spark"], forProvider: "codex")
         let codex = try ProviderFactory.make("codex", settings: settings, accounts: [
             ProviderAccountConfig(accountId: "work", label: "", probeConfig: ["folder": "/tmp/w", "accountId": "w"]),

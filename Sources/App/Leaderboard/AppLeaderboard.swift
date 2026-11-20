@@ -55,7 +55,7 @@ final class AppLeaderboard {
          api: any LeaderboardAPI = Leaderboard.makeAPI(client: AppLeaderboard.client),
          keys: any SigningKeyStore = Leaderboard.makeKeyStore(),
          machine: any MachineIdentity = Leaderboard.makeMachineIdentity(),
-         settings: any LeaderboardSettingsRepository = JSONSettingsRepository.shared) {
+         settings: any LeaderboardSettingsRepository = Storage.settings) {
         let logs = MonitorTokenLogs(monitor: monitor)
         self.api = api
         self.logs = logs

@@ -1,8 +1,8 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Domain
+import Storage
 
 @Suite @MainActor
 struct AppSettingsMenuBarTests {
@@ -11,13 +11,13 @@ struct AppSettingsMenuBarTests {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
-        let settings = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let settings = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(settings.menuBarAccountLabelsEnabled)
         settings.menuBarAccountLabelsEnabled = false
-        let reloaded = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let reloaded = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(!reloaded.menuBarAccountLabelsEnabled)
         reloaded.menuBarAccountLabelsEnabled = true
-        let enabled = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let enabled = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(enabled.menuBarAccountLabelsEnabled)
     }
 
@@ -26,11 +26,11 @@ struct AppSettingsMenuBarTests {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
-        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: file))
+        let repo = AppSettingsFile(store: JSONSettingsStore(fileURL: file))
         repo.setMenuBarPercentageQuotaKey("session")
         repo.setMenuBarSecondaryQuotaKey("weekly")
         repo.setMenuBarStackedEnabled(true)
-        let settings = AppSettings(repository: repo)
+        let settings = AppSettings(repository: repo, settings: Storage.makeSettings(fileURL: file))
         let claude = settings.menuBarConfiguration(for: "claude")
         let grok = MenuBarProviderSettings(primaryQuotaKey: "weekly", secondaryQuotaKey: "chat", stacked: true, stackedSize: "large")
         settings.setMenuBarProviderIds(["claude", "grok", "codex", "gemini"])
@@ -41,7 +41,7 @@ struct AppSettingsMenuBarTests {
         #expect(settings.menuBarConfiguration(for: "grok") == grok)
         #expect(settings.menuBarPercentageQuotaKey == "weekly")
         settings.setMenuBarProviderIds(["grok", "claude", "codex"])
-        let reloaded = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let reloaded = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(reloaded.menuBarProviderIds == ["grok", "claude", "codex"])
         #expect(reloaded.menuBarConfiguration(for: "claude") == claude)
         #expect(reloaded.menuBarConfiguration(for: "grok") == grok)
@@ -51,8 +51,8 @@ struct AppSettingsMenuBarTests {
     func `should keep the primary provider out of the other menu bar providers and at most two of them`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json")))
-        let settings = AppSettings(repository: repo)
+        let repo = AppSettingsFile(store: JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json")))
+        let settings = AppSettings(repository: repo, settings: Storage.makeSettings(fileURL: dir.appendingPathComponent("settings.json")))
         settings.menuBarAdditionalProviderIds = ["claude", "codex", "gemini", "copilot"]
         #expect(settings.menuBarAdditionalProviderIds == ["codex", "gemini"])
         settings.menuBarPercentageProviderId = "codex"

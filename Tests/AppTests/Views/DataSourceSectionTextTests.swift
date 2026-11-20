@@ -1,10 +1,10 @@
 import DataSources
-import Domain
 import Foundation
-import Infrastructure
 import Providers
 import Testing
 @testable import ClaudeBar
+import Domain
+import Storage
 
 /// The words of Settings' Data source section, from a definition — so a
 /// provider that is data needs no card of its own.
@@ -34,8 +34,7 @@ struct DataSourceSectionTextTests {
     @Test
     @MainActor
     func `should show where the key is looked for as a path through places`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).json")))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).json"))
         let claude = ProviderFactory.make(try claude(), settings: settings)
         let text = DataSourceSectionText(definition: claude.configuration.definitionAsRun)
 

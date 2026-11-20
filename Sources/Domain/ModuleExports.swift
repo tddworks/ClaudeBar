@@ -9,3 +9,4 @@
 @_exported import Activity
 @_exported import Alerting
 @_exported import LocalAPI
+@_exported import Storage

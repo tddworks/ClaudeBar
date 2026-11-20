@@ -1,20 +1,19 @@
 import DataSources
-import Domain
 import Foundation
-import Infrastructure
 import Providers
 import Quotas
 import Testing
 @testable import ClaudeBar
+import Domain
+import Storage
 
 /// The popover's pills are products: a provider's logins share one tab, in
 /// the order the person gave them, and ⌘1 is the first tab.
 @MainActor
 @Suite
 struct ProductTabsTests {
-    private func settings() -> JSONSettingsRepository {
-        JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("tabs-\(UUID().uuidString).json")))
+    private func settings() -> any SettingsFile {
+        Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("tabs-\(UUID().uuidString).json"))
     }
 
     private func login(_ id: String) -> ProviderAccountConfig {

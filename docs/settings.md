@@ -68,7 +68,7 @@ A few `app.*` keys worth knowing:
 | `app.nativeMenuBarIconsEnabled` | `false` (default) keeps brand colors; `true` uses monochrome provider marks for every menu bar account, adapting to the bar’s appearance |
 | `app.statusColorOverrides` | `{ "warning": "#F2BF33" }`; only the levels you set |
 
-The full list is the code: app-wide keys are read and written in [`JSONSettingsRepository.swift`](../Sources/Infrastructure/Settings/Storage/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.swift`](../Modules/Providers/Sources/Extensions.swift)).
+The full list is the code: the App's own keys (`app.*`) are read and written in [`AppSettingsFile.swift`](../Sources/App/Settings/AppSettingsFile.swift), every module's in [`JSONSettingsRepository.swift`](../Sources/Modules/Storage/Sources/Internal/JSONSettingsRepository.swift), and provider keys, extensions' included, come from each definition's `settings` (an extension's config is read as one in [`Extensions.swift`](../Modules/Providers/Sources/Extensions.swift)).
 
 ## Editing by hand
 
