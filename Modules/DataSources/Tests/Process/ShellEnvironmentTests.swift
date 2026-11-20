@@ -1,8 +1,7 @@
 import Testing
 import Foundation
 import Mockable
-import DataSources
-@testable import Infrastructure
+@testable import DataSources
 
 /// A variable the app was launched without is still found in the user's login
 /// shell (#170), and a found value is not asked for again.

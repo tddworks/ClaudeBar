@@ -10,6 +10,14 @@ extension DataSources {
         makeLoginShellEnvironment(platform: .current, cliExecutor: cliExecutor, timeout: timeout)
     }
 
+    /// A variable as the person's shell sees it, for a lookup that says
+    /// `loginShell`: the app's own environment first, then the login shell
+    /// (an app started from Finder doesn't inherit what `~/.zshrc` exports).
+    public static func makeLoginShellLookup() -> @Sendable (String) -> String? {
+        let environment = ShellEnvironment()
+        return { environment.value($0) }
+    }
+
     static func makeLoginShellEnvironment(
         platform: Platform,
         cliExecutor: (any CLIExecutor)? = nil,

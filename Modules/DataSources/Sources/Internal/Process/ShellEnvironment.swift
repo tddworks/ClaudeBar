@@ -1,5 +1,4 @@
 import Foundation
-import DataSources
 
 /// Environment variables as the user's shell sees them. An app started from
 /// Finder, the Dock or Login Items doesn't inherit what `~/.zshrc` exports, so
@@ -9,19 +8,19 @@ import DataSources
 ///
 /// The lookup blocks its caller for up to the shell's timeout, so give it only
 /// to a credential lookup that reaches the environment last.
-public final class ShellEnvironment: @unchecked Sendable {
+final class ShellEnvironment: @unchecked Sendable {
     private let process: [String: String]
     private let shell: LoginShellEnvironment?
     private let lock = NSLock()
     private var found: [String: String] = [:]
 
-    public init(process: [String: String] = ProcessInfo.processInfo.environment,
+    init(process: [String: String] = ProcessInfo.processInfo.environment,
                 cliExecutor: any CLIExecutor = DataSources.systemExecutor()) {
         self.process = process
         self.shell = DataSources.makeLoginShellEnvironment(cliExecutor: cliExecutor)
     }
 
-    public func value(_ name: String) -> String? {
+    func value(_ name: String) -> String? {
         if let value = process[name], !value.isEmpty { return value }
         if let value = lock.withLock({ found[name] }) { return value }
         guard let shell,

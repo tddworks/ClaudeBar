@@ -129,12 +129,11 @@ struct ClaudeBarApp: App {
         // this Mac: a definition uses what its cases ask for.
         let vault = ProviderVault()
         // A variable exported only in the login shell (#170), for a lookup that says `loginShell`.
-        let shellEnvironment = ShellEnvironment()
         let engine = Engine(
             settings: settingsRepository,
             vault: vault,
             loginsInUse: DiskLoginsInUse(),
-            loginShell: { shellEnvironment.value($0) },
+            loginShell: DataSources.makeLoginShellLookup(),
             // The AWS SDK, linked by AWSClients alone, made once for a definition that reads the cloud.
             cloud: { (AWSClients.makeCloudWatch(), AWSClients.makePriceCatalog()) },
             // Guest passes run the declaring definition's CLI, at its CLI location (#210).
