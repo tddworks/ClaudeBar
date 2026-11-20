@@ -1,8 +1,9 @@
 import Testing
 import Foundation
 import Mockable
-@testable import Infrastructure
-@testable import Domain
+import Infrastructure
+import Domain
+@testable import ClaudeBar
 
 /// Mock clipboard reader for testing
 final class MockClipboardReader: ClipboardReader, @unchecked Sendable {

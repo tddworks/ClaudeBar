@@ -199,7 +199,7 @@ struct OverviewTests {
         let monitor = QuotaMonitor(providers: kept([
             stubbedProduct("acme", probe: probe, settings: settings, usageHistory: history),
             stubbedProduct("zeta", probe: probe, settings: settings),
-        ]))
+        ]), clock: SystemClock())
 
         await monitor.refresh(providerId: "acme")
         let card = try #require(Overview(monitor).cards.first)
@@ -228,7 +228,7 @@ struct OverviewTests {
             stubbedProduct("codex", probe: probe, settings: settings),
             stubbedProduct("claude", probe: probe, settings: settings),
             stubbedProduct("gemini", probe: probe, settings: settings),
-        ]))
+        ]), clock: SystemClock())
 
         let overview = Overview(monitor)
 
@@ -245,7 +245,7 @@ struct OverviewTests {
         let monitor = QuotaMonitor(providers: kept([
             stubbedProduct("claude", probe: probe, settings: settings),
             stubbedProduct("codex", probe: probe, settings: settings),
-        ]))
+        ]), clock: SystemClock())
 
         await monitor.refresh(providerId: "claude")
         let overview = Overview(monitor)

@@ -91,13 +91,4 @@ struct LeftAndWindowTests {
         #expect(QuotaType.session.conventionalWindow == .hours(5))
         #expect(QuotaType.timeLimit("Monthly").conventionalWindow == .days(30))
     }
-
-    // MARK: - The menu bar
-
-    @Test
-    func `should show a balance as money in the menu bar`() {
-        let balance = UsageQuota(left: .money(Money(12.40, currency: "USD"), of: nil), quotaType: .timeLimit("Credits"), providerId: "x")
-
-        #expect(MenuBarPercentageDisplay(quota: balance, mode: .remaining).text == "$12.40")
-    }
 }

@@ -131,7 +131,7 @@ struct RecapAlertsTests {
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willReturn(UsageSnapshot(providerId: "acme", quotas: [], capturedAt: Date()))
         let product = stubbedProduct("acme", probe: probe, settings: MockRepositoryFactory.makeSettingsRepository())
-        let monitor = QuotaMonitor(providers: kept([product]))
+        let monitor = QuotaMonitor(providers: kept([product]), clock: SystemClock())
         let recaps = Recaps(monitor: monitor, calendar: calendar)
         let decider = RecapAlerts(destination: told, recaps: recaps, names: { [:] }, memory: memory, calendar: calendar)
         decider.follow(monitor)

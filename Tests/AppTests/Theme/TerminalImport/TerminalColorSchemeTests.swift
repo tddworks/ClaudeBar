@@ -1,7 +1,8 @@
 // Tests/InfrastructureTests/App/TerminalImport/TerminalColorSchemeTests.swift
 import Testing
 import Foundation
-@testable import Infrastructure
+import Infrastructure
+@testable import ClaudeBar
 
 @Suite
 struct TerminalColorSchemeTests {

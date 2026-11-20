@@ -1,7 +1,8 @@
 import Testing
 import Foundation
 import Mockable
-@testable import Domain
+import Domain
+@testable import ClaudeBar
 
 /// The menu bar's readouts, built from what the Monitor shows
 /// (`QuotaMonitor+MenuBar.swift`). The Monitor itself is `MonitoringTests`'.

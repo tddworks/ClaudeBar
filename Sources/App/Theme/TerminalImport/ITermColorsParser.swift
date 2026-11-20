@@ -1,4 +1,5 @@
 import Foundation
+import Domain
 
 /// Errors thrown when parsing `.itermcolors` files.
 public enum ITermColorsParserError: Error, Equatable {

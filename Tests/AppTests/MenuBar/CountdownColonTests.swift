@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import Domain
+import Domain
+@testable import ClaudeBar
 
 @Suite
 struct CountdownColonTests {

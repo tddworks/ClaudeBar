@@ -3,6 +3,7 @@ import DataSources
 import Providers
 import Foundation
 import Observation
+import Domain
 
 /// Keeps an imperative render sink in sync with `@Observable` domain state,
 /// independent of SwiftUI view invalidation.

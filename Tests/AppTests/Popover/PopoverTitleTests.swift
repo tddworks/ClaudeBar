@@ -1,5 +1,6 @@
 import Testing
-@testable import Domain
+import Domain
+@testable import ClaudeBar
 
 @Suite
 struct PopoverTitleTests {

@@ -27,7 +27,7 @@ struct PausedLoginsAllPageTests {
         given(probe).probe().willReturn(snapshot(quota(9)))
         let claude = stubbedProduct("claude", probe: probe, settings: settings)
         let gemini = stubbedProduct("gemini", probe: probe, settings: settings)
-        let monitor = QuotaMonitor(providers: kept([claude, gemini]))
+        let monitor = QuotaMonitor(providers: kept([claude, gemini]), clock: SystemClock())
         await monitor.refresh(providerId: "claude")
         #expect(Overview(monitor).cards.map(\.id) == ["claude", "gemini"])
 

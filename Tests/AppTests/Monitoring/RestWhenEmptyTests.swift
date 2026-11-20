@@ -1,7 +1,8 @@
 import Foundation
 import Infrastructure
 import Testing
-@testable import Domain
+import Domain
+@testable import ClaudeBar
 
 /// *Rest when empty*: a product whose every counted login is depleted rests,
 /// dimmed, until the first refresh that shows room, telling the person both

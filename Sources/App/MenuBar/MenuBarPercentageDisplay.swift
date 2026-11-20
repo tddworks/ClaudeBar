@@ -2,6 +2,7 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
+import Domain
 
 /// Formatted quota value for the menu bar percentage label.
 public struct MenuBarPercentageDisplay: Sendable, Equatable {

@@ -1,6 +1,7 @@
 import Foundation
 import Domain
 import AppKit
+import Diagnostics
 
 /// Protocol for reading from the system clipboard (for testability)
 public protocol ClipboardReader: Sendable {

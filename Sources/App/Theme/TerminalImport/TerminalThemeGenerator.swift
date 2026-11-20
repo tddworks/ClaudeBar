@@ -1,4 +1,5 @@
 import Foundation
+import Domain
 
 /// Pre-computed theme property values generated from a ``TerminalColorScheme``.
 ///

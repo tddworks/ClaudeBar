@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Providers
 import Quotas
+import Domain
 
 /// *Rest when empty*: a product the person asked to rest is dimmed while
 /// every counted login is out, and drawn as usual again at the first refresh

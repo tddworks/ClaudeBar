@@ -2,6 +2,7 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
+import Domain
 
 /// Formatted reset-duration value for the menu bar duration label.
 /// Sibling to `MenuBarPercentageDisplay`; both display types are driven by the
