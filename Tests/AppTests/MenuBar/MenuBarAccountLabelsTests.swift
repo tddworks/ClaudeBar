@@ -1,6 +1,5 @@
 import Testing
 import AppKit
-import Domain
 @testable import ClaudeBar
 
 /// *Show Account Labels in Menu Bar* off: the short account names beside the

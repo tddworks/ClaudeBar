@@ -1,6 +1,6 @@
 import Foundation
-import Domain
-import Infrastructure
+import Activity
+import Diagnostics
 
 /// Placeholder for ActivityKit Live Activity integration.
 ///

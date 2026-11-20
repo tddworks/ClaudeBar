@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import DataSources
 import Providers
 
 /// *REGION*, *API KEY*, *CLI DATA FOLDER* … — a provider's form, drawn from

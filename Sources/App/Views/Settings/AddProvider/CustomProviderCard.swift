@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Monitoring
 import Providers
 
 /// A provider someone made: *Export…* it to share (the file names its key,

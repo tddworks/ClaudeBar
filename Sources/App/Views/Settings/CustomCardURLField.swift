@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
 
 /// A text field for configuring a custom web card URL per provider.
 /// Shows below the provider toggle when enabled.

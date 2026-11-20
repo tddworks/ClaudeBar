@@ -1,4 +1,3 @@
-import Domain
 import Foundation
 
 /// *All page style* — how each provider reads on the popover's All page

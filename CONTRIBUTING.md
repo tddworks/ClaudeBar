@@ -10,8 +10,8 @@ Needs macOS 15+, Xcode with Swift 6.2+, and [Tuist](https://tuist.io) 4.209 or l
 git clone https://github.com/tddworks/ClaudeBar.git && cd ClaudeBar
 tuist install                  # resolve dependencies
 tuist generate                 # generate and open ClaudeBar.xcworkspace; ⌘R runs the app
-tuist test                     # all tests (DomainTests, InfrastructureTests, AppTests, AcceptanceTests)
-tuist test DomainTests         # one target
+tuist test                     # all tests: each module's, AppTests, AcceptanceTests
+tuist test Alerting            # one module's scheme
 tuist build ClaudeBar -C Release
 ```
 
@@ -23,7 +23,7 @@ tuist build ClaudeBar -C Release
 
 ## How code is organised
 
-Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider` and `DataSource` (`Modules/`), and watched by `QuotaMonitor` (`Modules/Monitoring`), the single source of truth. Around them: `Sources/Domain` (the menu bar's readouts, sessions, Notify!), `Sources/Infrastructure` (storage, notifications, hooks) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels). Inside each, and in `docs/features/`, a feature sits in the folder of its bounded context (`Activity/`, `Alerting/`, `Monitoring/` …). The design, in the order to read it: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
+Every built-in provider is a JSON definition in `Modules/Providers/Resources/Providers/`, run by one generic `Provider` and `DataSource` (`Modules/`), and watched by `QuotaMonitor` (`Modules/Monitoring`), the single source of truth. Around them: the Mac app's own modules in `Sources/Modules/` (`Activity`, `Alerting`, `LocalAPI`, `Storage`) and `Sources/App` (SwiftUI views that read the domain directly, no ViewModels, and the composition root). Every module keeps its open face at the top and its implementations in `Internal/`. In `Sources/App` and `docs/features/`, a feature sits in the folder of its bounded context (`Activity/`, `Alerting/`, `Monitoring/` …). The design, in the order to read it: [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).
 
 ## Adding a provider
 

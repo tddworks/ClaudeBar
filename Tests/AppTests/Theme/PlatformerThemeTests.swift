@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 /// Platformer: a Super Mario–style 8-bit theme. Blue sky, ink outlines with

@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Monitoring
 @testable import ClaudeBar
 
 /// The recap's range choice in words: each range named for what it is

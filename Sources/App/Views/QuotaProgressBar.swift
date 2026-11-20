@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
 
 // MARK: - Quota Bar
 

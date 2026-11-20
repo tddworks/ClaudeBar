@@ -1,7 +1,11 @@
 import AppKit
 import Observation
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
+import Storage
 
 /// The leaderboard as the app runs it: the membership, the uploader, the
 /// checks that keep the server current, and each board as last read. Views

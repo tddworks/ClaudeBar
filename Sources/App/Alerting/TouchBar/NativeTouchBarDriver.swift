@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import Providers
+import Monitoring
 
 // MARK: - Native Touch Bar Driver
 

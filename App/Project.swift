@@ -80,57 +80,6 @@ let project = Project(
         .target(name: "Alerting"),
         .target(name: "LocalAPI"),
     ]) + [
-        // MARK: - Domain Layer
-        .target(
-            name: "Domain",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.domain",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["../Sources/Domain/**"],
-            dependencies: [
-                .target(name: "Activity"),
-                .target(name: "Alerting"),
-                .target(name: "LocalAPI"),
-                .target(name: "Storage"),
-                .external(name: "Quotas"),
-                .external(name: "DataSources"),
-                .external(name: "Providers"),
-                .external(name: "Leaderboard"),
-                .external(name: "Monitoring"),
-                .external(name: "Mockable"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
-        // MARK: - Infrastructure Layer
-        .target(
-            name: "Infrastructure",
-            destinations: .macOS,
-            product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.infrastructure",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["../Sources/Infrastructure/**"],
-            dependencies: [
-                .target(name: "Domain"),
-                .external(name: "Diagnostics"),
-                .external(name: "DataSources"),
-                .external(name: "Mockable"),
-                .external(name: "SwiftTerm"),
-                .external(name: "SweetCookieKit"),
-                .external(name: "Subprocess"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_STRICT_CONCURRENCY": "complete",
-                ]
-            )
-        ),
-
         // MARK: - Main Application
         .target(
             name: "ClaudeBar",
@@ -145,13 +94,18 @@ let project = Project(
             ],
             entitlements: .file(path: "../Sources/App/entitlements.plist"),
             dependencies: [
-                .target(name: "Domain"),
+                .external(name: "Quotas"),
                 .external(name: "Diagnostics"),
                 .external(name: "DataSources"),
                 .external(name: "Providers"),
+                .external(name: "Monitoring"),
                 .external(name: "Leaderboard"),
                 .external(name: "AWSClients"),
-                .target(name: "Infrastructure"),
+                .target(name: "Activity"),
+                .target(name: "Alerting"),
+                .target(name: "LocalAPI"),
+                .target(name: "Storage"),
+                .external(name: "Mockable"),
                 .external(name: "Sparkle"),
                 .external(name: "MenuBarExtraAccess"),
                 .external(name: "Matrix"),
@@ -179,32 +133,6 @@ let project = Project(
             )
         ),
 
-        // MARK: - Domain Tests
-        .target(
-            name: "DomainTests",
-            destinations: .macOS,
-            product: .unitTests,
-            bundleId: "com.tddworks.claudebar.domain-tests",
-            deploymentTargets: .macOS("15.0"),
-            sources: ["../Tests/DomainTests/**"],
-            dependencies: [
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
-                .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
-            ],
-            settings: .settings(
-                base: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
-                ]
-            )
-        ),
-
         // MARK: - App Tests
         .target(
             name: "AppTests",
@@ -215,8 +143,6 @@ let project = Project(
             sources: ["../Tests/AppTests/**"],
             dependencies: [
                 .target(name: "ClaudeBar"),
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
             ]
         ),
 
@@ -229,10 +155,15 @@ let project = Project(
             deploymentTargets: .macOS("15.0"),
             sources: ["../Tests/AcceptanceTests/**"],
             dependencies: [
-                .target(name: "Domain"),
-                .target(name: "Infrastructure"),
+                .external(name: "Quotas"),
                 .external(name: "DataSources"),
                 .external(name: "Providers"),
+                .external(name: "Monitoring"),
+                .external(name: "Leaderboard"),
+                .target(name: "Activity"),
+                .target(name: "Alerting"),
+                .target(name: "LocalAPI"),
+                .target(name: "Storage"),
                 .external(name: "Mockable"),
                 .external(name: "AWSCloudWatch"),
                 .external(name: "AWSSTS"),

@@ -4,7 +4,7 @@ import Providers
 import Quotas
 import Testing
 @testable import ClaudeBar
-import Domain
+import Monitoring
 import Storage
 
 /// The popover's pills are products: a provider's logins share one tab, in

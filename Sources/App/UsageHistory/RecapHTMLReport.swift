@@ -1,5 +1,7 @@
 import Foundation
-import Domain
+import Quotas
+import DataSources
+import Monitoring
 
 /// The recap written out: one self-contained HTML page the person saves and
 /// opens anywhere. It holds what the card holds — the total, the change, the

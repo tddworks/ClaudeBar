@@ -3,7 +3,6 @@ import Foundation
 import Providers
 import Testing
 @testable import ClaudeBar
-import Domain
 import Storage
 
 /// The words of the Accounts card, from the definition — so every provider

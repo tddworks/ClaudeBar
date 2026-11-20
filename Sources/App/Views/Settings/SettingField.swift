@@ -1,5 +1,6 @@
 import SwiftUI
 import Providers
+import DataSources
 
 /// One `Setting`, drawn by its kind — a picker for a choice, a secure field
 /// for a secret, a text field otherwise, with the default as its placeholder.

@@ -2,7 +2,6 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
-import Domain
 
 /// The user-selectable text size for the menu bar popover.
 ///

@@ -1,6 +1,12 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
+import Activity
+import Alerting
+import LocalAPI
+import Storage
+import Diagnostics
 import Providers
 import AWSClients
 import MenuBarExtraAccess

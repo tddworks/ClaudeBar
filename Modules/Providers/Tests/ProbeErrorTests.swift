@@ -1,6 +1,8 @@
 import Testing
 import Foundation
-@testable import Domain
+import Quotas
+import DataSources
+@testable import Providers
 
 @Suite("UsageError sessionExpired hint Tests")
 struct ProbeErrorTests {

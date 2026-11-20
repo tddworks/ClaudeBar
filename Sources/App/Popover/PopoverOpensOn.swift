@@ -1,4 +1,3 @@
-import Domain
 import Foundation
 
 /// *Open on* — where the popover lands each time it opens (Settings → General).

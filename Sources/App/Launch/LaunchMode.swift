@@ -1,4 +1,5 @@
 import SwiftUI
+import Activity
 
 /// How ClaudeBar was started: by the person, or by Xcode to host AppTests.
 ///

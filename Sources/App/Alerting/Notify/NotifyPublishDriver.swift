@@ -1,6 +1,9 @@
 import Foundation
-import Domain
-import Infrastructure
+import DataSources
+import Monitoring
+import Activity
+import Alerting
+import Diagnostics
 
 /// Keeps a linked Notify! device in sync with the app's quota state.
 ///

@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
 
 /// The Claude API Budget — the person's own ceiling on Claude's API cost.
 /// A budget belongs to the account whose cost it judges (CANONICAL_MODEL §1),

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Domain
+@testable import Quotas
 
 /// The kernel's two laws (CANONICAL_MODEL §5):
 /// `left` is ONE OF TWO — a share, or money; a balance with no ceiling has NO

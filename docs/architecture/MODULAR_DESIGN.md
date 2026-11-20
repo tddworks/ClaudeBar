@@ -9,7 +9,7 @@ description: How ClaudeBar's code is cut into modules — one module per bounded
 > it may import · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: IN PROGRESS** — what is left is §8, and §10's phases 2 to 5 (0 and 1 are built).
+> **Status: IN PROGRESS** — §8's carve is built (no `Domain` or `Infrastructure` target is left); what is left is §10's phases 2 to 5 (0 and 1 are built).
 
 ---
 
@@ -264,10 +264,10 @@ testability" alone.
 ## 8 · Still to carve
 
 `Quotas`, `Diagnostics`, `DataSources`, `AWSClients`, `Providers`,
-`Leaderboard` and `Monitoring` are built. **The target is ClaudeBarKit's modules, the App, and the app's own modules
-(§2), nothing else: no `Domain` and no `Infrastructure` target.** Until they are
-empty, both re-export the modules (`@_exported import`), so no call site
-changes while files move; each move is a `git mv`, so history follows.
+`Leaderboard` and `Monitoring` are built, and so are the app's own modules.
+**What is left is ClaudeBarKit's modules, the App, and the app's own modules
+(§2), nothing else: no `Domain` and no `Infrastructure` target.** The carve
+below did it, each move a `git mv` so history follows.
 
 The carve, one slice per PR, leaves first, the full `xcodebuild test` green
 after each:
@@ -282,7 +282,7 @@ after each:
 | 4 | `Alerting`, `LocalAPI` **(built)** | `Domain/Alerting/` → `Sources/Modules/Alerting`'s open face, `Infrastructure/Alerting/` → its `Internal/`; the local API → `Sources/Modules/LocalAPI`, reading `Overview` from Monitoring; each keeps its own port file, so neither imports Activity |
 | 5 | In use, Recaps **(built)** | `Domain/InUse/` → `Providers` (`ShellSetup` in its `Internal/`, handed out by `ProviderFactory.makeShellLines`); `Domain/UsageHistory/` → `Monitoring`, since a recap reads the Monitor; `InUseNotifications` → `Alerting/Internal` in slice 4 |
 | 6 | `Storage` **(built)** | `Infrastructure/Settings/` → `Sources/Modules/Storage` (`SettingsFile` and `JSONSettingsStore` on the open face, the rest internal); the App's own settings (`AppSettingsRepository`, its values, `AppSettingsFile` over `JSONSettingsStore`, the DeepSeek card's settings) → `Sources/App/`; the Claude and Codex settings protocols deleted: `dataSourceKind` and `isOn` read the same keys |
-| 7 | the layers gone | delete `Domain`, `Infrastructure`, their `ModuleExports.swift`, targets and schemes, `DomainTests`, `InfrastructureTests`; callers import the modules |
+| 7 | the layers gone **(built)** | delete `Domain`, `Infrastructure`, their `ModuleExports.swift`, targets and schemes, `DomainTests`, `InfrastructureTests`; callers import the modules |
 
 The kernel still holds a few types that belong elsewhere; each carries a
 `- Note: Interim` naming its final shape, and the canonical model lists them

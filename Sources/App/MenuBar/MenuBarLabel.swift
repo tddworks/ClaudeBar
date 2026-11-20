@@ -2,7 +2,6 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
-import Domain
 
 /// A fully composed menu bar label: the rendered text plus the worst-case
 /// status across all quota windows it represents.

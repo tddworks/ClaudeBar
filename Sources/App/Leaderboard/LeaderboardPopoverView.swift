@@ -1,5 +1,8 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
 
 /// The popover's *LEADERBOARD* tab: join with a username, or see your rank.
 struct LeaderboardPopoverView: View {

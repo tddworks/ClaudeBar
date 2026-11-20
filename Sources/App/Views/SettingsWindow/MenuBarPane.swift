@@ -1,6 +1,8 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
 
 /// Select providers once, then configure each provider independently.
 struct MenuBarPane: View {

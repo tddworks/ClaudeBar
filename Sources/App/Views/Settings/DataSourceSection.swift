@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 import DataSources
-import Domain
+import Monitoring
 import Providers
 
 /// Settings' *Data source* section for any provider that is data (#352):

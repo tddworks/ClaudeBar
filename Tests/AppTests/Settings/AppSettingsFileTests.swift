@@ -1,6 +1,8 @@
 import Testing
 import Foundation
-import Domain
+import Monitoring
+import Activity
+import Storage
 @testable import ClaudeBar
 
 /// Tests for app-level settings in AppSettingsFile.

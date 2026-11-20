@@ -8,10 +8,10 @@ ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them fro
 
 ```bash
 tuist install && tuist generate          # generated *.xcodeproj / *.xcworkspace are git-ignored
-tuist test                               # every target: module tests, DomainTests, InfrastructureTests, AppTests, AcceptanceTests
-tuist test Providers                     # one scheme (Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test                               # every target: each module's tests, AppTests, AcceptanceTests
+tuist test Providers                     # one scheme: a module's name (Providers, Activity, Storage …), AppTests, AcceptanceTests
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
-  -destination 'platform=macOS,arch=arm64' -only-testing:DomainTests   # bypasses Tuist's result cache
+  -destination 'platform=macOS,arch=arm64' -only-testing:AlertingTests   # bypasses Tuist's result cache
 swift test                               # the modules alone, from the root Package.swift
 ```
 
@@ -30,14 +30,17 @@ swift test                               # the modules alone, from the root Pack
 | `Modules/Providers` | the one `Provider` lifecycle, `ProviderDefinition`, added accounts, settings contracts, a login's `usageHistory` and `guestPasses`; `Resources/Providers/<id>.json` |
 | `Modules/AWSClients` | the AWS SDK (CloudWatch, Bedrock pricing) behind DataSources' `CloudWatchClient` and `PriceCatalog` ports; the only module that links AWS |
 | `Modules/Diagnostics` | `AppLog` |
-| `Modules/Monitoring` | `QuotaMonitor`: refreshes, the background loop and its cadence, each login's and product's status under the policy, the tabs |
-| `Sources/Domain` | the menu bar's readouts (`QuotaMonitor+MenuBar`), the popover's pages, Notify!, sessions, In use. Re-exports the modules |
-| `Sources/Infrastructure` | storage, notifications, hooks, Claude's guest-pass source |
-| `Sources/App` | SwiftUI views that read the domain directly; the composition root |
+| `Modules/Monitoring` | `QuotaMonitor`: refreshes, the background loop and its cadence, each login's and product's status under the policy, the tabs; the *All* page's `Overview`, *Rest when empty*, recaps |
+| `Modules/Leaderboard` | the board, its devices, signing |
+| `Sources/Modules/Activity` | sessions, the notch, Claude Code's hooks (the Mac app's own module, beside the App) |
+| `Sources/Modules/Alerting` | quota, status, recap and signed-out alerts; Notify!, webhooks, this Mac's notifications |
+| `Sources/Modules/LocalAPI` | the local API and its MCP |
+| `Sources/Modules/Storage` | `settings.json` (every module's settings port), the vault and the Keychain |
+| `Sources/App` | SwiftUI views that read the domain directly, the App's own settings and page state, and the composition root. Views and composing, nothing else |
 
-- **A feature lives in its context's folder** ([CANONICAL_MODEL §7](docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): `Activity/`, `Alerting/`, `InUse/`, `Monitoring/`, `Providers/`, `Settings/`, `UsageHistory/`, `DataSources/` inside `Sources/Domain`, `Infrastructure`, `App` and their tests, and `docs/features/<context>/<feature>/`. What is the App's own (page state, themes) sits in `App/` until [MODULAR_DESIGN §8](docs/architecture/MODULAR_DESIGN.md#8--still-to-carve) moves it.
+- **A feature lives in its context's folder** ([CANONICAL_MODEL §7](docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): `Activity/`, `Alerting/`, `InUse/`, `Monitoring/`, `Providers/`, `Settings/`, `UsageHistory/`, `DataSources/` inside `Sources/App` and its tests, and `docs/features/<context>/<feature>/`.
 
-- **Modules never `import Domain`**, and no module's Swift names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `DataSources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md).
+- **Every module: its open face at the top, its implementations in `Internal/`** ([MODULAR_DESIGN §5](docs/architecture/MODULAR_DESIGN.md#5--inside-a-module)). `Modules/` is ClaudeBarKit, shared with Windows; `Sources/Modules/` holds the Mac app's own. No module imports the App or a sibling, and no module's Swift names a vendor or uses `Probe`: a provider is data, and what it needs becomes a generic rule in `DataSources` → [TARGET_ARCHITECTURE.md](docs/architecture/TARGET_ARCHITECTURE.md).
 
 - **`QuotaMonitor` is the single source of truth** for provider state. No ViewModel or AppState layer; views consume the domain.
 - **Settings**: a provider's settings are its definition's `settings`, read with the generic `value`/`dataSourceKind`/`isOn` of `ProviderSettingsRepository`; a value an old card saved elsewhere is read through the compatibility tables in `JSONSettingsRepository` and `ProviderVault`. All settings persist through `JSONSettingsRepository` to `~/.claudebar/settings.json` → [docs/settings.md](docs/settings.md).

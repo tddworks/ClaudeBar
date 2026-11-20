@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Alerting
 
 /// *Add Webhook* · *Edit #ai-quota*: the URL, a name, the channel, who it is
 /// for and what it sends. The URL is never shown again once kept — editing

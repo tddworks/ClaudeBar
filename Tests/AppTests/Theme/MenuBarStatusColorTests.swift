@@ -1,4 +1,4 @@
-import Domain
+import Quotas
 import SwiftUI
 import Testing
 @testable import ClaudeBar

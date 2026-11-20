@@ -1,8 +1,9 @@
 import Testing
 import Foundation
 import Mockable
-import Infrastructure
-import Domain
+import Quotas
+import DataSources
+import Providers
 @testable import ClaudeBar
 
 /// Mock clipboard reader for testing

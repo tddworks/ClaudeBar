@@ -1,6 +1,9 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Diagnostics
 
 /// DeepSeek provider configuration card for SettingsView.
 /// Mirrors MiniMaxConfigCard (minus the region picker) — DeepSeek has a single global endpoint.

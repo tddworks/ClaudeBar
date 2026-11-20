@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import Domain
 @testable import ClaudeBar
 
 /// The one spelling of a usage number in the popover.

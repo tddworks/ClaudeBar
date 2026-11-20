@@ -1,6 +1,6 @@
 import AppKit
-import Infrastructure
-import Domain
+import Alerting
+import Diagnostics
 import UserNotifications
 
 /// Receives `claudebar://` URLs for the app's whole lifetime.

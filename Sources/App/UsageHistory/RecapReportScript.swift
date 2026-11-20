@@ -1,3 +1,5 @@
+import Quotas
+import DataSources
 /// The report's own script: it shows what `RecapReportPage` already says —
 /// another unit, the bars stacked by a split, one day's figures, a list in
 /// another order — and nothing else. It counts no usage and formats no

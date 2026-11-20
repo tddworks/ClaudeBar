@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import Quotas
+import Providers
 
 /// A card view displaying a single quota metric.
 /// Directly uses the rich domain model - no ViewModel needed.

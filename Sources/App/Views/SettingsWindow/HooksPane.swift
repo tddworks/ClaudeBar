@@ -1,6 +1,8 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import Activity
+import Diagnostics
 
 /// Hooks pane: Claude Code session tracking via the local hook server.
 /// Ports the popover hooks card logic: install/uninstall on toggle and a

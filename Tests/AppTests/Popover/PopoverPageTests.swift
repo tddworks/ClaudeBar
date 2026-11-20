@@ -1,4 +1,4 @@
-import Domain
+import Leaderboard
 import Foundation
 import Testing
 @testable import ClaudeBar

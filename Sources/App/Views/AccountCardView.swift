@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
 
 /// The login the popover is showing: its initial, its email or organization
 /// — masked when *Hide account email* is on (#375) — its plan badge, the eye

@@ -3,7 +3,6 @@ import DataSources
 import Providers
 import Monitoring
 import Foundation
-import Domain
 
 /// The menu bar's readouts, built from what the Monitor shows (`quota`,
 /// `usage`, `lineup`, `statusPolicy`). They return the menu bar's own values,

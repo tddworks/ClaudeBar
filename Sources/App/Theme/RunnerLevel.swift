@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import Activity
 
 /// The runner moment to moment: where it is on the floor, which way it
 /// faces, how high it jumps and whether it has fallen in a pit. The view

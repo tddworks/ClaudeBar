@@ -226,7 +226,9 @@ public protocol NetworkClient: Sendable {
 > [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (how a provider runs) ·
 > [ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md) (the app layers)
 
-The code is one module per context, plus the App. **Every module follows one
+The code is one module per context, plus the App: `Modules/` is ClaudeBarKit,
+shared with Windows; `Sources/Modules/` holds the Mac app's own (Activity,
+Alerting, LocalAPI, Storage); `Sources/App` only views and composes. **Every module follows one
 design: its open face at the top, its implementations in `Internal/`**
 ([MODULAR_DESIGN §5](../../../docs/architecture/MODULAR_DESIGN.md#5--inside-a-module)):
 

@@ -1,5 +1,7 @@
 import SwiftUI
 import WebKit
+import DataSources
+import Providers
 
 /// A card that embeds a WKWebView to display custom URL content for a provider.
 /// Styled to match existing quota cards (same border, corner radius, background).

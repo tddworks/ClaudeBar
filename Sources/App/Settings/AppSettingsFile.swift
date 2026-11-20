@@ -1,5 +1,7 @@
 import Foundation
-import Domain
+import DataSources
+import Activity
+import Storage
 
 /// The App's own settings in `~/.claudebar/settings.json` (`app.*`): the
 /// theme, the menu bar, the popover, status colours. Written through Storage's

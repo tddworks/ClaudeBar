@@ -1,7 +1,6 @@
 import Testing
 import Foundation
 @testable import ClaudeBar
-import Domain
 import Storage
 
 /// The warning switch picks the one status policy every surface reads.

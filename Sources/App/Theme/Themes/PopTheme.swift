@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Quotas
 
 // MARK: - Pop Theme
 

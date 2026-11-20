@@ -1,6 +1,7 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
 
 // Selection controls shared by the Settings window panes.
 // Relocated from the retired inline SettingsView (menu bar popover).

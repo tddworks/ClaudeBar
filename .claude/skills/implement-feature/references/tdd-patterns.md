@@ -17,7 +17,7 @@ Use `@Test` and `@Suite` instead of XCTest:
 ```swift
 import Testing
 import Foundation
-@testable import Domain
+@testable import Quotas   // the module under test; @testable reaches its Internal/
 
 @Suite
 struct UsageQuotaTests {
@@ -159,9 +159,8 @@ Modules/
 ├── DataSources/Tests/        # DataSource, workers, OAuth, HTTP, process runners
 └── Providers/Tests/          # golden tests per definition: CodexDefinitionTests, ClaudeAPITests …
     └── Support/              # StubbedProvider, ClaudeHarness, InMemoryProviderSettings
+Sources/Modules/<Context>/Tests/   # the Mac app's own modules: Activity, Alerting, LocalAPI, Storage
 Tests/
-├── DomainTests/              # QuotaMonitor, legacy providers, the kernel's behaviour
-├── InfrastructureTests/      # legacy probes, storage, notifications
 ├── AppTests/                 # view logic
 └── AcceptanceTests/          # specs composing real modules with stubbed ports
 ```
@@ -169,7 +168,7 @@ Tests/
 ## Running Tests
 
 ```bash
-tuist test Providers         # one module's tests (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test Providers         # one module's tests (a scheme per module, plus AppTests, AcceptanceTests)
 tuist test                     # everything
 # tuist caches results; to force a re-run of one suite:
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \

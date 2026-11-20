@@ -1,4 +1,6 @@
 import SwiftUI
+import DataSources
+import Providers
 
 /// A segmented picker in an outlined theme's ink: one outlined capsule, the
 /// chosen option filled with ink, which slides to the option you pick.

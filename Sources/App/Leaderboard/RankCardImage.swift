@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Leaderboard
 
 /// The shared image of a `RankCard`, in the theme the member wears: a card
 /// of that theme on its background, the way the popover draws one.

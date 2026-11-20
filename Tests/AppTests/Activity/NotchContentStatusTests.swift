@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 /// The notch paints a quota by the person's status policy, the same one the

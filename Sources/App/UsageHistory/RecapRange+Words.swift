@@ -1,4 +1,4 @@
-import Domain
+import Monitoring
 import Foundation
 
 /// The recap's range choice, in words: the chip's name, what each range is

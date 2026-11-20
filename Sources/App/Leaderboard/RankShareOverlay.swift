@@ -1,7 +1,10 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
-import Domain
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
 import Diagnostics
 
 /// *SHARE MY RANK* — over the popover: the image as it will be posted, its

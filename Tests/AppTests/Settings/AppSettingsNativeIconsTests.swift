@@ -1,7 +1,6 @@
 import Testing
 import Foundation
 @testable import ClaudeBar
-import Domain
 import Storage
 
 @Suite @MainActor

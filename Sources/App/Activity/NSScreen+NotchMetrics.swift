@@ -1,5 +1,5 @@
 import AppKit
-import Domain
+import Activity
 
 public extension NSScreen {
     /// Measures this display's notch region.

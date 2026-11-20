@@ -1,5 +1,4 @@
 import Testing
-import Domain
 @testable import ClaudeBar
 
 /// The popover's usage sections, each the person's to show or hide

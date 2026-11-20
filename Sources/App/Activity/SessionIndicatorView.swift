@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import DataSources
+import Activity
 
 /// Displays the Claude Code session's status in the menu popover.
 /// `SessionsCardView` shows it when exactly one session is running.

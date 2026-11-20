@@ -1,6 +1,8 @@
 import Testing
 import Foundation
-@testable import Domain
+import Quotas
+import Providers
+@testable import Monitoring
 
 @Suite("ProviderBadgeState Tests")
 struct ProviderBadgeStateTests {

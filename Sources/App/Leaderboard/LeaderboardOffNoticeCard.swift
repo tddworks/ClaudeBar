@@ -1,4 +1,6 @@
 import SwiftUI
+import DataSources
+import Leaderboard
 
 /// Said once in the popover after the Leaderboard was turned off there:
 /// what happened, where to turn it back on, and Undo.

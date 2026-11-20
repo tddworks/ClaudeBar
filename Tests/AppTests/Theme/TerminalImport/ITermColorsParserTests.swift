@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import Infrastructure
 @testable import ClaudeBar
 
 @Suite

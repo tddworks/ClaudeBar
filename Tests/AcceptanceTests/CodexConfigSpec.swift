@@ -1,11 +1,9 @@
-import Domain
+import Monitoring
 import Testing
 import Foundation
 import Mockable
 import DataSources
 import Providers
-@testable import Domain
-@testable import Infrastructure
 
 /// Feature: Codex Configuration
 ///

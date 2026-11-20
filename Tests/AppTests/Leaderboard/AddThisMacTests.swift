@@ -1,7 +1,9 @@
 import Foundation
 import Testing
 @testable import ClaudeBar
-import Domain
+import Providers
+import Monitoring
+import Leaderboard
 import Storage
 
 /// *Already a member? Add this Mac* as the popover drives it (design §2a): a

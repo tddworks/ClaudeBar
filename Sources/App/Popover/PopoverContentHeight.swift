@@ -2,7 +2,6 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
-import Domain
 
 /// Height policy for the popover's scrollable content region.
 ///

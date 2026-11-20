@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftUI
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 /// The daily usage cards sit two to a row, so a big day's number has half the

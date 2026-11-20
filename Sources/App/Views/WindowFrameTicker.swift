@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import DataSources
+import Providers
 
 // MARK: - Window Visibility & Frame Ticker
 

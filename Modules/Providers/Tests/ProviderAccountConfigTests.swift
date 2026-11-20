@@ -1,6 +1,8 @@
 import Foundation
 import Testing
-@testable import Domain
+import Quotas
+import DataSources
+@testable import Providers
 
 @Suite("ProviderAccountConfig")
 struct ProviderAccountConfigTests {

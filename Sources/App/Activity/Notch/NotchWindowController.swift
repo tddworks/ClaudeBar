@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import Activity
+import Diagnostics
 
 /// Owns the notch window: where it sits, which display it is on, and which part
 /// of it accepts the mouse.

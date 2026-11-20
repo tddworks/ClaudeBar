@@ -1,4 +1,8 @@
 import Foundation
+import Providers
+import Monitoring
+import Leaderboard
+import Activity
 
 /// Navigation model for the standalone Settings window sidebar.
 /// Sections are grouped the way the sidebar renders them:

@@ -1,5 +1,4 @@
 import Foundation
-import Domain
 
 /// Format-agnostic representation of a terminal color scheme.
 ///

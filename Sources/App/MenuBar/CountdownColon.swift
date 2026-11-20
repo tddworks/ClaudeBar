@@ -2,7 +2,6 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
-import Domain
 
 /// Locates the separator colon inside an hours-and-minutes countdown so a
 /// renderer can animate it.

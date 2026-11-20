@@ -1,6 +1,11 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
+import Leaderboard
+import Activity
+import Alerting
+import Diagnostics
 import Providers
 #if ENABLE_SPARKLE
 import Sparkle

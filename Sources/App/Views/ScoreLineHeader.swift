@@ -1,4 +1,6 @@
 import SwiftUI
+import DataSources
+import Providers
 
 // MARK: - Score Line
 

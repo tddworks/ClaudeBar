@@ -4,7 +4,7 @@ import Mockable
 import DataSources
 import Providers
 import Monitoring
-import Domain
+import Quotas
 import Storage
 
 /// Feature: Claude Configuration

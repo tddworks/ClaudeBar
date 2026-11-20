@@ -1,6 +1,5 @@
 import SwiftUI
 import Testing
-import Domain
 @testable import ClaudeBar
 
 /// Platformer's runner: how it moves for each status, and that no other

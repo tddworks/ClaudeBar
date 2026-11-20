@@ -1,6 +1,7 @@
 import Foundation
 import Observation
-import Domain
+import Quotas
+import Activity
 
 /// Everything the notch draws, in one Equatable value.
 ///

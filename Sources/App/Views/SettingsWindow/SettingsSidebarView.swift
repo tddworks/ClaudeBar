@@ -1,5 +1,8 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Monitoring
+import Diagnostics
 
 /// Full-height sidebar for the Settings window. Hosts the traffic-light
 /// gap at the top (the window has a hidden title bar), grouped navigation,

@@ -1,5 +1,4 @@
 import Testing
-import Domain
 @testable import ClaudeBar
 
 @Suite

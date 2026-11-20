@@ -2,7 +2,7 @@ import Foundation
 import Providers
 import Testing
 @testable import ClaudeBar
-import Domain
+import Monitoring
 import Storage
 
 /// Hidden quotas belong to the product (#140): Gemini's models are the same

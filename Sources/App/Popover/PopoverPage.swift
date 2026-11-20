@@ -1,4 +1,3 @@
-import Domain
 import Foundation
 
 /// What the popover shows under its pills: *All*, the *Leaderboard*, or one

@@ -2,7 +2,6 @@ import Testing
 import Foundation
 import DataSources
 import Providers
-@testable import Domain
 
 /// USER_JOURNEYS §5 — Lin shares her team's gateway; a teammate imports it.
 @Suite("Feature: Export and import a provider")

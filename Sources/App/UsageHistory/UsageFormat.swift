@@ -1,5 +1,5 @@
 import Foundation
-import Domain
+import Quotas
 
 /// The one spelling of a usage number in the popover — a value in a unit, a
 /// share — so the chart, the heatmap and the mix never print the same figure

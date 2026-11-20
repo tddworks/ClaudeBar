@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
 
 /// Displays a single extension metric card with value, unit, progress bar, and optional delta.
 /// Follows the same glassmorphism style as DailyUsageCardView.

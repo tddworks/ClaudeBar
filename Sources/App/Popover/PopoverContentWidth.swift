@@ -2,7 +2,6 @@ import Quotas
 import DataSources
 import Providers
 import Foundation
-import Domain
 
 /// Width policy for the popover itself.
 ///

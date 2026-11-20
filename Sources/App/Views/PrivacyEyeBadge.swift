@@ -1,4 +1,5 @@
 import SwiftUI
+import DataSources
 
 /// The small eye that masks something personal in the popover for screen
 /// shares — account emails, your globe country — and shows it again.

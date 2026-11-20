@@ -1,7 +1,9 @@
 import Testing
 import Foundation
 import Mockable
-import Domain
+import Quotas
+import Providers
+import Monitoring
 @testable import ClaudeBar
 
 /// The menu bar's readouts, built from what the Monitor shows

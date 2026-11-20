@@ -1,8 +1,10 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
 
 /// *SETTINGS → LEADERBOARD*: your name, whether you're shown, what you share,
 /// your own data, and leaving. Joining is here or in the popover's tab.

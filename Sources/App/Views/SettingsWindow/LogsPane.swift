@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Diagnostics
 
 /// Logs pane: quick access to the file log.
 struct LogsPane: View {

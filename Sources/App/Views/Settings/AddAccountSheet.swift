@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
-import Domain
+import DataSources
+import Monitoring
 import Providers
 
 /// *Add Account*: how (the definition's ways) → verify (who it is, then a

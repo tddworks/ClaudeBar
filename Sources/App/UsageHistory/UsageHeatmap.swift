@@ -1,5 +1,5 @@
 import Foundation
-import Domain
+import Quotas
 
 /// A range of days laid out as a heatmap: a column a week, seven rows a week,
 /// the calendar's weekday order — what a GitHub-style heatmap draws. Every

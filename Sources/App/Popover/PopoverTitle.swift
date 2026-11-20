@@ -1,5 +1,4 @@
 import Foundation
-import Domain
 
 /// The name at the top of the popover: *ClaudeBar* until the person names it
 /// their own way (Settings → Appearance → Popover Title).

@@ -1,9 +1,11 @@
 import Testing
 import Foundation
 import Mockable
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
 @testable import ClaudeBar
+import Providers
 
 /// `ObservationRenderSync` keeps an imperative render sink in sync with
 /// `@Observable` domain state, replacing SwiftUI's menu-bar label invalidation,

@@ -1,6 +1,11 @@
 import Foundation
-import Domain
-import Infrastructure
+import Quotas
+import Providers
+import Monitoring
+import Activity
+import Alerting
+import LocalAPI
+import Storage
 import ServiceManagement
 
 /// Observable settings manager for ClaudeBar preferences.

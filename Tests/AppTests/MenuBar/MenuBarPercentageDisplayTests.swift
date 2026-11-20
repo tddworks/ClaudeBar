@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 @Suite

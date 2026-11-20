@@ -1,6 +1,12 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
+import Activity
+import Alerting
+import Diagnostics
 
 /// Notify! pane: publishing quota state to a linked iPhone.
 ///

@@ -1,4 +1,3 @@
-import Domain
 import Foundation
 
 /// A section of the popover's usage area, under the quotas — each the

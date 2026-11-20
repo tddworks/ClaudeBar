@@ -1,7 +1,8 @@
 import SwiftUI
 import AppKit
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import LocalAPI
 
 /// Local API pane: the one switch for the localhost-only read-only API and
 /// MCP server, and the lines to copy while it is on — the `claude mcp add`

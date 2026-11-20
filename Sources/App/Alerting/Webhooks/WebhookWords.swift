@@ -1,5 +1,5 @@
 import Foundation
-import Domain
+import Alerting
 
 /// The Webhooks card's words (design-concept/webhooks). The domain answers
 /// with cases; what the person reads is here.

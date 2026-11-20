@@ -1,5 +1,4 @@
 import Foundation
-import Domain
 import Storage
 
 /// The settings the app keeps, in a `settings.json` of its own and with

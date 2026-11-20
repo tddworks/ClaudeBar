@@ -1,6 +1,7 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import Monitoring
 
 /// Root view of the standalone Settings window: a full-height sidebar plus
 /// the selected pane, over the theme's background — seamless chrome (the

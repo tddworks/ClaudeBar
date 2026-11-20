@@ -1,7 +1,7 @@
 import SwiftUI
 import DataSources
-import Domain
-import Infrastructure
+import Monitoring
+import Storage
 import Providers
 
 /// *Import provider* — USER_JOURNEYS moment 11. Before anything is saved or
