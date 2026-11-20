@@ -7,3 +7,5 @@
 @_exported import Providers
 @_exported import Quotas
 @_exported import Activity
+@_exported import Alerting
+@_exported import LocalAPI

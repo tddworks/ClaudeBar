@@ -85,7 +85,7 @@ struct ClaudeBarApp: App {
 
     /// The local API and MCP server — read-only quota answers on 127.0.0.1.
     /// Off means no listener exists at all.
-    private let localAPIServer = LocalAPIServer()
+    private let localAPIServer = LocalAPI.makeServer()
 
     /// Task for the hook server event loop (allows cancellation on toggle off)
     @State private var hookServerTask: Task<Void, Never>?
@@ -98,10 +98,10 @@ struct ClaudeBarApp: App {
 
     /// This Mac's notifications: a destination for every alert, and the
     /// permission to show them.
-    private let notifications = Notifications()
+    private let notifications = Alerting.makeNotifications()
 
     /// Sends session start/end notifications
-    private let sessionAlertSender = SystemAlertSender()
+    private let sessionAlertSender = Alerting.makeAlertSender()
 
     #if ENABLE_SPARKLE
     /// Sparkle updater for auto-updates
@@ -169,14 +169,14 @@ struct ClaudeBarApp: App {
         let products = providers
         let newSessions = NewSessions(products: products,
                                       shellLines: ProviderFactory.makeShellLines(commands: products.compactMap { $0.inUse?.command }),
-                                      announcer: InUseNotifications(),
+                                      announcer: Alerting.makeInUseAnnouncer(),
                                       status: { monitor.status(of: $0) })
         self.newSessions = newSessions
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
         // *Webhooks*: kept in settings.json, each URL a destination's secret.
         let webhooks = Webhooks(settings: settingsRepository, secrets: settingsRepository.destinationSecrets,
-                                sender: WebhookClient())
+                                sender: Alerting.makeWebhookSender())
         self.webhooks = webhooks
         // Every alert goes to every destination; neither decider knows who hears it.
         let destinations = AlertDestinations([notifications, webhooks])
@@ -201,7 +201,7 @@ struct ClaudeBarApp: App {
         // opens the link `URLSchemeAction` builds and reads back.
         let restWhenEmpty = RestWhenEmpty(
             repository: settingsRepository,
-            announcer: RestNotifications(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
+            announcer: Alerting.makeRestAnnouncer(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
         self.restWhenEmpty = restWhenEmpty
         restWhenEmpty.follow(monitor)
         // *Signed out* follows every refresh, failed ones too: a sign-in that ended, told once.
@@ -348,10 +348,7 @@ struct ClaudeBarApp: App {
             do {
                 // Every answer is a read of the All page's Overview, on the main actor.
                 let monitor = monitor
-                let router = LocalAPIRouter(read: { Overview(monitor) })
-                try await localAPIServer.start { result in
-                    await router.answer(result)
-                }
+                try await localAPIServer.start(answering: { Overview(monitor) })
                 // The socket is ready and the port file written; the pane
                 // re-reads it, so what it shows and copies is what answers.
                 NotificationCenter.default.post(name: .localAPIPortChanged, object: nil)

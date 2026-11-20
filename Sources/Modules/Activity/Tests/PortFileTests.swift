@@ -16,11 +16,6 @@ struct PortFileTests {
     }
 
     @Test
-    func `should leave the local API's port in api-port under the .claudebar folder`() {
-        #expect(PortFile.localAPI.path.hasSuffix("/.claudebar/api-port"))
-    }
-
-    @Test
     func `should read back the port ClaudeBar left`() throws {
         try file.write(19847)
 

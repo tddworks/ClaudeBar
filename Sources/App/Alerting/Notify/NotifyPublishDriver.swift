@@ -80,7 +80,7 @@ final class NotifyPublishDriver {
     init(
         monitor: QuotaMonitor,
         settings: AppSettings,
-        publisher: any NotifyPublishing = NotifyGatewayClient(),
+        publisher: any NotifyPublishing = Alerting.makeNotifyGateway(),
         builder: NotifyPayloadBuilder = NotifyPayloadBuilder(),
         gate: NotifyPublishGate = NotifyPublishGate()
     ) {

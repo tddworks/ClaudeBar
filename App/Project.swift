@@ -57,6 +57,18 @@ let project = Project(
         .external(name: "DataSources"),
         .external(name: "Providers"),
         .external(name: "Diagnostics"),
+    ]) + appModule("Alerting", dependencies: [
+        .external(name: "Quotas"),
+        .external(name: "DataSources"),
+        .external(name: "Providers"),
+        .external(name: "Monitoring"),
+        .external(name: "Diagnostics"),
+    ]) + appModule("LocalAPI", dependencies: [
+        .external(name: "Quotas"),
+        .external(name: "DataSources"),
+        .external(name: "Providers"),
+        .external(name: "Monitoring"),
+        .external(name: "Diagnostics"),
     ]) + [
         // MARK: - Domain Layer
         .target(
@@ -68,6 +80,8 @@ let project = Project(
             sources: ["../Sources/Domain/**"],
             dependencies: [
                 .target(name: "Activity"),
+                .target(name: "Alerting"),
+                .target(name: "LocalAPI"),
                 .external(name: "Quotas"),
                 .external(name: "DataSources"),
                 .external(name: "Providers"),
