@@ -1,6 +1,6 @@
-import Domain
 import Foundation
 import Testing
+@testable import Quotas
 
 @Suite
 struct QuotaLabelTests {

@@ -1,5 +1,7 @@
 import Foundation
 import Quotas
+import DataSources
+import Providers
 
 /// *Rest when empty*: where a product the person asked to rest is now. One
 /// saved value per product, so a relaunch keeps it, and moved only by

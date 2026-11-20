@@ -1,5 +1,8 @@
 import Foundation
 import Mockable
+import Quotas
+import DataSources
+import Providers
 
 /// Where each product's `WhenEmpty` is saved: `providers.<id>.restWhenEmpty`
 /// in settings.json. `nil` means the person never asked, or turned the card

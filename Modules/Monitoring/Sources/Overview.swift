@@ -1,6 +1,7 @@
 import Foundation
 import Providers
 import Quotas
+import DataSources
 
 /// The popover's *All* page: a card per product in the lineup, in pill order,
 /// each led by the quota that runs out first

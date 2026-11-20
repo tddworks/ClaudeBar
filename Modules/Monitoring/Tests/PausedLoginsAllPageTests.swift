@@ -1,8 +1,10 @@
 import Foundation
 import Testing
 import Mockable
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// A login paused from the popover is off the *All* page, which is the
 /// popover's own (`Overview`); the rest of what a pause does is the Monitor's,

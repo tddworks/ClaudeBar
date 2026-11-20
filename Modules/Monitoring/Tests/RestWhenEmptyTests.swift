@@ -1,8 +1,9 @@
 import Foundation
-import Infrastructure
 import Testing
-import Domain
-@testable import ClaudeBar
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// *Rest when empty*: a product whose every counted login is depleted rests,
 /// dimmed, until the first refresh that shows room, telling the person both
@@ -16,7 +17,6 @@ struct RestWhenEmptyTests {
         func sleep(nanoseconds: UInt64) async throws {}
     }
 
-    private let temp = FileManager.default.temporaryDirectory.appendingPathComponent("rest-when-empty-\(UUID().uuidString)")
     private let noon = Date(timeIntervalSince1970: 1_761_220_000)
 
     /// A connection whose answer the test rewrites between refreshes: usage,
@@ -48,28 +48,28 @@ struct RestWhenEmptyTests {
         let rest: RestWhenEmpty
         let told: Announced
         let probe: ScriptedProbe
-        /// The settings the state is saved in, read directly, so a test
-        /// asserts what was persisted.
-        let settings: JSONSettingsRepository
+        /// Where the state is saved, read directly, so a test asserts what
+        /// was kept.
+        let saved: SavedRests
 
-        var saved: WhenEmpty? { settings.whenEmpty(forProvider: product.id) }
+        var savedState: WhenEmpty? { saved.whenEmpty(forProvider: product.id) }
     }
 
-    /// One product with one login (Mia's one Claude is the main case), real
-    /// settings on disk, and the follower following the Monitor as the app does.
-    private func rig(_ id: String = "claude", secondLogin: Bool = false, file: String = "settings.json",
-                     saved: WhenEmpty? = nil) -> Rig {
+    /// One product with one login (Mia's one Claude is the main case), its
+    /// saved state, and the follower following the Monitor as the app does.
+    private func rig(_ id: String = "claude", secondLogin: Bool = false, saved: WhenEmpty? = nil) -> Rig {
         let probe = ScriptedProbe()
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent(file)))
-        if let saved { settings.setWhenEmpty(saved, forProvider: id) }
+        let settings = InMemoryProviderSettings()
+        let rests = SavedRests()
+        if let saved { rests.setWhenEmpty(saved, forProvider: id) }
         let logins = secondLogin ? [ProviderAccountConfig(accountId: "work", label: "work",
                                                           probeConfig: ["folder": "/tmp/rest-work", "accountId": "work"])] : []
         let product = stubbedProduct(id, probe: probe, settings: settings, accounts: logins)
         let told = Announced()
         let monitor = QuotaMonitor(providers: kept([product]), clock: TestClock())
-        let rest = RestWhenEmpty(repository: settings, announcer: told, now: { [noon] in noon })
+        let rest = RestWhenEmpty(repository: rests, announcer: told, now: { [noon] in noon })
         rest.follow(monitor)
-        return Rig(monitor: monitor, product: product, rest: rest, told: told, probe: probe, settings: settings)
+        return Rig(monitor: monitor, product: product, rest: rest, told: told, probe: probe, saved: rests)
     }
 
     private func refresh(_ rig: Rig, left: Double?) async {
@@ -92,7 +92,7 @@ struct RestWhenEmptyTests {
         await refresh(rig, left: 0)
 
         #expect(rig.rest.isResting(rig.product))
-        #expect(rig.saved == .resting(since: noon))
+        #expect(rig.savedState == .resting(since: noon))
         let notice = try #require(rig.told.notices.first)
         #expect(notice == RestNotice(kind: .resting, productName: "Claude", providerId: "claude"))
     }
@@ -115,7 +115,7 @@ struct RestWhenEmptyTests {
         await refresh(rig, left: 0)
 
         #expect(!rig.rest.isResting(rig.product))
-        #expect(rig.saved == nil)
+        #expect(rig.savedState == nil)
         #expect(rig.told.notices.isEmpty)
     }
 
@@ -126,7 +126,7 @@ struct RestWhenEmptyTests {
 
         await refresh(rig, left: nil)
 
-        #expect(rig.saved == .watching)
+        #expect(rig.savedState == .watching)
         #expect(rig.told.notices.isEmpty)
     }
 
@@ -169,7 +169,7 @@ struct RestWhenEmptyTests {
         await refresh(rig, left: 72)
 
         #expect(!rig.rest.isResting(rig.product))
-        #expect(rig.saved == .watching)
+        #expect(rig.savedState == .watching)
         #expect(rig.told.notices.map(\.kind) == [.resting, .back])
     }
 
@@ -198,7 +198,7 @@ struct RestWhenEmptyTests {
         rig.rest.showAnyway(rig.product)
 
         #expect(!rig.rest.isResting(rig.product))
-        #expect(rig.saved == .shownAnyway)
+        #expect(rig.savedState == .shownAnyway)
     }
 
     @Test
@@ -241,7 +241,7 @@ struct RestWhenEmptyTests {
 
         #expect(!rig.rest.isOn(rig.product))
         #expect(!rig.rest.isResting(rig.product))
-        #expect(rig.saved == nil)
+        #expect(rig.savedState == nil)
         #expect(rig.told.notices.count == 1)
     }
 
@@ -257,7 +257,7 @@ struct RestWhenEmptyTests {
 
         // The switch and the rest are two facts: neither writes the other.
         #expect(rig.product.isEnabled)
-        #expect(rig.saved == .resting(since: noon))
+        #expect(rig.savedState == .resting(since: noon))
     }
 
     // MARK: - A relaunch
@@ -282,4 +282,11 @@ struct RestWhenEmptyTests {
         #expect(!rig.rest.isResting(rig.product))
         #expect(rig.told.notices.isEmpty)
     }
+}
+
+/// The state a product rests in, kept per product as settings keep it.
+final class SavedRests: RestWhenEmptyRepository, @unchecked Sendable {
+    private var states: [String: WhenEmpty] = [:]
+    func whenEmpty(forProvider id: String) -> WhenEmpty? { states[id] }
+    func setWhenEmpty(_ state: WhenEmpty?, forProvider id: String) { states[id] = state }
 }

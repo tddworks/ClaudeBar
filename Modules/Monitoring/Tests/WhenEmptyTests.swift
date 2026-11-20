@@ -1,6 +1,9 @@
 import Foundation
 import Testing
-@testable import Domain
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// *Rest when empty*'s one transition: where a product is after a refresh
 /// that read its status (docs/features/monitoring/rest-when-empty/design.md §2).

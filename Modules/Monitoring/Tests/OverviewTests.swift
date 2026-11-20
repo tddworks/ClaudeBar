@@ -1,8 +1,10 @@
 import Foundation
 import Testing
 import Mockable
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// The popover's *All* page: a card per provider, its tightest quota first
 /// (docs/features/monitoring/all-providers/design.md).
@@ -253,32 +255,5 @@ struct OverviewTests {
         #expect(overview.cards[0].tightest?.percentRemaining == 9)
         #expect(overview.cards[0].badge == .quota(.critical))
         #expect(overview.cards[1].tightest == nil)
-    }
-}
-
-/// Which page the popover shows, and where an open lands.
-@Suite
-struct PopoverPageTests {
-    @Test
-    func `should fall back to the provider when All is no longer offered`() {
-        #expect(PopoverPage.all.shown(allOffered: false, leaderboardOn: true) == .provider)
-        #expect(PopoverPage.all.shown(allOffered: true, leaderboardOn: false) == .all)
-    }
-
-    @Test
-    func `should fall back to the provider when the Leaderboard is turned off`() {
-        #expect(PopoverPage.leaderboard.shown(allOffered: true, leaderboardOn: false) == .provider)
-    }
-
-    @Test
-    func `should open on All every time when the person chose All`() {
-        #expect(PopoverOpensOn.all.page(onOpening: .provider) == .all)
-        #expect(PopoverOpensOn.all.page(onOpening: .leaderboard) == .all)
-    }
-
-    @Test
-    func `should open where the person left it by default`() {
-        #expect(PopoverOpensOn.whereILeftIt.page(onOpening: .leaderboard) == .leaderboard)
-        #expect(PopoverOpensOn.whereILeftIt.page(onOpening: .provider) == .provider)
     }
 }
