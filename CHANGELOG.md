@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.5.29] - 2026-11-20
+
 ### Changed
 - **The recap's HTML report says more, and answers back**: each provider's, model's and project's change, every day's own figures, tokens by kind. Switch cost, tokens or cache, stack the bars by provider, model or project, click a day to read it alone, sort a list. ([#719](https://github.com/tddworks/ClaudeBar/pull/719)) → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/usage-history/recap/README.md)
 
@@ -458,7 +462,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.28...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.29...HEAD
+[0.5.29]: https://github.com/tddworks/ClaudeBar/compare/v0.5.28...v0.5.29
 [0.5.28]: https://github.com/tddworks/ClaudeBar/compare/v0.5.27...v0.5.28
 [0.5.27]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...v0.5.27
 [0.5.26]: https://github.com/tddworks/ClaudeBar/compare/v0.5.25...v0.5.26
