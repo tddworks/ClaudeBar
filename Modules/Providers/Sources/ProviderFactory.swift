@@ -6,6 +6,12 @@ import Synchronization
 /// The module's factory: definition → `Provider`, its data sources made live
 /// by `DataSources.make`. The App composes with this and never names a worker.
 public enum ProviderFactory {
+    /// The lines In use writes into the person's shell files, for the
+    /// commands the declaring definitions name.
+    public static func makeShellLines(commands: [TerminalCommand]) -> any ShellLines {
+        ShellSetup(commands: commands)
+    }
+
     /// A built-in definition, shipped in this module's `Resources/Providers/`.
     public static func builtIn(_ id: String) throws -> ProviderDefinition {
         try ProviderDefinition.parse(try builtInData(id))

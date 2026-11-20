@@ -1,6 +1,9 @@
 import Testing
 import Foundation
-@testable import Domain
+import Quotas
+import DataSources
+import Providers
+@testable import Monitoring
 
 /// The recap's ranges: *This week* is the calendar's week that holds today,
 /// *Last week* the one before it; *This month* the calendar's month, *Last

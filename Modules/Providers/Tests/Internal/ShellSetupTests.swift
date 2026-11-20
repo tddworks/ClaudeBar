@@ -1,7 +1,8 @@
 import Foundation
 import Testing
-import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+@testable import Providers
 
 /// The shell lines behind *In use*: each `claude` / `codex` reads the login
 /// chosen in ClaudeBar and starts on its folder. Written once between

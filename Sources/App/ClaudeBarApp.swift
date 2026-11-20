@@ -168,7 +168,7 @@ struct ClaudeBarApp: App {
         // definition, never by a provider's name (CANONICAL §2.1).
         let products = providers
         let newSessions = NewSessions(products: products,
-                                      shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
+                                      shellLines: ProviderFactory.makeShellLines(commands: products.compactMap { $0.inUse?.command }),
                                       announcer: InUseNotifications(),
                                       status: { monitor.status(of: $0) })
         self.newSessions = newSessions

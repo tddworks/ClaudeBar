@@ -1,9 +1,9 @@
 import Foundation
 import Testing
-@testable import Domain
-@testable import Infrastructure
 @testable import Providers
 import Quotas
+import DataSources
+@testable import Providers
 
 /// *New terminal sessions*: choosing which login each CLI starts with, and
 /// the shell lines that make the choice count.
@@ -29,7 +29,7 @@ struct NewSessionsTests {
 
     /// Codex with its plain login and an added folder login, *work*.
     private func codex() -> Provider {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("settings.json")))
+        let settings = InMemoryProviderSettings()
         let work = ProviderAccountConfig(accountId: "work", label: "work",
                                          probeConfig: ["folder": "/Users/you/.codex-work", "accountId": "work"])
         return try! ProviderFactory.make("codex", settings: settings, accounts: [work],
@@ -159,7 +159,7 @@ struct NewSessionsTests {
 
     @Test
     func `should show nothing for a provider with one login`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("one.json")))
+        let settings = InMemoryProviderSettings()
         let alone = try ProviderFactory.make("codex", settings: settings,
                                        loginsInUse: DiskLoginsInUse(root: temp.appendingPathComponent("in-use")))
         let sessions = NewSessions(products: [alone], shellLines: lines, shell: .zsh)
@@ -222,7 +222,7 @@ struct NewSessionsTests {
 
     @Test
     func `should list only providers whose new sessions can start with a chosen login`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("s.json")))
+        let settings = InMemoryProviderSettings()
         let gemini = try ProviderFactory.make("gemini", settings: settings)
         let codex = codex()
 

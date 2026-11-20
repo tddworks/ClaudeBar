@@ -1,4 +1,5 @@
 import Foundation
+import Quotas
 
 /// The recap's ranges: this period or the last one, of a week or a month —
 /// each read against the period before it. The span is `RecapPeriod`'s; the

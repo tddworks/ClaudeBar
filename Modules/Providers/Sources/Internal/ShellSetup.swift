@@ -1,4 +1,4 @@
-import Domain
+import DataSources
 import Foundation
 
 /// The shell lines behind *In use* (`ShellLines` on disk): a function per CLI that reads the login
@@ -7,15 +7,15 @@ import Foundation
 /// CLI exactly as before. The lines live between two markers, so installing
 /// twice writes them once and removing takes out nothing else; fish gets a
 /// file of its own.
-public struct ShellSetup: ShellLines {
+struct ShellSetup: ShellLines {
     static let begin = "# >>> claudebar in-use >>>"
     static let end = "# <<< claudebar in-use <<<"
 
-    public let commands: [TerminalCommand]
-    public let home: URL
+    let commands: [TerminalCommand]
+    let home: URL
 
     /// A CLI is wrapped once, however many products run it.
-    public init(commands: [TerminalCommand], home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    init(commands: [TerminalCommand], home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.commands = commands.reduce(into: []) { kept, command in
             if !kept.contains(where: { $0.name == command.name }) { kept.append(command) }
         }
@@ -24,7 +24,7 @@ public struct ShellSetup: ShellLines {
 
     /// Where the lines go. Terminal on macOS starts bash as a login shell,
     /// which reads `.bash_profile`.
-    public func file(for shell: LoginShell) -> URL {
+    func file(for shell: LoginShell) -> URL {
         switch shell {
         case .zsh: home.appendingPathComponent(".zshrc")
         case .bash: home.appendingPathComponent(".bash_profile")
@@ -32,12 +32,12 @@ public struct ShellSetup: ShellLines {
         }
     }
 
-    public func isInstalled(_ shell: LoginShell) -> Bool {
+    func isInstalled(_ shell: LoginShell) -> Bool {
         (try? String(contentsOf: file(for: shell), encoding: .utf8))?.contains(Self.begin) ?? false
     }
 
     /// The lines, as the setup sheet shows them and `install` writes them.
-    public func lines(for shell: LoginShell) -> String {
+    func lines(for shell: LoginShell) -> String {
         let existing = (try? String(contentsOf: file(for: shell), encoding: .utf8)) ?? ""
         let body = commands.map { command -> String in
             let record = "$HOME/.claudebar/in-use/\(command.name)"
@@ -76,7 +76,7 @@ public struct ShellSetup: ShellLines {
     }
 
     /// Writes the block, replacing any earlier one, and keeps the rest of the file.
-    public func install(_ shell: LoginShell) throws {
+    func install(_ shell: LoginShell) throws {
         let url = file(for: shell)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let block = lines(for: shell)
@@ -86,7 +86,7 @@ public struct ShellSetup: ShellLines {
     }
 
     /// Takes the block out — and fish's own file with it.
-    public func remove(_ shell: LoginShell) throws {
+    func remove(_ shell: LoginShell) throws {
         let url = file(for: shell)
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
         if shell == .fish {

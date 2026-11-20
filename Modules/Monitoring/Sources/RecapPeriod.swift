@@ -1,4 +1,5 @@
 import Foundation
+import Quotas
 
 /// The span a recap adds up: the calendar's week or its month. It owns which
 /// days the one holding a day covers, and the one before it — the period
