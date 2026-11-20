@@ -42,5 +42,9 @@ ignore:
   - "Sources/Modules/Activity/Sources/Internal/macOS/ScriptedTerminalFocus.swift"  # NSAppleScript, tmux, NSRunningApplication; what it runs is TerminalScripts', tested
   - "Modules/Monitoring/Sources/Internal/macOS/SystemPowerStateProvider.swift"  # IOKit
   - "Modules/Monitoring/Sources/SystemClock.swift"  # the clock
+  - "Modules/Monitoring/Sources/Monitoring.swift"  # hands out the power state below
+  - "Sources/Modules/Activity/Sources/Activity.swift"  # hands out the system workers below
+  - "Sources/Modules/Activity/Sources/Internal/macOS/SystemProcessLiveness.swift"  # kill(pid, 0)
+  - "Sources/Modules/Alerting/Sources/Alerting.swift"  # hands out the notification, webhook and gateway clients
   - "Sources/App/Activity/NSScreen+NotchMetrics.swift"  # NSScreen
   - "Sources/Modules/Storage/Sources/Internal/macOS/KeychainCredentialRepository.swift"  # Keychain

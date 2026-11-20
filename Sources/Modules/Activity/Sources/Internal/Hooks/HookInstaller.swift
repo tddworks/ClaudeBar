@@ -206,9 +206,11 @@ enum HookInstaller {
     }
 }
 
-/// The hooks in the person's own Claude Code settings file.
+/// The hooks in a Claude Code settings file: the person's own unless told another.
 struct SettingsFileHooks: HookInstallation {
-    var isInstalled: Bool { HookInstaller.isInstalled() }
-    func install() throws { try HookInstaller.install() }
-    func uninstall() throws { try HookInstaller.uninstall() }
+    var path: String = HookInstaller.settingsPath
+
+    var isInstalled: Bool { HookInstaller.isInstalled(at: path) }
+    func install() throws { try HookInstaller.install(at: path) }
+    func uninstall() throws { try HookInstaller.uninstall(at: path) }
 }
