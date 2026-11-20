@@ -1,5 +1,5 @@
+#if os(macOS)
 import AppKit
-import Domain
 import Foundation
 import IOKit.ps
 
@@ -17,13 +17,13 @@ import IOKit.ps
 ///
 /// Thread-safe (`@unchecked Sendable`): the asleep flag and the set of event
 /// continuations are guarded by a lock, and IOKit reads are stateless.
-public final class SystemPowerStateProvider: PowerStateProvider, @unchecked Sendable {
+final class SystemPowerStateProvider: PowerStateProvider, @unchecked Sendable {
     private let lock = NSLock()
     private var displayAsleep = false
     private var continuations: [UUID: AsyncStream<PowerEvent>.Continuation] = [:]
     private var observers: [NSObjectProtocol] = []
 
-    public init() {
+    init() {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in
@@ -47,12 +47,12 @@ public final class SystemPowerStateProvider: PowerStateProvider, @unchecked Send
         for continuation in pending { continuation.finish() }
     }
 
-    public var isDisplayAsleep: Bool {
+    var isDisplayAsleep: Bool {
         lock.lock(); defer { lock.unlock() }
         return displayAsleep
     }
 
-    public var isOnBattery: Bool {
+    var isOnBattery: Bool {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sourceType = IOPSGetProvidingPowerSourceType(snapshot)?.takeUnretainedValue() else {
             return false
@@ -60,7 +60,7 @@ public final class SystemPowerStateProvider: PowerStateProvider, @unchecked Send
         return (sourceType as String) == kIOPSBatteryPowerValue
     }
 
-    public func events() -> AsyncStream<PowerEvent> {
+    func events() -> AsyncStream<PowerEvent> {
         AsyncStream { continuation in
             let id = UUID()
             lock.lock()
@@ -89,3 +89,4 @@ public final class SystemPowerStateProvider: PowerStateProvider, @unchecked Send
         for continuation in listeners { continuation.yield(event) }
     }
 }
+#endif

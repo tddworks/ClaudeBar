@@ -19,8 +19,7 @@ public enum PowerEvent: Sendable {
 /// Injected as an *optional* into `QuotaMonitor`. A `nil` provider disables all
 /// energy-awareness, preserving the plain timed loop — which keeps tests that
 /// don't care about power simple and is why the designated init defaults it to
-/// `nil`. The app wires a real `SystemPowerStateProvider` via the convenience
-/// init.
+/// `nil`. The app passes `Monitoring.makePowerState()`, this machine's own.
 public protocol PowerStateProvider: Sendable {
     /// Whether the display (or the whole system) is currently asleep. While this
     /// is `true` the loop pauses — no refresh, no probe subprocess spawn.

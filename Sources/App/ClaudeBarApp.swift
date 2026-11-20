@@ -158,7 +158,9 @@ struct ClaudeBarApp: App {
             providers: Providers(providers, settings: settingsRepository, vault: vault, make: { definition in
                 ProviderFactory.make(definition, engine: engine)
             }),
+            clock: SystemClock(),
             settingsRepository: settingsRepository,
+            powerStateProvider: Monitoring.makePowerState(),
             statusPolicy: { AppSettings.shared.statusPolicy }
         )
         self.monitor = monitor
