@@ -78,7 +78,7 @@ then compare with the code. Ask the seven questions of every type the feature
 touches, and draw now beside proposed →
 [domain-shape.md](references/domain-shape.md). For each new type, write down
 its **one reason to change** and **which side it lives on** (kernel fact, App
-words or colours, Infrastructure storage, an OS port); a type with two reasons
+words or colours, storage in a module's `Internal/`, an OS port); a type with two reasons
 is two types. A new aggregate, a moved law or
 a changed owner goes into the docs in Step 0's change.
 
@@ -226,24 +226,39 @@ public protocol NetworkClient: Sendable {
 > [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (how a provider runs) ·
 > [ARCHITECTURE.md](../../../docs/architecture/ARCHITECTURE.md) (the app layers)
 
-The code is mid-migration from three layers to modules. Find which side the
-behaviour lives on before you change it:
+The code is one module per context, plus the App. **Every module follows one
+design: its open face at the top, its implementations in `Internal/`**
+([MODULAR_DESIGN §5](../../../docs/architecture/MODULAR_DESIGN.md#5--inside-a-module)):
+
+```
+Modules/<Context>/
+├── Sources/
+│   ├── *.swift            THE OPEN FACE — public values, aggregates, @Mockable ports
+│   ├── <Context>.swift    THE FACTORY — an enum that builds the context's objects
+│   └── Internal/          THE IMPLEMENTATIONS — `internal`; workers, adapters, storage;
+│                          Internal/macOS · Windows · Linux for OS calls
+└── Tests/                 @testable import reaches Internal/
+```
+
+Nothing outside a module can name its `Internal/`; it gets the open face's
+types from the factory. There is no `Domain` or `Infrastructure` folder: a rule
+goes in its context's module, its implementation in that module's `Internal/`.
+Find which module the behaviour lives in before you change it:
 
 | Where | Holds | Tests |
 |---|---|---|
 | `Modules/Providers/Resources/Providers/<id>.json` (+ `.js`) | every built-in provider: where the key is, how to fetch, how to read | `Modules/Providers/Tests/` (golden tests over `StubbedProvider` / `ClaudeHarness`) |
 | `Modules/Providers/Sources` | `ProviderCatalog` (finds every definition), `Engine` (the shared ports), `Provider` (the one lifecycle: refresh, fallback chain, accounts), `ProviderDefinition`, settings and account contracts, the capabilities (`UsageHistory`, `GuestPasses`, `InUse`) | `Modules/Providers/Tests/` |
 | `Modules/DataSources/Sources` | `DataSource` and its workers: credential lookups (environment, login shell, files, Keychain, browser cookies and storage, SQLite) and refreshes; HTTP, steps, JSON-RPC, terminal, command, file, directory, SQLite, local-server and CloudWatch fetches; JSON / text / script mapping; `UsageLog` and its log readers; the process runners | `Modules/DataSources/Tests/` |
-| `Modules/Quotas/Sources` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError`, plans, costs, `DailyUsageStat` / `DailyUsageReport` (interim shapes, see each type's `- Note:`) | `Tests/DomainTests/` and the tests of the module that uses it |
+| `Modules/Quotas/Sources` | the usage model: `UsageSnapshot`, `UsageQuota`, `UsageError`, plans, costs, `DailyUsageStat` / `DailyUsageReport` (interim shapes, see each type's `- Note:`) | `Modules/Quotas/Tests/` |
 | `Modules/AWSClients` | the AWS SDK behind DataSources' `CloudWatchClient` and `PriceCatalog` ports | `Modules/AWSClients/Tests/` |
-| `Sources/Domain` | `QuotaMonitor`, Notify!, sessions, In use's `NewSessions` | `Tests/DomainTests/` |
-| `Sources/Infrastructure` | storage, notifications, hooks, the shell environment, Claude's guest-pass runner | `Tests/InfrastructureTests/` |
+| `Modules/Monitoring` | `QuotaMonitor`: refreshes, cadence, status, tabs | `Modules/Monitoring/Tests/` |
 | `Sources/App` | SwiftUI views reading the domain directly; `ClaudeBarApp.init`, the composition root, which builds the `Engine` and names no provider | `Tests/AppTests/`, `Tests/AcceptanceTests/` |
 
-Inside `Sources/Domain`, `Infrastructure`, `App` and their tests, put a new file in the folder of the context that owns its question ([CANONICAL_MODEL §7](../../../docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): a session rule in `Activity/`, a destination in `Alerting/`, a refresh rule in `Monitoring/`. The feature's docs go in `docs/features/<context>/<x>/`. A file that fits no context's question is a sign the design is missing a word; ask before inventing a folder.
+Inside `Sources/App` and its tests, put a new file in the folder of the context that owns its question ([CANONICAL_MODEL §7](../../../docs/architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)): a session rule in `Activity/`, a destination in `Alerting/`, a refresh rule in `Monitoring/`. The feature's docs go in `docs/features/<context>/<x>/`. A file that fits no context's question is a sign the design is missing a word; ask before inventing a folder.
 
 A bug in a migrated provider is fixed in its JSON, or generically in
-`DataSources`, never with vendor-named Swift. Modules never `import Domain`.
+`DataSources`, never with vendor-named Swift. Modules never import the App.
 
 **Key patterns:**
 - **Modules by context** — the domain at a module's root, its implementation in `Internal/`, one factory enum per module (`DataSources.make`, `ProviderFactory.make`)
@@ -324,7 +339,7 @@ once in `init` (keep startup work there, never in `ClaudeBarMain`). Acceptance
 specs in `Tests/AcceptanceTests/` compose real modules with stubbed ports.
 
 ```bash
-tuist test Providers         # one module's tests while working (schemes: Providers, DataSources, Domain, Infrastructure, AppTests, AcceptanceTests)
+tuist test Providers         # one module's tests while working (a scheme per module, plus AppTests, AcceptanceTests)
 # tuist caches results; the final check, and a forced re-run of one suite, use xcodebuild:
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace -destination 'platform=macOS,arch=arm64'
 xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
@@ -347,7 +362,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 - [ ] Place it: owner, capability (handle `nil` when not declared), extension point
 - [ ] Thought the domain first: root problem → concepts, the seven questions asked of touched types, now/proposed drawn ([domain-shape.md](references/domain-shape.md))
 - [ ] Searched for the rule before writing it: an existing owner is used, not copied (rate, threshold, unit, worst quota)
-- [ ] Each new type has one reason to change and one side (kernel fact · App words/colours · Infrastructure · OS port)
+- [ ] Each new type has one reason to change and one side (kernel fact · App words/colours · a module's `Internal/` · OS port)
 - [ ] Write the design change into the docs first
 - [ ] Analyze requirements and identify components
 - [ ] Create ASCII architecture diagram with component interactions
@@ -362,7 +377,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 - [ ] Test state changes and return values (not interactions)
 - [ ] Define protocols with `@Mockable` for external dependencies
 - [ ] Stub mocks to return data, assert on resulting state
-- [ ] Implement ports in the module's `Internal/`
+- [ ] Open face (public values, ports, factory) at the module's root; implementations `internal` in its `Internal/`
 - [ ] Create views consuming domain models directly
 - [ ] Views render and tell only — no comparing, counting or reading quotas to decide; the view passes the unit or login the person chose, it never picks one
 - [ ] Sentences, labels and colours in the App (`QuotaCardText`, `ModelColors`); the kernel answers facts and formats only the amounts it owns, through the shared formatter
