@@ -66,29 +66,29 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 | `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
 | `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository`; In use's `NewSessions` and `InUseAnnouncer` beside `InUse`; `Recaps` (`RecapPeriod`, `RecapRange`) beside `UsageHistory`, its only source | definition-file reading, `ShellSetup` (the shell lines In use writes), `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
 | `Providers/Resources/Providers/` | — | **the built-in definitions**: `codex.json`, `deepseek.json`, … | |
-| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `AdaptiveCadence`, `Clock` and `SystemClock`, `PowerStateProvider` and `PowerEvent`, `ProductTab`, `ProviderBadgeState`; `UsageProbe`, the stubbed login the tests build | — none. `SystemPowerStateProvider` (AppKit, IOKit) and the convenience `init` that injects it stay in the Mac app; the menu bar's readouts are `QuotaMonitor+MenuBar` in `Domain/App` ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
+| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `AdaptiveCadence`, `Clock` and `SystemClock`, `PowerStateProvider` and `PowerEvent`, `ProductTab`, `ProviderBadgeState`; `UsageProbe`, the stubbed login the tests build | `Internal/macOS/`: `SystemPowerStateProvider` (AppKit, IOKit), handed out by `Monitoring.makePowerState()`; the menu bar's readouts are the App's (`QuotaMonitor+MenuBar`, [#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
 | `Leaderboard` | Leaderboard | `LeaderboardMembership`, `DailyTokens`, `Username`, `RequestSigner`, `LeaderboardUploader`, the devices' values (`Device`, `DeviceCode`, `DeviceLabel`), the ports `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` · `TokenLogs` ([its design §7](../features/leaderboard/design.md#7--architecture)); the factory `Leaderboard.makeAPI(client:)` · `makeKeyStore()` · `makeMachineIdentity()` | `LeaderboardHTTPClient`; `FallbackSigningKeyStore` over `KeychainSigningKeyStore` (macOS) and `DefaultsSigningKeyStore`; `IOKitMachineIdentity` with `MacModel` (macOS); `CredentialManagerSigningKeyStore` and `WindowsMachineIdentity` (Windows) |
 | `Diagnostics` | — cross-cutting | `AppLog` and its categories, and the file log's place: the person's, or a test run's own | the `LogSink`s: `FileLogSink`, `OSLogSink` (macOS) |
-| `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label and readouts (`QuotaMonitor+MenuBar`, `StatusColorPolicy`), its own settings (`AppSettingsRepository` and the values it saves: page style, popover title, text size, when it opens, menu-bar items, status colours), implemented over Storage's `JSONSettingsStore`; page state (`Overview`, `PopoverPage`, *When empty*, *Rest when empty*), the Add Provider sheet, the terminal theme import; the ways in that read the Monitor: the local API and its MCP (`LocalAPIServer`, `LocalAPIRouter`, `LocalAPISettingsRepository`); the Mac's glue: `SystemPowerStateProvider`, `NSScreen+NotchMetrics`, and `ClaudeGuestPassSource`, the composition root naming its vendor | — no `Internal/`: the App decides nothing |
+| `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label and readouts (`QuotaMonitor+MenuBar`, `StatusColorPolicy`), its own settings (`AppSettingsRepository` and the values it saves: page style, popover title, text size, when it opens, menu-bar items, status colours), implemented over Storage's `JSONSettingsStore`; page state (`Overview`, `PopoverPage`, *When empty*, *Rest when empty*), the Add Provider sheet, the terminal theme import; `ClaudeGuestPassSource`, the composition root naming its vendor. **Views and composing, nothing else** | — no `Internal/`: the App decides nothing and talks to nothing |
 
 ### The app's own modules
 
 Root `Modules/` is **ClaudeBarKit**, the package the Windows client depends on
 (§10): only what every platform must count the same. A context only the Mac
-app has (its notifications, Claude Code's hooks, the Keychain) is a module
-**under the App**, `Sources/App/Modules/<Context>/`, shaped the same way: its
+app has (its notifications, Claude Code's hooks, the Keychain, its local API)
+is a module **beside the App**, `Sources/Modules/<Context>/`, shaped the same way: its
 open face at the top, its implementations in `Internal/` (Apple frameworks in
 `Internal/macOS/`), its tests in `Tests/`. Each is its own Tuist framework
 target in `App/Project.swift`, never a folder of the App target, because
-`internal` hides `Internal/` only across a module boundary; the App target's
-glob leaves `Modules/**` out. They may import ClaudeBarKit, never the App and
+`internal` hides `Internal/` only across a module boundary. They may import ClaudeBarKit, never the App and
 never each other (`Storage` excepted: it implements their settings ports).
 
 | Module | Context | Public (the open face) | `Internal/` (the implementation) |
 |---|---|---|---|
 | `Alerting` | Alerting | `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `SignedOutAlerts`, `Alert`, `AlertDestination`, `Webhooks`, Notify! values, `NotifySettingsRepository`, `WebhookSettingsRepository`, `DestinationSecrets`; `QuotaLabel` (what a page or a tile calls a quota, the App's and Notify's); `RestNotice` and the `RestWhenEmptyAnnouncer` port | `Notifications`, `RestNotifications`, In use's notifications, `WebhookClient`, `NotifyGatewayClient`; `Internal/macOS/`: `SystemAlertSender` |
-| `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookEventReceiver`, `HookSettingsRepository`, `PortFile` (the App's local API writes it too) | `HookHTTPServer`, `HookInstaller`, `SessionEventParser`, `TranscriptTitleReader`, `TerminalScripts`; `Internal/macOS/`: `ScriptedTerminalFocus`, `SystemProcessLiveness` |
+| `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookEventReceiver`, `HookSettingsRepository`, `PortFile` (the local API writes it too) | `HookHTTPServer`, `HookInstaller`, `SessionEventParser`, `TranscriptTitleReader`, `TerminalScripts`; `Internal/macOS/`: `ScriptedTerminalFocus`, `SystemProcessLiveness` |
 | `Storage` | Vault & Settings · generic | `Storage.makeSettings()`, `Storage.makeVault()`, `JSONSettingsStore` (the one `settings.json`, which the App's own settings are written through) | `JSONSettingsRepository` (implements every module's settings port: one `settings.json`, one owner), `JSONSettingsStore`, `ProviderVault`, `UserDefaults…`, `SecureCredentialMigration`, `ExtensionSettingsUpgrade`; `Internal/macOS/`: `KeychainCredentialRepository`, `KeychainDestinationSecrets` |
+| `LocalAPI` | — a way in | `LocalAPI.makeServer(…)`, `LocalAPISettingsRepository` | `LocalAPIServer` (Network), `LocalAPIRouter`, `HTTPMessage`, the payloads, `MCPKernel`, `MCPValue` |
 
 
 ## 3 · The dependency rules
@@ -236,7 +236,7 @@ for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
 | `SecretStore` | DataSources | the Keychain, for secrets a login saved | `Storage` |
 | `LedgerStore` | Providers | `~/.claudebar/usage-history/` | `Providers/Internal` (→ `Storage`) |
 | `ProviderSettingsRepository` · `CredentialRepository` | Providers | `settings.json`, the Keychain | `Storage` |
-| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `SystemClock` in `Monitoring`; `SystemPowerStateProvider` in the Mac app (`Infrastructure/Monitoring`) |
+| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `SystemClock` in `Monitoring`; `SystemPowerStateProvider` in `Monitoring/Internal/macOS` |
 | `AlertDestination` | Alerting | who hears an alert: this Mac's notifications, the person's webhooks | `Alerting/Internal` |
 | `WebhookSending` | Alerting | one POST to a webhook's URL | `Alerting/Internal` |
 | `DestinationSecrets` | Alerting | a destination's secret, in the Keychain or its fallback | `Storage` |
@@ -276,10 +276,11 @@ after each:
 | # | Slice | Moves |
 |---|---|---|
 | 1 | dead code **(built)** | delete `AccountInfo`, `SimpleCLIExecutor` (only tests use them); `ShellEnvironment` → `DataSources/Internal` |
-| 2 | the App's own **(built)** | `Domain/App/`, `Domain/Monitoring/`, `Infrastructure/Monitoring/`, `Infrastructure/App/`, `NSScreen+NotchMetrics`, `ClaudeGuestPassSource` → `Sources/App/<context>/`; their tests → `AppTests/<context>/`. What a settings repository or the local API still names (the App's saved values, `Overview`, `WhenEmpty`) waits for slice 3 or 5 and moves with them; `QuotaLabel` and *Rest when empty*'s announcer go to `Alerting` in slice 5 |
-| 3 | `Storage` | `Domain/Settings/` (ports to the module that declares them: `CredentialRepository` and the legacy provider settings → `Providers`, `DestinationSecrets` → `Alerting` in slice 5), `Infrastructure/Settings/` → `Sources/App/Modules/Storage`; the App's own settings (`AppSettingsRepository`, its values, and their part of `JSONSettingsRepository`) → `Sources/App/Settings/`, over `JSONSettingsStore` |
-| 4 | `Activity` | `Domain/Activity/` → `Sources/App/Modules/Activity`'s open face; `Infrastructure/Activity/` → `Internal/` (`Internal/macOS/` for AppKit); `PortFile` → open face |
-| 5 | `Alerting` | `Domain/Alerting/` → `Sources/App/Modules/Alerting`'s open face; `Infrastructure/Alerting/` → `Internal/`; the local API → `Sources/App/LocalAPI/` |
+| 2 | the App's own **(built)** | `Domain/App/`, `Domain/Monitoring/`, `Infrastructure/Monitoring/`, `Infrastructure/App/`, `NSScreen+NotchMetrics`, `ClaudeGuestPassSource` → `Sources/App/<context>/` (the power state and the notch metrics move on in slices 2b and 4); their tests → `AppTests/<context>/`. What a settings repository or the local API still names (the App's saved values, `Overview`, `WhenEmpty`) waits for slice 3 or 5 and moves with them; `QuotaLabel` and *Rest when empty*'s announcer go to `Alerting` in slice 5 |
+| 2b | power state | `SystemPowerStateProvider` → `Monitoring/Internal/macOS`, the App's convenience `init` replaced by `Monitoring.makePowerState()` |
+| 3 | `Storage` | `Domain/Settings/` (ports to the module that declares them: `CredentialRepository` and the legacy provider settings → `Providers`, `DestinationSecrets` → `Alerting` in slice 5), `Infrastructure/Settings/` → `Sources/Modules/Storage`; the App's own settings (`AppSettingsRepository`, its values, and their part of `JSONSettingsRepository`) → `Sources/App/Settings/`, over `JSONSettingsStore` |
+| 4 | `Activity` | `Domain/Activity/` → `Sources/Modules/Activity`'s open face; `Infrastructure/Activity/` → `Internal/` (`Internal/macOS/` for AppKit, with `NSScreen+NotchMetrics`); `PortFile` → open face |
+| 5 | `Alerting` | `Domain/Alerting/` → `Sources/Modules/Alerting`'s open face; `Infrastructure/Alerting/` → `Internal/`; the local API → `Sources/Modules/LocalAPI` (what it serves from the App's page state, `Overview`, reaches it through a port the App supplies) |
 | 6 | In use, Recaps | `Domain/InUse/`, `Infrastructure/InUse/ShellSetup` → `Providers`; `InUseNotifications` → `Alerting/Internal`; `Domain/UsageHistory/` → `Providers` |
 | 7 | the layers gone | delete `Domain`, `Infrastructure`, their `ModuleExports.swift`, targets and schemes, `DomainTests`, `InfrastructureTests`; callers import the modules |
 
