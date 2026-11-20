@@ -40,8 +40,10 @@ jobs:
 
       # The root Package.swift declares, on Windows, what builds there today:
       # Quotas, Diagnostics, DataSources, Providers, Leaderboard and Monitoring, and their tests.
+      # The runner's Visual Studio 18 headers (MSVC 14.52) ask for Clang 22, newer
+      # than Swift 6.3's; Microsoft's own switch lets an older Clang use them.
       - name: Build and test
-        run: swift test
+        run: swift test -Xcc -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -Xcxx -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH
 
       # Saves made while programs start (#692), and the log written while they
       # start or by two processes at once. A program started on Windows
