@@ -8,8 +8,8 @@ import Foundation
 struct LoginShellLookupFactoryTests {
     @Test
     func `should answer a variable the app was started with from its own environment`() throws {
-        let path = try #require(ProcessInfo.processInfo.environment["PATH"])
+        let (name, value) = try #require(ProcessInfo.processInfo.environment.first { !$0.value.isEmpty })
 
-        #expect(DataSources.makeLoginShellLookup()("PATH") == path)
+        #expect(DataSources.makeLoginShellLookup()(name) == value)
     }
 }

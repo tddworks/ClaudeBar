@@ -27,7 +27,8 @@ struct ShellEnvironmentTests {
         #expect(calls.count == 0)
     }
 
-    @Test
+    @Test(.enabled(if: DataSources.makeLoginShellEnvironment(cliExecutor: MockCLIExecutor()) != nil,
+                   "this platform has no login shell; a variable comes from the app's own environment"))
     func `should find a variable only the login shell exports and ask the shell only once (#170)`() {
         let calls = Calls()
         let environment = ShellEnvironment(process: [:], cliExecutor: shell(answering: "from-shell", calls: calls))
