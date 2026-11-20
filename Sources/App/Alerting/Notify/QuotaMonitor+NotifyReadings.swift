@@ -1,4 +1,5 @@
-import Domain
+import Monitoring
+import Alerting
 
 extension QuotaMonitor {
     /// Every quota window the enabled providers are currently reporting.

@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import Quotas
+import Providers
 
 /// A section showing all quotas for a single AI provider.
 /// Uses the rich UsageSnapshot domain model directly.

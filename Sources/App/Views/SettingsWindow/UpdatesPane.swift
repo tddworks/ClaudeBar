@@ -1,6 +1,6 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Providers
 
 /// Updates pane: Sparkle auto-update controls. In non-Sparkle builds the
 /// pane explains that updates are unavailable.

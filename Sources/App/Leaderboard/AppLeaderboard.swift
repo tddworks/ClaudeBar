@@ -1,7 +1,11 @@
 import AppKit
 import Observation
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
+import Storage
 
 /// The leaderboard as the app runs it: the membership, the uploader, the
 /// checks that keep the server current, and each board as last read. Views
@@ -55,7 +59,7 @@ final class AppLeaderboard {
          api: any LeaderboardAPI = Leaderboard.makeAPI(client: AppLeaderboard.client),
          keys: any SigningKeyStore = Leaderboard.makeKeyStore(),
          machine: any MachineIdentity = Leaderboard.makeMachineIdentity(),
-         settings: any LeaderboardSettingsRepository = JSONSettingsRepository.shared) {
+         settings: any LeaderboardSettingsRepository = Storage.settings) {
         let logs = MonitorTokenLogs(monitor: monitor)
         self.api = api
         self.logs = logs

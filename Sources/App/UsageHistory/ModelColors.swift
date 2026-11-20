@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import Domain
+import Quotas
 
 /// The colours a model keeps between the views of one range: its place among
 /// the range's models in name order, so the same model reads the same hue in

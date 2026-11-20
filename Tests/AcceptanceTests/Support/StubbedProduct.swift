@@ -1,5 +1,8 @@
 import Foundation
-@testable import Domain
+import Quotas
+import DataSources
+import Providers
+import Monitoring
 
 /// A product for tests about the Monitor, the lineup and selection: a real
 /// `Provider` from a one-source definition, its connection stubbed to answer

@@ -1,6 +1,11 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
+import Leaderboard
+import Activity
+import Alerting
+import Diagnostics
 import Providers
 #if ENABLE_SPARKLE
 import Sparkle
@@ -12,7 +17,7 @@ struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
     let sessionFocus: SessionFocus
-    let notifications: Notifications
+    let notifications: any Notifications
     let leaderboard: AppLeaderboard
     /// *WEEKLY RECAP*'s two weeks, read with the All page.
     let recaps: Recaps

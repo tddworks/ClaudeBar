@@ -1,6 +1,8 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import Activity
+import Diagnostics
 
 /// Hooks pane: Claude Code session tracking via the local hook server.
 /// Ports the popover hooks card logic: install/uninstall on toggle and a
@@ -52,7 +54,7 @@ struct HooksPane: View {
         }
         .onAppear {
             hooksEnabled = settings.hook.isHookEnabled()
-            hooksInstalled = HookInstaller.isInstalled()
+            hooksInstalled = Activity.makeHookInstallation().isInstalled
         }
     }
 
@@ -62,12 +64,12 @@ struct HooksPane: View {
         hookError = nil
         do {
             if newValue {
-                try HookInstaller.install()
+                try Activity.makeHookInstallation().install()
             } else {
-                try HookInstaller.uninstall()
+                try Activity.makeHookInstallation().uninstall()
             }
             settings.hook.setHookEnabled(newValue)
-            hooksInstalled = HookInstaller.isInstalled()
+            hooksInstalled = Activity.makeHookInstallation().isInstalled
             NotificationCenter.default.post(
                 name: .hookSettingsChanged,
                 object: nil,

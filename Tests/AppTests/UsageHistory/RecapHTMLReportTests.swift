@@ -1,6 +1,8 @@
 import Testing
 import Foundation
-import Domain
+import Quotas
+import DataSources
+import Monitoring
 @testable import ClaudeBar
 
 /// The recap written out as one HTML file: what the card says, in the card's

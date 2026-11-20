@@ -1,5 +1,8 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
+import Monitoring
 
 /// The *All* page: a two-column grid of cards, one per provider, with the
 /// counts above it (docs/features/monitoring/all-providers/design.md).

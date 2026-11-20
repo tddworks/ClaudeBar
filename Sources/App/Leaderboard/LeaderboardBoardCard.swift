@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Leaderboard
 
 /// *THE BOARD* — up to a hundred places in a list of fixed height that
 /// scrolls inside the card, with the period and provider filters in its

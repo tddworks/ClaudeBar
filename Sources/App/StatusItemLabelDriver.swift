@@ -1,8 +1,10 @@
 import AppKit
 import CoreText
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import Monitoring
+import Activity
+import Diagnostics
 import Providers
 
 /// Drives the menu-bar status item imperatively (AppKit), bypassing SwiftUI's

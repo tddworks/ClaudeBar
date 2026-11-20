@@ -1,8 +1,7 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Storage
 
 /// The warning switch picks the one status policy every surface reads.
 @Suite @MainActor
@@ -12,7 +11,7 @@ struct AppSettingsStatusPolicyTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
         func load() -> AppSettings {
-            AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+            AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         }
         let settings = load()
         #expect(settings.statusPolicy == .absolute)
@@ -29,7 +28,7 @@ struct AppSettingsStatusPolicyTests {
         let file = dir.appendingPathComponent("settings.json")
         try Data(#"{"app":{"burnRateWarningEnabled":true,"burnRateThreshold":3.0}}"#.utf8).write(to: file)
 
-        let settings = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let settings = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
 
         #expect(settings.statusPolicy == .paceAware)
     }

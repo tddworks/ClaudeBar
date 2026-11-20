@@ -1,7 +1,8 @@
 import SwiftUI
 import AppKit
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import LocalAPI
 
 /// Local API pane: the one switch for the localhost-only read-only API and
 /// MCP server, and the lines to copy while it is on — the `claude mcp add`
@@ -15,7 +16,7 @@ struct LocalAPIPane: View {
     @State private var apiEnabled: Bool = false
     /// The port the server answers on — the port file's word (the server
     /// wrote the real number there), or the default before it ever ran.
-    @State private var port: Int = Int(LocalAPIServer.defaultPort)
+    @State private var port: Int = Int(LocalAPI.defaultPort)
 
     var body: some View {
         SettingsPane(
@@ -66,12 +67,12 @@ struct LocalAPIPane: View {
         }
         .onAppear {
             apiEnabled = settings.localAPI.isLocalAPIEnabled()
-            port = PortFile.localAPI.read() ?? Int(LocalAPIServer.defaultPort)
+            port = LocalAPI.port() ?? Int(LocalAPI.defaultPort)
         }
         .onReceive(NotificationCenter.default.publisher(for: .localAPIPortChanged).receive(on: DispatchQueue.main)) { _ in
             // The server says its socket is ready — the file now names the
             // port that actually answers, default or moved.
-            port = PortFile.localAPI.read() ?? port
+            port = LocalAPI.port() ?? port
         }
     }
 

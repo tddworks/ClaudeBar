@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import DataSources
+import Activity
 
 /// The one Claude Code card in the menu popover.
 ///

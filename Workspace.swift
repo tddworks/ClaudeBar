@@ -13,9 +13,11 @@ let kit: Path = "."
 
 // The app project's schemes that Tuist used to generate: what each builds and the tests it runs.
 let appSchemes: [(name: String, builds: String, tests: String)] = [
-    ("Domain", "Domain", "DomainTests"),
-    ("Infrastructure", "Infrastructure", "InfrastructureTests"),
     ("AppTests", "AppTests", "AppTests"),
+    ("Activity", "Activity", "ActivityTests"),
+    ("Alerting", "Alerting", "AlertingTests"),
+    ("LocalAPI", "LocalAPI", "LocalAPITests"),
+    ("Storage", "Storage", "StorageTests"),
     ("AcceptanceTests", "AcceptanceTests", "AcceptanceTests"),
 ]
 
@@ -38,9 +40,11 @@ let claudeBar: Scheme = .scheme(
     testAction: .targets(
         [
             .testableTarget(target: .project(path: app, target: "AcceptanceTests")),
-            .testableTarget(target: .project(path: app, target: "DomainTests")),
-            .testableTarget(target: .project(path: app, target: "InfrastructureTests")),
             .testableTarget(target: .project(path: app, target: "AppTests")),
+            .testableTarget(target: .project(path: app, target: "ActivityTests")),
+            .testableTarget(target: .project(path: app, target: "AlertingTests")),
+            .testableTarget(target: .project(path: app, target: "LocalAPITests")),
+            .testableTarget(target: .project(path: app, target: "StorageTests")),
         ] + modules.map { .testableTarget(target: .project(path: kit, target: $0.tests)) },
         configuration: .debug
     ),

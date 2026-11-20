@@ -37,7 +37,7 @@ reading code. Place it before anything else:
 
 **Never:** a field on `UsageSnapshot` (the kernel is shrinking toward `Usage`,
 [CANONICAL_MODEL §6](../../../docs/architecture/CANONICAL_MODEL.md#6--what-is-deliberately-not-in-the-tree)),
-an `XxxAnalyzer` / `XxxAnalyzing` protocol, a parser in `Sources/Infrastructure`, or a
+an `XxxAnalyzer` / `XxxAnalyzing` protocol, a parser outside the module that owns the days, or a
 vendor-named type in a module.
 
 > **Reference implementation:** `references/daily-usage-pattern.md` — *TODAY'S USAGE*:
@@ -112,7 +112,7 @@ Example: this week vs last week, per login
 
 | Piece | Module | One job | Test |
 |---|---|---|---|
-| `WeeklyReport` | `Quotas` | turns days into the comparison the card shows | `Tests/DomainTests/<Feature>/` |
+| `WeeklyReport` | `Quotas` | turns days into the comparison the card shows | `Modules/Quotas/Tests/` |
 | `WeeklyCardView` | `App` | renders it | AppTests / screenshots |
 | *(only if needed)* `usageHistory` block, a reader, a capability | definition / `DataSources` / `Providers` | — | golden tests / `DataSourcesTests` / `ProvidersTests` |
 
@@ -129,7 +129,7 @@ use `AskUserQuestion` and wait for approval.
 Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](../implement-feature/references/tdd-patterns.md#naming-tests).
 
 **Location:** `Modules/Quotas/Sources/{Name}Report.swift` (beside `DailyUsageReport`),
-tests in `Tests/DomainTests/{Feature}/{Name}ReportTests.swift` (beside `DailyUsageReportTests`).
+tests in `Modules/Quotas/Tests/{Name}ReportTests.swift` (beside `DailyUsageReportTests`).
 It is built **from days** — `[DailyUsageStat]` — so it never reads a file:
 
 ```swift

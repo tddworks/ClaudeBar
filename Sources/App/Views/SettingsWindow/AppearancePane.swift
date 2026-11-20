@@ -1,6 +1,7 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
 
 /// Appearance pane: theme selection, custom theme import, and status colors.
 struct AppearancePane: View {

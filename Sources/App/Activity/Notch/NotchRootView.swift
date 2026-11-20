@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Activity
 import Matrix
 
 /// The notch's contents: two lanes flanking the physical cutout when collapsed,

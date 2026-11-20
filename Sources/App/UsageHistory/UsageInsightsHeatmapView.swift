@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
 
 /// *USAGE — LAST YEAR* — a range of a login's days as a heatmap: a cell a day,
 /// shaded by how full it is against the range's busiest, an empty day an empty

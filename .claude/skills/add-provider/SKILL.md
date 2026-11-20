@@ -55,7 +55,7 @@ the user to confirm before writing code.
 **The rules** ([MODULAR_DESIGN §3–4](../../../docs/architecture/MODULAR_DESIGN.md#3--the-dependency-rules)):
 - No vendor's name in a module's Swift. A worker is named for its protocol, format or place (`JSONRPCFetcher`, `OAuth2Refresher`), never a vendor.
 - No `Probe` names. The words are DataSource, Fetch, Mapping, Usage, Quota, Plan and Cost.
-- `Modules/*` never `import Domain`. The usage model is `Quotas`; providers, settings and accounts are `Providers`.
+- `Modules/*` never import the App. The usage model is `Quotas`; providers, settings and accounts are `Providers`.
 
 ## The definition: three closed sums per data source
 

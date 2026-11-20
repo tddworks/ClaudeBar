@@ -1,7 +1,7 @@
 import SwiftUI
 import DataSources
-import Domain
-import Infrastructure
+import Monitoring
+import Storage
 import Providers
 
 /// *Import provider* — USER_JOURNEYS moment 11. Before anything is saved or
@@ -141,7 +141,7 @@ struct ImportProviderSheet: View {
     private func add() {
         do {
             let provider = try monitor.providers.import(review)
-            let vault = ProviderVault()
+            let vault = Storage.makeVault()
             for (name, value) in keys where !value.isEmpty {
                 vault.save(value, name, provider: provider.id)
             }

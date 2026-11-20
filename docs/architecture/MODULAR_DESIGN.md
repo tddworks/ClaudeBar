@@ -9,7 +9,7 @@ description: How ClaudeBar's code is cut into modules — one module per bounded
 > it may import · **Builds on:** [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md) ·
 > **Next:** [ENGINE_DESIGN.md](ENGINE_DESIGN.md)
 >
-> **Status: IN PROGRESS** — what is left is §8, and §10's phases 2 to 5 (0 and 1 are built).
+> **Status: IN PROGRESS** — §8's carve is built (no `Domain` or `Infrastructure` target is left); what is left is §10's phases 2 to 5 (0 and 1 are built).
 
 ---
 
@@ -49,8 +49,8 @@ for a protocol or a format — all in `DataSources`.
 
 ```swift
 // App — the composition root, in a few lines; it cannot construct an implementation
-let settings = Storage.makeSettings()                     // → any ProviderSettingsRepository
-let vault    = Storage.makeVault()                        // → any CredentialRepository
+let settings = Storage.settings                            // → any SettingsFile
+let vault    = Storage.makeVault()                        // → any SecretVault
 let catalog  = ProviderFactory.makeCatalog(settings: settings, vault: vault,
                                      cloudWatch: AWSClients.makeCloudWatch(),
                                      priceCatalog: AWSClients.makePriceCatalog())
@@ -61,18 +61,35 @@ let monitor  = Monitoring.makeMonitor(providers: catalog.load())
 
 | Module | Context ([model §7](CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)) | Public (the domain) | `Internal/` (the implementation) |
 |---|---|---|---|
-| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O |
+| `Quotas` | Quota · shared kernel | `UsageSnapshot`, `UsageQuota`, `QuotaLabel` (what a page, a tile or the local API calls a quota), `QuotaType`, `QuotaStatus`, `UsagePace`, `CostUsage`, `BudgetStatus`, `AccountTier`, `UsageError`, `Day` (a day of usage history — today `DailyUsageReport`/`Stat`) — today's shapes; the final kernel is the model's `Usage`, `Quota`, `Left`, `Window`, `Status`, `Pace`, `Cost`, `Budget`, `Plan` | — none: pure values, no I/O |
 | `DataSources` | Data Sources | `DataSource`, `DataSourceDefinition`, `Response`, `DataSourceError`, the closed sums `CredentialLookup` · `Fetch` · `Mapping`, `ConfigField`; `UsageLog` and `UsageLog.Definition` (how a login's usage history is extracted from its logs); the ports `CLIExecutor`, `NetworkClient`, `RPCTransport`, `SecretStore`, `CloudWatchClient`, `PriceCatalog`; the factory `DataSources.make(_:providerId:…)` | the workers — `Lookup/`, `Fetch/`, `Mapping/`, `Logs/` — and the implementations of its own ports — `Process/`, `Network/` (§5); `SingleFlightCache` (`Process/`: one `PATH` or `which` lookup in flight for every login that asks) |
 | `AWSClients` | Data Sources (SDK-backed) | `AWSClients.makeCloudWatch()` → `any CloudWatchClient`, `AWSClients.makePriceCatalog()` → `any PriceCatalog` | the CloudWatch client and the AWS Price List reader; the only module that links AWS |
-| `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`, `CredentialRepository` | definition-file reading, `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
+| `Providers` | Providers · core | `Provider` (the product), `Account` (a login — today `ProviderAccount`) and its capability handles `usageHistory: UsageHistory?` · `guestPasses` (nil when the definition doesn't offer them), `UsageHistory` (`days(in:)`), `Providers` (the providers you keep: add, delete, order, the lineup), `ProviderFactory`, `ProviderDefinition`, `ProviderCatalog`, `ProviderSettingsRepository`; In use's `NewSessions` and `InUseAnnouncer` beside `InUse`; `ProviderFactory.makeShellLines(commands:)` | definition-file reading, `ShellSetup` (the shell lines In use writes), `DayLedger` (closed days, under `~/.claudebar/usage-history/`), `Extensions` (a manifest read as a definition) |
 | `Providers/Resources/Providers/` | — | **the built-in definitions**: `codex.json`, `deepseek.json`, … | |
-| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `RefreshInterval`, `AdaptiveCadence`, `Clock` and `SystemClock`, `PowerStateProvider` and `PowerEvent`, `ProductTab`, `ProviderBadgeState`; `UsageProbe`, the stubbed login the tests build | — none. `SystemPowerStateProvider` (AppKit, IOKit) and the convenience `init` that injects it stay in the Mac app; the menu bar's readouts are `QuotaMonitor+MenuBar` in `Domain/App` ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
-| `Alerting` | Alerting | `QuotaAlerts`, `StatusAlerts`, `Alert`, `AlertDestination`, `Webhooks`, Notify! values, `NotifySettingsRepository`, `WebhookSettingsRepository` | `Notifications`, `SystemAlertSender`, `WebhookClient`, `NotifyGatewayClient` |
-| `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookSettingsRepository` | `HookHTTPServer`, `HookInstaller`, `PortFile` (shared with the local API), `SessionEventParser` |
+| `Monitoring` | Monitoring · conductor | `QuotaMonitor`, `MonitoringEvent`, `Overview` (the *All* page's cards, read by the App and the local API), `Recaps` (`RecapPeriod`, `RecapRange`: a period's review over the Monitor's logins), *Rest when empty* (`WhenEmpty`, `RestWhenEmpty`, `RestNotice`, the ports `RestWhenEmptyRepository` · `RestWhenEmptyAnnouncer`), `RefreshInterval`, `AdaptiveCadence`, `Clock` and `SystemClock`, `PowerStateProvider` and `PowerEvent`, `ProductTab`, `ProviderBadgeState`; `UsageProbe`, the stubbed login the tests build | `Internal/macOS/`: `SystemPowerStateProvider` (AppKit, IOKit), handed out by `Monitoring.makePowerState()`; the menu bar's readouts are the App's (`QuotaMonitor+MenuBar`, [#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
 | `Leaderboard` | Leaderboard | `LeaderboardMembership`, `DailyTokens`, `Username`, `RequestSigner`, `LeaderboardUploader`, the devices' values (`Device`, `DeviceCode`, `DeviceLabel`), the ports `LeaderboardAPI` · `SigningKeyStore` · `MachineIdentity` · `TokenLogs` ([its design §7](../features/leaderboard/design.md#7--architecture)); the factory `Leaderboard.makeAPI(client:)` · `makeKeyStore()` · `makeMachineIdentity()` | `LeaderboardHTTPClient`; `FallbackSigningKeyStore` over `KeychainSigningKeyStore` (macOS) and `DefaultsSigningKeyStore`; `IOKitMachineIdentity` with `MacModel` (macOS); `CredentialManagerSigningKeyStore` and `WindowsMachineIdentity` (Windows) |
-| `Storage` | Vault & Settings · generic | `Storage.makeSettings()`, `Storage.makeVault()`, `AppSettingsRepository` | `JSONSettingsRepository`, `JSONSettingsStore`, `KeychainCredentialRepository`, `UserDefaults…`, `SecureCredentialMigration` |
 | `Diagnostics` | — cross-cutting | `AppLog` and its categories, and the file log's place: the person's, or a test run's own | the `LogSink`s: `FileLogSink`, `OSLogSink` (macOS) |
-| `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label, page state, the Add Provider sheet | — |
+| `ClaudeBar` (App) | — the composition root | SwiftUI views, themes, menu-bar label and readouts (`QuotaMonitor+MenuBar`, `StatusColorPolicy`), its own settings (`AppSettingsRepository` and the values it saves: page style, popover title, text size, when it opens, menu-bar items, status colours), implemented by `AppSettingsFile` over Storage's `JSONSettingsStore`; page state (`PopoverPage`), the Add Provider sheet, the terminal theme import; `ClaudeGuestPassSource`, the composition root naming its vendor. **Views and composing, nothing else** | — no `Internal/`: the App decides nothing and talks to nothing |
+
+### The app's own modules
+
+Root `Modules/` is **ClaudeBarKit**, the package the Windows client depends on
+(§10): only what every platform must count the same. A context only the Mac
+app has (its notifications, Claude Code's hooks, the Keychain, its local API)
+is a module **beside the App**, `Sources/Modules/<Context>/`, shaped the same way: its
+open face at the top, its implementations in `Internal/` (Apple frameworks in
+`Internal/macOS/`), its tests in `Tests/`. Each is its own Tuist framework
+target in `App/Project.swift`, never a folder of the App target, because
+`internal` hides `Internal/` only across a module boundary. They may import ClaudeBarKit, never the App and
+never each other (`Storage` excepted: it implements their settings ports).
+
+| Module | Context | Public (the open face) | `Internal/` (the implementation) |
+|---|---|---|---|
+| `Alerting` | Alerting | `QuotaAlerts`, `StatusAlerts`, `RecapAlerts`, `SignedOutAlerts`, `Alert`, `AlertDestination`, `Webhooks`, Notify! values, `NotifySettingsRepository`, `WebhookSettingsRepository`, `DestinationSecrets`, the ports `Notifications` · `AlertSender`; the factory `Alerting.makeNotifications()` · `makeAlertSender()` · `makeWebhookSender()` · `makeNotifyGateway()` · `makeRestAnnouncer(showAnywayLink:)` · `makeInUseAnnouncer()` | `SystemNotifications`, `RestNotifications` (implements Monitoring's `RestWhenEmptyAnnouncer`), `InUseNotifications` (Providers' `InUseAnnouncer`), `WebhookClient`, `NotifyGatewayClient`; `Internal/macOS/`: `SystemAlertSender` |
+| `Activity` | Activity | `ClaudeSession`, `SessionEvent`, `SessionMonitor`, `NotchActivity`, `HookEventReceiver`, `HookInstallation`, `SessionTitles`, `TerminalFocus`, `ProcessLiveness`, `HookSettingsRepository`; the factory `Activity.makeHookReceiver()` · `makeHookInstallation()` · `makeSessionTitles()` · `makeTerminalFocus()` · `makeProcessLiveness()` | `PortFile` (the hooks' port), `HookInstaller`, `SessionEventParser`, `TranscriptTitleReader`, `TerminalScripts`; `Internal/macOS/`: `HookHTTPServer` (Network), `ScriptedTerminalFocus`, `SystemProcessLiveness` |
+| `Storage` | Vault & Settings · generic | the port `SettingsFile` (every module's settings port, and the destinations' secrets), `JSONSettingsStore` (the one `settings.json`, which the App's own settings are written through); the factory `Storage.settings` · `makeSettings(fileURL:secretsIn:)` · `makeVault(secretsIn:)` · `upgradeExtensionSettings(…)` | `JSONSettingsRepository` (implements `SettingsFile`), `ProviderVault`, `CredentialRepository` and `UserDefaultsCredentialRepository`, `KeychainDestinationSecrets`, `SecureCredentialMigration`, `ExtensionSettingsUpgrade`; `Internal/macOS/`: `KeychainCredentialRepository` |
+| `LocalAPI` | — a way in | the port `LocalAPIServing` (start answering a read of `Overview`, stop), `LocalAPISettingsRepository`; the factory `LocalAPI.makeServer()` · `port()` · `defaultPort` | `LocalAPIRouter`, `HTTPMessage`, the payloads, `MCPKernel`, `MCPValue`, its own `PortFile`; `Internal/macOS/`: `LocalAPIServer` (Network) |
+
 
 ## 3 · The dependency rules
 
@@ -166,7 +183,8 @@ Modules/DataSources/
 │       │              readers) · DayAggregator · PriceList · LocalEndpoint
 │       ├── Process/   PipeCLIExecutor · PipeConversation · SubprocessSupport ·
 │       │              DefaultCLIExecutor · InteractiveRunner · ChildTeardown ·
-│       │              BinaryLocator · LoginShellEnvironment · RunningProcesses ·
+│       │              BinaryLocator · LoginShellEnvironment · ShellEnvironment ·
+│       │              RunningProcesses ·
 │       │              TerminalRenderer; PtySession, the Mac's and Linux' shared
 │       │              pty adapter, under its POSIX guard
 │       └── Network/   URLSessionNetworkClient · LocalServers · LoopbackClient
@@ -188,7 +206,6 @@ Modules/Providers/
 │   │                                     usageHistory · guestPasses are the capabilities
 │   ├── ProviderCatalog.swift           built in · custom · extension; add · import · export
 │   ├── ProviderSettingsRepository.swift  port, @Mockable
-│   ├── CredentialRepository.swift      port, @Mockable
 │   ├── Providers.swift                 the factory: makeCatalog(settings:vault:cloudWatch:priceCatalog:)
 │   └── Internal/
 │       ├── DefinitionFiles.swift       reads *.json from Bundle.module or a folder
@@ -217,8 +234,8 @@ for that thing, is `@Mockable`, and has its implementation in an `Internal/`.
 | `PriceCatalog` | DataSources | a cloud's price list (AWS) — a price file a definition ships is data, not a port | `AWSClients` |
 | `SecretStore` | DataSources | the Keychain, for secrets a login saved | `Storage` |
 | `LedgerStore` | Providers | `~/.claudebar/usage-history/` | `Providers/Internal` (→ `Storage`) |
-| `ProviderSettingsRepository` · `CredentialRepository` | Providers | `settings.json`, the Keychain | `Storage` |
-| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `SystemClock` in `Monitoring`; `SystemPowerStateProvider` in the Mac app (`Infrastructure/Monitoring`) |
+| `ProviderSettingsRepository` | Providers | `settings.json` | `Storage` (`SettingsFile`) |
+| `Clock` · `PowerStateProvider` | Monitoring | time, the battery | `SystemClock` in `Monitoring`; `SystemPowerStateProvider` in `Monitoring/Internal/macOS` |
 | `AlertDestination` | Alerting | who hears an alert: this Mac's notifications, the person's webhooks | `Alerting/Internal` |
 | `WebhookSending` | Alerting | one POST to a webhook's URL | `Alerting/Internal` |
 | `DestinationSecrets` | Alerting | a destination's secret, in the Keychain or its fallback | `Storage` |
@@ -247,24 +264,25 @@ testability" alone.
 ## 8 · Still to carve
 
 `Quotas`, `Diagnostics`, `DataSources`, `AWSClients`, `Providers`,
-`Leaderboard` and `Monitoring` are built. `Domain` and `Infrastructure` re-export them (`@_exported import`), so
-no call site changes while files move, and each old target is deleted once
-it is empty.
+`Leaderboard` and `Monitoring` are built, and so are the app's own modules.
+**What is left is ClaudeBarKit's modules, the App, and the app's own modules
+(§2), nothing else: no `Domain` and no `Infrastructure` target.** The carve
+below did it, each move a `git mv` so history follows.
 
-Until then, each target groups its files by the context they will move to,
-so a folder already names its destination:
+The carve, one slice per PR, leaves first, the full `xcodebuild test` green
+after each:
 
-| Today | Goes to |
-|---|---|
-| `Domain/Monitoring/` (the popover's pages: `Overview`, `PopoverPage`, *When empty*, *Rest when empty*; `ObservationRenderSync`), `Infrastructure/Monitoring/` (`SystemPowerStateProvider`, the `SystemClock` convenience `init`) | stay in the Mac app for now; `QuotaMonitor` and what it needs are `Monitoring` ([#648](https://github.com/tddworks/ClaudeBar/issues/648)) |
-| `Domain/Alerting/`, `Infrastructure/Alerting/`, `App/Alerting/` (its drivers stay in the App) | `Alerting` |
-| `Domain/Activity/`, `Infrastructure/Activity/`, `App/Activity/` (views stay in the App) | `Activity` (`NSScreen+NotchMetrics` → App) |
-| `Domain/InUse/`, `Infrastructure/InUse/` | not decided: beside `InUse` in `Providers`, or a module of its own (§9) |
-| `Domain/Settings/`, `Infrastructure/Settings/` | `Storage` |
-| `Domain/App/` (page state, `StatusColorPolicy`, `MenuBarProviderSettings`, `PopoverTitle`, `QuotaMonitor+MenuBar`), `Infrastructure/App/` (terminal theme import) | the App |
-| `Domain/Providers/`, `Infrastructure/Providers/` (`ClaudeGuestPassSource`) | deleted (`AccountInfo` is unused; `UsageProbe`, the tests' stubbed login, moved to `Monitoring`); the guest-pass source to the App, the composition root naming its vendor |
-| `Infrastructure/DataSources/` (`ShellEnvironment`, `SimpleCLIExecutor`) | `DataSources` |
-| `Tests/DomainTests`, `InfrastructureTests`, `AppTests` | split per module, following their sources' context folders; `Quotas`' are in `QuotasTests`, the leaderboard's in `LeaderboardTests`, the Monitor's in `MonitoringTests` |
+| # | Slice | Moves |
+|---|---|---|
+| 1 | dead code **(built)** | delete `AccountInfo`, `SimpleCLIExecutor` (only tests use them); `ShellEnvironment` → `DataSources/Internal` |
+| 2 | the App's own **(built)** | `Domain/App/`, `Domain/Monitoring/`, `Infrastructure/Monitoring/`, `Infrastructure/App/`, `NSScreen+NotchMetrics`, `ClaudeGuestPassSource` → `Sources/App/<context>/` (the power state moves on in slice 2b); their tests → `AppTests/<context>/`. What a settings repository or the local API still names (the App's saved values, `Overview`, `WhenEmpty`) waits for slice 3 or 5 and moves with them; `QuotaLabel` and *Rest when empty*'s announcer go to `Alerting` in slice 5 |
+| 2b | power state **(built)** | `SystemPowerStateProvider` → `Monitoring/Internal/macOS`, the App's convenience `init` replaced by `Monitoring.makePowerState()` |
+| 3 | `Activity` **(built)** | `Domain/Activity/` → `Sources/Modules/Activity`'s open face; `Infrastructure/Activity/` → `Internal/` (`Internal/macOS/` for AppKit and Network); `NSScreen+NotchMetrics` stays in the App, the notch window reading its own screen; `PortFile` → open face |
+| 4a | down to the kit **(built)** | `Overview`, *Rest when empty* (`WhenEmpty`, `RestWhenEmpty` and its ports) → `Monitoring`; `QuotaLabel` → `Quotas`; so no app module imports another, and the App decides nothing |
+| 4 | `Alerting`, `LocalAPI` **(built)** | `Domain/Alerting/` → `Sources/Modules/Alerting`'s open face, `Infrastructure/Alerting/` → its `Internal/`; the local API → `Sources/Modules/LocalAPI`, reading `Overview` from Monitoring; each keeps its own port file, so neither imports Activity |
+| 5 | In use, Recaps **(built)** | `Domain/InUse/` → `Providers` (`ShellSetup` in its `Internal/`, handed out by `ProviderFactory.makeShellLines`); `Domain/UsageHistory/` → `Monitoring`, since a recap reads the Monitor; `InUseNotifications` → `Alerting/Internal` in slice 4 |
+| 6 | `Storage` **(built)** | `Infrastructure/Settings/` → `Sources/Modules/Storage` (`SettingsFile` and `JSONSettingsStore` on the open face, the rest internal); the App's own settings (`AppSettingsRepository`, its values, `AppSettingsFile` over `JSONSettingsStore`, the DeepSeek card's settings) → `Sources/App/`; the Claude and Codex settings protocols deleted: `dataSourceKind` and `isOn` read the same keys |
+| 7 | the layers gone **(built)** | delete `Domain`, `Infrastructure`, their `ModuleExports.swift`, targets and schemes, `DomainTests`, `InfrastructureTests`; callers import the modules |
 
 The kernel still holds a few types that belong elsewhere; each carries a
 `- Note: Interim` naming its final shape, and the canonical model lists them
@@ -272,11 +290,6 @@ under *where the code is still behind*.
 
 ## 9 · Open
 
-- **`Storage` as a module, or each module's settings in its own `Internal/`?**
-  `settings.json` is one file many contexts write, so one owner today.
-- **Where In use's app half goes.** `NewSessions` and the shell lines follow
-  refreshes and write the person's shell files; `InUse` itself is in
-  `Providers`. Beside it, or an `InUse` module once a second consumer appears?
 - **One module per heavy SDK.** AWS is the only one today; the next gets its
   own `…Clients` module behind its own port in `DataSources`.
 - **Usage History as its own module, later?** Not now: `Providers` is its

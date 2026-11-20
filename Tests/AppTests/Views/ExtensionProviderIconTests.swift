@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import ClaudeBar
-import Domain
+import Providers
 
 /// An extension's icon is the SF Symbol its manifest names (#302), now read
 /// through its definition (docs/features/providers/extensions/design.md) — and a symbol that doesn't exist

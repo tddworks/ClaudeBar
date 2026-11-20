@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Quotas
 
 // MARK: - App Theme Provider Protocol
 

@@ -3,8 +3,8 @@ import Foundation
 import Mockable
 import DataSources
 import Providers
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import Monitoring
 
 /// USER_JOURNEYS §5 — "Add a custom provider from an API". Ken pays for a
 /// gateway ClaudeBar doesn't ship and tracks its credits without a script.

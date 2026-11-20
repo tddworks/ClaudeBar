@@ -2,8 +2,9 @@ import Testing
 import Foundation
 import Mockable
 import Providers
-@testable import Domain
-@testable import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
 
 /// Feature: Quota Display
 ///

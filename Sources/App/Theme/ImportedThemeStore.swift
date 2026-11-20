@@ -1,5 +1,4 @@
 import Foundation
-import Infrastructure
 
 /// Persists imported terminal color schemes as JSON files in `~/.claudebar/themes/`.
 ///

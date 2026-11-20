@@ -103,8 +103,8 @@ dropped by a field-by-field copy — for model lines and project lines alike.
 |---|---|---|
 | `UsageMix` (`ModelMix`), `DayActivity`, `DayValue` | the two questions, as values | `Modules/Quotas/Sources/` |
 | `UsageHistory.lastYear` | the year the insights read, once read and when any day holds usage; `nil` until `readYear()` is asked for; `lastThirtyDays` is its last thirty days | `Modules/Providers/Sources/UsageHistory.swift` |
-| `UsageSection` | `.lastYear` and `.modelMix`: whether each shows until the person chooses (both hidden), and that both read the year | `Sources/Domain/Settings/` |
-| `AppSettingsRepository.isShown(_:)` | the person's switch per section, `app.usageSections.<section>` ([settings](../../../settings.md)) | `Sources/Domain/Settings/`, `Sources/Infrastructure/Settings/` |
+| `UsageSection` | `.lastYear` and `.modelMix`: whether each shows until the person chooses (both hidden), and that both read the year | `Sources/App/Settings/` |
+| `AppSettingsRepository.isShown(_:)` | the person's switch per section, `app.usageSections.<section>` ([settings](../../../settings.md)) | `Sources/App/Settings/` (`AppSettingsFile`) |
 | `UsageInsightsHeatmapView` | the year's cells, GitHub-style, with the year's total and what caching saved | `Sources/App/UsageHistory/` |
 | `UsageHeatmap` | the cells laid out a column a week, seven rows a week, and each day's band — pure, so it is tested without a screen | `Sources/App/UsageHistory/` |
 | `ModelMixView` | the mix as a bar and a row per model, largest first | `Sources/App/UsageHistory/` |

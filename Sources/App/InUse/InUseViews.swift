@@ -1,6 +1,6 @@
 import SwiftUI
 import AppKit
-import Domain
+import DataSources
 import Providers
 
 /// Under a product's account chips: what `NewSessions.state(of:)` says —

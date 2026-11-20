@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftUI
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 /// A range's heatmap lays every date of it out as one cell — an empty day an

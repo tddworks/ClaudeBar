@@ -1,5 +1,8 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
 
 // The devices' surfaces (design §2a, slice 15), drawn from
 // design-concept/leaderboard/devices.html. The rules are the membership's:

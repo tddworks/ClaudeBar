@@ -542,7 +542,7 @@ names one.**
  ┌──────────────────────────────────────┐        ┌──────────────────────────────────────┐
  │ let claude = Self.builtIn("claude",  │        │ let engine = Engine(settings: …,     │
  │   guestPasses: …)                    │        │   vault: ProviderVault(),            │
- │ let codex = Self.builtIn("codex", …) │        │   loginShell: ShellEnvironment(),    │
+ │ let codex = Self.builtIn("codex", …) │        │   loginShell: DataSources.make…(),   │
  │ … 25 more …                          │  ───►  │   cloud: .lazy(AWSClients…),         │
  │ let zai = … environment: { closure } │        │   capabilities: [.guestPasses: …])   │
  │ let deepseek = … environment: { … }  │        │ let providers = ProviderCatalog()    │

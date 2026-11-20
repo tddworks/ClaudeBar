@@ -1,5 +1,6 @@
 import Foundation
-import Domain
+import Quotas
+import Monitoring
 
 /// Observes `QuotaMonitor` and `AppSettings` to export the current status to `~/.claudebar/status.json`.
 ///

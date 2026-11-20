@@ -258,7 +258,7 @@ Everything that decides anything is a pure value type in Domain, with no clock, 
 
 `NotifyPublishDriver` is deliberately free of judgement. It was written when there was no App test target, so anything decided there would have gone untested; `Tests/AppTests` exists now, but keeping the driver to I/O still keeps the rules in the pure Domain types where they're cheapest to test. It gathers state, asks the builder and the gate, and performs the I/O the answer implies.
 
-The Domain tests (`Tests/DomainTests/Alerting/Notify/`) and `NotifyGatewayClient` tests pin every rule in this document, including each status-code mapping above.
+The Alerting module's tests (`Sources/Modules/Alerting/Tests/Notify/`) and `NotifyGatewayClient` tests pin every rule in this document, including each status-code mapping above.
 
 ---
 

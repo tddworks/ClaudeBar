@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
 
 /// *MODEL MIX — LAST YEAR* — which models a login actually leans on over a
 /// range: one bar split by model, and a row each, largest first. Everything it

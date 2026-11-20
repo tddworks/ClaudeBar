@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
 
 /// Displays a single daily usage metric (cost, tokens, or working time)
 /// matching the existing WrappedStatCard glassmorphism style.

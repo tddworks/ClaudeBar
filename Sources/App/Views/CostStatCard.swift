@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
 
 /// A card that displays cost-based usage data for Claude accounts.
 /// Shows total cost, optional budget progress, and reset time for Pro Extra usage.

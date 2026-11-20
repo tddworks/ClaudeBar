@@ -1,5 +1,6 @@
 import SwiftUI
-import Infrastructure
+import DataSources
+import Providers
 import UniformTypeIdentifiers
 
 /// Import button for terminal color scheme files.

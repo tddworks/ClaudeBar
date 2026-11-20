@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Quotas
 @testable import ClaudeBar
 
 /// Where a report leaves the app: a write that lands holds the whole page, and

@@ -1,4 +1,4 @@
-import Domain
+import Activity
 
 extension ClaudeSession {
     /// What the session left running in the background, in a row's words:

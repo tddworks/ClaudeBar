@@ -1,4 +1,6 @@
 import SwiftUI
+import DataSources
+import Providers
 
 /// Shared layout primitives for Settings window panes: pane scaffold,
 /// glass cards, and title/description rows — all themed via AppThemeProvider.

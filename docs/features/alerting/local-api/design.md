@@ -32,9 +32,10 @@ asked by another process instead of a person. So the feature adds no
 reading of its own: it reads **`Overview(monitor)`**, the popover's read,
 and is a **destination** for it. A pull surface that only reads the Monitor
 and never changes state is the same kind of thing as the status export, so
-it sits in **Alerting** beside it ([CANONICAL §7](../../../architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)):
-`Sources/Infrastructure/Alerting/LocalAPI`, its tests beside it, this
-document under `docs/features/alerting/`. The journey moment is
+its document sits in **Alerting** beside it ([CANONICAL §7](../../../architecture/CANONICAL_MODEL.md#7--the-contexts-and-the-modules-that-implement-them)),
+under `docs/features/alerting/`; its code is the `LocalAPI` module,
+`Sources/Modules/LocalAPI` (open face `LocalAPIServing`, the rest in
+`Internal/`), its tests beside it. The journey moment is
 [USER_JOURNEYS #21](../../../architecture/USER_JOURNEYS.md#beyond-the-menu-bar).
 
 ```text
@@ -232,7 +233,7 @@ Swift Testing, Chicago school:
   by its healthiest login, never the emptiest login of the lineup; `status`
   is `nil` until a card has numbers; `best` and `inUse` repeat the product's
   answers.
-- Infrastructure, `Tests/InfrastructureTests/Alerting/LocalAPI` — the kernels
+- `Sources/Modules/LocalAPI/Tests/Internal` — the kernels
   are fed raw bytes and values, no socket:
   - `LocalAPIRequestTests` — a real request's bytes become a value; bad request
     lines, oversized bodies and header blocks are refused, and so is a
@@ -251,7 +252,7 @@ Swift Testing, Chicago school:
   nothing.
 - `api.enabled` reads false before it is set and is remembered when turned
   on — beside the hook settings' tests
-  (`Tests/InfrastructureTests/Settings/JSONSettingsRepositoryProviderTests`),
+  (`Sources/Modules/Storage/Tests/JSONSettingsRepositoryProviderTests`),
   and the Settings search finds Local API by `mcp`/`localhost`
   (`Tests/AppTests/Settings/SettingsSectionSearchTests`).
 

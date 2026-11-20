@@ -112,8 +112,8 @@ The colon only exists in the **1h–24h** range — that is the shape `compactRe
 
 | File | Change |
 |---|---|
-| `Sources/Domain/App/CountdownColon.swift` | New — locates countdown colons |
-| `Sources/Domain/Monitoring/ObservationRenderSync.swift` | New `refreshNow()` |
+| `Sources/App/MenuBar/CountdownColon.swift` | New — locates countdown colons |
+| `Sources/App/Monitoring/ObservationRenderSync.swift` | New `refreshNow()` |
 | `Sources/App/StatusItemLabelDriver.swift` | Blink timer + lifecycle, `LabelContent.colonVisible`, `CountdownColonStyle`, both renderers |
 | `Sources/App/StatusItemWriteGate.swift` | Coalescer gating all status-item writes (#281) |
 
@@ -121,6 +121,6 @@ The colon only exists in the **1h–24h** range — that is the shape `compactRe
 
 Logic lives in Domain where it can; the write gate is an App-layer concern (it schedules a main-runloop timer and drives `NSStatusItem`'s button), so it is tested in the App target.
 
-- `Tests/DomainTests/App/CountdownColonTests.swift` — 12 tests: H:MM detection, dual-window labels, `45m`/`2d`/empty labels, colons that are not countdowns (`acct:main`, `4:4m`, `4: 40`), single-character ranges, and `NSRange` conversion against multi-byte text (`·`).
-- `Tests/DomainTests/Monitoring/ObservationRenderSyncTests.swift` — 5 added tests for `refreshNow()`, including that it leaves observation armed so later state changes still render.
+- `Tests/AppTests/MenuBar/CountdownColonTests.swift` — 12 tests: H:MM detection, dual-window labels, `45m`/`2d`/empty labels, colons that are not countdowns (`acct:main`, `4:4m`, `4: 40`), single-character ranges, and `NSRange` conversion against multi-byte text (`·`).
+- `Tests/AppTests/Monitoring/ObservationRenderSyncTests.swift` — 5 added tests for `refreshNow()`, including that it leaves observation armed so later state changes still render.
 - `Tests/AppTests/StatusItem/StatusItemWriteGateTests.swift` — 8 tests for the gate: first write immediate, deferral inside the window, latest-content trailing flush, one write per second under a 0.5s render cadence, alternation surviving a tick that lands just inside the window, and no-op flushes.

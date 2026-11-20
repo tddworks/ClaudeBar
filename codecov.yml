@@ -16,7 +16,6 @@ comment:
 ignore:
   - "Tests/**/*"
   - "Sources/App/Views/**/*"  # UI code - harder to test
-  - "Sources/Infrastructure/Adapters/**/*"  # Pure adapters for 3rd party CLI/APIs
   - "**/*Preview*.swift"  # SwiftUI previews
   # Thin wrappers whose only job is I/O or a system call. Tests stand in for
   # each through its port, so a test of the real one would test macOS or the SDK.
@@ -37,12 +36,15 @@ ignore:
   - "Modules/Leaderboard/Sources/Internal/macOS/Platform+macOS.swift"  # hands out the key store and machine below
   - "Modules/Leaderboard/Sources/Internal/macOS/KeychainSigningKeyStore.swift"  # Keychain
   - "Modules/Leaderboard/Sources/Internal/macOS/IOKitMachineIdentity.swift"  # IOKit; MacModel names what it reads
-  - "Sources/Infrastructure/Activity/Hooks/HookHTTPServer.swift"  # a local socket server
-  - "Sources/Infrastructure/Alerting/LocalAPI/LocalAPIServer.swift"  # a local socket server; its framing is LocalAPIRequestFrame's, tested
-  - "Sources/Infrastructure/Alerting/SystemAlertSender.swift"  # NSAlert, notifications
-  - "Sources/Infrastructure/Activity/Focus/ScriptedTerminalFocus.swift"  # NSAppleScript, tmux, NSRunningApplication; what it runs is TerminalScripts', tested
-  - "Sources/Infrastructure/Monitoring/SystemPowerStateProvider.swift"  # IOKit
+  - "Sources/Modules/Activity/Sources/Internal/macOS/HookHTTPServer.swift"  # a local socket server
+  - "Sources/Modules/LocalAPI/Sources/Internal/macOS/LocalAPIServer.swift"  # a local socket server; its framing is LocalAPIRequestFrame's, tested
+  - "Sources/Modules/Alerting/Sources/Internal/macOS/SystemAlertSender.swift"  # NSAlert, notifications
+  - "Sources/Modules/Activity/Sources/Internal/macOS/ScriptedTerminalFocus.swift"  # NSAppleScript, tmux, NSRunningApplication; what it runs is TerminalScripts', tested
+  - "Modules/Monitoring/Sources/Internal/macOS/SystemPowerStateProvider.swift"  # IOKit
   - "Modules/Monitoring/Sources/SystemClock.swift"  # the clock
-  - "Sources/Infrastructure/DataSources/SimpleCLIExecutor.swift"  # Process
-  - "Sources/Infrastructure/Activity/Notch/NSScreen+NotchMetrics.swift"  # NSScreen
-  - "Sources/Infrastructure/Settings/Storage/KeychainCredentialRepository.swift"  # Keychain
+  - "Modules/Monitoring/Sources/Monitoring.swift"  # hands out the power state below
+  - "Sources/Modules/Activity/Sources/Activity.swift"  # hands out the system workers below
+  - "Sources/Modules/Activity/Sources/Internal/macOS/SystemProcessLiveness.swift"  # kill(pid, 0)
+  - "Sources/Modules/Alerting/Sources/Alerting.swift"  # hands out the notification, webhook and gateway clients
+  - "Sources/App/Activity/NSScreen+NotchMetrics.swift"  # NSScreen
+  - "Sources/Modules/Storage/Sources/Internal/macOS/KeychainCredentialRepository.swift"  # Keychain

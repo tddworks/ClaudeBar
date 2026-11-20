@@ -1,6 +1,6 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Diagnostics
 
 /// About pane: version info and project links.
 struct AboutPane: View {

@@ -1,10 +1,9 @@
+import Monitoring
 import Testing
 import Foundation
 import Mockable
 import DataSources
 import Providers
-@testable import Domain
-@testable import Infrastructure
 
 /// Feature: Codex Configuration
 ///
@@ -122,13 +121,13 @@ struct CodexConfigSpec {
             defer { try? FileManager.default.removeItem(at: home) }
             let codexProduct = try CodexConfigSpec.makeCodex(settings: settings, home: home)
             let codex = codexProduct.defaultAccount
-            #expect(settings.codexProbeMode() == .rpc)
+            #expect(codexProduct.configuration.activeKind == "rpc")
 
             // When — the Codex card saves API mode
-            settings.setCodexProbeMode(.api)
+            settings.setDataSourceKind("api", forProvider: "codex")
 
             // Then — persisted, and the provider follows it
-            #expect(settings.codexProbeMode() == .api)
+            #expect(settings.dataSourceKind(forProvider: "codex") == "api")
             #expect(codexProduct.configuration.activeKind == "api")
         }
     }

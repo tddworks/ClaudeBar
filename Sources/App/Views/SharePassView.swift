@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
 
 /// A simple overlay that shows the referral link with copy functionality.
 struct SharePassOverlay: View {

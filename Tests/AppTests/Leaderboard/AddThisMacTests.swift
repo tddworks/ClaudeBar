@@ -1,8 +1,10 @@
-import Domain
 import Foundation
-import Infrastructure
 import Testing
 @testable import ClaudeBar
+import Providers
+import Monitoring
+import Leaderboard
+import Storage
 
 /// *Already a member? Add this Mac* as the popover drives it (design §2a): a
 /// code cancelled or asked for again says nothing about its own end, so the
@@ -14,7 +16,7 @@ struct AddThisMacTests {
 
     private func leaderboard() -> AppLeaderboard {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("add-this-mac-\(UUID().uuidString).json")
-        let repository = JSONSettingsRepository(store: JSONSettingsStore(fileURL: file))
+        let repository = Storage.makeSettings(fileURL: file)
         let monitor = QuotaMonitor(providers: Providers([], make: { _ in fatalError("no providers added") }), clock: SystemClock(),
                                    settingsRepository: repository)
         return AppLeaderboard(monitor: monitor, api: server, keys: NoKeys(), machine: Machine(), settings: NoRecord())

@@ -1,6 +1,4 @@
 import SwiftUI
-import Domain
-import Infrastructure
 
 // MARK: - Theme Registry
 

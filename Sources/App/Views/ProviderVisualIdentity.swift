@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import Domain
 import Providers
 import Synchronization
 

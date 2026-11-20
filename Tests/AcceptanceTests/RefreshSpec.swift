@@ -1,8 +1,9 @@
+import Quotas
+import Providers
+import Monitoring
 import Testing
 import Foundation
 import Mockable
-@testable import Domain
-@testable import Infrastructure
 
 /// Feature: Refresh
 ///
@@ -197,11 +198,11 @@ struct RefreshSpec {
             }
         }
 
-        /// Minimal `ClaudeSettingsRepository` fixing the probe mode, so a scenario
-        /// can exercise API-mode background behavior end-to-end.
-        private final class ClaudeModeSettings: ClaudeSettingsRepository, @unchecked Sendable {
-            let mode: ClaudeProbeMode
-            init(mode: ClaudeProbeMode) { self.mode = mode }
+        /// Minimal settings fixing Claude's data source, so a scenario can
+        /// exercise API-mode background behavior end-to-end.
+        private final class ClaudeModeSettings: ProviderSettingsRepository, @unchecked Sendable {
+            let mode: String
+            init(mode: String) { self.mode = mode }
             func isEnabled(forProvider id: String) -> Bool { true }
             func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool { true }
             func setEnabled(_ enabled: Bool, forProvider id: String) {}
@@ -209,10 +210,7 @@ struct RefreshSpec {
             func setCustomCardURL(_ url: String?, forProvider id: String) {}
             func hiddenQuotaKeys(forProvider id: String) -> Set<String> { [] }
             func setHiddenQuotaKeys(_ keys: Set<String>, forProvider id: String) {}
-            func claudeProbeMode() -> ClaudeProbeMode { mode }
-            func setClaudeProbeMode(_ mode: ClaudeProbeMode) {}
-            func claudeCliFallbackEnabled() -> Bool { true }
-            func setClaudeCliFallbackEnabled(_ enabled: Bool) {}
+            func dataSourceKind(forProvider id: String) -> String? { mode }
         }
 
         /// A probe that returns the next snapshot in a sequence on each call, so a
@@ -262,7 +260,7 @@ struct RefreshSpec {
         @Test
         func `should refresh Claude in the background no more than every 15 minutes in API mode, even when the person picked 1 minute (#204)`() async {
             // Given — API-mode Claude and a user who picked the 1-minute option.
-            let settings = ClaudeModeSettings(mode: .api)
+            let settings = ClaudeModeSettings(mode: "api")
             let snapshot = UsageSnapshot(
                 providerId: "claude",
                 quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
@@ -292,7 +290,7 @@ struct RefreshSpec {
         func `should show fresh quotas on every Refresh click in API mode, despite the 15-minute background floor (#204)`() async {
             // Given — an API-mode Claude provider (which imposes a 15-min background
             // floor) returning a different snapshot on each probe.
-            let settings = ClaudeModeSettings(mode: .api)
+            let settings = ClaudeModeSettings(mode: "api")
             let probe = SequentialProbe([
                 UsageSnapshot(
                     providerId: "claude",

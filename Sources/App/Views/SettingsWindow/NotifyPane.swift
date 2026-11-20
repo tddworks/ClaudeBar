@@ -1,6 +1,12 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Leaderboard
+import Activity
+import Alerting
+import Diagnostics
 
 /// Notify! pane: publishing quota state to a linked iPhone.
 ///
@@ -756,7 +762,7 @@ struct NotifyPane: View {
         }
 
         do {
-            let info = try await NotifyGatewayClient().deviceInfo(link: link)
+            let info = try await Alerting.makeNotifyGateway().deviceInfo(link: link)
             verifyOutcome = NotifyActionOutcome(message: info.displayDescription, isFailure: false)
         } catch {
             verifyOutcome = NotifyActionOutcome(message: error.localizedDescription, isFailure: true)

@@ -1,7 +1,6 @@
 import AppKit
 import CoreGraphics
-import Domain
-import Infrastructure
+import Quotas
 
 // MARK: - Data Models
 

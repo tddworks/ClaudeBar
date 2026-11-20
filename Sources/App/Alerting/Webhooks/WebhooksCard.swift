@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Alerting
 
 /// *Webhooks*, under *Quota alerts* in Sync & Alerts (design-concept/webhooks):
 /// the person's URLs, each with its channel, scope, switch and last delivery,

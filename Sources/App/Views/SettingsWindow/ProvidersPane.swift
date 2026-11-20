@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
 import Providers
 
 /// Providers pane: master list of every registered provider with enable

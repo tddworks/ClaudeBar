@@ -1,5 +1,6 @@
 import SwiftUI
-import Domain
+import Quotas
+import Providers
 
 // MARK: - Component Previews
 // Preview all UI components in one place

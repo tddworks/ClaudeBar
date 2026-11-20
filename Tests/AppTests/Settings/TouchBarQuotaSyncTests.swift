@@ -1,8 +1,7 @@
 import Testing
 import Foundation
 import AppKit
-import Domain
-import Infrastructure
+import Quotas
 @testable import ClaudeBar
 
 @Suite @MainActor

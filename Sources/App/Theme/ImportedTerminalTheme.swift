@@ -1,6 +1,4 @@
 import SwiftUI
-import Infrastructure
-import Domain
 
 // MARK: - RGBColor → SwiftUI Color
 

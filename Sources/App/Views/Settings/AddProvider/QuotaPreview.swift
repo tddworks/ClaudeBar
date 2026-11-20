@@ -1,4 +1,4 @@
-import Domain
+import Quotas
 import Foundation
 
 /// *Map fields*' live card: a quota in the words the popover prints —

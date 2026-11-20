@@ -1,5 +1,8 @@
 import SwiftUI
-import Domain
+import Quotas
+import DataSources
+import Providers
+import Activity
 
 /// The panel that hangs below the notch on hover: what is running, what is
 /// nearly out, and what you can do about it.

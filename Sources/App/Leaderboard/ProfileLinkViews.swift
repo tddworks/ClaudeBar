@@ -1,5 +1,7 @@
 import SwiftUI
-import Domain
+import DataSources
+import Providers
+import Leaderboard
 
 extension ProfileLink.Platform {
     /// The brand mark in the asset catalog (Simple Icons 16.34.0, CC0), a template image.

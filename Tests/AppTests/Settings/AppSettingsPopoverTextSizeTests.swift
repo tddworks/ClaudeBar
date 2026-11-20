@@ -1,8 +1,7 @@
 import Testing
 import Foundation
-import Domain
-import Infrastructure
 @testable import ClaudeBar
+import Storage
 
 @Suite @MainActor
 struct AppSettingsPopoverTextSizeTests {
@@ -11,7 +10,7 @@ struct AppSettingsPopoverTextSizeTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
         func load() -> AppSettings {
-            AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+            AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         }
 
         let settings = load()
@@ -31,10 +30,10 @@ struct AppSettingsPopoverTextSizeTests {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
-        JSONSettingsRepository(store: JSONSettingsStore(fileURL: file))
+        AppSettingsFile(store: JSONSettingsStore(fileURL: file))
             .setPopoverTextSize("gigantic")
 
-        let settings = AppSettings(repository: JSONSettingsRepository(store: JSONSettingsStore(fileURL: file)))
+        let settings = AppSettings(repository: AppSettingsFile(store: JSONSettingsStore(fileURL: file)), settings: Storage.makeSettings(fileURL: file))
         #expect(settings.popoverTextSize == .medium)
     }
 }

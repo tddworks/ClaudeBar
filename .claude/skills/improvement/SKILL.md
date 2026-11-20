@@ -202,7 +202,7 @@ one map (where each thing lives, and where its tests go).
 A bug or improvement in a provider is made in its JSON (or its mapping
 script), or generically in `DataSources` — never with vendor-named Swift, and
 never with a line in `ClaudeBarApp` that names it (providers are found by
-`ProviderCatalog.detect()`). Modules never `import Domain`.
+`ProviderCatalog.detect()`). Modules never import the App.
 
 ## Guidelines
 

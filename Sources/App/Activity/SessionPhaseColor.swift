@@ -1,5 +1,5 @@
 import SwiftUI
-import Domain
+import Activity
 
 extension ClaudeSession.Phase {
     /// The display color for this session phase.

@@ -131,8 +131,8 @@ DailyUsageStat +            two days of one date as one: every count, cost, time
 | Type | Answers | Where |
 |---|---|---|
 | `DateRange.week`, `DateRange.month` | the calendar's week or month holding a day, as a plain run of days | `Modules/Quotas/Sources/DateRange.swift` |
-| `RecapPeriod` | the span a recap adds up, and the period before it | `Sources/Domain/UsageHistory/RecapPeriod.swift` |
-| `RecapRange` | this or last of a period, and the range it is read against | `Sources/Domain/UsageHistory/RecapRange.swift` |
+| `RecapPeriod` | the span a recap adds up, and the period before it | `Modules/Monitoring/Sources/RecapPeriod.swift` |
+| `RecapRange` | this or last of a period, and the range it is read against | `Modules/Monitoring/Sources/RecapRange.swift` |
 | `HourUsageLine`, `DayHours`, `DailyUsageStat.hours` | when in the day it was spent: a line per hour, summed by the hour itself; and the three things a day can know of its hours, with their own Codable | `Modules/Quotas/Sources/` |
 | `HourActivity` | the range hour by hour in a unit: each hour against the busiest, the hours of the day added up, which days know theirs | `Modules/Quotas/Sources/HourActivity.swift` |
 | `Recap` | the range across providers, in one unit, against the range before; it carries its dates | `Modules/Quotas/Sources/Recap.swift` |
@@ -199,9 +199,9 @@ word (*week*, *month*) are the App's words for them.
 | Piece | Job | Where |
 |---|---|---|
 | `Recap`, `DateRange.week`, `DateRange.month`, `Days.merged`, `DailyUsageStat +` | the values | `Modules/Quotas/Sources/` |
-| `Recaps` | the lineup's recaps: asks each login for `usageHistory.days(in:)` for every distinct range — last week is this week's before, so six ranges, not eight — by provider (`Days.merged`), and builds a `Recap` per range, carrying its range. Owns when it is read again (`readIfStale`): the ranges it was read for against now, and each login's last read. It cuts no days and picks no unit. Built in `ClaudeBarApp.init()` over the `QuotaMonitor`'s lineup; tests hand it `RecapLogin`s, a clock and a calendar | `Sources/Domain/UsageHistory/` |
-| `RecapPeriod` | *week* / *month*: the period holding a day, and the period before it | `Sources/Domain/UsageHistory/` |
-| `RecapRange` | `.this(period)` / `.last(period)`: the range it names, the one it is read against, and its `period` | `Sources/Domain/UsageHistory/` |
+| `Recaps` | the lineup's recaps: asks each login for `usageHistory.days(in:)` for every distinct range — last week is this week's before, so six ranges, not eight — by provider (`Days.merged`), and builds a `Recap` per range, carrying its range. Owns when it is read again (`readIfStale`): the ranges it was read for against now, and each login's last read. It cuts no days and picks no unit. Built in `ClaudeBarApp.init()` over the `QuotaMonitor`'s lineup; tests hand it `RecapLogin`s, a clock and a calendar | `Modules/Monitoring/Sources/` |
+| `RecapPeriod` | *week* / *month*: the period holding a day, and the period before it | `Modules/Monitoring/Sources/` |
+| `RecapRange` | `.this(period)` / `.last(period)`: the range it names, the one it is read against, and its `period` | `Modules/Monitoring/Sources/` |
 | `RecapRange` words | the chip's name, what it is compared with, its empty note, the period's word | `Sources/App/UsageHistory/RecapRange+Words.swift` |
 | `RecapCardView` | renders a recap and tells: the range chips, the total in `recap.unit`, the change and what it is against, each provider's part, the highlights — and offers the report when the chosen recap holds something, telling `ReportSaver` to save it and showing a save that failed | `Sources/App/UsageHistory/` |
 | `ModelColors` | the App's one list of hues: a model's by its place among the range's models, a provider's by its place in the split, and each as hex for the report | `Sources/App/UsageHistory/` |

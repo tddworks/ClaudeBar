@@ -1,10 +1,9 @@
 import DataSources
-import Domain
 import Foundation
-import Infrastructure
 import Providers
 import Testing
 @testable import ClaudeBar
+import Storage
 
 /// The words of the Accounts card, from the definition — so every provider
 /// that can have accounts gets the same card with no `switch` on its id.
@@ -12,8 +11,7 @@ import Testing
 @Suite
 struct AccountsCardTextTests {
     private func codex(_ logins: [ProviderAccountConfig] = []) throws -> Provider {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json")))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json"))
         return try ProviderFactory.make("codex", settings: settings, accounts: logins)
     }
 
@@ -43,8 +41,7 @@ struct AccountsCardTextTests {
         draft.measure = .percentUsed
         draft.used = "$.used"
         draft.name = "OpenRouter"
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json")))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID().uuidString).json"))
         let provider = ProviderFactory.make(try draft.definition(id: "custom-openrouter"), settings: settings)
 
         #expect(AccountsCardText(provider: provider).ways.map(\.label) == ["Enter API key"])
@@ -52,8 +49,7 @@ struct AccountsCardTextTests {
 
     @Test
     func `should describe, re-sign and remove an API account without mentioning a CLI or folder`() throws {
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(
-            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID()).json")))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID()).json"))
         let provider = try ProviderFactory.make("deepseek", settings: settings,
                                           accounts: [ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: [:], madeBy: .form)])
         let text = AccountsCardText(provider: provider)
@@ -99,7 +95,7 @@ struct AccountsCardTextTests {
 
     @Test func `should keep a folder account's folder on removal and ask to sign in with the CLI, not for a new key`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"cli":"example","defaultDataSource":"file","dataSources":[{"kind":"file","fetch":{"file":{"path":"/tmp/example.json"}},"mapping":{"json":{"quotas":[]}}}],"settings":[{"id":"home","label":"Home Folder","scope":"account","kind":"path"}],"accounts":{"patch":{}}}"#
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         let account = ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: ["home": "/tmp/work profile"], madeBy: .form)
         let provider = ProviderFactory.make(try ProviderDefinition.parse(Data(json.utf8)), settings: settings, accounts: [account])
         let text = AccountsCardText(provider: provider)
@@ -110,7 +106,7 @@ struct AccountsCardTextTests {
 
     @Test func `should show the provider's own sign-in hint when the default login's key is refused`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"defaultDataSource":"api","dataSources":[{"kind":"api","credential":{"sqlite":{"path":"~/example.db","query":"SELECT 1","fields":{},"hint":"Sign in again in Example, then refresh."}},"fetch":{"http":{"url":"https://example.test"}},"mapping":{"json":{"quotas":[]}}}]}"#
-        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        let settings = Storage.makeSettings(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         let provider = ProviderFactory.make(try ProviderDefinition.parse(Data(json.utf8)), settings: settings)
 
         #expect(AccountsCardText(provider: provider).reauthHelp(for: provider.defaultAccount) == "Sign in again in Example, then refresh.")

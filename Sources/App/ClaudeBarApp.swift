@@ -1,6 +1,12 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Monitoring
+import Activity
+import Alerting
+import LocalAPI
+import Storage
+import Diagnostics
 import Providers
 import AWSClients
 import MenuBarExtraAccess
@@ -80,12 +86,12 @@ struct ClaudeBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// The hook HTTP server that receives events from Claude Code
-    private let hookServer = HookHTTPServer()
-    private let sessionTitles: any SessionTitles = TranscriptTitleReader()
+    private let hookServer = Activity.makeHookReceiver()
+    private let sessionTitles = Activity.makeSessionTitles()
 
     /// The local API and MCP server — read-only quota answers on 127.0.0.1.
     /// Off means no listener exists at all.
-    private let localAPIServer = LocalAPIServer()
+    private let localAPIServer = LocalAPI.makeServer()
 
     /// Task for the hook server event loop (allows cancellation on toggle off)
     @State private var hookServerTask: Task<Void, Never>?
@@ -98,10 +104,10 @@ struct ClaudeBarApp: App {
 
     /// This Mac's notifications: a destination for every alert, and the
     /// permission to show them.
-    private let notifications = Notifications()
+    private let notifications = Alerting.makeNotifications()
 
     /// Sends session start/end notifications
-    private let sessionAlertSender = SystemAlertSender()
+    private let sessionAlertSender = Alerting.makeAlertSender()
 
     #if ENABLE_SPARKLE
     /// Sparkle updater for auto-updates
@@ -115,26 +121,22 @@ struct ClaudeBarApp: App {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         AppLog.ui.info("ClaudeBar v\(version) (\(build)) initializing...")
 
-        // Create the shared settings repository (JSON-backed: ~/.claudebar/settings.json)
-        // JSONSettingsRepository implements all sub-protocols:
-        // - AppSettingsRepository (app-level display/sync settings)
-        // - ProviderSettingsRepository + all provider sub-protocols
-        // - HookSettingsRepository
-        let settingsRepository = JSONSettingsRepository.shared
+        // Every module's settings, in ~/.claudebar/settings.json; the App's own
+        // are AppSettings', in the same file.
+        let settingsRepository = Storage.settings
 
         // Every provider is a definition on disk — the bundle, Add Provider's
         // ~/.claudebar/providers and ~/.claudebar/extensions — found by the
         // catalog and made on one engine; no line here names a provider
         // (TARGET_ARCHITECTURE §10). The engine is everything that touches
         // this Mac: a definition uses what its cases ask for.
-        let vault = ProviderVault()
+        let vault = Storage.makeVault()
         // A variable exported only in the login shell (#170), for a lookup that says `loginShell`.
-        let shellEnvironment = ShellEnvironment()
         let engine = Engine(
             settings: settingsRepository,
             vault: vault,
             loginsInUse: DiskLoginsInUse(),
-            loginShell: { shellEnvironment.value($0) },
+            loginShell: DataSources.makeLoginShellLookup(),
             // The AWS SDK, linked by AWSClients alone, made once for a definition that reads the cloud.
             cloud: { (AWSClients.makeCloudWatch(), AWSClients.makePriceCatalog()) },
             // Guest passes run the declaring definition's CLI, at its CLI location (#210).
@@ -142,8 +144,8 @@ struct ClaudeBarApp: App {
         )
         let definitions = ProviderCatalog().detect()
         // What was saved for an extension before it was a definition moves once.
-        ExtensionSettingsUpgrade.run(definitions.filter { $0.profile.origin == .extension },
-                                     store: .shared, settings: settingsRepository, vault: vault)
+        Storage.upgradeExtensionSettings(definitions.filter { $0.profile.origin == .extension },
+                                         settings: settingsRepository, vault: vault)
         // The products, in lineup order; each holds its logins, and the
         // lineup is the enabled logins of enabled products (CANONICAL §1).
         let providers = ProviderFactory.make(definitions, engine: engine)
@@ -159,7 +161,9 @@ struct ClaudeBarApp: App {
             providers: Providers(providers, settings: settingsRepository, vault: vault, make: { definition in
                 ProviderFactory.make(definition, engine: engine)
             }),
+            clock: SystemClock(),
             settingsRepository: settingsRepository,
+            powerStateProvider: Monitoring.makePowerState(),
             statusPolicy: { AppSettings.shared.statusPolicy }
         )
         self.monitor = monitor
@@ -167,15 +171,15 @@ struct ClaudeBarApp: App {
         // definition, never by a provider's name (CANONICAL §2.1).
         let products = providers
         let newSessions = NewSessions(products: products,
-                                      shellLines: ShellSetup(commands: products.compactMap { $0.inUse?.command }),
-                                      announcer: InUseNotifications(),
+                                      shellLines: ProviderFactory.makeShellLines(commands: products.compactMap { $0.inUse?.command }),
+                                      announcer: Alerting.makeInUseAnnouncer(),
                                       status: { monitor.status(of: $0) })
         self.newSessions = newSessions
         // *In use* follows every refresh: Switch when low, or a login worth moving to.
         monitor.onRefreshed { refreshed in await newSessions.review(refreshed) }
         // *Webhooks*: kept in settings.json, each URL a destination's secret.
         let webhooks = Webhooks(settings: settingsRepository, secrets: settingsRepository.destinationSecrets,
-                                sender: WebhookClient())
+                                sender: Alerting.makeWebhookSender())
         self.webhooks = webhooks
         // Every alert goes to every destination; neither decider knows who hears it.
         let destinations = AlertDestinations([notifications, webhooks])
@@ -200,7 +204,7 @@ struct ClaudeBarApp: App {
         // opens the link `URLSchemeAction` builds and reads back.
         let restWhenEmpty = RestWhenEmpty(
             repository: settingsRepository,
-            announcer: RestNotifications(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
+            announcer: Alerting.makeRestAnnouncer(showAnywayLink: { URLSchemeAction.showAnywayLink(provider: $0) }))
         self.restWhenEmpty = restWhenEmpty
         restWhenEmpty.follow(monitor)
         // *Signed out* follows every refresh, failed ones too: a sign-in that ended, told once.
@@ -209,7 +213,7 @@ struct ClaudeBarApp: App {
 
         let sessionMonitor = SessionMonitor()
         self.sessionMonitor = sessionMonitor
-        let sessionFocus = SessionFocus(terminals: ScriptedTerminalFocus())
+        let sessionFocus = SessionFocus(terminals: Activity.makeTerminalFocus())
         self.sessionFocus = sessionFocus
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle
@@ -266,8 +270,8 @@ struct ClaudeBarApp: App {
             // existing users without re-toggling the setting. install() is
             // idempotent — it replaces only ClaudeBar's own matcher entries
             // per event and preserves hooks from other tools.
-            if HookInstaller.isInstalled() {
-                try? HookInstaller.install()
+            if Activity.makeHookInstallation().isInstalled {
+                try? Activity.makeHookInstallation().install()
             }
             startHookServer()
         }
@@ -300,7 +304,7 @@ struct ClaudeBarApp: App {
         // A session killed without a SessionEnd would otherwise stay forever.
         sessionSweepTask?.cancel()
         sessionSweepTask = Task {
-            let liveness = SystemProcessLiveness()
+            let liveness = Activity.makeProcessLiveness()
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.sessionSweepInterval)
                 guard !Task.isCancelled else { break }
@@ -347,10 +351,7 @@ struct ClaudeBarApp: App {
             do {
                 // Every answer is a read of the All page's Overview, on the main actor.
                 let monitor = monitor
-                let router = LocalAPIRouter(read: { Overview(monitor) })
-                try await localAPIServer.start { result in
-                    await router.answer(result)
-                }
+                try await localAPIServer.start(answering: { Overview(monitor) })
                 // The socket is ready and the port file written; the pane
                 // re-reads it, so what it shows and copies is what answers.
                 NotificationCenter.default.post(name: .localAPIPortChanged, object: nil)

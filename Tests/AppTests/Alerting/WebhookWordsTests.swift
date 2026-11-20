@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Alerting
 @testable import ClaudeBar
 
 /// What the Webhooks card says, in the person's words.

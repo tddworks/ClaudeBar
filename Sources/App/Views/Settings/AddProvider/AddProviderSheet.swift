@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 import DataSources
-import Domain
-import Infrastructure
+import Quotas
+import Monitoring
+import Storage
 import Providers
 
 /// *Add Provider* — USER_JOURNEYS moments 5–9. Four steps build a
@@ -517,7 +518,7 @@ struct AddProviderSheet: View {
             let definition = try draft.definition(id: catalog.mintId(for: draft.name))
             let provider = try monitor.providers.add(definition)
             if !apiKey.isEmpty, draft.key == .apiKey || needsKeyForCopy {
-                ProviderVault().save(apiKey, "apiKey", provider: provider.id)
+                Storage.makeVault().save(apiKey, "apiKey", provider: provider.id)
             }
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()

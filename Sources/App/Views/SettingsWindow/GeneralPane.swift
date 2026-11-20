@@ -1,6 +1,9 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import Quotas
+import DataSources
+import Providers
+import Monitoring
+import Activity
 
 /// General pane: startup behavior, popover overview, the usage sections the
 /// popover shows, and whether a quota warns when it will run out before it resets.

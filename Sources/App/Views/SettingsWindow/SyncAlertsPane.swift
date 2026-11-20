@@ -1,6 +1,8 @@
 import SwiftUI
-import Domain
-import Infrastructure
+import DataSources
+import Providers
+import Monitoring
+import Alerting
 
 /// Sync & Alerts pane: background refresh cadence, the person's quota alerts,
 /// and the webhooks they are sent to.

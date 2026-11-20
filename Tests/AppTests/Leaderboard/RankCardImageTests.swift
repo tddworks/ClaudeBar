@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import Testing
-import Domain
+import Leaderboard
 @testable import ClaudeBar
 
 /// *Share my rank*'s image: posted where its shape fits, so it must come out

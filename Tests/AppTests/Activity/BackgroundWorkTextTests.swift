@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import Domain
+import Activity
 @testable import ClaudeBar
 
 /// What a row says a session left running in the background.

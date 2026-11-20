@@ -1,6 +1,8 @@
 import SwiftUI
 import AppKit
-import Domain
+import Quotas
+import DataSources
+import Monitoring
 import Providers
 
 /// *Accounts* — every login of a provider whose definition can add them:

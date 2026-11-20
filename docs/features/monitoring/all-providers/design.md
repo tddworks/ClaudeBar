@@ -56,16 +56,16 @@ today). The divider shows when either of them does.
 
 | Piece | Where | One job |
 |---|---|---|
-| `PopoverPage` | `Sources/Domain/Monitoring/PopoverPage.swift` | the page under the pills: `.all`, `.leaderboard`, `.provider`. Replaces `MenuContentView`'s `showsLeaderboard` flag, so a third page is a case, not a second flag. The provider itself stays `monitor.selectedProviderId` |
-| `Overview` | `Sources/Domain/Monitoring/Overview.swift` | built from the tabs and the Monitor's usage: `isOffered` (two or more products), `cards` in pill order, the header's `badge` and `status` (the worst card's, `nil` while none has numbers), the `critical` / `warning` / `healthy` counts, and `tightestCard` (the card whose ring runs out first). The [local API](../../alerting/local-api/design.md) answers from it too |
+| `PopoverPage` | `Sources/App/Popover/PopoverPage.swift` | the page under the pills: `.all`, `.leaderboard`, `.provider`. Replaces `MenuContentView`'s `showsLeaderboard` flag, so a third page is a case, not a second flag. The provider itself stays `monitor.selectedProviderId` |
+| `Overview` | `Modules/Monitoring/Sources/Overview.swift` | built from the tabs and the Monitor's usage: `isOffered` (two or more products), `cards` in pill order, the header's `badge` and `status` (the worst card's, `nil` while none has numbers), the `critical` / `warning` / `healthy` counts, and `tightestCard` (the card whose ring runs out first). The [local API](../../alerting/local-api/design.md) answers from it too |
 | `OverviewCard` | same file | one product: `tab`, `badge` (`ProviderBadgeState` of its logins), `login` (the one the card reads), `tightest` and `next` quota, `tightestLogin` when there are several, `loginCount`; the product's `best` and `inUse` logins, as `Accounts.best` and `InUse` answer; each login's `source` and `usageHistory` |
-| `PopoverOpensOn` | `Sources/Domain/App/PopoverOpensOn.swift` | `.whereILeftIt` / `.all`, and the page an open lands on |
+| `PopoverOpensOn` | `Sources/App/Popover/PopoverOpensOn.swift` | `.whereILeftIt` / `.all`, and the page an open lands on |
 | `AppSettingsRepository.popoverOpensOn()` / `setPopoverOpensOn(_:)` | Domain port, `JSONSettingsRepository` | keeps it at `app.popoverOpensOn`; unset with the old `app.overviewModeEnabled` on reads `.all` |
 | `AppSettings.popoverOpensOn` | `Sources/App/Settings/AppSettings.swift` | the observed setting; replaces `overviewModeEnabled` |
 | Pill row, *All* page, header | `MenuContentView`, `OverviewCardView` | render `Overview` and `PopoverPage`: never count, compare or pick a quota |
 | *Open on* row | `GeneralPane` | replaces the *Overview Mode* switch |
 | `OverviewCard.lines` | same file as `OverviewCard` | every quota of the login the card already reads, in window order — what **Bars** draws. An extension of `tightestOf`, not a second way to choose a login |
-| `AllPageStyle` | `Sources/Domain/App/AllPageStyle.swift` | `.rings` (default) or `.bars`. The page's own choice of how to print, like `PopoverOpensOn` — never a flag on `OverviewCard` |
+| `AllPageStyle` | `Sources/App/Popover/AllPageStyle.swift` | `.rings` (default) or `.bars`. The page's own choice of how to print, like `PopoverOpensOn` — never a flag on `OverviewCard` |
 | `AppSettingsRepository.allPageStyle()` / `setAllPageStyle(_:)` | Domain port, `JSONSettingsRepository` | keeps it at `app.allPageStyle`; unset reads `.rings` |
 | `AppSettings.allPageStyle` | `Sources/App/Settings/AppSettings.swift` | the observed setting; writes through on change |
 | `QuotaCardBar` | `Sources/App/Views/QuotaProgressBar.swift` | a quota's bar with its pace tick under it — the one piece `WrappedStatCard`, a **Bars** line and `QuotaCardView` all draw. Its fill follows the status, its tick the pace; a bar's ends land where the row puts them, so every bar on a page starts and ends at the same x |
