@@ -16,6 +16,7 @@ let appSchemes: [(name: String, builds: String, tests: String)] = [
     ("Domain", "Domain", "DomainTests"),
     ("Infrastructure", "Infrastructure", "InfrastructureTests"),
     ("AppTests", "AppTests", "AppTests"),
+    ("Activity", "Activity", "ActivityTests"),
     ("AcceptanceTests", "AcceptanceTests", "AcceptanceTests"),
 ]
 
@@ -41,6 +42,7 @@ let claudeBar: Scheme = .scheme(
             .testableTarget(target: .project(path: app, target: "DomainTests")),
             .testableTarget(target: .project(path: app, target: "InfrastructureTests")),
             .testableTarget(target: .project(path: app, target: "AppTests")),
+            .testableTarget(target: .project(path: app, target: "ActivityTests")),
         ] + modules.map { .testableTarget(target: .project(path: kit, target: $0.tests)) },
         configuration: .debug
     ),

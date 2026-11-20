@@ -6,3 +6,4 @@
 @_exported import Monitoring
 @_exported import Providers
 @_exported import Quotas
+@_exported import Activity

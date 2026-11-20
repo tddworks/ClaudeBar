@@ -1,5 +1,34 @@
 import ProjectDescription
 
+/// One of the Mac app's own modules, beside the App in Sources/Modules/<name>
+/// (docs/architecture/MODULAR_DESIGN.md §2): its open face at the top of
+/// Sources/, its implementations in Sources/Internal/, its tests in Tests/.
+/// A framework of its own, so `internal` keeps Internal/ out of the App's reach.
+func appModule(_ name: String, dependencies: [TargetDependency]) -> [Target] {
+    [
+        .target(
+            name: name,
+            destinations: .macOS,
+            product: .staticFramework,
+            bundleId: "com.tddworks.claudebar.\(name.lowercased())",
+            deploymentTargets: .macOS("15.0"),
+            sources: ["../Sources/Modules/\(name)/Sources/**"],
+            dependencies: dependencies + [.external(name: "Mockable")],
+            settings: .settings(base: ["SWIFT_STRICT_CONCURRENCY": "complete"])
+        ),
+        .target(
+            name: "\(name)Tests",
+            destinations: .macOS,
+            product: .unitTests,
+            bundleId: "com.tddworks.claudebar.\(name.lowercased())-tests",
+            deploymentTargets: .macOS("15.0"),
+            sources: ["../Sources/Modules/\(name)/Tests/**"],
+            dependencies: [.target(name: name)] + dependencies + [.external(name: "Mockable")],
+            settings: .settings(base: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING"])
+        ),
+    ]
+}
+
 let project = Project(
     name: "ClaudeBar",
     options: .options(
@@ -23,7 +52,12 @@ let project = Project(
             "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
         ]
     ),
-    targets: [
+    targets: appModule("Activity", dependencies: [
+        .external(name: "Quotas"),
+        .external(name: "DataSources"),
+        .external(name: "Providers"),
+        .external(name: "Diagnostics"),
+    ]) + [
         // MARK: - Domain Layer
         .target(
             name: "Domain",
@@ -33,6 +67,7 @@ let project = Project(
             deploymentTargets: .macOS("15.0"),
             sources: ["../Sources/Domain/**"],
             dependencies: [
+                .target(name: "Activity"),
                 .external(name: "Quotas"),
                 .external(name: "DataSources"),
                 .external(name: "Providers"),

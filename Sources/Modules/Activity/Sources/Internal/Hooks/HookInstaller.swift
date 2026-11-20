@@ -1,0 +1,214 @@
+import Foundation
+import Quotas
+import DataSources
+import Providers
+
+/// Installs and uninstalls ClaudeBar hooks in ~/.claude/settings.json.
+/// Hook commands use the __claudebar_hook function wrapper for identification.
+enum HookInstaller {
+    /// The marker function name used to identify ClaudeBar hooks
+    static let hookMarker = "__claudebar_hook"
+
+    /// The settings file path
+    static var settingsPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return "\(home)/.claude/settings.json"
+    }
+
+    /// The hook command template. Port is read from the discovery file at runtime.
+    ///
+    /// Sessions ClaudeBar spawns itself (quota probes) carry `CLAUDEBAR_PROBE=1`,
+    /// so the guard returns before the curl POST — a background quota poll must
+    /// not loop back through the user's hooks as a Claude session (#222).
+    ///
+    /// Claude Code exports its process ID to hooks as `CLAUDE_PID`; the POST
+    /// carries it in a header so ClaudeBar can notice when the process is gone.
+    /// It also carries what the terminal set in Claude Code's environment
+    /// (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TMUX_PANE`, …), so a click on the
+    /// session can bring its terminal forward.
+    static let hookCommand = """
+    __claudebar_hook() { [ "$\(HookConstants.probeEnvironmentKey)" = "1" ] && return 0; PORT=$(cat "$HOME/.claude/claudebar-hook-port" 2>/dev/null || echo \(HookConstants.defaultPort)); cat | curl -s -X POST "http://localhost:${PORT}/hook" -H 'Content-Type: application/json' -H "\(HookConstants.processIdHeader): $CLAUDE_PID"\(environmentHeaders) -d @- > /dev/null 2>&1 & }; __claudebar_hook
+    """
+
+    /// ` -H "X-ClaudeBar-Env-TERM_PROGRAM: $TERM_PROGRAM"`, one per variable.
+    private static var environmentHeaders: String {
+        SessionTerminal.Variable.allCases
+            .map { " -H \"\(HookConstants.environmentHeader($0)): $\($0.rawValue)\"" }
+            .joined()
+    }
+
+    /// The event names to register hooks for: every event ClaudeBar reads
+    /// that has a matcher.
+    static let hookEvents = SessionEvent.EventName.allCases.map(\.rawValue).filter { matcher(for: $0) != nil }
+
+    /// Which of an event's occurrences call the hook; nil for an event not
+    /// installed. The tool events only for a question Claude asks, never for
+    /// every tool. `Notification` not at all: a permission prompt would make
+    /// the session Needs you, and nothing says when the person answers it.
+    static func matcher(for event: String) -> String? {
+        switch SessionEvent.EventName(rawValue: event) {
+        case .preToolUse, .postToolUse: "AskUserQuestion"
+        case .notification: nil
+        default: ".*"
+        }
+    }
+
+    /// Every event ClaudeBar has ever hooked, to take its hook off one it no
+    /// longer listens to.
+    private static var everyEvent: [String] {
+        SessionEvent.EventName.allCases.map(\.rawValue)
+    }
+
+    /// Installs hooks into the Claude settings file.
+    /// Creates the file and directory if they don't exist.
+    /// Preserves existing settings and hooks from other tools.
+    ///
+    /// Hook format (new matcher-based format):
+    /// ```json
+    /// {"SessionStart": [{"matcher": ".*", "hooks": [{"type": "command", "command": "..."}]}]}
+    /// ```
+    static func install(at path: String = settingsPath) throws {
+        var settings = try readOrCreateSettings(at: path)
+        var hooks = settings["hooks"] as? [String: Any] ?? [String: Any]()
+
+        for event in everyEvent {
+            var matcherEntries = hooks[event] as? [[String: Any]] ?? [[String: Any]]()
+
+            // Remove any existing ClaudeBar matcher entries for this event
+            matcherEntries.removeAll { entry in
+                containsClaudeBarHook(in: entry)
+            }
+
+            guard let matcher = matcher(for: event) else {
+                if matcherEntries.isEmpty { hooks.removeValue(forKey: event) } else { hooks[event] = matcherEntries }
+                continue
+            }
+
+            // Add the new hook in matcher format
+            matcherEntries.append([
+                "matcher": matcher,
+                "hooks": [
+                    [
+                        "type": "command",
+                        "command": hookCommand,
+                    ] as [String: Any]
+                ],
+            ])
+
+            hooks[event] = matcherEntries
+        }
+
+        settings["hooks"] = hooks
+        try writeSettings(settings, to: path)
+    }
+
+    /// Uninstalls ClaudeBar hooks from the Claude settings file.
+    /// Preserves hooks from other tools.
+    static func uninstall(at path: String = settingsPath) throws {
+        guard var settings = try? readOrCreateSettings(at: path) else { return }
+        guard var hooks = settings["hooks"] as? [String: Any] else { return }
+
+        for event in everyEvent {
+            guard var matcherEntries = hooks[event] as? [[String: Any]] else { continue }
+
+            matcherEntries.removeAll { entry in
+                containsClaudeBarHook(in: entry)
+            }
+
+            if matcherEntries.isEmpty {
+                hooks.removeValue(forKey: event)
+            } else {
+                hooks[event] = matcherEntries
+            }
+        }
+
+        if hooks.isEmpty {
+            settings.removeValue(forKey: "hooks")
+        } else {
+            settings["hooks"] = hooks
+        }
+
+        try writeSettings(settings, to: path)
+    }
+
+    /// Detects whether ClaudeBar hooks are currently installed.
+    static func isInstalled(at path: String = settingsPath) -> Bool {
+        guard let settings = readSettings(at: path),
+              let hooks = settings["hooks"] as? [String: Any] else {
+            return false
+        }
+
+        // Check if at least one event has our hook (in matcher format)
+        return hooks.values.contains { value in
+            guard let matcherEntries = value as? [[String: Any]] else { return false }
+            return matcherEntries.contains { entry in
+                containsClaudeBarHook(in: entry)
+            }
+        }
+    }
+
+    /// Checks if a matcher entry contains a ClaudeBar hook command.
+    private static func containsClaudeBarHook(in matcherEntry: [String: Any]) -> Bool {
+        guard let innerHooks = matcherEntry["hooks"] as? [[String: Any]] else { return false }
+        return innerHooks.contains { hook in
+            guard let command = hook["command"] as? String else { return false }
+            return command.contains(hookMarker)
+        }
+    }
+
+    // MARK: - Private
+
+    enum InstallerError: Error {
+        case corruptedSettingsFile(String)
+    }
+
+    /// Reads settings, returning empty dict for missing file but throwing on corrupt JSON.
+    static func readOrCreateSettings(at path: String = settingsPath) throws -> [String: Any] {
+        guard FileManager.default.fileExists(atPath: path) else {
+            return [String: Any]()
+        }
+
+        guard let data = FileManager.default.contents(atPath: path) else {
+            return [String: Any]()
+        }
+
+        // Empty file is treated as empty settings
+        if data.isEmpty {
+            return [String: Any]()
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw InstallerError.corruptedSettingsFile(
+                "Failed to parse \(path) — file may be corrupted. Fix it manually before retrying."
+            )
+        }
+
+        return json
+    }
+
+    /// For read-only checks (isInstalled) — returns nil on any error.
+    static func readSettings(at path: String = settingsPath) -> [String: Any]? {
+        try? readOrCreateSettings(at: path)
+    }
+
+    private static func writeSettings(_ settings: [String: Any], to path: String) throws {
+        let directory = (path as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(
+            atPath: directory,
+            withIntermediateDirectories: true
+        )
+
+        let data = try JSONSerialization.data(
+            withJSONObject: settings,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+    }
+}
+
+/// The hooks in the person's own Claude Code settings file.
+struct SettingsFileHooks: HookInstallation {
+    var isInstalled: Bool { HookInstaller.isInstalled() }
+    func install() throws { try HookInstaller.install() }
+    func uninstall() throws { try HookInstaller.uninstall() }
+}

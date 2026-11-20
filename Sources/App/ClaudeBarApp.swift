@@ -80,8 +80,8 @@ struct ClaudeBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// The hook HTTP server that receives events from Claude Code
-    private let hookServer = HookHTTPServer()
-    private let sessionTitles: any SessionTitles = TranscriptTitleReader()
+    private let hookServer = Activity.makeHookReceiver()
+    private let sessionTitles = Activity.makeSessionTitles()
 
     /// The local API and MCP server — read-only quota answers on 127.0.0.1.
     /// Off means no listener exists at all.
@@ -210,7 +210,7 @@ struct ClaudeBarApp: App {
 
         let sessionMonitor = SessionMonitor()
         self.sessionMonitor = sessionMonitor
-        let sessionFocus = SessionFocus(terminals: ScriptedTerminalFocus())
+        let sessionFocus = SessionFocus(terminals: Activity.makeTerminalFocus())
         self.sessionFocus = sessionFocus
 
         // The driver owns the menu-bar pixels and the refresh-loop lifecycle
@@ -267,8 +267,8 @@ struct ClaudeBarApp: App {
             // existing users without re-toggling the setting. install() is
             // idempotent — it replaces only ClaudeBar's own matcher entries
             // per event and preserves hooks from other tools.
-            if HookInstaller.isInstalled() {
-                try? HookInstaller.install()
+            if Activity.makeHookInstallation().isInstalled {
+                try? Activity.makeHookInstallation().install()
             }
             startHookServer()
         }
@@ -301,7 +301,7 @@ struct ClaudeBarApp: App {
         // A session killed without a SessionEnd would otherwise stay forever.
         sessionSweepTask?.cancel()
         sessionSweepTask = Task {
-            let liveness = SystemProcessLiveness()
+            let liveness = Activity.makeProcessLiveness()
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.sessionSweepInterval)
                 guard !Task.isCancelled else { break }
