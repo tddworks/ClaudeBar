@@ -1,14 +1,14 @@
 ---
-description: UberLLM's definition, balance mapping, settings and account key isolation. Use when changing its connection.
+description: MartLLM's definition, balance mapping, settings and account key isolation. Use when changing its connection.
 ---
 
-# UberLLM: design
+# MartLLM: design
 
-`Modules/Providers/Resources/Providers/uberllm.json` runs on the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names UberLLM.
+`Modules/Providers/Resources/Providers/uberllm.json` runs on the generic [engine](../../architecture/ENGINE_DESIGN.md); no Swift names MartLLM.
 
 ## Source
 
-`GET https://api.uberllm.dev/v1/balance` with `Authorization: Bearer <key>`, `Accept: application/json` and a 30-second timeout ([OpenAPI](https://uberllm.dev/openapi.json), `getBalance`). The answer:
+`GET https://api.martllm.com/v1/balance` with `Authorization: Bearer <key>`, `Accept: application/json` and a 30-second timeout ([OpenAPI](https://martllm.com/openapi.json), `getBalance`). The answer:
 
 ```json
 {"object": "balance", "balance_usd": 12.4, "held_usd": 0.35, "available_usd": 12.05, "saved_24h_usd": 1.18}
