@@ -1,8 +1,8 @@
 {
   "profile": {
     "id": "uberllm",
-    "name": "UberLLM",
-    "links": { "dashboard": "https://uberllm.dev/dashboard" },
+    "name": "MartLLM",
+    "links": { "dashboard": "https://martllm.com/dashboard" },
     "look": {
       "symbol": "arrow.triangle.branch",
       "icon": "UberLLMIcon",
@@ -21,11 +21,11 @@
     {
       "kind": "api",
       "label": "API",
-      "summary": "Reads the UberLLM prepaid balance.",
+      "summary": "Reads the MartLLM prepaid balance.",
       "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
       "fetch": {
         "http": {
-          "url": "https://api.uberllm.dev/v1/balance",
+          "url": "https://api.martllm.com/v1/balance",
           "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
           "timeout": 30
         }

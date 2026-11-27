@@ -5,7 +5,7 @@ import Providers
 import Quotas
 import Testing
 
-/// UberLLM as data: the prepaid balance new requests can still use is money
+/// MartLLM as data: the prepaid balance new requests can still use is money
 /// with no ceiling, the key and its environment variable are settings.
 @MainActor @Suite
 struct UberLLMDefinitionTests {
@@ -16,7 +16,7 @@ struct UberLLMDefinitionTests {
         let definition = try ProviderFactory.builtIn("uberllm")
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
-            guard request.url?.absoluteString == "https://api.uberllm.dev/v1/balance", request.timeoutInterval == 30,
+            guard request.url?.absoluteString == "https://api.martllm.com/v1/balance", request.timeoutInterval == 30,
                   request.value(forHTTPHeaderField: "Accept") == "application/json" else { return (Data(), StubbedProvider.response(400)) }
             if let replies {
                 guard let response = replies[request.value(forHTTPHeaderField: "Authorization") ?? ""] else {
@@ -38,15 +38,15 @@ struct UberLLMDefinitionTests {
         "{\"object\":\"balance\",\"balance_usd\":\(available),\"held_usd\":0,\"available_usd\":\(available)}"
     }
 
-    @Test func `should show UberLLM with its dashboard, off until turned on, sending its key only to the UberLLM API`() throws {
+    @Test func `should show MartLLM with its dashboard, off until turned on, sending its key only to the MartLLM API`() throws {
         let provider = try make()
         #expect(provider.id == "uberllm")
-        #expect(provider.name == "UberLLM")
+        #expect(provider.name == "MartLLM")
         #expect(!provider.plainIsInLineup)
-        #expect(provider.definition.profile.links.dashboard == URL(string: "https://uberllm.dev/dashboard"))
+        #expect(provider.definition.profile.links.dashboard == URL(string: "https://martllm.com/dashboard"))
         #expect(provider.definition.profile.look.icon == "UberLLMIcon")
         #expect(provider.definition.accounts?.ways == [.form])
-        #expect(provider.definition.keyDestinations == ["api.uberllm.dev"])
+        #expect(provider.definition.keyDestinations == ["api.martllm.com"])
     }
 
     @Test func `should show what new requests can use, not the money set aside for requests still running`() async throws {
@@ -68,18 +68,18 @@ struct UberLLMDefinitionTests {
 
     @Test(arguments: ["not JSON", "{}", #"{"balance_usd":5}"#, #"{"available_usd":"abc"}"#, #"{"available_usd":"0x10"}"#,
                       #"{"available_usd":null}"#, #"{"available_usd":true}"#, #"{"error":{"message":"x"}}"#])
-    func `should fail at reading the answer when UberLLM reports no readable balance`(_ body: String) async throws {
+    func `should fail at reading the answer when MartLLM reports no readable balance`(_ body: String) async throws {
         let product = try make(body: body)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.lastFailedStep == .mapping)
     }
 
-    @Test(arguments: [401, 403]) func `should ask to sign in again when UberLLM refuses the key`(_ status: Int) async throws {
+    @Test(arguments: [401, 403]) func `should ask to sign in again when MartLLM refuses the key`(_ status: Int) async throws {
         await #expect(throws: UsageError.authenticationRequired) { try await make(status: status).refreshPlain() }
     }
 
-    @Test(arguments: [429, 500]) func `should fail at fetching when UberLLM is rate-limiting or down`(_ status: Int) async throws {
+    @Test(arguments: [429, 500]) func `should fail at fetching when MartLLM is rate-limiting or down`(_ status: Int) async throws {
         let product = try make(status: status)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
