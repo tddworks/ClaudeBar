@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.30] - 2026-11-28
+
+### Changed
+- Bug fixes and improvements.
+
+---
+
 ## [0.5.29] - 2026-11-20
 
 ### Changed
@@ -462,7 +469,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.29...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.30...HEAD
+[0.5.30]: https://github.com/tddworks/ClaudeBar/compare/v0.5.29...v0.5.30
 [0.5.29]: https://github.com/tddworks/ClaudeBar/compare/v0.5.28...v0.5.29
 [0.5.28]: https://github.com/tddworks/ClaudeBar/compare/v0.5.27...v0.5.28
 [0.5.27]: https://github.com/tddworks/ClaudeBar/compare/v0.5.26...v0.5.27
